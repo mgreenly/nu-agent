@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'anthropic'
-require 'forwardable'
-
 module Nu
   module Agent
     class ClaudeClient
@@ -14,7 +11,6 @@ module Nu
 
       def initialize
         load_api_key
-        @model = "claude-sonnet-4-20250514"
         @client = Anthropic::Client.new(access_token: @api_key.value)
         @token_tracker = TokenTracker.new
       end
@@ -22,7 +18,7 @@ module Nu
       def chat(prompt:)
         response = @client.messages(
           parameters: {
-            model: @model,
+            model: model,
             messages: [{ role: "user", content: prompt }],
             max_tokens: 1024
           }
@@ -37,7 +33,7 @@ module Nu
       end
 
       def model
-        @model
+        "claude-sonnet-4-20250514"
       end
 
       private

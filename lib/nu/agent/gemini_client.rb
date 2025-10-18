@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'gemini-ai'
-require 'forwardable'
-
 module Nu
   module Agent
     class GeminiClient
@@ -14,18 +11,12 @@ module Nu
 
       def initialize
         load_api_key
-        # Available models for Generative Language API (as of Oct 2025):
-        # - gemini-2.5-flash...........Fast, efficient model
-        # - gemini-2.0-flash-001.......Optimized for cost efficiency
-        # - gemini-flash-latest........Points to latest Flash release
-        # - gemini-2.5-pro.............More capable model
-        @model = 'gemini-2.0-flash-001'
         @client = Gemini.new(
           credentials: {
             service: 'generative-language-api',
             api_key: @api_key.value
           },
-          options: { model: @model, server_sent_events: true }
+          options: { model: model, server_sent_events: true }
         )
         @token_tracker = TokenTracker.new
       end
@@ -44,7 +35,7 @@ module Nu
       end
 
       def model
-        @model
+        'gemini-2.5-flash'
       end
 
       private
