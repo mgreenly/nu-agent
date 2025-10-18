@@ -55,7 +55,7 @@ Tokens: 1360 in / 245 out / 1605 total
 
 Here's a debug example to see what's going on under the hood.
 
-## Debug 1
+## Debug #1
 
 ```
 $ exe/nu-agent --debug --llm gemini
@@ -82,7 +82,7 @@ Tokens: 787 in / 22 out / 809 total
 
 >
 ```
-## Debug 2
+## Debug #2
 
 ```
 $ exe/nu-agent --debug --llm claude
@@ -122,5 +122,12 @@ Tokens: 1460 in / 189 out / 1649 total
 
 ## TODO
 
-I think I'd like to experiment with not adding the `meta-prompt` to the history.  Instead always wrapping the most immediate prompt with it.
+Future experiments I could do.
+
+  * Have the system specific metadata info by dynamically generated.
+  * Don't save the `meta-prompt` in the history.  Instead always wrap the most immediate request with it to maintain it's immediacy.
+  * add a `/llm NAME` command so you can switch LLMs before any prompt.
+  * add a `/model NAME` command so you can switch MODEL befor eany prompt.
+  * lots of error/debug imrprovements
+
 
