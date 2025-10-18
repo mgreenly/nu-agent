@@ -33,7 +33,7 @@ module Nu
           break if result == :exit
           next if result == :continue
 
-          puts "\n#{llm.response(input)}"
+          puts llm.response(input)
         end
       end
 
