@@ -12,7 +12,13 @@ module Nu
       def run
         setup_signal_handlers
         print_welcome
+        repl
+        print_goodbye
+      end
 
+      private
+
+      def repl
         loop do
           print "\n> "
           input = gets
@@ -31,11 +37,7 @@ module Nu
           puts "\n#{response}"
           puts "\nTokens: #{llm.input_tokens} in / #{llm.output_tokens} out / #{llm.total_tokens} total"
         end
-
-        print_goodbye
       end
-
-      private
 
       def setup_signal_handlers
         # Handle Ctrl-C gracefully
