@@ -35,7 +35,7 @@ module Nu
       end
 
       def self.create_tmpfile(content)
-        tmpfile = Tempfile.new(['script', ''])
+        tmpfile = Tempfile.new(['script', ''], Dir.pwd)
         tmpfile.write(content)
         tmpfile.flush
         tmpfile.chmod(0755)
