@@ -19,7 +19,16 @@ module Nu
           }
         )
 
-        response.dig("content", 0, "text")
+        # Return both the text and token usage
+        {
+          text: response.dig("content", 0, "text"),
+          usage: response["usage"]  # Contains input_tokens and output_tokens
+        }
+      end
+
+      # Alternative method that only returns text (for backward compatibility)
+      def chat_text(prompt:)
+        chat(prompt: prompt)[:text]
       end
 
       private

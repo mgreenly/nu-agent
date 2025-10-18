@@ -5,6 +5,7 @@ require_relative "agent/api_key"
 require_relative "agent/options"
 require_relative "agent/claude_client"
 require_relative "agent/gemini_client"
+require_relative "agent/token_tracker"
 require_relative "agent/application"
 
 module Nu
