@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require 'forwardable'
+require 'open3'
 require 'optparse'
+require 'tempfile'
 
 require 'anthropic'
 require 'gemini-ai'
@@ -12,6 +14,7 @@ require_relative "agent/claude_client"
 require_relative "agent/command"
 require_relative "agent/gemini_client"
 require_relative "agent/options"
+require_relative "agent/script_executor"
 require_relative "agent/token_tracker"
 require_relative "agent/version"
 

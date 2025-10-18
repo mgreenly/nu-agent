@@ -24,7 +24,7 @@ module Nu
       end
 
       def chat(prompt:)
-        @conversation_history << { role: "user", content: prompt }
+        @conversation_history << { role: "user", content: prompt } unless prompt.empty?
 
         response = @client.messages(
           parameters: {
@@ -42,6 +42,12 @@ module Nu
 
         assistant_message = response.dig("content", 0, "text")
         @conversation_history << { role: "assistant", content: assistant_message }
+
+        if ScriptExecutor.script?(assistant_message)
+          output = ScriptExecutor.execute(assistant_message)
+          @conversation_history << { role: "user", content: output }
+          return chat(prompt: "")
+        end
 
         assistant_message
       end

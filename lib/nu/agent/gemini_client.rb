@@ -30,13 +30,15 @@ module Nu
       end
 
       def chat(prompt:)
-        if @conversation_history.empty?
-          user_content = "#{@system_prompt}\n\nUser Prompt: #{prompt}"
-        else
-          user_content = prompt
-        end
+        unless prompt.empty?
+          if @conversation_history.empty?
+            user_content = "#{@system_prompt}\n\nUser Prompt: #{prompt}"
+          else
+            user_content = prompt
+          end
 
-        @conversation_history << { role: 'user', parts: { text: user_content } }
+          @conversation_history << { role: 'user', parts: { text: user_content } }
+        end
 
         result = @client.generate_content({
           contents: @conversation_history
@@ -49,6 +51,12 @@ module Nu
 
         assistant_message = result.dig('candidates', 0, 'content', 'parts', 0, 'text')
         @conversation_history << { role: 'model', parts: { text: assistant_message } }
+
+        if ScriptExecutor.script?(assistant_message)
+          output = ScriptExecutor.execute(assistant_message)
+          @conversation_history << { role: 'user', parts: { text: output } }
+          return chat(prompt: "")
+        end
 
         assistant_message
       end
