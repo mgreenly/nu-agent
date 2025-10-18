@@ -29,9 +29,9 @@ module Nu
             next
           end
 
-          response = @llm.chat(prompt: input)
+          response = llm.chat(prompt: input)
           puts "\n#{response}"
-          puts "\nTokens: #{@llm.input_tokens} in / #{@llm.output_tokens} out / #{@llm.total_tokens} total"
+          puts "\nTokens: #{llm.input_tokens} in / #{llm.output_tokens} out / #{llm.total_tokens} total"
         end
 
         print_goodbye
@@ -61,7 +61,7 @@ module Nu
 
       def print_welcome
         puts "Nu Agent REPL"
-        puts "Using: #{@llm.name} (#{@llm.model})"
+        puts "Using: #{llm.name} (#{llm.model})"
         puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
         puts "=" * 60
       end
