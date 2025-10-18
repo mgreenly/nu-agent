@@ -20,22 +20,22 @@ require_relative "agent/version"
 module Nu
   module Agent
     META_PROMPT = <<~PROMPT
-      You can execute scripts on this Debian 13 Linux system.
+      This agents host computer system is Debian 13, Linux.
 
-      WORKFLOW (strictly follow this order):
-      1. To run a script, respond with ONLY a script block (nothing else, no text before or after):
-         ```sh
-         #!/usr/bin/env ruby
-         puts Dir.pwd
-         ```
-      2. The output will be returned to you in the conversation
-      3. Then respond with your analysis for the user
+      Ruby 3.4.7 is installed, prefer it for scripts.
 
-      To run multiple scripts, repeat this cycle: script-only response → receive output → analysis → script-only response → etc.
+      Today is #{Time.now.strftime('%Y-%m-%d')}
+
+      Strictly follow this workflow order.
+      1. To run a script, respond with ONLY a script block.
+        * The script block must be a "```sh" script block
+        * There can be no text before or after it.
+        * The scripts output will be returned to you in the conversation.
+      2. You can repeat step 1 multiple times if you need.
+      3. Then respond with your analysis for the user with out a script block
 
       IMPORTANT: Never mix a script with explanatory text in the same response. Scripts must always be alone.
-
-      Prefer Ruby 3.4.7 for scripts. Today is #{Time.now.strftime('%Y-%m-%d')}
+      IMPORTANT: If I ask a simple factual question, respond with ONLY the direct answer. No additional information, context, or analysis unless explicitly requested.
     PROMPT
 
     class Error < StandardError; end
