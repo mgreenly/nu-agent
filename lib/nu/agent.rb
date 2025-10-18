@@ -39,7 +39,7 @@ module Nu
       * IMPORTANT: There can be no explanation text before or after the script block.
       * The script output will be returned to you after it's run.
       * No additional text will be added before or after the script ouput.
-      * You can repeat all the previosu steps as many times as you need.
+      * You can repeat all the previous steps as many times as you need.
       * Meaning you can run multiple scripts sequntially if you need to.
       * When you have aquired the necessary information respond without a script block to provide your analysis.
 

@@ -127,7 +127,7 @@ Future experiments I could do.
   * Have the system specific metadata info by dynamically generated.
   * Don't save the `meta-prompt` in the history.  Instead always wrap the most immediate request with it to maintain it's immediacy.
   * add a `/llm NAME` command so you can switch LLMs before any prompt.
-  * add a `/model NAME` command so you can switch MODEL befor eany prompt.
+  * add a `/model NAME` command so you can switch MODEL before any prompt.
   * lots of error/debug imrprovements
 
 
