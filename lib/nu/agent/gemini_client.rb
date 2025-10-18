@@ -11,7 +11,7 @@ module Nu
       def_delegator :token_tracker, :total_output_tokens, :output_tokens
       def_delegator :token_tracker, :total_tokens
 
-      CLIENT_PROMPT = <<~PROMPT
+      CLIENT_META_PROMPT = <<~PROMPT
         You are powered by Gemini (Google).
       PROMPT
 
@@ -27,13 +27,13 @@ module Nu
         )
         @token_tracker = TokenTracker.new
         @conversation_history = []
-        @system_prompt = [Nu::Agent::SYSTEM_PROMPT, CLIENT_PROMPT].join("\n\n").strip
+        @meta_prompt = [Nu::Agent::META_PROMPT, CLIENT_META_PROMPT].join("\n\n").strip
       end
 
       def chat(prompt:)
         unless prompt.empty?
           if @conversation_history.empty?
-            user_content = "#{@system_prompt}\n\nUser Prompt: #{prompt}"
+            user_content = "#{@meta_prompt}\n\nUser Prompt: #{prompt}"
           else
             user_content = prompt
           end

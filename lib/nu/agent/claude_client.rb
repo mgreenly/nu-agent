@@ -11,7 +11,7 @@ module Nu
       def_delegator :token_tracker, :total_output_tokens, :output_tokens
       def_delegator :token_tracker, :total_tokens
 
-      CLIENT_PROMPT = <<~PROMPT
+      CLIENT_META_PROMPT = <<~PROMPT
         You are powered by Claude (Anthropic).
       PROMPT
 
@@ -21,7 +21,7 @@ module Nu
         @client = Anthropic::Client.new(access_token: @api_key.value)
         @token_tracker = TokenTracker.new
         @conversation_history = []
-        @system_prompt = [Nu::Agent::SYSTEM_PROMPT, CLIENT_PROMPT].join("\n\n").strip
+        @meta_prompt = [Nu::Agent::META_PROMPT, CLIENT_META_PROMPT].join("\n\n").strip
       end
 
       def chat(prompt:)
@@ -30,7 +30,7 @@ module Nu
         response = @client.messages(
           parameters: {
             model: model,
-            system: @system_prompt,
+            system: @meta_prompt,
             messages: @conversation_history,
             max_tokens: 1024
           }
