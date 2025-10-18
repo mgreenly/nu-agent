@@ -3,4 +3,5 @@
 require "bundler/setup"
 require "nu/agent"
 
-Nu::Agent::Application.new.run
+options = Nu::Agent::Options.new
+Nu::Agent::Application.new(llm: options.llm).run
