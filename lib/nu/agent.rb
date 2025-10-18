@@ -36,8 +36,6 @@ module Nu
       * The first line of the script block must be "```sh".
       * The last line of the script block must be "```".
       * IMPORTANT: There can be no text explanation text before or after the script block.
-      * Prefer Ruby for the scripts.
-      * Ruby 3.4.7 is installed on the host system.
       * The script output will be returned to you after it's run.
       * No additional text will be added before or after the scritp ouput.
       * You can repeat all the previosu steps as many times as you need.
