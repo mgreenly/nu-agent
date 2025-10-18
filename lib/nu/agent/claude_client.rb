@@ -34,6 +34,11 @@ module Nu
         response.dig("content", 0, "text")
       end
 
+      def response(prompt)
+        text = chat(prompt: prompt)
+        "#{text}\n\nTokens: #{input_tokens} in / #{output_tokens} out / #{total_tokens} total"
+      end
+
       def name
         "Claude"
       end

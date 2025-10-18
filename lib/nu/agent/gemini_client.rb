@@ -36,6 +36,11 @@ module Nu
         result.dig('candidates', 0, 'content', 'parts', 0, 'text')
       end
 
+      def response(prompt)
+        text = chat(prompt: prompt)
+        "#{text}\n\nTokens: #{input_tokens} in / #{output_tokens} out / #{total_tokens} total"
+      end
+
       def name
         "Gemini"
       end

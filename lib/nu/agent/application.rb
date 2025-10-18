@@ -33,9 +33,7 @@ module Nu
           break if result == :exit
           next if result == :continue
 
-          response = llm.chat(prompt: input)
-          puts "\n#{response}"
-          puts "\nTokens: #{llm.input_tokens} in / #{llm.output_tokens} out / #{llm.total_tokens} total"
+          puts "\n#{llm.response(input)}"
         end
       end
 
