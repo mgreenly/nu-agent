@@ -1,33 +1,30 @@
 # Nu::Agent
 
-This is a toy experiment in writing an AI Agent.  Mostly I want to experiment with how and when it decides to use tools.
+This is a toy experiment in writing an AI Agent.  Mostly just to understand agents better but also specifically becase I waqnt to experiment with how agents decide to use tools.
 
 
 ## Example
 
-The current behavior is currently entirely governed by the [system-prompt](lib/nu/agent.rb#L20-L51).
+The current behavior is almost entirely governed by the [system-prompt](lib/nu/agent.rb#L22-L45).
 
 ````
-claude@ld01:~/projects/nu-agent$ ./exe/nu-agent --llm claude
 Nu Agent REPL
-Using: Claude (claude-sonnet-4-20250514)
+Using: Gemini (gemini-2.5-flash)
 Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
 Type /help for available commands
 ============================================================
 
 > how many files are in the current working directory?
 
-```script
-#!/usr/bin/env ruby
-files = Dir.entries('.').reject { |entry| entry == '.' || entry == '..' }
-puts files.length
-```
+There are 10 files in the current working directory.
 
-Tokens: 241 in / 43 out / 284 total
+Tokens: 545 in / 82 out / 627 total
 
-> 6
+> which is the largest file?
 
-Great! There are 6 files in the current working directory. Would you like me to list what those files are, or is there anything else you'd like to know about them?
+The largest file in the current working directory is `Gemfile.lock`.
 
-Tokens: 530 in / 84 out / 614 total
+Tokens: 1360 in / 245 out / 1605 total
+
+>
 ````
