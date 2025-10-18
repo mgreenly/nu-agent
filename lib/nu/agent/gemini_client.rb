@@ -11,6 +11,10 @@ module Nu
       def_delegator :token_tracker, :total_output_tokens, :output_tokens
       def_delegator :token_tracker, :total_tokens
 
+      SYSTEM_PROMPT = <<~PROMPT
+        You are an AI assistant with access to the following tools: file-reading
+      PROMPT
+
       def initialize
         load_api_key
         @client = Gemini.new(
@@ -22,7 +26,7 @@ module Nu
         )
         @token_tracker = TokenTracker.new
         @conversation_history = []
-        @system_prompt = "You are an AI assistant with access to the following tools: file-reading"
+        @system_prompt = SYSTEM_PROMPT.strip
       end
 
       def chat(prompt:)
