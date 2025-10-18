@@ -3,6 +3,8 @@
 module Nu
   module Agent
     class Application
+      attr_reader :llm
+
       def initialize(llm: 'claude')
         @llm = create_llm(llm)
       end
