@@ -35,15 +35,11 @@ module Nu
         })
 
         # Track token usage internally
-        # Gemini returns: { 'usageMetadata' => { 'promptTokenCount' => X, 'candidatesTokenCount' => Y, 'totalTokenCount' => Z } }
-        # Convert to our format: { 'input_tokens' => X, 'output_tokens' => Y }
-        if result['usageMetadata']
-          usage = {
-            'input_tokens' => result['usageMetadata']['promptTokenCount'] || 0,
-            'output_tokens' => result['usageMetadata']['candidatesTokenCount'] || 0
-          }
-          @token_tracker.track(usage)
-        end
+        # Gemini returns: { 'usageMetadata' => { 'promptTokenCount' => X, 'candidatesTokenCount' => Y } }
+        @token_tracker.track(
+          result.dig('usageMetadata', 'promptTokenCount'),
+          result.dig('usageMetadata', 'candidatesTokenCount')
+        )
 
         # Return only the text (same interface as ClaudeClient)
         result.dig('candidates', 0, 'content', 'parts', 0, 'text')

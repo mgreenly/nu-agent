@@ -28,7 +28,10 @@ module Nu
         )
 
         # Track token usage internally
-        @token_tracker.track(response["usage"])
+        @token_tracker.track(
+          response.dig("usage", "input_tokens"),
+          response.dig("usage", "output_tokens")
+        )
 
         # Return only the text
         response.dig("content", 0, "text")

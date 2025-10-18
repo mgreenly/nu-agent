@@ -9,11 +9,9 @@ module Nu
         reset!
       end
 
-      def track(usage)
-        return unless usage
-
-        @total_input_tokens += usage['input_tokens'] || 0
-        @total_output_tokens += usage['output_tokens'] || 0
+      def track(input_tokens, output_tokens)
+        @total_input_tokens += input_tokens || 0
+        @total_output_tokens += output_tokens || 0
         @requests_count += 1
       end
 
