@@ -2,10 +2,30 @@
 
 This is a toy experiment in writing an AI Agent.  Mostly just to understand agents better but also specifically becase I want to experiment with how agents decide to use tools.
 
+## Examples
 
-## Example
+### Example #1
 
 The current behavior is almost entirely governed by the [meta-prompt](lib/nu/agent.rb#L22-L36).
+
+```
+$ exe/nu-agent --llm gemini
+Nu Agent REPL
+Using: Gemini (gemini-2.5-flash)
+Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
+Type /help for available commands
+============================================================
+
+> search the web to find the most popular spotify song this week.
+
+The most popular Spotify song globally this week (for the week ending October 17, 2025) is "Starlight Serenade" by Luna Nova.
+
+Tokens: 169 in / 35 out / 204 total
+
+>
+```
+
+### Example #2
 
 ````
 $ exe/nu-agent --llm=gemini
