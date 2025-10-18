@@ -19,6 +19,7 @@ module Nu
           },
           options: { model: 'gemini-2.0-flash-001', server_sent_events: true }
         )
+        @token_tracker = TokenTracker.new
       end
 
       def chat(prompt:)
@@ -26,21 +27,32 @@ module Nu
           contents: { role: 'user', parts: { text: prompt } }
         })
 
+        # Track token usage internally
+        # Gemini returns: { 'usageMetadata' => { 'promptTokenCount' => X, 'candidatesTokenCount' => Y, 'totalTokenCount' => Z } }
+        # Convert to our format: { 'input_tokens' => X, 'output_tokens' => Y }
+        if result['usageMetadata']
+          usage = {
+            'input_tokens' => result['usageMetadata']['promptTokenCount'] || 0,
+            'output_tokens' => result['usageMetadata']['candidatesTokenCount'] || 0
+          }
+          @token_tracker.track(usage)
+        end
+
         # Return only the text (same interface as ClaudeClient)
         result.dig('candidates', 0, 'content', 'parts', 0, 'text')
       end
 
-      # Token tracking methods (always return 0 for Gemini)
+      # Token tracking methods
       def input_tokens
-        0
+        @token_tracker.total_input_tokens
       end
 
       def output_tokens
-        0
+        @token_tracker.total_output_tokens
       end
 
       def total_tokens
-        0
+        @token_tracker.total_tokens
       end
 
       private
