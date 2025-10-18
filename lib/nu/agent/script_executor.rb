@@ -14,15 +14,16 @@ module Nu
         puts "[DEBUG] Extracted script content:\n#{script_content}" if debug
 
         tmpfile = create_tmpfile(script_content)
-        puts "[DEBUG] Created tmpfile at: #{tmpfile.path}" if debug
+        script_path = tmpfile.path
+        tmpfile.close
+        puts "[DEBUG] Created tmpfile at: #{script_path}" if debug
 
         begin
-          output = run_script(tmpfile.path)
+          output = run_script(script_path)
           puts "[DEBUG] Script output:\n#{output}" if debug
           output
         ensure
-          tmpfile.close
-          tmpfile.unlink
+          File.unlink(script_path) if File.exist?(script_path)
           puts "[DEBUG] Cleaned up tmpfile" if debug
         end
       end
