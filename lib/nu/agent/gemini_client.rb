@@ -21,17 +21,21 @@ module Nu
           options: { model: model, server_sent_events: true }
         )
         @token_tracker = TokenTracker.new
+        @conversation_history = []
+        @system_prompt = "You are an AI assistant with access to the following tools: file-reading"
       end
 
       def chat(prompt:)
-        wrapped_prompt = <<~PROMPT
-          You are an AI assistant with access to the following tools: file-reading
+        if @conversation_history.empty?
+          user_content = "#{@system_prompt}\n\nUser Prompt: #{prompt}"
+        else
+          user_content = prompt
+        end
 
-          User Prompt: #{prompt}
-        PROMPT
+        @conversation_history << { role: 'user', parts: { text: user_content } }
 
         result = @client.generate_content({
-          contents: { role: 'user', parts: { text: wrapped_prompt } }
+          contents: @conversation_history
         })
 
         token_tracker.track(
@@ -39,7 +43,10 @@ module Nu
           result.dig('usageMetadata', 'candidatesTokenCount')
         )
 
-        result.dig('candidates', 0, 'content', 'parts', 0, 'text')
+        assistant_message = result.dig('candidates', 0, 'content', 'parts', 0, 'text')
+        @conversation_history << { role: 'model', parts: { text: assistant_message } }
+
+        assistant_message
       end
 
       def response(prompt)
@@ -53,6 +60,11 @@ module Nu
 
       def model
         'gemini-2.5-flash'
+      end
+
+      def reset
+        token_tracker.reset
+        @conversation_history.clear
       end
 
       private

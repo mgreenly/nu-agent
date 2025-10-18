@@ -15,19 +15,18 @@ module Nu
         load_api_key
         @client = Anthropic::Client.new(access_token: @api_key.value)
         @token_tracker = TokenTracker.new
+        @conversation_history = []
+        @system_prompt = "You are an AI assistant with access to the following tools: file-reading"
       end
 
       def chat(prompt:)
-        wrapped_prompt = <<~PROMPT
-          You are an AI assistant with access to the following tools: file-reading
-
-          User Prompt: #{prompt}
-        PROMPT
+        @conversation_history << { role: "user", content: prompt }
 
         response = @client.messages(
           parameters: {
             model: model,
-            messages: [{ role: "user", content: wrapped_prompt }],
+            system: @system_prompt,
+            messages: @conversation_history,
             max_tokens: 1024
           }
         )
@@ -37,7 +36,10 @@ module Nu
           response.dig("usage", "output_tokens")
         )
 
-        response.dig("content", 0, "text")
+        assistant_message = response.dig("content", 0, "text")
+        @conversation_history << { role: "assistant", content: assistant_message }
+
+        assistant_message
       end
 
       def response(prompt)
@@ -51,6 +53,11 @@ module Nu
 
       def model
         "claude-sonnet-4-20250514"
+      end
+
+      def reset
+        token_tracker.reset
+        @conversation_history.clear
       end
 
       private

@@ -17,8 +17,8 @@ module Nu
         when '/exit'
           :exit
         when '/reset'
-          @llm.token_tracker.reset
-          puts "Token count reset to zero"
+          @llm.reset
+          puts "Conversation and token count reset"
           :continue
         when '/help'
           print_help
@@ -35,7 +35,7 @@ module Nu
         puts "\nAvailable commands:"
         puts "  /exit   - Exit the REPL"
         puts "  /help   - Show this help message"
-        puts "  /reset  - Reset token count to zero"
+        puts "  /reset  - Reset conversation and token count"
       end
     end
   end
