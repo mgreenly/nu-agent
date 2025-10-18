@@ -11,8 +11,9 @@ module Nu
       def_delegator :token_tracker, :total_output_tokens, :output_tokens
       def_delegator :token_tracker, :total_tokens
 
-      SYSTEM_PROMPT = <<~PROMPT
-        You are an AI assistant with access to the following tools: file-reading
+      CLIENT_PROMPT = <<~PROMPT
+        You are powered by Claude (Anthropic).
+        You have access to the following tools: file-reading
       PROMPT
 
       def initialize
@@ -20,7 +21,7 @@ module Nu
         @client = Anthropic::Client.new(access_token: @api_key.value)
         @token_tracker = TokenTracker.new
         @conversation_history = []
-        @system_prompt = SYSTEM_PROMPT.strip
+        @system_prompt = [Nu::Agent::SYSTEM_PROMPT, CLIENT_PROMPT].join("\n\n").strip
       end
 
       def chat(prompt:)

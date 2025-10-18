@@ -17,6 +17,11 @@ require_relative "agent/version"
 
 module Nu
   module Agent
+    SYSTEM_PROMPT = <<~PROMPT
+      You are a helpful AI assistant.
+      You provide clear, accurate responses.
+    PROMPT
+
     class Error < StandardError; end
   end
 end
