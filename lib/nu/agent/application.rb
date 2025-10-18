@@ -4,7 +4,6 @@ module Nu
   module Agent
     class Application
       def initialize(llm: 'claude')
-        @llm_name = llm
         @llm = create_llm(llm)
       end
 
@@ -60,7 +59,7 @@ module Nu
 
       def print_welcome
         puts "Nu Agent REPL"
-        puts "Using: #{@llm_name.capitalize} (#{@llm.model})"
+        puts "Using: #{@llm.name} (#{@llm.model})"
         puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
         puts "=" * 60
       end

@@ -34,6 +34,10 @@ module Nu
         result.dig('candidates', 0, 'content', 'parts', 0, 'text')
       end
 
+      def name
+        "Gemini"
+      end
+
       def model
         'gemini-2.5-flash'
       end

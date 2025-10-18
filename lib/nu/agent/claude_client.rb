@@ -32,6 +32,10 @@ module Nu
         response.dig("content", 0, "text")
       end
 
+      def name
+        "Claude"
+      end
+
       def model
         "claude-sonnet-4-20250514"
       end
