@@ -18,6 +18,5 @@ require_relative "agent/version"
 module Nu
   module Agent
     class Error < StandardError; end
-    # Your code goes here...
   end
 end

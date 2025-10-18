@@ -23,7 +23,6 @@ module Nu
           print "\n> "
           input = gets
 
-          # Handle Ctrl-D (EOF)
           break if input.nil?
 
           input = input.strip
@@ -38,7 +37,6 @@ module Nu
       end
 
       def setup_signal_handlers
-        # Handle Ctrl-C gracefully
         Signal.trap("INT") do
           print_goodbye
           exit(0)
