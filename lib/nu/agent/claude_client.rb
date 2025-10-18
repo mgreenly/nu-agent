@@ -18,10 +18,16 @@ module Nu
       end
 
       def chat(prompt:)
+        wrapped_prompt = <<~PROMPT
+          You are an AI assistant with access to the following tools: file-reading
+
+          User Prompt: #{prompt}
+        PROMPT
+
         response = @client.messages(
           parameters: {
             model: model,
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: wrapped_prompt }],
             max_tokens: 1024
           }
         )

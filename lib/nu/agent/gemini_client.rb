@@ -24,8 +24,14 @@ module Nu
       end
 
       def chat(prompt:)
+        wrapped_prompt = <<~PROMPT
+          You are an AI assistant with access to the following tools: file-reading
+
+          User Prompt: #{prompt}
+        PROMPT
+
         result = @client.generate_content({
-          contents: { role: 'user', parts: { text: prompt } }
+          contents: { role: 'user', parts: { text: wrapped_prompt } }
         })
 
         token_tracker.track(
