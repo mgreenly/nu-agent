@@ -25,7 +25,7 @@ module Nu
 
           # Handle commands
           if input.start_with?('/')
-            break if handle_command(input)
+            break if Command.new(input).execute
             next
           end
 
@@ -44,18 +44,6 @@ module Nu
         Signal.trap("INT") do
           print_goodbye
           exit(0)
-        end
-      end
-
-      def handle_command(input)
-        command = input.downcase
-
-        case command
-        when '/exit'
-          true  # Signal to exit the loop
-        else
-          puts "Unknown command: #{input}"
-          false
         end
       end
 
