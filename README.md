@@ -30,3 +30,17 @@ Tokens: 1360 in / 245 out / 1605 total
 
 >
 ````
+
+So in the above example when it was sent the prompt:
+
+| how many files are in the current working directory?`
+
+it responded with this prompt.
+
+```script
+#!/usr/bin/env ruby
+puts Dir.glob('*').select { |f| File.file?(f) }.count
+```
+The agent ran the script and the output was `10`.
+
+Then the agent appended `10` to the conversation to generate the next prompt.
