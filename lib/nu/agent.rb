@@ -29,10 +29,17 @@ module Nu
       puts Dir.pwd
       ```
 
-      Do NOT include any explanation or text with the script - the script block must be your complete response.
-      After execution, the output will be added to the conversation and you'll respond again with your analysis.
+      Do NOT include any explanation or text with the script!
 
-      Prefer Ruby 3.4.7 for scripts. Iterate with multiple executions as needed.
+      The script block must be the only content in the response when you want to run a script!
+
+      After execution, the output will be added to the conversation and you can respond with your analysis.
+
+      Prefer Ruby 3.4.7 for scripts.
+
+      Iterate with multiple executions as needed.
+
+      Today is #{Time.now.strftime('%Y-%m-%d')}
     PROMPT
 
     class Error < StandardError; end
