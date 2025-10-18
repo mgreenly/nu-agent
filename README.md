@@ -36,6 +36,8 @@ Tokens: 1360 in / 245 out / 1605 total
 If we look at the above with --debug you can see what's going on behind the scenes
 
 ````
+$ exe/nu-agent --debug --llm=claude
+
 > how many files are in the current working directory?
 [DEBUG] Script detected
 [DEBUG] ```sh
