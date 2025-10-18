@@ -22,6 +22,12 @@ module Nu
           input = input.strip
           next if input.empty?
 
+          # Handle commands
+          if input.start_with?('/')
+            break if handle_command(input)
+            next
+          end
+
           response = @llm.chat(prompt: input)
           puts "\n#{response}"
           puts "\nTokens: #{@llm.input_tokens} in / #{@llm.output_tokens} out / #{@llm.total_tokens} total"
@@ -40,10 +46,22 @@ module Nu
         end
       end
 
+      def handle_command(input)
+        command = input.downcase
+
+        case command
+        when '/exit'
+          true  # Signal to exit the loop
+        else
+          puts "Unknown command: #{input}"
+          false
+        end
+      end
+
       def print_welcome
         puts "Nu Agent REPL"
         puts "Using: #{@llm_name.capitalize} (#{@llm.model})"
-        puts "Type your prompts below. Press Ctrl-C or Ctrl-D to exit."
+        puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
         puts "=" * 60
       end
 
