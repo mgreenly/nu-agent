@@ -35,6 +35,7 @@ module Nu
       * Respond with only a script block.
       * The first line of the script block must be "```sh".
       * The last line of the script block must be "```".
+      * The script should include a proper shebang line, for example "#!/usr/bin/env ruby"
       * IMPORTANT: There can be no text explanation text before or after the script block.
       * The script output will be returned to you after it's run.
       * No additional text will be added before or after the scritp ouput.
