@@ -15,16 +15,17 @@ module Nu
       def initialize
         load_api_key
         # Available models for Generative Language API (as of Oct 2025):
-        # - gemini-2.5-flash: Fast, efficient model
-        # - gemini-2.0-flash-001: Optimized for cost efficiency
-        # - gemini-flash-latest: Points to latest Flash release
-        # - gemini-2.5-pro: More capable model
+        # - gemini-2.5-flash...........Fast, efficient model
+        # - gemini-2.0-flash-001.......Optimized for cost efficiency
+        # - gemini-flash-latest........Points to latest Flash release
+        # - gemini-2.5-pro.............More capable model
+        @model = 'gemini-2.0-flash-001'
         @client = Gemini.new(
           credentials: {
             service: 'generative-language-api',
             api_key: @api_key.value
           },
-          options: { model: 'gemini-2.0-flash-001', server_sent_events: true }
+          options: { model: @model, server_sent_events: true }
         )
         @token_tracker = TokenTracker.new
       end
@@ -34,15 +35,16 @@ module Nu
           contents: { role: 'user', parts: { text: prompt } }
         })
 
-        # Track token usage internally
-        # Gemini returns: { 'usageMetadata' => { 'promptTokenCount' => X, 'candidatesTokenCount' => Y } }
         @token_tracker.track(
           result.dig('usageMetadata', 'promptTokenCount'),
           result.dig('usageMetadata', 'candidatesTokenCount')
         )
 
-        # Return only the text (same interface as ClaudeClient)
         result.dig('candidates', 0, 'content', 'parts', 0, 'text')
+      end
+
+      def model
+        @model
       end
 
       private

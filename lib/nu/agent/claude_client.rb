@@ -14,6 +14,7 @@ module Nu
 
       def initialize
         load_api_key
+        @model = "claude-sonnet-4-20250514"
         @client = Anthropic::Client.new(access_token: @api_key.value)
         @token_tracker = TokenTracker.new
       end
@@ -21,20 +22,22 @@ module Nu
       def chat(prompt:)
         response = @client.messages(
           parameters: {
-            model: "claude-sonnet-4-20250514",
+            model: @model,
             messages: [{ role: "user", content: prompt }],
             max_tokens: 1024
           }
         )
 
-        # Track token usage internally
         @token_tracker.track(
           response.dig("usage", "input_tokens"),
           response.dig("usage", "output_tokens")
         )
 
-        # Return only the text
         response.dig("content", 0, "text")
+      end
+
+      def model
+        @model
       end
 
       private
