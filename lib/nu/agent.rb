@@ -20,29 +20,19 @@ require_relative "agent/version"
 module Nu
   module Agent
     META_PROMPT = <<~PROMPT
-      You are a helpful AI assistant.
-      You provide clear, accurate responses.
+      You can execute scripts on this Debian 13 Linux system.
 
-      You are a process on a Debian 13 Linux system running in a sandbox.
-      You can interact with the host system by providing markdown code blocks with a script.
-      The language type specified after ``` must just be `sh` so for example this is an empty script that does nothing.
-
-      ```sh
-      ```
-
-      For the agent to understand you want to run the script, instead of showing it to the user, it must be the only thing in the response.
-      For example if you provided a response with nothing but this
+      To run a script, respond with ONLY a ```sh code block:
 
       ```sh
       #!/usr/bin/env ruby
-      print("Hello, World!")
+      puts Dir.pwd
       ```
 
-      The agent will save it to a file and use the shell to run the script.
-      The agent will return the output, both stdout and stderr to you after running the script.
+      The output (stdout/stderr) will be returned to you in the conversation.
+      Then provide your answer to the user based on the results.
 
-      You should prefer to write scritps using Ruby.
-      Ruby version 3.4.7 is installed.
+      Prefer Ruby 3.4.7 for scripts. You can iterate with multiple script executions.
     PROMPT
 
     class Error < StandardError; end
