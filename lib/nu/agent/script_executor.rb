@@ -8,17 +8,18 @@ module Nu
       end
 
       def self.execute(text, debug: false)
-        puts "[DEBUG] Script detected" if debug
+        if debug
+          puts "[DEBUG] Script detected"
+          print_debug_script(text)
+        end
 
         script_content = extract_script(text)
-        puts "[DEBUG] Extracted script content:\n#{script_content}" if debug
-
         script_path = create_script_file(script_content)
         puts "[DEBUG] Created script at: #{script_path}" if debug
 
         begin
           output = run_script(script_path)
-          puts "[DEBUG] Script output:\n#{output}" if debug
+          print_debug_output(output) if debug
           output
         ensure
           File.unlink(script_path) if File.exist?(script_path)
@@ -45,6 +46,19 @@ module Nu
         output
       rescue => e
         "Error executing script: #{e.message}"
+      end
+
+      def self.print_debug_script(text)
+        text.strip.lines.each do |line|
+          puts "[DEBUG] #{line.chomp}"
+        end
+      end
+
+      def self.print_debug_output(output)
+        puts "[DEBUG] Script output:"
+        output.lines.each do |line|
+          puts "[DEBUG] #{line.chomp}"
+        end
       end
     end
   end
