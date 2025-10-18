@@ -1,14 +1,11 @@
 # frozen_string_literal: true
 
-# Stdlib
 require 'forwardable'
 require 'optparse'
 
-# External gems
 require 'anthropic'
 require 'gemini-ai'
 
-# Internal files
 require_relative "agent/api_key"
 require_relative "agent/application"
 require_relative "agent/claude_client"
