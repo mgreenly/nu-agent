@@ -4,7 +4,7 @@ module Nu
   module Agent
     class ScriptExecutor
       def self.script?(text)
-        text.strip.start_with?('```script') && text.strip.end_with?('```')
+        text.strip.start_with?('```sh') && text.strip.end_with?('```')
       end
 
       def self.execute(text, debug: false)

@@ -5,7 +5,7 @@ This is a toy experiment in writing an AI Agent.  Mostly just to understand agen
 
 ## Example
 
-The current behavior is almost entirely governed by the [system-prompt](lib/nu/agent.rb#L22-L46).
+The current behavior is almost entirely governed by the [meta-prompt](lib/nu/agent.rb#L22-L46).
 
 ````
 $ exe/nu-agent --llm=gemini
@@ -38,7 +38,7 @@ So in the above example when it was sent the prompt:
 it responded with this prompt.
 
 ````
-```script
+```sh
 #!/usr/bin/env ruby
 puts Dir.glob('*').select { |f| File.file?(f) }.count
 ```
