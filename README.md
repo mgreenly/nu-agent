@@ -4,7 +4,7 @@ This is a toy experiment in writing an AI Agent.  Mostly just to understand agen
 
 ## Examples
 
-The current behavior is almost entirely governed by the [meta-prompt](lib/nu/agent.rb#L22-L36).
+The current behavior is almost entirely governed by the [meta-prompt](lib/nu/agent.rb#L22-L54).
 
 ### Example #1
 
