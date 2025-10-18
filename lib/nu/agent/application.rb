@@ -5,8 +5,9 @@ module Nu
     class Application
       attr_reader :llm
 
-      def initialize(llm: 'claude')
-        @llm = create_llm(llm)
+      def initialize(options:)
+        @options = options
+        @llm = create_llm(options.llm)
       end
 
       def run
@@ -58,9 +59,9 @@ module Nu
       def create_llm(llm_name)
         case llm_name.downcase
         when 'claude'
-          ClaudeClient.new
+          ClaudeClient.new(options: @options)
         when 'gemini'
-          GeminiClient.new
+          GeminiClient.new(options: @options)
         else
           raise Error, "Unknown LLM: #{llm_name}. Use 'claude' or 'gemini'."
         end

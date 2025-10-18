@@ -15,7 +15,8 @@ module Nu
         You are powered by Gemini (Google).
       PROMPT
 
-      def initialize
+      def initialize(options:)
+        @options = options
         load_api_key
         @client = Gemini.new(
           credentials: {
@@ -53,7 +54,7 @@ module Nu
         @conversation_history << { role: 'model', parts: { text: assistant_message } }
 
         if ScriptExecutor.script?(assistant_message)
-          output = ScriptExecutor.execute(assistant_message)
+          output = ScriptExecutor.execute(assistant_message, debug: @options.debug)
           @conversation_history << { role: 'user', parts: { text: output } }
           return chat(prompt: "")
         end

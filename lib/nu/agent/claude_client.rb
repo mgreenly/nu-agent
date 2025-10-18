@@ -15,7 +15,8 @@ module Nu
         You are powered by Claude (Anthropic).
       PROMPT
 
-      def initialize
+      def initialize(options:)
+        @options = options
         load_api_key
         @client = Anthropic::Client.new(access_token: @api_key.value)
         @token_tracker = TokenTracker.new
@@ -44,7 +45,7 @@ module Nu
         @conversation_history << { role: "assistant", content: assistant_message }
 
         if ScriptExecutor.script?(assistant_message)
-          output = ScriptExecutor.execute(assistant_message)
+          output = ScriptExecutor.execute(assistant_message, debug: @options.debug)
           @conversation_history << { role: "user", content: output }
           return chat(prompt: "")
         end

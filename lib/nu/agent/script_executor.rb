@@ -7,15 +7,23 @@ module Nu
         text.strip.start_with?('```script') && text.strip.end_with?('```')
       end
 
-      def self.execute(text)
+      def self.execute(text, debug: false)
+        puts "[DEBUG] Script detected" if debug
+
         script_content = extract_script(text)
+        puts "[DEBUG] Extracted script content:\n#{script_content}" if debug
+
         tmpfile = create_tmpfile(script_content)
+        puts "[DEBUG] Created tmpfile at: #{tmpfile.path}" if debug
 
         begin
-          run_script(tmpfile.path)
+          output = run_script(tmpfile.path)
+          puts "[DEBUG] Script output:\n#{output}" if debug
+          output
         ensure
           tmpfile.close
           tmpfile.unlink
+          puts "[DEBUG] Cleaned up tmpfile" if debug
         end
       end
 

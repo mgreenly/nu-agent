@@ -3,10 +3,11 @@
 module Nu
   module Agent
     class Options
-      attr_reader :llm
+      attr_reader :llm, :debug
 
       def initialize(args = ARGV)
-        @llm = 'claude' # default
+        @llm = 'claude'
+        @debug = false
         parse(args)
       end
 
@@ -18,6 +19,10 @@ module Nu
 
           opts.on("--llm LLM", String, "LLM to use (claude or gemini)") do |llm|
             @llm = llm
+          end
+
+          opts.on("--debug", "Enable debug logging") do
+            @debug = true
           end
 
           opts.on("-h", "--help", "Prints this help") do
