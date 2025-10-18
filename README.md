@@ -130,4 +130,37 @@ Future experiments I could do.
   * add a `/model NAME` command so you can switch MODEL before any prompt.
   * lots of error/debug imrprovements
 
+## NOTES
 
+It's hard to get the model to ask for clarification but this worked.
+
+So maybe the first step should be using a fast model to inspect and accurately re-define the question.
+
+So something like this
+
+```
+"How many files are in the current working directory?".  are any parts of this request ambigous?  Does it contain words that could have multiple meanings?  if it does ignore the request and ask for clarification and rewrite the  prompt with more accurate word use.
+```
+
+Then you get it to re-write the prompt
+
+```
+Using my choices: regular files only (not hidden), no directories, not recursive, rewrite the original question, ""How many files are in the current working directory?"" incorporating that detail so that we get the correct answer.
+```
+It gives you something like this
+
+```
+How many regular files (excluding hidden files and directories) are directly in the current working directory?
+[DEBUG] Script detected
+[DEBUG] ```sh
+[DEBUG] #!/bin/bash
+[DEBUG] find . -maxdepth 1 -type f ! -name '.*' | wc -l
+[DEBUG] ```
+[DEBUG] Created script at: /home/claude/projects/nu-agent/script833629-1760816978
+[DEBUG] Script output:
+[DEBUG] 7
+[DEBUG] Cleaned up script file
+
+7
+Tokens: 2994 in / 331 out / 3325 total
+```
