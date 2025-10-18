@@ -8,6 +8,8 @@ This is a toy experiment in writing an AI Agent.  Mostly just to understand agen
 The current behavior is almost entirely governed by the [system-prompt](lib/nu/agent.rb#L22-L46).
 
 ````
+$ exe/nu-agent --llm=gemini
+
 Nu Agent REPL
 Using: Gemini (gemini-2.5-flash)
 Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
