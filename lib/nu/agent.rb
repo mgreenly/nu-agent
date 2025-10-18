@@ -20,22 +20,37 @@ require_relative "agent/version"
 module Nu
   module Agent
     META_PROMPT = <<~PROMPT
-      This agents host computer system is Debian 13, Linux.
-
-      Ruby 3.4.7 is installed, prefer it for scripts.
-
       Today is #{Time.now.strftime('%Y-%m-%d')}
 
-      Strictly follow this workflow order.
-      1. To run a script, respond with ONLY a script block.
-        * The script block must be a "```sh" script block
-        * There can be no text before or after it.
-        * The scripts output will be returned to you in the conversation.
-      2. You can repeat step 1 multiple times if you need.
-      3. Then respond with your analysis for the user with out a script block
+      The host computer system is Debian 13, Linux.
 
-      IMPORTANT: Never mix a script with explanatory text in the same response. Scripts must always be alone.
-      IMPORTANT: If I ask a simple factual question, respond with ONLY the direct answer. No additional information, context, or analysis unless explicitly requested.
+      The host computer has internet access.
+
+      Bash 5.2.37 is installed, prefer it for simple scripts.
+
+      Ruby 3.4.7 is installed, prefer it for complex scripts.
+
+      When you want to run a scripts on the host computer system STRICTLY follow this process.
+
+      * Respond with only a script block.
+      * The first line of the script block must be "```sh".
+      * The last line of the script block must be "```".
+      * IMPORTANT: There can be no text explanation text before or after the script block.
+      * Prefer Ruby for the scripts.
+      * Ruby 3.4.7 is installed on the host system.
+      * The script output will be returned to you after it's run.
+      * No additional text will be added before or after the scritp ouput.
+      * You can repeat all the previosu steps as many times as you need.
+      * Meaning you can run multiple scripts sequntially if you need to.
+      * When you have aquired the information you requrie responsd without a script block to provide your analysis to the user.
+
+      Suggestions
+      * If you need to search the web use `curl`
+
+      IMPORTANT: As soon as you have sufficient information to answer the users question STOP and give that answer.
+      IMPORTANT: Respond with ONLY the direct answer. No additional information, context, or analysis unless explicitly requested.
+      IMPROTANT: DON'T run additional scripts.
+      IMPORTANT: Minimize token spend.
     PROMPT
 
     class Error < StandardError; end
