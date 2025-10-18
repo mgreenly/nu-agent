@@ -14,6 +14,7 @@ module Nu
         response = @llm.chat(prompt: "What is a Saturn rocket")
 
         puts response
+        puts "\nTokens: #{@llm.input_tokens} in / #{@llm.output_tokens} out / #{@llm.total_tokens} total"
       end
 
       private

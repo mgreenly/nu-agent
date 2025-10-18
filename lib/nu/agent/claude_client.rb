@@ -8,6 +8,7 @@ module Nu
       def initialize
         load_api_key
         @client = Anthropic::Client.new(access_token: @api_key.value)
+        @token_tracker = TokenTracker.new
       end
 
       def chat(prompt:)
@@ -19,11 +20,23 @@ module Nu
           }
         )
 
-        # Return both the text and token usage
-        {
-          text: response.dig("content", 0, "text"),
-          usage: response["usage"]  # Contains input_tokens and output_tokens
-        }
+        # Track token usage internally
+        @token_tracker.track(response["usage"])
+
+        # Return only the text
+        response.dig("content", 0, "text")
+      end
+
+      def input_tokens
+        @token_tracker.total_input_tokens
+      end
+
+      def output_tokens
+        @token_tracker.total_output_tokens
+      end
+
+      def total_tokens
+        @token_tracker.total_tokens
       end
 
       private

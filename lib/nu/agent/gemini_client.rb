@@ -26,11 +26,21 @@ module Nu
           contents: { role: 'user', parts: { text: prompt } }
         })
 
-        # Return same format as ClaudeClient
-        {
-          text: result.dig('candidates', 0, 'content', 'parts', 0, 'text'),
-          usage: { "input_tokens" => 0, "output_tokens" => 0 }
-        }
+        # Return only the text (same interface as ClaudeClient)
+        result.dig('candidates', 0, 'content', 'parts', 0, 'text')
+      end
+
+      # Token tracking methods (always return 0 for Gemini)
+      def input_tokens
+        0
+      end
+
+      def output_tokens
+        0
+      end
+
+      def total_tokens
+        0
       end
 
       private
