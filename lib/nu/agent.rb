@@ -3,7 +3,6 @@
 require 'forwardable'
 require 'open3'
 require 'optparse'
-require 'tempfile'
 
 require 'anthropic'
 require 'gemini-ai'

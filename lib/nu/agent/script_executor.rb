@@ -13,10 +13,8 @@ module Nu
         script_content = extract_script(text)
         puts "[DEBUG] Extracted script content:\n#{script_content}" if debug
 
-        tmpfile = create_tmpfile(script_content)
-        script_path = tmpfile.path
-        tmpfile.close
-        puts "[DEBUG] Created tmpfile at: #{script_path}" if debug
+        script_path = create_script_file(script_content)
+        puts "[DEBUG] Created script at: #{script_path}" if debug
 
         begin
           output = run_script(script_path)
@@ -24,7 +22,7 @@ module Nu
           output
         ensure
           File.unlink(script_path) if File.exist?(script_path)
-          puts "[DEBUG] Cleaned up tmpfile" if debug
+          puts "[DEBUG] Cleaned up script file" if debug
         end
       end
 
@@ -35,12 +33,11 @@ module Nu
         lines[1...-1].join
       end
 
-      def self.create_tmpfile(content)
-        tmpfile = Tempfile.new(['script', ''], Dir.pwd)
-        tmpfile.write(content)
-        tmpfile.flush
-        tmpfile.chmod(0755)
-        tmpfile
+      def self.create_script_file(content)
+        script_path = File.join(Dir.pwd, "script#{Process.pid}-#{Time.now.to_i}")
+        File.write(script_path, content)
+        File.chmod(0755, script_path)
+        script_path
       end
 
       def self.run_script(path)
