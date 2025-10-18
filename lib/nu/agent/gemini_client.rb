@@ -5,9 +5,11 @@ module Nu
     class GeminiClient
       extend Forwardable
 
-      def_delegator :@token_tracker, :total_input_tokens, :input_tokens
-      def_delegator :@token_tracker, :total_output_tokens, :output_tokens
-      def_delegator :@token_tracker, :total_tokens
+      attr_reader :token_tracker
+
+      def_delegator :token_tracker, :total_input_tokens, :input_tokens
+      def_delegator :token_tracker, :total_output_tokens, :output_tokens
+      def_delegator :token_tracker, :total_tokens
 
       def initialize
         load_api_key
@@ -26,7 +28,7 @@ module Nu
           contents: { role: 'user', parts: { text: prompt } }
         })
 
-        @token_tracker.track(
+        token_tracker.track(
           result.dig('usageMetadata', 'promptTokenCount'),
           result.dig('usageMetadata', 'candidatesTokenCount')
         )
