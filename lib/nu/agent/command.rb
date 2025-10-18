@@ -9,6 +9,8 @@ module Nu
       end
 
       def execute
+        return :process unless @input.start_with?('/')
+
         command = @input.downcase
 
         case command

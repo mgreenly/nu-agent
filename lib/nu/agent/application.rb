@@ -23,11 +23,9 @@ module Nu
           input = input.strip
           next if input.empty?
 
-          # Handle commands
-          if input.start_with?('/')
-            break if Command.new(input, llm).execute == :exit
-            next
-          end
+          result = Command.new(input, llm).execute
+          break if result == :exit
+          next if result == :continue
 
           response = llm.chat(prompt: input)
           puts "\n#{response}"
