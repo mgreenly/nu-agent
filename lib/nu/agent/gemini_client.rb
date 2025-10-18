@@ -13,7 +13,6 @@ module Nu
 
       CLIENT_PROMPT = <<~PROMPT
         You are powered by Gemini (Google).
-        You have access to the following tools: file-reading
       PROMPT
 
       def initialize
