@@ -72,3 +72,8 @@ The largest file in the current directory is `Gemfile.lock` at 2608 bytes. This 
 
 Tokens: 1234 in / 211 out / 1445 total
 ````
+
+## TODO
+
+I think I'd like to experiment with not adding the `meta-prompt` to the history.  Instead always wrapping the most immediate prompt with it.
+
