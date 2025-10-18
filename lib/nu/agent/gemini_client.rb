@@ -1,10 +1,17 @@
 # frozen_string_literal: true
 
 require 'gemini-ai'
+require 'forwardable'
 
 module Nu
   module Agent
     class GeminiClient
+      extend Forwardable
+
+      def_delegator :@token_tracker, :total_input_tokens, :input_tokens
+      def_delegator :@token_tracker, :total_output_tokens, :output_tokens
+      def_delegator :@token_tracker, :total_tokens
+
       def initialize
         load_api_key
         # Available models for Generative Language API (as of Oct 2025):
@@ -40,19 +47,6 @@ module Nu
 
         # Return only the text (same interface as ClaudeClient)
         result.dig('candidates', 0, 'content', 'parts', 0, 'text')
-      end
-
-      # Token tracking methods
-      def input_tokens
-        @token_tracker.total_input_tokens
-      end
-
-      def output_tokens
-        @token_tracker.total_output_tokens
-      end
-
-      def total_tokens
-        @token_tracker.total_tokens
       end
 
       private

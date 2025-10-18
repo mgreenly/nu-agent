@@ -1,10 +1,17 @@
 # frozen_string_literal: true
 
 require 'anthropic'
+require 'forwardable'
 
 module Nu
   module Agent
     class ClaudeClient
+      extend Forwardable
+
+      def_delegator :@token_tracker, :total_input_tokens, :input_tokens
+      def_delegator :@token_tracker, :total_output_tokens, :output_tokens
+      def_delegator :@token_tracker, :total_tokens
+
       def initialize
         load_api_key
         @client = Anthropic::Client.new(access_token: @api_key.value)
@@ -25,18 +32,6 @@ module Nu
 
         # Return only the text
         response.dig("content", 0, "text")
-      end
-
-      def input_tokens
-        @token_tracker.total_input_tokens
-      end
-
-      def output_tokens
-        @token_tracker.total_output_tokens
-      end
-
-      def total_tokens
-        @token_tracker.total_tokens
       end
 
       private
