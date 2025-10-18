@@ -26,7 +26,11 @@ module Nu
           contents: { role: 'user', parts: { text: prompt } }
         })
 
-        result.dig('candidates', 0, 'content', 'parts', 0, 'text')
+        # Return same format as ClaudeClient
+        {
+          text: result.dig('candidates', 0, 'content', 'parts', 0, 'text'),
+          usage: { "input_tokens" => 0, "output_tokens" => 0 }
+        }
       end
 
       private

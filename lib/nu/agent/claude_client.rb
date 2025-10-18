@@ -26,11 +26,6 @@ module Nu
         }
       end
 
-      # Alternative method that only returns text (for backward compatibility)
-      def chat_text(prompt:)
-        chat(prompt: prompt)[:text]
-      end
-
       private
 
       def load_api_key
