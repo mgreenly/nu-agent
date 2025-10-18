@@ -25,7 +25,7 @@ module Nu
 
           # Handle commands
           if input.start_with?('/')
-            break if Command.new(input).execute
+            break if Command.new(input, llm).execute == :exit
             next
           end
 
@@ -51,6 +51,7 @@ module Nu
         puts "Nu Agent REPL"
         puts "Using: #{llm.name} (#{llm.model})"
         puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
+        puts "Commands: /exit, /reset"
         puts "=" * 60
       end
 

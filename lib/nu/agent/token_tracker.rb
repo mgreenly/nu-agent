@@ -18,6 +18,11 @@ module Nu
       def total_tokens
         @total_input_tokens + @total_output_tokens
       end
+
+      def reset
+        @total_input_tokens = 0
+        @total_output_tokens = 0
+      end
     end
   end
 end
