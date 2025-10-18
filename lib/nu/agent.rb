@@ -22,17 +22,17 @@ module Nu
     META_PROMPT = <<~PROMPT
       You can execute scripts on this Debian 13 Linux system.
 
-      To run a script, respond with ONLY a ```sh code block:
+      When you need to run a script, your ENTIRE response must be ONLY the script block with nothing else:
 
       ```sh
       #!/usr/bin/env ruby
       puts Dir.pwd
       ```
 
-      The output (stdout/stderr) will be returned to you in the conversation.
-      Then provide your answer to the user based on the results.
+      Do NOT include any explanation or text with the script - the script block must be your complete response.
+      After execution, the output will be added to the conversation and you'll respond again with your analysis.
 
-      Prefer Ruby 3.4.7 for scripts. You can iterate with multiple script executions.
+      Prefer Ruby 3.4.7 for scripts. Iterate with multiple executions as needed.
     PROMPT
 
     class Error < StandardError; end
