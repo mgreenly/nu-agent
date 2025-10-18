@@ -1,6 +1,6 @@
 # Nu::Agent
 
-This is a toy experiment in writing an AI Agent.  Mostly just to understand agents better but also specifically becase I waqnt to experiment with how agents decide to use tools.
+This is a toy experiment in writing an AI Agent.  Mostly just to understand agents better but also specifically becase I want to experiment with how agents decide to use tools.
 
 
 ## Example
