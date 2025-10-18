@@ -5,7 +5,7 @@ This is a toy experiment in writing an AI Agent.  Mostly I want to experiment wi
 
 ## Example
 
-The current behavior is currently entirely governed by the [system-prompt](lib/nu/agent.rb).
+The current behavior is currently entirely governed by the [system-prompt](lib/nu/agent.rb#L20-L51).
 
 ````
 claude@ld01:~/projects/nu-agent$ ./exe/nu-agent --llm claude
