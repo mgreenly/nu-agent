@@ -32,17 +32,11 @@ module Nu
 
       def chat(prompt:)
         unless prompt.empty?
-          if @conversation_history.empty?
-            user_content = "#{@meta_prompt}\n\nUser Prompt: #{prompt}"
-          else
-            user_content = prompt
-          end
-
-          @conversation_history << { role: 'user', parts: { text: user_content } }
+          @conversation_history << { role: 'user', parts: { text: prompt } }
         end
 
         result = @client.generate_content({
-          contents: @conversation_history
+          contents: prepare_messages_with_meta_prompt
         })
 
         token_tracker.track(
@@ -93,6 +87,12 @@ module Nu
         end
       rescue => e
         raise Error, "Error loading API key: #{e.message}"
+      end
+
+      def prepare_messages_with_meta_prompt
+        [
+          { role: 'user', parts: { text: @meta_prompt } }
+        ] + @conversation_history
       end
     end
   end
