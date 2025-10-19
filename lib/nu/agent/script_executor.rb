@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "debug"
+
 module Nu
   module Agent
     class ScriptExecutor
@@ -8,22 +10,20 @@ module Nu
       end
 
       def self.execute(text, debug: false)
-        if debug
-          puts "[DEBUG] Script detected"
-          print_debug_script(text)
-        end
+        Debug.log("Script detected")
+        Debug.log_multiline("Script content:", text)
 
         script_content = extract_script(text)
         script_path = create_script_file(script_content)
-        puts "[DEBUG] Created script at: #{script_path}" if debug
+        Debug.log("Created script at: #{script_path}")
 
         begin
           output = run_script(script_path)
-          print_debug_output(output) if debug
+          Debug.log_multiline("Script output:", output)
           output
         ensure
           File.unlink(script_path) if File.exist?(script_path)
-          puts "[DEBUG] Cleaned up script file" if debug
+          Debug.log("Cleaned up script file")
         end
       end
 
@@ -46,19 +46,6 @@ module Nu
         output
       rescue => e
         "Error executing script: #{e.message}"
-      end
-
-      def self.print_debug_script(text)
-        text.strip.lines.each do |line|
-          puts "[DEBUG] #{line.chomp}"
-        end
-      end
-
-      def self.print_debug_output(output)
-        puts "[DEBUG] Script output:"
-        output.lines.each do |line|
-          puts "[DEBUG] #{line.chomp}"
-        end
       end
     end
   end

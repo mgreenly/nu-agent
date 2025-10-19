@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "debug"
+
 module Nu
   module Agent
     class ClaudeClient
@@ -27,6 +29,10 @@ module Nu
       def chat(prompt:)
         @conversation_history << { role: "user", content: prompt } unless prompt.empty?
 
+        Debug.log("Sending message to #{name}")
+        Debug.log_multiline("User prompt:", prompt) unless prompt.empty?
+        Debug.log("Messages in conversation history: #{@conversation_history.length}")
+
         response = @client.messages(
           parameters: {
             model: model,
@@ -43,6 +49,10 @@ module Nu
 
         assistant_message = response.dig("content", 0, "text")
         @conversation_history << { role: "assistant", content: assistant_message }
+
+        Debug.log("Received response from #{name}")
+        Debug.log_multiline("Assistant response:", assistant_message)
+        Debug.log("Token usage: #{response.dig('usage', 'input_tokens')} in / #{response.dig('usage', 'output_tokens')} out")
 
         if ScriptExecutor.script?(assistant_message)
           output = ScriptExecutor.execute(assistant_message, debug: @options.debug)

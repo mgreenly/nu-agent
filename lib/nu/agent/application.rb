@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
+require_relative "prompt_pipeline"
+require_relative "debug"
+
 module Nu
   module Agent
     class Application
-      attr_reader :llm
+      attr_reader :llm, :pipeline
 
       def initialize(options:)
         @options = options
+        Debug.enabled = options.debug
         @llm = create_llm(options.llm)
+        @pipeline = PromptPipeline.new(llm: @llm, debug: options.debug)
       end
 
       def run
@@ -29,11 +34,14 @@ module Nu
           input = input.strip
           next if input.empty?
 
-          result = Command.new(input, llm).execute
+          result = Command.new(input, self).execute
           break if result == :exit
           next if result == :continue
 
-          puts llm.response(input)
+          # Process through pipeline for ambiguity resolution and other stages
+          processed_prompt = @pipeline.process(input)
+
+          puts llm.response(processed_prompt)
         end
       end
 

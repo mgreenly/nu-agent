@@ -120,6 +120,64 @@ Tokens: 1460 in / 189 out / 1649 total
 >
 ```
 
+## Multi-Stage Prompt Processing Pipeline
+
+Nu-Agent now includes a sophisticated prompt processing pipeline that analyzes user requests for ambiguities before sending them to the LLM. This helps ensure clearer, more accurate responses by resolving ambiguities upfront.
+
+### Features
+
+- **Automatic Ambiguity Detection**: Uses the LLM to identify ambiguous terms or unclear directions in your requests
+- **Interactive Clarification**: Prompts you to clarify specific ambiguous elements before processing
+- **Smart Context Enhancement**: Appends your clarifications to the original request for better understanding
+- **Configurable**: Control the maximum number of ambiguities and other settings
+- **Toggle On/Off**: Enable or disable the pipeline with the `/pipeline` command
+
+### Example Usage
+
+```
+> Make it better
+🔍 Analyzing request for ambiguities...
+
+📝 Found 2 ambiguous term(s) that need clarification.
+I need some clarification to better understand your request:
+
+1. Regarding 'it':
+   What specifically does 'it' refer to?
+   > the code performance
+
+2. Regarding 'better':
+   Better in what way - performance, readability, or something else?
+   > faster execution time
+
+✅ Clarifications added. Processing enhanced request...
+```
+
+The final prompt sent to the LLM includes your clarifications:
+```
+Make it better
+
+Context and clarifications:
+- it: the code performance
+- better: faster execution time
+```
+
+### Commands
+
+- `/pipeline` - Toggle the prompt processing pipeline on/off
+- `/help` - Shows pipeline status along with other commands
+
+### Configuration
+
+The pipeline can be configured when initializing the application:
+
+```ruby
+config = {
+  max_ambiguities: 3,        # Maximum number of ambiguities to detect
+  debug: false,              # Enable debug output
+  ask_for_clarification: true # Whether to prompt for clarifications
+}
+```
+
 ## TODO
 
 Future experiments I could do.
@@ -129,38 +187,30 @@ Future experiments I could do.
   * add a `/llm NAME` command so you can switch LLMs before any prompt.
   * add a `/model NAME` command so you can switch MODEL before any prompt.
   * lots of error/debug imrprovements
+  * Add more pipeline stages: intent classification, prompt rewriting, safety checks
+  * Make pipeline configuration available via command-line options
+  * Add persistence for clarifications to reuse in similar contexts
 
 ## NOTES
 
-It's hard to get the model to ask for clarification but this worked.
+### Original Clarification Challenge
 
-So maybe the first step should be using a fast model to inspect and accurately re-define the question.
+It's hard to get the model to ask for clarification but this worked. The solution was to implement a dedicated prompt processing pipeline that uses the LLM itself to detect ambiguities before processing the main request.
 
-So something like this
+### How It Was Solved
 
-```
-"How many files are in the current working directory?".  are any parts of this request ambigous?  Does it contain words that could have multiple meanings?  if it does ignore the request and ask for clarification and rewrite the  prompt with more accurate word use.
-```
+Instead of trying to get the model to ask for clarification during normal conversation, we implemented a **multi-stage pipeline**:
 
-Then you get it to re-write the prompt
+1. **Ambiguity Detection Stage**: Before processing any user request, we send it to the LLM with a specific prompt asking it to identify ambiguous terms
+2. **Interactive Clarification**: For each ambiguity detected, we prompt the user for clarification
+3. **Context Enhancement**: We append the clarifications to the original request before sending it to the LLM for processing
 
-```
-Using my choices: regular files only (not hidden), no directories, not recursive, rewrite the original question, ""How many files are in the current working directory?"" incorporating that detail so that we get the correct answer.
-```
-It gives you something like this
+This approach ensures consistent clarification behavior without depending on the model's willingness to ask questions during normal operation.
 
-```
-How many regular files (excluding hidden files and directories) are directly in the current working directory?
-[DEBUG] Script detected
-[DEBUG] ```sh
-[DEBUG] #!/bin/bash
-[DEBUG] find . -maxdepth 1 -type f ! -name '.*' | wc -l
-[DEBUG] ```
-[DEBUG] Created script at: /home/claude/projects/nu-agent/script833629-1760816978
-[DEBUG] Script output:
-[DEBUG] 7
-[DEBUG] Cleaned up script file
+### Implementation Details
 
-7
-Tokens: 2994 in / 331 out / 3325 total
-```
+The pipeline architecture allows for easy extension with additional stages:
+- **Current**: Ambiguity Resolution Stage
+- **Future**: Intent Classification, Prompt Rewriting, Safety Checks, etc.
+
+Each stage operates independently and can be enabled/disabled or configured as needed.

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "debug"
+
 module Nu
   module Agent
     class GeminiClient
@@ -35,6 +37,10 @@ module Nu
           @conversation_history << { role: 'user', parts: { text: prompt } }
         end
 
+        Debug.log("Sending message to #{name}")
+        Debug.log_multiline("User prompt:", prompt) unless prompt.empty?
+        Debug.log("Messages in conversation history: #{@conversation_history.length}")
+
         result = @client.generate_content({
           contents: prepare_messages_with_meta_prompt
         })
@@ -46,6 +52,10 @@ module Nu
 
         assistant_message = result.dig('candidates', 0, 'content', 'parts', 0, 'text')
         @conversation_history << { role: 'model', parts: { text: assistant_message } }
+
+        Debug.log("Received response from #{name}")
+        Debug.log_multiline("Assistant response:", assistant_message)
+        Debug.log("Token usage: #{result.dig('usageMetadata', 'promptTokenCount')} in / #{result.dig('usageMetadata', 'candidatesTokenCount')} out")
 
         if ScriptExecutor.script?(assistant_message)
           output = ScriptExecutor.execute(assistant_message, debug: @options.debug)
