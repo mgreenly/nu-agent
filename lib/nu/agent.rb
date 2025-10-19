@@ -53,7 +53,7 @@ module Nu
       CONVERSATION METADATA
       - All other messages are appended to the history but not shown to the user.
       - The LLM can use this feature to remember things that the user didn't need to be aware of.
-      - The Agent can use this fature to communicate metadata to the LLM without the user needing to be aware.
+      - The Agent can use this feature to communicate metadata to the LLM without the user needing to be aware.
 
       STARTING METADATA
       - The host environment is Debian 13, Linux
