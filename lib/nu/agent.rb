@@ -25,7 +25,7 @@ module Nu
       - The User and LLM can NEVER comminicate directly.
       - The Agent can communicate with both the User and the LLM
 
-      The Agent DOES NOT understand unstructured natural language buty exists between the LLM and the User so we must establish a protocol allowing all parties to communicate.
+      The Agent DOES NOT understand unstructured natural language but exists between the LLM and the User so we must establish a protocol allowing all parties to communicate.
 
       THE AGENT CAN FORWARD MESSAGES
       - If the message comes from the LLM and starts with "> ", it's forwarded to the User
