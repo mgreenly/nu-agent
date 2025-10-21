@@ -14,20 +14,20 @@ RSpec.describe Nu::Agent::Formatter do
       let(:messages) do
         [
           {
-            id: 1,
-            actor: 'user',
-            role: 'user',
-            content: 'Hello',
-            tokens_input: nil,
-            tokens_output: nil
+            'id' => 1,
+            'actor' => 'user',
+            'role' => 'user',
+            'content' => 'Hello',
+            'tokens_input' => nil,
+            'tokens_output' => nil
           },
           {
-            id: 2,
-            actor: 'orchestrator',
-            role: 'assistant',
-            content: 'Hi there!',
-            tokens_input: 10,
-            tokens_output: 5
+            'id' => 2,
+            'actor' => 'orchestrator',
+            'role' => 'assistant',
+            'content' => 'Hi there!',
+            'tokens_input' => 10,
+            'tokens_output' => 5
           }
         ]
       end
@@ -91,12 +91,12 @@ RSpec.describe Nu::Agent::Formatter do
     it 'displays messages during polling' do
       messages = [
         {
-          id: 1,
-          actor: 'orchestrator',
-          role: 'assistant',
-          content: 'Processing...',
-          tokens_input: 5,
-          tokens_output: 3
+          'id' => 1,
+          'actor' => 'orchestrator',
+          'role' => 'assistant',
+          'content' => 'Processing...',
+          'tokens_input' => 5,
+          'tokens_output' => 3
         }
       ]
 
@@ -116,7 +116,7 @@ RSpec.describe Nu::Agent::Formatter do
 
   describe '#display_message' do
     it 'displays user messages (as no-op)' do
-      message = { id: 1, actor: 'user', role: 'user', content: 'Hello' }
+      message = { 'id' => 1, 'actor' => 'user', 'role' => 'user', 'content' => 'Hello' }
 
       formatter.display_message(message)
 
@@ -126,12 +126,12 @@ RSpec.describe Nu::Agent::Formatter do
 
     it 'displays assistant messages with content and tokens' do
       message = {
-        id: 2,
-        actor: 'orchestrator',
-        role: 'assistant',
-        content: 'Hello back!',
-        tokens_input: 8,
-        tokens_output: 4
+        'id' => 2,
+        'actor' => 'orchestrator',
+        'role' => 'assistant',
+        'content' => 'Hello back!',
+        'tokens_input' => 8,
+        'tokens_output' => 4
       }
 
       formatter.display_message(message)
@@ -141,7 +141,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it 'displays system messages with prefix' do
-      message = { id: 3, actor: 'system', role: 'system', content: 'Starting up' }
+      message = { 'id' => 3, 'actor' => 'system', 'role' => 'system', 'content' => 'Starting up' }
 
       formatter.display_message(message)
 
@@ -152,10 +152,10 @@ RSpec.describe Nu::Agent::Formatter do
   describe '#display_token_summary' do
     let(:messages) do
       [
-        { id: 1, role: 'user', content: 'Hi', tokens_input: nil, tokens_output: nil },
-        { id: 2, role: 'assistant', content: 'Hello', tokens_input: 10, tokens_output: 5 },
-        { id: 3, role: 'user', content: 'How are you?', tokens_input: nil, tokens_output: nil },
-        { id: 4, role: 'assistant', content: 'Good!', tokens_input: 15, tokens_output: 3 }
+        { 'id' => 1, 'role' => 'user', 'content' => 'Hi', 'tokens_input' => nil, 'tokens_output' => nil },
+        { 'id' => 2, 'role' => 'assistant', 'content' => 'Hello', 'tokens_input' => 10, 'tokens_output' => 5 },
+        { 'id' => 3, 'role' => 'user', 'content' => 'How are you?', 'tokens_input' => nil, 'tokens_output' => nil },
+        { 'id' => 4, 'role' => 'assistant', 'content' => 'Good!', 'tokens_input' => 15, 'tokens_output' => 3 }
       ]
     end
 

@@ -44,9 +44,9 @@ RSpec.describe Nu::Agent::History do
 
       messages = history.messages(conversation_id: conversation_id)
       expect(messages.length).to eq(1)
-      expect(messages.first[:actor]).to eq('user')
-      expect(messages.first[:role]).to eq('user')
-      expect(messages.first[:content]).to eq('Hello, world!')
+      expect(messages.first['actor']).to eq('user')
+      expect(messages.first['role']).to eq('user')
+      expect(messages.first['content']).to eq('Hello, world!')
     end
 
     it 'adds an assistant message with model and tokens' do
@@ -61,9 +61,9 @@ RSpec.describe Nu::Agent::History do
       )
 
       messages = history.messages(conversation_id: conversation_id)
-      expect(messages.first[:model]).to eq('claude-sonnet-4-20250514')
-      expect(messages.first[:tokens_input]).to eq(10)
-      expect(messages.first[:tokens_output]).to eq(5)
+      expect(messages.first['model']).to eq('claude-sonnet-4-20250514')
+      expect(messages.first['tokens_input']).to eq(10)
+      expect(messages.first['tokens_output']).to eq(5)
     end
 
     it 'handles SQL special characters in content' do
@@ -75,7 +75,7 @@ RSpec.describe Nu::Agent::History do
       )
 
       messages = history.messages(conversation_id: conversation_id)
-      expect(messages.first[:content]).to eq("It's a test with 'quotes'")
+      expect(messages.first['content']).to eq("It's a test with 'quotes'")
     end
   end
 
@@ -107,14 +107,14 @@ RSpec.describe Nu::Agent::History do
     it 'returns all messages in order by default (include_in_context only)' do
       messages = history.messages(conversation_id: conversation_id)
       expect(messages.length).to eq(2)
-      expect(messages[0][:content]).to eq('Message 1')
-      expect(messages[1][:content]).to eq('Message 3')
+      expect(messages[0]['content']).to eq('Message 1')
+      expect(messages[1]['content']).to eq('Message 3')
     end
 
     it 'returns all messages including metadata when requested' do
       messages = history.messages(conversation_id: conversation_id, include_in_context_only: false)
       expect(messages.length).to eq(3)
-      expect(messages[1][:content]).to eq('Message 2')
+      expect(messages[1]['content']).to eq('Message 2')
     end
 
     it 'returns empty array for non-existent conversation' do
@@ -132,12 +132,12 @@ RSpec.describe Nu::Agent::History do
       history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'M3')
 
       messages = history.messages(conversation_id: conversation_id)
-      first_id = messages[0][:id]
+      first_id = messages[0]['id']
 
       new_messages = history.messages_since(conversation_id: conversation_id, message_id: first_id)
       expect(new_messages.length).to eq(2)
-      expect(new_messages[0][:content]).to eq('M2')
-      expect(new_messages[1][:content]).to eq('M3')
+      expect(new_messages[0]['content']).to eq('M2')
+      expect(new_messages[1]['content']).to eq('M3')
     end
   end
 

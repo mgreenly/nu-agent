@@ -16,9 +16,10 @@ RSpec.describe Nu::Agent::GoogleClient do
       expect(Gemini).to receive(:new).with(
         credentials: {
           service: 'generative-language-api',
-          api_key: api_key
+          api_key: api_key,
+          version: 'v1beta'
         },
-        options: { model: 'gemini-2.5-flash', server_sent_events: true }
+        options: { model: 'gemini-2.0-flash-exp', server_sent_events: true }
       )
       described_class.new(api_key: api_key)
     end
@@ -48,8 +49,8 @@ RSpec.describe Nu::Agent::GoogleClient do
   describe '#send_message' do
     let(:messages) do
       [
-        { actor: 'user', role: 'user', content: 'Hello' },
-        { actor: 'orchestrator', role: 'assistant', content: 'Hi there!' }
+        { 'actor' => 'user', 'role' => 'user', 'content' => 'Hello' },
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Hi there!' }
       ]
     end
 
@@ -90,13 +91,13 @@ RSpec.describe Nu::Agent::GoogleClient do
       response = client.send_message(messages: messages)
 
       expect(response).to include(
-        content: "Hello! How can I help you?",
-        model: 'gemini-2.5-flash',
-        tokens: {
-          input: 20,
-          output: 12
+        'content' => "Hello! How can I help you?",
+        'model' => 'gemini-2.0-flash-exp',
+        'tokens' => {
+          'input' => 20,
+          'output' => 12
         },
-        finish_reason: 'STOP'
+        'finish_reason' => 'STOP'
       )
     end
 
@@ -140,15 +141,15 @@ RSpec.describe Nu::Agent::GoogleClient do
 
   describe '#model' do
     it 'returns the model identifier' do
-      expect(client.model).to eq('gemini-2.5-flash')
+      expect(client.model).to eq('gemini-2.0-flash-exp')
     end
   end
 
   describe '#format_messages' do
     it 'converts internal message format to Gemini format' do
       messages = [
-        { actor: 'user', role: 'user', content: 'Hello' },
-        { actor: 'orchestrator', role: 'assistant', content: 'Hi!' }
+        { 'actor' => 'user', 'role' => 'user', 'content' => 'Hello' },
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Hi!' }
       ]
 
       formatted = client.send(:format_messages, messages, system_prompt: 'System')
@@ -162,7 +163,7 @@ RSpec.describe Nu::Agent::GoogleClient do
 
     it 'converts assistant role to model role' do
       messages = [
-        { actor: 'orchestrator', role: 'assistant', content: 'Response' }
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Response' }
       ]
 
       formatted = client.send(:format_messages, messages, system_prompt: nil)
@@ -172,7 +173,7 @@ RSpec.describe Nu::Agent::GoogleClient do
 
     it 'strips out actor information' do
       messages = [
-        { actor: 'orchestrator', role: 'assistant', content: 'Response' }
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Response' }
       ]
 
       formatted = client.send(:format_messages, messages, system_prompt: nil)
@@ -181,7 +182,7 @@ RSpec.describe Nu::Agent::GoogleClient do
     end
 
     it 'handles empty system prompt' do
-      messages = [{ actor: 'user', role: 'user', content: 'Hi' }]
+      messages = [{ 'actor' => 'user', 'role' => 'user', 'content' => 'Hi' }]
 
       formatted = client.send(:format_messages, messages, system_prompt: '')
 

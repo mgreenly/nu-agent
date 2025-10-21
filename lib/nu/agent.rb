@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'forwardable'
+require 'json'
 require 'open3'
 require 'optparse'
 
@@ -19,6 +20,9 @@ require_relative "agent/google_client"
 require_relative "agent/history"
 require_relative "agent/options"
 require_relative "agent/script_executor"
+require_relative "agent/tool"
+require_relative "agent/bash_tool"
+require_relative "agent/tool_registry"
 require_relative "agent/token_tracker"
 require_relative "agent/version"
 

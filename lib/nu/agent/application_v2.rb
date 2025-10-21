@@ -66,22 +66,80 @@ module Nu
       private
 
       def chat_loop
-        # Get messages from history
-        messages = @history.messages(conversation_id: @conversation_id)
+        tool_registry = ToolRegistry.new
 
-        # Call LLM
-        response = @client.send_message(messages: messages)
+        loop do
+          # Get messages from history
+          messages = @history.messages(conversation_id: @conversation_id)
 
-        # Save assistant response
-        @history.add_message(
-          conversation_id: @conversation_id,
-          actor: 'orchestrator',
-          role: 'assistant',
-          content: response[:content],
-          model: response[:model],
-          tokens_input: response[:tokens][:input],
-          tokens_output: response[:tokens][:output]
-        )
+          # Get tools formatted for this client
+          tools = case @client
+                  when AnthropicClient
+                    tool_registry.for_anthropic
+                  when GoogleClient
+                    tool_registry.for_google
+                  else
+                    []
+                  end
+
+          # Call LLM with tools
+          response = @client.send_message(messages: messages, tools: tools)
+
+          # If we got tool calls, execute them
+          if response['tool_calls']
+            # Save assistant message with tool calls
+            @history.add_message(
+              conversation_id: @conversation_id,
+              actor: 'orchestrator',
+              role: 'assistant',
+              content: response['content'],
+              model: response['model'],
+              tokens_input: response['tokens']['input'],
+              tokens_output: response['tokens']['output'],
+              tool_calls: response['tool_calls']
+            )
+
+            # Execute each tool and save results
+            response['tool_calls'].each do |tool_call|
+              result = tool_registry.execute(
+                name: tool_call['name'],
+                arguments: tool_call['arguments'],
+                history: @history,
+                context: { 'conversation_id' => @conversation_id }
+              )
+
+              # Save tool result as a user message
+              # Store both name and result for client formatting
+              @history.add_message(
+                conversation_id: @conversation_id,
+                actor: 'tool',
+                role: 'user',
+                content: nil,
+                tool_call_id: tool_call['id'],
+                tool_result: {
+                  'name' => tool_call['name'],
+                  'result' => result
+                }
+              )
+            end
+
+            # Loop back to send results to LLM
+            next
+          else
+            # No tool calls, save final response and exit
+            @history.add_message(
+              conversation_id: @conversation_id,
+              actor: 'orchestrator',
+              role: 'assistant',
+              content: response['content'],
+              model: response['model'],
+              tokens_input: response['tokens']['input'],
+              tokens_output: response['tokens']['output']
+            )
+
+            break
+          end
+        end
       end
 
       def repl

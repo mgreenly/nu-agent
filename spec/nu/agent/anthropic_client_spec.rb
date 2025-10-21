@@ -39,14 +39,14 @@ RSpec.describe Nu::Agent::AnthropicClient do
   describe '#send_message' do
     let(:messages) do
       [
-        { actor: 'user', role: 'user', content: 'Hello' },
-        { actor: 'orchestrator', role: 'assistant', content: 'Hi there!' }
+        { 'actor' => 'user', 'role' => 'user', 'content' => 'Hello' },
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Hi there!' }
       ]
     end
 
     let(:anthropic_response) do
       {
-        "content" => [{ "text" => "Hello! How can I help you?" }],
+        "content" => [{ "type" => "text", "text" => "Hello! How can I help you?" }],
         "usage" => {
           "input_tokens" => 15,
           "output_tokens" => 10
@@ -77,13 +77,13 @@ RSpec.describe Nu::Agent::AnthropicClient do
       response = client.send_message(messages: messages)
 
       expect(response).to include(
-        content: "Hello! How can I help you?",
-        model: 'claude-sonnet-4-20250514',
-        tokens: {
-          input: 15,
-          output: 10
+        'content' => "Hello! How can I help you?",
+        'model' => 'claude-sonnet-4-20250514',
+        'tokens' => {
+          'input' => 15,
+          'output' => 10
         },
-        finish_reason: "end_turn"
+        'finish_reason' => "end_turn"
       )
     end
 
@@ -125,8 +125,8 @@ RSpec.describe Nu::Agent::AnthropicClient do
   describe '#format_messages' do
     it 'converts internal message format to Anthropic format' do
       messages = [
-        { actor: 'user', role: 'user', content: 'Hello' },
-        { actor: 'orchestrator', role: 'assistant', content: 'Hi!' }
+        { 'actor' => 'user', 'role' => 'user', 'content' => 'Hello' },
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Hi!' }
       ]
 
       formatted = client.send(:format_messages, messages)
@@ -139,7 +139,7 @@ RSpec.describe Nu::Agent::AnthropicClient do
 
     it 'strips out actor information' do
       messages = [
-        { actor: 'orchestrator', role: 'assistant', content: 'Response' }
+        { 'actor' => 'orchestrator', 'role' => 'assistant', 'content' => 'Response' }
       ]
 
       formatted = client.send(:format_messages, messages)

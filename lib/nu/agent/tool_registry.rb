@@ -1,0 +1,78 @@
+# frozen_string_literal: true
+
+module Nu
+  module Agent
+    class ToolRegistry
+      def initialize
+        @tools = {}
+        register_default_tools
+      end
+
+      def register(tool)
+        @tools[tool.name] = tool
+      end
+
+      def find(name)
+        @tools[name]
+      end
+
+      def all
+        @tools.values
+      end
+
+      def execute(name:, arguments:, history:, context:)
+        tool = find(name)
+        raise Error, "Unknown tool: #{name}" unless tool
+
+        tool.execute(arguments: arguments, history: history, context: context)
+      end
+
+      # Format tools for Anthropic API
+      def for_anthropic
+        all.map do |tool|
+          {
+            name: tool.name,
+            description: tool.description,
+            input_schema: parameters_to_schema(tool.parameters)
+          }
+        end
+      end
+
+      # Format tools for Google API
+      def for_google
+        all.map do |tool|
+          {
+            name: tool.name,
+            description: tool.description,
+            parameters: parameters_to_schema(tool.parameters)
+          }
+        end
+      end
+
+      private
+
+      def register_default_tools
+        register(BashTool.new)
+      end
+
+      def parameters_to_schema(parameters)
+        properties = {}
+        required = []
+
+        parameters.each do |name, config|
+          properties[name] = {
+            type: config[:type],
+            description: config[:description]
+          }
+          required << name.to_s if config[:required]
+        end
+
+        {
+          type: "object",
+          properties: properties,
+          required: required
+        }
+      end
+    end
+  end
+end
