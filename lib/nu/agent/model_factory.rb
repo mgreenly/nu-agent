@@ -139,7 +139,7 @@ module Nu
         def display_models
           {
             anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-1'],
-            google: GOOGLE_MODELS.keys,
+            google: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
             openai: OPENAI_MODELS.keys
           }
         end
