@@ -179,6 +179,74 @@ module Nu
         end
       end
 
+      def list_tables
+        @mutex.synchronize do
+          result = @conn.query("SHOW TABLES")
+          result.map { |row| row[0] }
+        end
+      end
+
+      def describe_table(table_name)
+        @mutex.synchronize do
+          result = @conn.query("DESCRIBE #{escape_identifier(table_name)}")
+          result.map do |row|
+            {
+              'column_name' => row[0],
+              'column_type' => row[1],
+              'null' => row[2],
+              'key' => row[3],
+              'default' => row[4],
+              'extra' => row[5]
+            }
+          end
+        end
+      end
+
+      def execute_readonly_query(sql)
+        @mutex.synchronize do
+          # Validate it's a read-only query
+          normalized_sql = sql.strip.upcase
+          unless normalized_sql.start_with?('SELECT') || normalized_sql.start_with?('SHOW') || normalized_sql.start_with?('DESCRIBE')
+            raise ArgumentError, "Only SELECT, SHOW, and DESCRIBE queries are allowed"
+          end
+
+          # Add LIMIT if not present (only for SELECT queries)
+          if normalized_sql.start_with?('SELECT') && !normalized_sql.include?('LIMIT')
+            sql = "#{sql.strip} LIMIT 100"
+          end
+
+          # Execute query
+          result = @conn.query(sql)
+
+          # Convert to array of hashes
+          rows = result.to_a
+          return [] if rows.empty?
+
+          # Get column names from first row
+          column_count = rows.first.length
+          columns = (0...column_count).map { |i| "column_#{i}" }
+
+          # Try to get actual column names if available
+          begin
+            columns = result.columns.map(&:name) if result.respond_to?(:columns)
+          rescue
+            # Use default column names if we can't get real ones
+          end
+
+          # Cap at 1000 rows
+          rows = rows.take(1000)
+
+          # Map to array of hashes
+          rows.map do |row|
+            hash = {}
+            columns.each_with_index do |col, i|
+              hash[col] = row[i]
+            end
+            hash
+          end
+        end
+      end
+
       def close
         @mutex.synchronize do
           @conn.close
@@ -250,6 +318,11 @@ module Nu
 
       def escape_sql(string)
         string.to_s.gsub("'", "''")
+      end
+
+      def escape_identifier(identifier)
+        # Remove any characters that aren't alphanumeric or underscore
+        identifier.to_s.gsub(/[^a-zA-Z0-9_]/, '')
       end
 
       def add_column_if_not_exists(table, column, type)

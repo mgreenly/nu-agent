@@ -255,6 +255,78 @@ RSpec.describe Nu::Agent::History do
     end
   end
 
+  describe '#list_tables' do
+    it 'returns list of table names' do
+      tables = history.list_tables
+
+      expect(tables).to be_an(Array)
+      expect(tables).to include('conversations')
+      expect(tables).to include('messages')
+      expect(tables).to include('appconfig')
+    end
+  end
+
+  describe '#describe_table' do
+    it 'returns schema information for a table' do
+      columns = history.describe_table('messages')
+
+      expect(columns).to be_an(Array)
+      expect(columns.first).to have_key('column_name')
+      expect(columns.first).to have_key('column_type')
+
+      column_names = columns.map { |c| c['column_name'] }
+      expect(column_names).to include('id')
+      expect(column_names).to include('conversation_id')
+      expect(column_names).to include('content')
+    end
+  end
+
+  describe '#execute_readonly_query' do
+    let(:conversation_id) { history.create_conversation }
+
+    before do
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'Test 1')
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'Test 2')
+    end
+
+    it 'executes SELECT queries' do
+      result = history.execute_readonly_query("SELECT content FROM messages WHERE conversation_id = #{conversation_id}")
+
+      expect(result).to be_an(Array)
+      expect(result.length).to eq(2)
+      expect(result.first).to have_key('content')
+    end
+
+    it 'adds LIMIT clause if missing' do
+      result = history.execute_readonly_query("SELECT * FROM messages")
+
+      expect(result.length).to be <= 100
+    end
+
+    it 'caps results at 1000 rows' do
+      # Add more than 1000 messages
+      1100.times do |i|
+        history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: "Message #{i}")
+      end
+
+      result = history.execute_readonly_query("SELECT * FROM messages LIMIT 2000")
+
+      expect(result.length).to eq(1000)
+    end
+
+    it 'rejects non-SELECT queries' do
+      expect {
+        history.execute_readonly_query("INSERT INTO messages (content) VALUES ('bad')")
+      }.to raise_error(ArgumentError, /Only SELECT, SHOW, and DESCRIBE/)
+    end
+
+    it 'allows SHOW queries' do
+      result = history.execute_readonly_query("SHOW TABLES")
+
+      expect(result).to be_an(Array)
+    end
+  end
+
   describe 'appconfig' do
     it 'sets and gets config values' do
       history.set_config('test_key', 'test_value')

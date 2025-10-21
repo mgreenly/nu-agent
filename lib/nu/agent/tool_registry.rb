@@ -67,6 +67,9 @@ module Nu
 
       def register_default_tools
         register(Tools::Bash.new)
+        register(Tools::ListDatabaseTables.new)
+        register(Tools::DescribeDatabaseTable.new)
+        register(Tools::QueryDatabase.new)
       end
 
       def parameters_to_schema(parameters)
