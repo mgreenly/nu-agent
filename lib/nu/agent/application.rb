@@ -177,6 +177,8 @@ module Nu
           :exit
         when '/reset'
           @conversation_id = history.create_conversation
+          @session_start_time = Time.now
+          formatter.reset_session(conversation_id: @conversation_id)
           puts "Conversation reset"
           :continue
         when '/models'

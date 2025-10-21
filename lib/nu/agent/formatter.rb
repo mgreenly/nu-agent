@@ -12,6 +12,12 @@ module Nu
         @last_message_id = 0
       end
 
+      def reset_session(conversation_id:)
+        @conversation_id = conversation_id
+        @session_start_time = Time.now
+        @last_message_id = 0
+      end
+
       def display_new_messages(conversation_id:)
         messages = @history.messages_since(
           conversation_id: conversation_id,
