@@ -88,6 +88,7 @@ module Nu
           )
 
           @output.puts "\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} total"
+          @output.puts "Session spend: $#{'%.6f' % tokens['spend']}"
         end
       end
 

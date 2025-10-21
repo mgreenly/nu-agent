@@ -107,6 +107,7 @@ module Nu
               model: response['model'],
               tokens_input: response['tokens']['input'],
               tokens_output: response['tokens']['output'],
+              spend: response['spend'],
               tool_calls: response['tool_calls']
             )
 
@@ -145,7 +146,8 @@ module Nu
               content: response['content'],
               model: response['model'],
               tokens_input: response['tokens']['input'],
-              tokens_output: response['tokens']['output']
+              tokens_output: response['tokens']['output'],
+              spend: response['spend']
             )
 
             break

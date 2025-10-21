@@ -15,6 +15,13 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
+        # Pricing per million tokens (fake/approximate data)
+        PRICING = {
+          'claude-sonnet-4-5-20250929' => { input: 3.00, output: 15.00 },
+          'claude-haiku-4-5-20251001' => { input: 0.80, output: 4.00 },
+          'claude-opus-4-1-20250805' => { input: 15.00, output: 75.00 }
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'claude-sonnet-4-5-20250929'
@@ -46,14 +53,18 @@ module Nu
           }
         end
 
+        input_tokens = response.dig("usage", "input_tokens")
+        output_tokens = response.dig("usage", "output_tokens")
+
         {
           "content" => text_content,
           "tool_calls" => tool_calls.empty? ? nil : tool_calls,
           "model" => model,
           "tokens" => {
-            "input" => response.dig("usage", "input_tokens"),
-            "output" => response.dig("usage", "output_tokens")
+            "input" => input_tokens,
+            "output" => output_tokens
           },
+          "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
           "finish_reason" => response.dig("stop_reason")
         }
       end
@@ -94,6 +105,15 @@ module Nu
             ]
           }
         end
+      end
+
+      def calculate_cost(input_tokens:, output_tokens:)
+        return 0.0 if input_tokens.nil? || output_tokens.nil?
+
+        pricing = PRICING[@model] || PRICING['claude-sonnet-4-5-20250929']
+        input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
+        output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
+        input_cost + output_cost
       end
 
       private

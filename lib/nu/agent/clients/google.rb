@@ -16,6 +16,14 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
+        # Pricing per million tokens (fake/approximate data)
+        PRICING = {
+          'gemini-2.0-flash-exp' => { input: 0.00, output: 0.00 },  # Free tier
+          'gemini-2.5-pro' => { input: 2.50, output: 10.00 },
+          'gemini-2.5-flash' => { input: 0.75, output: 3.00 },
+          'gemini-2.5-flash-lite' => { input: 0.30, output: 1.20 }
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'gemini-2.0-flash-exp'
@@ -48,14 +56,18 @@ module Nu
           }
         end
 
+        input_tokens = result.dig('usageMetadata', 'promptTokenCount')
+        output_tokens = result.dig('usageMetadata', 'candidatesTokenCount')
+
         {
           'content' => text_content,
           'tool_calls' => tool_calls.empty? ? nil : tool_calls,
           'model' => model,
           'tokens' => {
-            'input' => result.dig('usageMetadata', 'promptTokenCount'),
-            'output' => result.dig('usageMetadata', 'candidatesTokenCount')
+            'input' => input_tokens,
+            'output' => output_tokens
           },
+          'spend' => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
           'finish_reason' => result.dig('candidates', 0, 'finishReason')
         }
       end
@@ -95,6 +107,15 @@ module Nu
             ]
           }
         end
+      end
+
+      def calculate_cost(input_tokens:, output_tokens:)
+        return 0.0 if input_tokens.nil? || output_tokens.nil?
+
+        pricing = PRICING[@model] || PRICING['gemini-2.0-flash-exp']
+        input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
+        output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
+        input_cost + output_cost
       end
 
       private

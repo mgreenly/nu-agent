@@ -16,6 +16,13 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
+        # Pricing per million tokens (fake/approximate data)
+        PRICING = {
+          'gpt-5' => { input: 4.00, output: 20.00 },
+          'gpt-5-mini' => { input: 1.00, output: 5.00 },
+          'gpt-5-nano' => { input: 0.40, output: 2.00 }
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'gpt-5'
@@ -45,14 +52,18 @@ module Nu
             }
           end
 
+          input_tokens = response.dig('usage', 'prompt_tokens')
+          output_tokens = response.dig('usage', 'completion_tokens')
+
           {
             'content' => text_content,
             'tool_calls' => tool_calls&.empty? ? nil : tool_calls,
             'model' => model,
             'tokens' => {
-              'input' => response.dig('usage', 'prompt_tokens'),
-              'output' => response.dig('usage', 'completion_tokens')
+              'input' => input_tokens,
+              'output' => output_tokens
             },
+            'spend' => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
             'finish_reason' => response.dig('choices', 0, 'finish_reason')
           }
         end
@@ -86,6 +97,15 @@ module Nu
               models: []
             }
           end
+        end
+
+        def calculate_cost(input_tokens:, output_tokens:)
+          return 0.0 if input_tokens.nil? || output_tokens.nil?
+
+          pricing = PRICING[@model] || PRICING['gpt-5']
+          input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
+          output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
+          input_cost + output_cost
         end
 
         private

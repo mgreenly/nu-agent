@@ -45,7 +45,8 @@ RSpec.describe Nu::Agent::Formatter do
         allow(history).to receive(:session_tokens).and_return({
           'input' => 10,
           'output' => 5,
-          'total' => 15
+          'total' => 15,
+          'spend' => 0.000150
         })
       end
 
@@ -59,7 +60,8 @@ RSpec.describe Nu::Agent::Formatter do
         allow(history).to receive(:session_tokens).and_return({
           'input' => 10,
           'output' => 5,
-          'total' => 15
+          'total' => 15,
+          'spend' => 0.000150
         })
 
         formatter.display_new_messages(conversation_id: conversation_id)
@@ -128,7 +130,8 @@ RSpec.describe Nu::Agent::Formatter do
       allow(history).to receive(:session_tokens).and_return({
         'input' => 5,
         'output' => 3,
-        'total' => 8
+        'total' => 8,
+        'spend' => 0.000080
       })
 
       allow(history).to receive(:workers_idle?).and_return(false, true)
@@ -153,7 +156,8 @@ RSpec.describe Nu::Agent::Formatter do
       allow(history).to receive(:session_tokens).and_return({
         'input' => 8,
         'output' => 4,
-        'total' => 12
+        'total' => 12,
+        'spend' => 0.000120
       })
 
       message = {
@@ -201,8 +205,8 @@ RSpec.describe Nu::Agent::Formatter do
       # First call returns just first message tokens
       # Second call returns cumulative total
       allow(history).to receive(:session_tokens).and_return(
-        { 'input' => 10, 'output' => 5, 'total' => 15 },
-        { 'input' => 30, 'output' => 13, 'total' => 43 }
+        { 'input' => 10, 'output' => 5, 'total' => 15, 'spend' => 0.000150 },
+        { 'input' => 30, 'output' => 13, 'total' => 43, 'spend' => 0.000430 }
       )
 
       formatter.display_message(message1)

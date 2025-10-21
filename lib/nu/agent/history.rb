@@ -11,7 +11,7 @@ module Nu
         setup_schema
       end
 
-      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil)
+      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil)
         @mutex.synchronize do
           tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : 'NULL'
           tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : 'NULL'
@@ -19,13 +19,13 @@ module Nu
           @conn.query(<<~SQL)
             INSERT INTO messages (
               conversation_id, actor, role, content, model,
-              include_in_context, tokens_input, tokens_output,
+              include_in_context, tokens_input, tokens_output, spend,
               tool_calls, tool_call_id, tool_result, created_at
             ) VALUES (
               #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
               '#{escape_sql(content || '')}', #{model ? "'#{escape_sql(model)}'" : 'NULL'},
               #{include_in_context}, #{tokens_input || 'NULL'}, #{tokens_output || 'NULL'},
-              #{tool_calls_json}, #{tool_call_id ? "'#{escape_sql(tool_call_id)}'" : 'NULL'},
+              #{spend || 'NULL'}, #{tool_calls_json}, #{tool_call_id ? "'#{escape_sql(tool_call_id)}'" : 'NULL'},
               #{tool_result_json}, CURRENT_TIMESTAMP
             )
           SQL
@@ -99,7 +99,8 @@ module Nu
           result = @conn.query(<<~SQL)
             SELECT
               COALESCE(SUM(tokens_input), 0) as total_input,
-              COALESCE(SUM(tokens_output), 0) as total_output
+              COALESCE(SUM(tokens_output), 0) as total_output,
+              COALESCE(SUM(spend), 0.0) as total_spend
             FROM messages
             WHERE conversation_id = #{conversation_id}
               AND created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'
@@ -109,7 +110,8 @@ module Nu
           {
             "input" => row[0],
             "output" => row[1],
-            "total" => row[0] + row[1]
+            "total" => row[0] + row[1],
+            "spend" => row[2]
           }
         end
       end
@@ -290,6 +292,7 @@ module Nu
             include_in_context BOOLEAN DEFAULT true,
             tokens_input INTEGER,
             tokens_output INTEGER,
+            spend FLOAT,
             tool_calls TEXT,
             tool_call_id TEXT,
             tool_result TEXT,
@@ -301,6 +304,7 @@ module Nu
         add_column_if_not_exists('messages', 'tool_calls', 'TEXT')
         add_column_if_not_exists('messages', 'tool_call_id', 'TEXT')
         add_column_if_not_exists('messages', 'tool_result', 'TEXT')
+        add_column_if_not_exists('messages', 'spend', 'FLOAT')
 
         @conn.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS appconfig (
