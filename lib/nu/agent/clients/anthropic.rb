@@ -22,6 +22,13 @@ module Nu
           'claude-opus-4-1-20250805' => { input: 15.00, output: 75.00 }
         }.freeze
 
+        # Max context window in tokens (verified 2025-10-21)
+        MAX_CONTEXT = {
+          'claude-sonnet-4-5-20250929' => 200_000,
+          'claude-haiku-4-5-20251001' => 200_000,
+          'claude-opus-4-1-20250805' => 200_000
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'claude-sonnet-4-5-20250929'
@@ -75,6 +82,10 @@ module Nu
 
       def model
         @model
+      end
+
+      def max_context
+        MAX_CONTEXT[@model] || MAX_CONTEXT['claude-sonnet-4-5-20250929']
       end
 
       def format_tools(tool_registry)

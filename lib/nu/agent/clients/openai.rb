@@ -25,6 +25,15 @@ module Nu
           'gpt-5-pro' => { input: 15.00, output: 120.00 }
         }.freeze
 
+        # Max context window in tokens (verified 2025-10-21)
+        MAX_CONTEXT = {
+          'gpt-5' => 400_000,
+          'gpt-5-mini' => 400_000,
+          'gpt-5-nano' => 400_000,
+          'gpt-5-nano-2025-08-07' => 400_000,
+          'gpt-5-pro' => 400_000
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'gpt-5'
@@ -76,6 +85,10 @@ module Nu
 
         def model
           @model
+        end
+
+        def max_context
+          MAX_CONTEXT[@model] || MAX_CONTEXT['gpt-5']
         end
 
         def format_tools(tool_registry)

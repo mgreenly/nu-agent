@@ -14,6 +14,12 @@ module Nu
           'grok-code-fast-1' => { input: 0.20, output: 1.50 }
         }.freeze
 
+        # Max context window in tokens (verified 2025-10-21)
+        MAX_CONTEXT = {
+          'grok-3' => 1_000_000,
+          'grok-code-fast-1' => 256_000
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'grok-3'
@@ -36,6 +42,10 @@ module Nu
               { id: "grok-code-fast-1" }
             ]
           }
+        end
+
+        def max_context
+          MAX_CONTEXT[@model] || MAX_CONTEXT['grok-3']
         end
 
         def calculate_cost(input_tokens:, output_tokens:)

@@ -3,10 +3,11 @@
 module Nu
   module Agent
     class Formatter
-      def initialize(history:, session_start_time:, conversation_id:, output: $stdout)
+      def initialize(history:, session_start_time:, conversation_id:, client:, output: $stdout)
         @history = history
         @session_start_time = session_start_time
         @conversation_id = conversation_id
+        @client = client
         @output = output
         @last_message_id = 0
       end
@@ -87,7 +88,10 @@ module Nu
             since: @session_start_time
           )
 
-          @output.puts "\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} total"
+          max_context = @client.max_context
+          percentage = (tokens['total'].to_f / max_context * 100).round(1)
+
+          @output.puts "\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} (#{percentage}% of #{max_context})"
           @output.puts "Session spend: $#{'%.6f' % tokens['spend']}"
         end
       end

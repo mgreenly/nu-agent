@@ -24,6 +24,14 @@ module Nu
           'gemini-2.5-flash-lite' => { input: 0.10, output: 0.40 }
         }.freeze
 
+        # Max context window in tokens (verified 2025-10-21)
+        MAX_CONTEXT = {
+          'gemini-2.0-flash-exp' => 1_048_576,
+          'gemini-2.5-pro' => 1_048_576,
+          'gemini-2.5-flash' => 1_048_576,
+          'gemini-2.5-flash-lite' => 1_048_576
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'gemini-2.0-flash-exp'
@@ -78,6 +86,10 @@ module Nu
 
       def model
         @model
+      end
+
+      def max_context
+        MAX_CONTEXT[@model] || MAX_CONTEXT['gemini-2.0-flash-exp']
       end
 
       def format_tools(tool_registry)

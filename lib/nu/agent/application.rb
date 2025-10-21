@@ -17,7 +17,8 @@ module Nu
         @formatter = Formatter.new(
           history: @history,
           session_start_time: @session_start_time,
-          conversation_id: @conversation_id
+          conversation_id: @conversation_id,
+          client: @client
         )
         @active_threads = []
       end
