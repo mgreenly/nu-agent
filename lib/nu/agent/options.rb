@@ -6,7 +6,7 @@ module Nu
       attr_reader :model, :debug
 
       def initialize(args = ARGV)
-        @model = 'sonnet'
+        @model = 'gpt-5-nano'
         @debug = false
         parse(args)
       end
@@ -41,7 +41,7 @@ module Nu
         puts "  Google:    #{models[:google].join(', ')}"
         puts "  OpenAI:    #{models[:openai].join(', ')}"
         puts "  X.AI:      #{models[:xai].join(', ')}"
-        puts "\n  Default: sonnet"
+        puts "\n  Default: gpt-5-nano"
       end
     end
   end

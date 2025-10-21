@@ -115,7 +115,7 @@ module Nu
       }.freeze
 
       # Default model if none specified
-      DEFAULT_MODEL = 'sonnet'
+      DEFAULT_MODEL = 'gpt-5-nano'
 
       class << self
         def create(model_name = nil)
