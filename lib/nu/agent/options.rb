@@ -40,6 +40,7 @@ module Nu
         puts "  Anthropic: #{models[:anthropic].join(', ')}"
         puts "  Google:    #{models[:google].join(', ')}"
         puts "  OpenAI:    #{models[:openai].join(', ')}"
+        puts "  X.AI:      #{models[:xai].join(', ')}"
         puts "\n  Default: sonnet"
       end
     end

@@ -107,6 +107,11 @@ module Nu
         'gpt-5-nano-2025-08-07' => 'gpt-5-nano-2025-08-07',
       }.freeze
 
+      # X.AI model mappings
+      XAI_MODELS = {
+        'grok' => 'grok-beta',
+      }.freeze
+
       # Default model if none specified
       DEFAULT_MODEL = 'sonnet'
 
@@ -125,6 +130,9 @@ module Nu
           elsif OPENAI_MODELS.key?(model_name)
             actual_model = OPENAI_MODELS[model_name]
             Clients::OpenAI.new(model: actual_model)
+          elsif XAI_MODELS.key?(model_name)
+            actual_model = XAI_MODELS[model_name]
+            Clients::XAI.new(model: actual_model)
           else
             raise Error, unknown_model_error(model_name)
           end
@@ -134,7 +142,8 @@ module Nu
           {
             anthropic: ANTHROPIC_MODELS.keys,
             google: GOOGLE_MODELS.keys,
-            openai: OPENAI_MODELS.keys
+            openai: OPENAI_MODELS.keys,
+            xai: XAI_MODELS.keys
           }
         end
 
@@ -142,7 +151,8 @@ module Nu
           {
             anthropic: ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-1'],
             google: ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'],
-            openai: ['gpt-5-nano', 'gpt-5-mini', 'gpt-5', 'gpt-5-pro']
+            openai: ['gpt-5-nano', 'gpt-5-mini', 'gpt-5', 'gpt-5-pro'],
+            xai: ['grok']
           }
         end
 
@@ -161,6 +171,9 @@ module Nu
 
             Available OpenAI models:
               #{available[:openai].join(', ')}
+
+            Available X.AI models:
+              #{available[:xai].join(', ')}
           ERROR
         end
       end
