@@ -4,7 +4,8 @@ require 'securerandom'
 
 module Nu
   module Agent
-    class GoogleClient
+    module Clients
+      class Google
       SYSTEM_PROMPT = <<~PROMPT
         You are a helpful AI assistant.
         Today is #{Time.now.strftime('%Y-%m-%d')}.
@@ -14,7 +15,7 @@ module Nu
 
       def initialize(api_key: nil)
         load_api_key(api_key)
-        @client = Gemini.new(
+        @client = ::Gemini.new(
           credentials: {
             service: 'generative-language-api',
             api_key: @api_key.value,
@@ -67,19 +68,19 @@ module Nu
 
       def load_api_key(provided_key)
         if provided_key
-          @api_key = ApiKey.new(provided_key)
+          @api_key = ::Nu::Agent::ApiKey.new(provided_key)
         else
           api_key_path = File.join(Dir.home, '.secrets', 'GEMINI_API_KEY')
 
           if File.exist?(api_key_path)
             key_content = File.read(api_key_path).strip
-            @api_key = ApiKey.new(key_content)
+            @api_key = ::Nu::Agent::ApiKey.new(key_content)
           else
-            raise Error, "API key not found at #{api_key_path}"
+            raise ::Nu::Agent::Error, "API key not found at #{api_key_path}"
           end
         end
       rescue => e
-        raise Error, "Error loading API key: #{e.message}"
+        raise ::Nu::Agent::Error, "Error loading API key: #{e.message}"
       end
 
       def format_messages(messages, system_prompt:)
@@ -136,5 +137,6 @@ module Nu
         formatted
       end
     end
+  end
   end
 end

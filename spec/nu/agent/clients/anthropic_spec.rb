@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Nu::Agent::AnthropicClient do
+RSpec.describe Nu::Agent::Clients::Anthropic do
   let(:api_key) { 'test_api_key_123' }
   let(:client) { described_class.new(api_key: api_key) }
   let(:mock_anthropic_client) { instance_double(Anthropic::Client) }

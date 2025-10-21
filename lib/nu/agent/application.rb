@@ -74,9 +74,9 @@ module Nu
 
           # Get tools formatted for this client
           tools = case @client
-                  when AnthropicClient
+                  when Clients::Anthropic
                     tool_registry.for_anthropic
-                  when GoogleClient
+                  when Clients::Google
                     tool_registry.for_google
                   else
                     []
@@ -205,9 +205,9 @@ module Nu
       def create_client(client_name)
         case client_name.downcase
         when 'claude', 'anthropic'
-          AnthropicClient.new
+          Clients::Anthropic.new
         when 'gemini', 'google'
-          GoogleClient.new
+          Clients::Google.new
         else
           raise Error, "Unknown client: #{client_name}. Use 'claude', 'anthropic', 'gemini', or 'google'."
         end

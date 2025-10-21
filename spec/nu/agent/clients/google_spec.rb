@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Nu::Agent::GoogleClient do
+RSpec.describe Nu::Agent::Clients::Google do
   let(:api_key) { 'test_api_key_123' }
   let(:client) { described_class.new(api_key: api_key) }
   let(:mock_gemini_client) { double('Gemini') }
