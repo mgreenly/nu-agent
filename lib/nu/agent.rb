@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
+require 'duckdb'
+require 'fileutils'
 require 'forwardable'
 require 'json'
 require 'open3'
 require 'optparse'
+require 'securerandom'
 
 require 'anthropic'
 require 'gemini-ai'

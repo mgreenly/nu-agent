@@ -4,7 +4,6 @@ module Nu
   module Agent
     module Clients
       class Anthropic
-        # Explicit imports for external dependencies
         AnthropicGem = ::Anthropic
         ApiKey = ::Nu::Agent::ApiKey
         Error = ::Nu::Agent::Error
@@ -63,7 +62,8 @@ module Nu
       end
 
       def model
-        "claude-sonnet-4-20250514"
+        # "claude-sonnet-4-20250514"
+        "claude-sonnet-4-5-20250929"
       end
 
       private

@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require 'duckdb'
-require 'fileutils'
-require 'json'
-
 module Nu
   module Agent
     class History
