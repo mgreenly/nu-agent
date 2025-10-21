@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   # spec.add_dependency "example-gem", "~> 1.0"
   spec.add_dependency "ruby-anthropic", "~> 0.4.2"
   spec.add_dependency "gemini-ai", "~> 4.0"
+  spec.add_dependency "ruby-openai", "~> 7.0"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

@@ -49,6 +49,20 @@ module Nu
         end
       end
 
+      # Format tools for OpenAI API
+      def for_openai
+        all.map do |tool|
+          {
+            type: 'function',
+            function: {
+              name: tool.name,
+              description: tool.description,
+              parameters: parameters_to_schema(tool.parameters)
+            }
+          }
+        end
+      end
+
       private
 
       def register_default_tools

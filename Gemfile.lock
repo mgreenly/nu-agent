@@ -4,6 +4,7 @@ PATH
     nu-agent (0.1.0)
       gemini-ai (~> 4.0)
       ruby-anthropic (~> 0.4.2)
+      ruby-openai (~> 7.0)
 
 GEM
   remote: https://rubygems.org/
@@ -93,6 +94,10 @@ GEM
       rspec-support (~> 3.13.0)
     rspec-support (3.13.6)
     ruby-anthropic (0.4.2)
+      event_stream_parser (>= 0.3.0, < 2.0.0)
+      faraday (>= 1)
+      faraday-multipart (>= 1)
+    ruby-openai (7.4.0)
       event_stream_parser (>= 0.3.0, < 2.0.0)
       faraday (>= 1)
       faraday-multipart (>= 1)

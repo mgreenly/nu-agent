@@ -78,6 +78,8 @@ module Nu
                     tool_registry.for_anthropic
                   when Clients::Google
                     tool_registry.for_google
+                  when Clients::OpenAI
+                    tool_registry.for_openai
                   else
                     []
                   end
@@ -208,8 +210,10 @@ module Nu
           Clients::Anthropic.new
         when 'gemini', 'google'
           Clients::Google.new
+        when 'openai'
+          Clients::OpenAI.new
         else
-          raise Error, "Unknown client: #{client_name}. Use 'claude', 'anthropic', 'gemini', or 'google'."
+          raise Error, "Unknown client: #{client_name}. Use 'claude', 'anthropic', 'gemini', 'google', or 'openai'."
         end
       end
     end
