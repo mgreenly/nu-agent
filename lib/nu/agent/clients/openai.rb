@@ -20,7 +20,9 @@ module Nu
         PRICING = {
           'gpt-5' => { input: 4.00, output: 20.00 },
           'gpt-5-mini' => { input: 1.00, output: 5.00 },
-          'gpt-5-nano' => { input: 0.40, output: 2.00 }
+          'gpt-5-nano' => { input: 0.40, output: 2.00 },
+          'gpt-5-nano-2025-08-07' => { input: 0.40, output: 2.00 },
+          'gpt-5-pro' => { input: 8.00, output: 40.00 }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
