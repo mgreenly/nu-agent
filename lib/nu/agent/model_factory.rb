@@ -23,8 +23,77 @@ module Nu
 
       # Google/Gemini model mappings
       GOOGLE_MODELS = {
+        # Embedding models
+        'embedding-gecko-001' => 'embedding-gecko-001',
+        'embedding-001' => 'embedding-001',
+        'text-embedding-004' => 'text-embedding-004',
+        'gemini-embedding-exp-03-07' => 'gemini-embedding-exp-03-07',
+        'gemini-embedding-exp' => 'gemini-embedding-exp',
+        'gemini-embedding-001' => 'gemini-embedding-001',
+
+        # Gemini 2.5 models
+        'gemini-2.5-pro-preview-03-25' => 'gemini-2.5-pro-preview-03-25',
+        'gemini-2.5-flash-preview-05-20' => 'gemini-2.5-flash-preview-05-20',
+        'gemini-2.5-flash' => 'gemini-2.5-flash',
+        'gemini-2.5-flash-lite-preview-06-17' => 'gemini-2.5-flash-lite-preview-06-17',
+        'gemini-2.5-pro-preview-05-06' => 'gemini-2.5-pro-preview-05-06',
+        'gemini-2.5-pro-preview-06-05' => 'gemini-2.5-pro-preview-06-05',
+        'gemini-2.5-pro' => 'gemini-2.5-pro',
+        'gemini-2.5-flash-lite' => 'gemini-2.5-flash-lite',
+        'gemini-2.5-flash-image-preview' => 'gemini-2.5-flash-image-preview',
+        'gemini-2.5-flash-image' => 'gemini-2.5-flash-image',
+        'gemini-2.5-flash-preview-09-2025' => 'gemini-2.5-flash-preview-09-2025',
+        'gemini-2.5-flash-lite-preview-09-2025' => 'gemini-2.5-flash-lite-preview-09-2025',
+        'gemini-2.5-flash-preview-tts' => 'gemini-2.5-flash-preview-tts',
+        'gemini-2.5-pro-preview-tts' => 'gemini-2.5-pro-preview-tts',
+        'gemini-2.5-computer-use-preview-10-2025' => 'gemini-2.5-computer-use-preview-10-2025',
+
+        # Gemini 2.0 models
         'gemini-2.0-flash-exp' => 'gemini-2.0-flash-exp',
-        'gemini-2.0-flash' => 'gemini-2.0-flash-exp',
+        'gemini-2.0-flash' => 'gemini-2.0-flash',
+        'gemini-2.0-flash-001' => 'gemini-2.0-flash-001',
+        'gemini-2.0-flash-exp-image-generation' => 'gemini-2.0-flash-exp-image-generation',
+        'gemini-2.0-flash-lite-001' => 'gemini-2.0-flash-lite-001',
+        'gemini-2.0-flash-lite' => 'gemini-2.0-flash-lite',
+        'gemini-2.0-flash-preview-image-generation' => 'gemini-2.0-flash-preview-image-generation',
+        'gemini-2.0-flash-lite-preview-02-05' => 'gemini-2.0-flash-lite-preview-02-05',
+        'gemini-2.0-flash-lite-preview' => 'gemini-2.0-flash-lite-preview',
+        'gemini-2.0-pro-exp' => 'gemini-2.0-pro-exp',
+        'gemini-2.0-pro-exp-02-05' => 'gemini-2.0-pro-exp-02-05',
+        'gemini-2.0-flash-thinking-exp-01-21' => 'gemini-2.0-flash-thinking-exp-01-21',
+        'gemini-2.0-flash-thinking-exp' => 'gemini-2.0-flash-thinking-exp',
+        'gemini-2.0-flash-thinking-exp-1219' => 'gemini-2.0-flash-thinking-exp-1219',
+
+        # Experimental models
+        'gemini-exp-1206' => 'gemini-exp-1206',
+
+        # Latest aliases
+        'gemini-flash-latest' => 'gemini-flash-latest',
+        'gemini-flash-lite-latest' => 'gemini-flash-lite-latest',
+        'gemini-pro-latest' => 'gemini-pro-latest',
+
+        # LearnLM
+        'learnlm-2.0-flash-experimental' => 'learnlm-2.0-flash-experimental',
+
+        # Gemma models
+        'gemma-3-1b-it' => 'gemma-3-1b-it',
+        'gemma-3-4b-it' => 'gemma-3-4b-it',
+        'gemma-3-12b-it' => 'gemma-3-12b-it',
+        'gemma-3-27b-it' => 'gemma-3-27b-it',
+        'gemma-3n-e4b-it' => 'gemma-3n-e4b-it',
+        'gemma-3n-e2b-it' => 'gemma-3n-e2b-it',
+
+        # Robotics
+        'gemini-robotics-er-1.5-preview' => 'gemini-robotics-er-1.5-preview',
+
+        # AQA
+        'aqa' => 'aqa',
+
+        # Imagen models
+        'imagen-3.0-generate-002' => 'imagen-3.0-generate-002',
+        'imagen-4.0-generate-preview-06-06' => 'imagen-4.0-generate-preview-06-06',
+
+        # Convenience alias
         'gemini' => 'gemini-2.0-flash-exp',
       }.freeze
 
