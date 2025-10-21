@@ -18,7 +18,7 @@ module Nu
           @model = model || 'grok-beta'
           @client = OpenAIGem::Client.new(
             access_token: @api_key.value,
-            uri_base: 'https://api.x.ai'
+            uri_base: 'https://api.x.ai/v1'
           )
         end
 
