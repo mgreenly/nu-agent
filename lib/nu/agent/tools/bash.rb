@@ -5,7 +5,7 @@ require 'open3'
 module Nu
   module Agent
     module Tools
-      class Bash < Base
+      class Bash
       def name
         "execute_bash"
       end
