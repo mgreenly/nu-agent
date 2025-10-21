@@ -1,166 +1,44 @@
 # Nu::Agent
 
-This is a toy experiment in writing an AI Agent.  Mostly just to understand agents better but also specifically becase I want to experiment with how agents decide to use tools.
+This is a learning experiment to understand how AI agents work, particularly focusing on how agents decide when and how to use tools. The goal is to build a simple but complete agent architecture from first principles.
 
-## Examples
+## Architecture
 
-The current behavior is almost entirely governed by the [meta-prompt](lib/nu/agent.rb#L22-L49).
+Nu::Agent implements a database-backed conversational agent with tool calling support. Conversations are stored in DuckDB, allowing full history tracking and replay. The architecture abstracts LLM providers (currently supporting Anthropic's Claude and Google's Gemini) behind a common interface that handles message formatting and tool calling protocols. Tools are defined with JSON schemas and can be invoked by the LLM during conversation. The agent uses a simple orchestrator that manages the conversation loop: user input → LLM response → tool execution (if needed) → LLM response with results → repeat. 
 
-### Example #1
+## Example
 
 ```
-$ exe/nu-agent --llm gemini
-Nu Agent REPL
-Using: Gemini (gemini-2.5-flash)
+$ exe/nu-agent --debug --llm google
+Nu Agent v2 REPL
+Using: Google (gemini-2.0-flash-exp)
 Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
 Type /help for available commands
 ============================================================
 
-> search the web to find the most popular spotify song this week.
 
-The most popular Spotify song globally this week (for the week ending October 17, 2025) is "Starlight Serenade" by Luna Nova.
+> How many files are in the current working directory?
 
-Tokens: 169 in / 35 out / 204 total
 
->
-```
+[Tool Call] execute_bash
+  command: ls -l | wc -l
 
-### Example #2
+Tokens: 93 in / 11 out / 104 total
 
-````
-$ exe/nu-agent --llm=gemini
+[Tool Result] execute_bash
+  stdout:
+    13
+  stderr:
+  exit_code: 0
+  success: true
 
-Nu Agent REPL
-Using: Gemini (gemini-2.5-flash)
-Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
-Type /help for available commands
-============================================================
+There are 13 files in the current working directory.
 
-> how many files are in the current working directory?
+Tokens: 118 in / 13 out / 131 total
 
-There are 10 files in the current working directory.
 
-Tokens: 545 in / 82 out / 627 total
+> /exit
 
-> which is the largest file?
 
-The largest file in the current working directory is `Gemfile.lock`.
-
-Tokens: 1360 in / 245 out / 1605 total
-
->
-````
-
-## Debug
-
-Here's a debug example to see what's going on under the hood.
-
-## Debug #1
-
-```
-$ exe/nu-agent --debug --llm gemini
-Nu Agent REPL
-Using: Gemini (gemini-2.5-flash)
-Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
-Type /help for available commands
-============================================================
-
-> how many files are in the current working directory?
-[DEBUG] Script detected
-[DEBUG] ```sh
-[DEBUG] #!/usr/bin/env bash
-[DEBUG] ls -A | wc -l
-[DEBUG] ```
-[DEBUG] Created script at: /home/claude/projects/nu-agent/script832071-1760813481
-[DEBUG] Script output:
-[DEBUG] 16
-[DEBUG] Cleaned up script file
-
-16
-
-Tokens: 787 in / 22 out / 809 total
-
->
-```
-## Debug #2
-
-```
-$ exe/nu-agent --debug --llm claude
-Nu Agent REPL
-Using: Claude (claude-sonnet-4-20250514)
-Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
-Type /help for available commands
-============================================================
-
-> fetch the last 3 days high tempature from the web and compute the average value.
-[DEBUG] Script detected
-[DEBUG] ```sh
-[DEBUG] #!/bin/bash
-[DEBUG] curl -s "https://wttr.in/?format=%t" | head -3 | sed 's/[^0-9.-]//g' | awk '{sum+=$1; count++} END {print sum/count}'
-[DEBUG] ```
-[DEBUG] Created script at: /home/claude/projects/nu-agent/script832110-1760813559
-[DEBUG] Script output:
-[DEBUG] 61
-[DEBUG] Cleaned up script file
-[DEBUG] Script detected
-[DEBUG] ```sh
-[DEBUG] #!/bin/bash
-[DEBUG] # Get weather data for last 3 days with more detailed format
-[DEBUG] curl -s "https://wttr.in/?format=j1" | grep -A 3 '"maxtempC"' | grep -o '[0-9]\+' | head -3 | awk '{sum+=$1; count++} END {printf "%.1f\n", sum/count}'
-[DEBUG] ```
-[DEBUG] Created script at: /home/claude/projects/nu-agent/script832110-1760813563
-[DEBUG] Script output:
-[DEBUG] 28.3
-[DEBUG] Cleaned up script file
-
-The average high temperature over the last 3 days is 28.3°C.
-
-Tokens: 1460 in / 189 out / 1649 total
-
->
-```
-
-## TODO
-
-Future experiments I could do.
-
-  * Have the system specific metadata info by dynamically generated.
-  * Don't save the `meta-prompt` in the history.  Instead always wrap the most immediate request with it to maintain it's immediacy.
-  * add a `/llm NAME` command so you can switch LLMs before any prompt.
-  * add a `/model NAME` command so you can switch MODEL before any prompt.
-  * lots of error/debug imrprovements
-
-## NOTES
-
-It's hard to get the model to ask for clarification but this worked.
-
-So maybe the first step should be using a fast model to inspect and accurately re-define the question.
-
-So something like this
-
-```
-"How many files are in the current working directory?".  are any parts of this request ambigous?  Does it contain words that could have multiple meanings?  if it does ignore the request and ask for clarification and rewrite the  prompt with more accurate word use.
-```
-
-Then you get it to re-write the prompt
-
-```
-Using my choices: regular files only (not hidden), no directories, not recursive, rewrite the original question, ""How many files are in the current working directory?"" incorporating that detail so that we get the correct answer.
-```
-It gives you something like this
-
-```
-How many regular files (excluding hidden files and directories) are directly in the current working directory?
-[DEBUG] Script detected
-[DEBUG] ```sh
-[DEBUG] #!/bin/bash
-[DEBUG] find . -maxdepth 1 -type f ! -name '.*' | wc -l
-[DEBUG] ```
-[DEBUG] Created script at: /home/claude/projects/nu-agent/script833629-1760816978
-[DEBUG] Script output:
-[DEBUG] 7
-[DEBUG] Cleaned up script file
-
-7
-Tokens: 2994 in / 331 out / 3325 total
+Goodbye!
 ```
