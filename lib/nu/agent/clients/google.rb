@@ -75,7 +75,7 @@ module Nu
       def list_models
         begin
           # Try to list models from API
-          result = @client.list_models
+          result = @client.models
           models = result.dig('models') || []
 
           {
