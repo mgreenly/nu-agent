@@ -8,10 +8,15 @@ require 'anthropic'
 require 'gemini-ai'
 
 require_relative "agent/api_key"
+require_relative "agent/anthropic_client"
 require_relative "agent/application"
+require_relative "agent/application_v2"
 require_relative "agent/claude_client"
 require_relative "agent/command"
+require_relative "agent/formatter"
 require_relative "agent/gemini_client"
+require_relative "agent/google_client"
+require_relative "agent/history"
 require_relative "agent/options"
 require_relative "agent/script_executor"
 require_relative "agent/token_tracker"
