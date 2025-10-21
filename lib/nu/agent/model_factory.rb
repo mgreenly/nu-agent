@@ -109,7 +109,7 @@ module Nu
 
       # X.AI model mappings
       XAI_MODELS = {
-        'grok' => 'grok-beta',
+        'grok' => 'grok-3',
       }.freeze
 
       # Default model if none specified

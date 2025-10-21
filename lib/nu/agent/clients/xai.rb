@@ -10,12 +10,12 @@ module Nu
 
         # Pricing per million tokens (fake/approximate data)
         PRICING = {
-          'grok-beta' => { input: 5.00, output: 15.00 }
+          'grok-3' => { input: 5.00, output: 15.00 }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
-          @model = model || 'grok-beta'
+          @model = model || 'grok-3'
           @client = OpenAIGem::Client.new(
             access_token: @api_key.value,
             uri_base: 'https://api.x.ai/v1'
@@ -31,7 +31,7 @@ module Nu
             provider: "X.AI",
             note: "X.AI Grok models",
             models: [
-              { id: "grok-beta", aliases: ["grok"] }
+              { id: "grok-3", aliases: ["grok"] }
             ]
           }
         end
