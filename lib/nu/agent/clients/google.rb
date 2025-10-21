@@ -16,15 +16,16 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
-        def initialize(api_key: nil)
+        def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
+          @model = model || 'gemini-2.0-flash-exp'
           @client = Gemini.new(
             credentials: {
               service: 'generative-language-api',
               api_key: @api_key.value,
               version: 'v1beta'
             },
-            options: { model: model, server_sent_events: true }
+            options: { model: @model, server_sent_events: true }
           )
         end
 
@@ -64,7 +65,7 @@ module Nu
       end
 
       def model
-        'gemini-2.0-flash-exp'
+        @model
       end
 
       private
@@ -88,7 +89,7 @@ module Nu
 
       def format_messages(messages, system_prompt:)
         # Convert from internal format to Gemini format
-        # Internal: { 'actor' => '...', 'role' => 'user'|'assistant', 'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
+        # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool', 'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
         # Gemini: { role: 'user'|'model'|'function', parts: { text: '...' } or { functionCall/functionResponse: {...} } }
 
         # Gemini doesn't have a separate system parameter, so we prepend the system prompt
@@ -130,8 +131,15 @@ module Nu
             }
           # Regular text message
           else
+            # Translate our domain model to Gemini's format
+            # Our 'assistant' becomes 'model', 'tool' becomes 'function'
+            role = case msg['role']
+                   when 'assistant' then 'model'
+                   when 'tool' then 'function'
+                   else msg['role']
+                   end
             formatted << {
-              role: msg['role'] == 'assistant' ? 'model' : msg['role'],
+              role: role,
               parts: { text: msg['content'] }
             }
           end

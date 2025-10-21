@@ -8,7 +8,8 @@ module Nu
       def initialize(options:)
         $stdout.sync = true
         @options = options
-        @client = create_client(options.llm)
+        @user_actor = ENV['USER'] || 'user'
+        @client = ModelFactory.create(options.model)
         @history = History.new
         @formatter = Formatter.new(history: @history)
         @conversation_id = @history.create_conversation
@@ -23,7 +24,7 @@ module Nu
       ensure
         # Wait for any active threads to complete
         @active_threads.each(&:join)
-        @history.close if @history
+        history.close if history
       end
 
       def process_input(input)
@@ -33,29 +34,29 @@ module Nu
         end
 
         # Add user message to history
-        @history.add_message(
-          conversation_id: @conversation_id,
-          actor: 'user',
+        history.add_message(
+          conversation_id: conversation_id,
+          actor: @user_actor,
           role: 'user',
           content: input
         )
 
         # Increment workers BEFORE spawning thread
-        @history.increment_workers
+        history.increment_workers
 
         # Process in a thread
         thread = Thread.new do
           begin
             chat_loop
           ensure
-            @history.decrement_workers
+            history.decrement_workers
           end
         end
 
         @active_threads << thread
 
         # Wait for completion and display
-        @formatter.wait_for_completion(conversation_id: @conversation_id)
+        formatter.wait_for_completion(conversation_id: conversation_id)
 
         # Remove completed thread
         @active_threads.delete(thread)
@@ -70,10 +71,10 @@ module Nu
 
         loop do
           # Get messages from history
-          messages = @history.messages(conversation_id: @conversation_id)
+          messages = history.messages(conversation_id: conversation_id)
 
           # Get tools formatted for this client
-          tools = case @client
+          tools = case client
                   when Clients::Anthropic
                     tool_registry.for_anthropic
                   when Clients::Google
@@ -85,13 +86,13 @@ module Nu
                   end
 
           # Call LLM with tools
-          response = @client.send_message(messages: messages, tools: tools)
+          response = client.send_message(messages: messages, tools: tools)
 
           # If we got tool calls, execute them
           if response['tool_calls']
             # Save assistant message with tool calls
-            @history.add_message(
-              conversation_id: @conversation_id,
+            history.add_message(
+              conversation_id: conversation_id,
               actor: 'orchestrator',
               role: 'assistant',
               content: response['content'],
@@ -106,16 +107,16 @@ module Nu
               result = tool_registry.execute(
                 name: tool_call['name'],
                 arguments: tool_call['arguments'],
-                history: @history,
-                context: { 'conversation_id' => @conversation_id }
+                history: history,
+                context: { 'conversation_id' => conversation_id }
               )
 
-              # Save tool result as a user message
+              # Save tool result
               # Store both name and result for client formatting
-              @history.add_message(
-                conversation_id: @conversation_id,
-                actor: 'tool',
-                role: 'user',
+              history.add_message(
+                conversation_id: conversation_id,
+                actor: tool_call['name'],
+                role: 'tool',
                 content: nil,
                 tool_call_id: tool_call['id'],
                 tool_result: {
@@ -129,8 +130,8 @@ module Nu
             next
           else
             # No tool calls, save final response and exit
-            @history.add_message(
-              conversation_id: @conversation_id,
+            history.add_message(
+              conversation_id: conversation_id,
               actor: 'orchestrator',
               role: 'assistant',
               content: response['content'],
@@ -164,7 +165,7 @@ module Nu
         when '/exit'
           :exit
         when '/reset'
-          @conversation_id = @history.create_conversation
+          @conversation_id = history.create_conversation
           puts "Conversation reset"
           :continue
         when '/help'
@@ -187,14 +188,14 @@ module Nu
         Signal.trap("INT") do
           print_goodbye
           @active_threads.each(&:join) if @active_threads
-          @history.close if @history
+          history.close if history
           exit(0)
         end
       end
 
       def print_welcome
         puts "Nu Agent REPL"
-        puts "Using: #{@client.name} (#{@client.model})"
+        puts "Using: #{client.name} (#{client.model})"
         puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
         puts "Type /help for available commands"
         puts "=" * 60
@@ -204,18 +205,6 @@ module Nu
         puts "\n\nGoodbye!"
       end
 
-      def create_client(client_name)
-        case client_name.downcase
-        when 'claude', 'anthropic'
-          Clients::Anthropic.new
-        when 'gemini', 'google'
-          Clients::Google.new
-        when 'openai'
-          Clients::OpenAI.new
-        else
-          raise Error, "Unknown client: #{client_name}. Use 'claude', 'anthropic', 'gemini', 'google', or 'openai'."
-        end
-      end
     end
   end
 end

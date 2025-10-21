@@ -16,8 +16,9 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
-        def initialize(api_key: nil)
+        def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
+          @model = model || 'gpt-5'
           @client = OpenAIGem::Client.new(access_token: @api_key.value)
         end
 
@@ -61,7 +62,7 @@ module Nu
         end
 
         def model
-          'gpt-5'
+          @model
         end
 
         private
@@ -85,8 +86,9 @@ module Nu
 
         def format_messages(messages, system_prompt:)
           # Convert from internal format to OpenAI format
-          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant', 'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
+          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool', 'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
           # OpenAI: { role: 'system'|'user'|'assistant'|'tool', content: '...' }
+          # Note: Our 'tool' role maps directly to OpenAI's 'tool' role
 
           formatted = []
 

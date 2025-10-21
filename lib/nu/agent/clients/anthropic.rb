@@ -15,8 +15,9 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
-        def initialize(api_key: nil)
+        def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
+          @model = model || 'claude-sonnet-4-5-20250929'
           @client = AnthropicGem::Client.new(access_token: @api_key.value)
         end
 
@@ -62,8 +63,7 @@ module Nu
       end
 
       def model
-        # "claude-sonnet-4-20250514"
-        "claude-sonnet-4-5-20250929"
+        @model
       end
 
       private
@@ -87,10 +87,13 @@ module Nu
 
       def format_messages(messages)
         # Convert from internal format to Anthropic format
-        # Internal: { "actor" => '...', "role" => 'user'|'assistant', "content" => '...', "tool_calls" => [...], "tool_result" => {...} }
+        # Internal: { "actor" => '...', "role" => 'user'|'assistant'|'tool', "content" => '...', "tool_calls" => [...], "tool_result" => {...} }
         # Anthropic: { role: 'user'|'assistant', content: '...' or [...] }
         messages.map do |msg|
-          formatted = { role: msg["role"] }
+          # Translate our domain model to Anthropic's format
+          # Our 'tool' role becomes 'user' for Anthropic
+          role = msg["role"] == "tool" ? "user" : msg["role"]
+          formatted = { role: role }
 
           # Handle tool result messages
           if msg["tool_result"]

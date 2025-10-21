@@ -3,10 +3,10 @@
 module Nu
   module Agent
     class Options
-      attr_reader :llm, :debug
+      attr_reader :model, :debug
 
       def initialize(args = ARGV)
-        @llm = 'claude'
+        @model = 'sonnet'
         @debug = false
         parse(args)
       end
@@ -17,8 +17,8 @@ module Nu
         OptionParser.new do |opts|
           opts.banner = "Usage: nu-agent [options]"
 
-          opts.on("--llm LLM", String, "LLM to use (claude or gemini)") do |llm|
-            @llm = llm
+          opts.on("--model MODEL", String, "Model to use (see available models below)") do |model|
+            @model = model
           end
 
           opts.on("--debug", "Enable debug logging") do
@@ -27,9 +27,20 @@ module Nu
 
           opts.on("-h", "--help", "Prints this help") do
             puts opts
+            print_available_models
             exit
           end
         end.parse!(args)
+      end
+
+      def print_available_models
+        models = ModelFactory.display_models
+
+        puts "\nAvailable Models:"
+        puts "  Anthropic: #{models[:anthropic].join(', ')}"
+        puts "  Google:    #{models[:google].join(', ')}"
+        puts "  OpenAI:    #{models[:openai].join(', ')}"
+        puts "\n  Default: sonnet"
       end
     end
   end
