@@ -30,12 +30,10 @@ module Nu
 
       # OpenAI model mappings
       OPENAI_MODELS = {
+        'gpt-5-chat-latest' => 'gpt-5-chat-latest',
         'gpt-5' => 'gpt-5',
-        'gpt-4o' => 'gpt-4o',
-        'gpt-4o-mini' => 'gpt-4o-mini',
-        'gpt-4-turbo' => 'gpt-4-turbo',
-        'gpt-4' => 'gpt-4',
-        'gpt-3.5-turbo' => 'gpt-3.5-turbo',
+        'gpt-5-mini' => 'gpt-5-mini',
+        'gpt-5-nano-2025-08-07' => 'gpt-5-nano-2025-08-07',
       }.freeze
 
       # Default model if none specified
