@@ -70,6 +70,32 @@ module Nu
         tool_registry.for_anthropic
       end
 
+      def list_models
+        begin
+          # Use the anthropic gem's underlying connection to call the models endpoint
+          response = @client.connection.get('v1/models')
+          models_data = JSON.parse(response.body)
+          models = models_data['data'] || []
+
+          {
+            provider: "Anthropic",
+            note: "Live list from Anthropic API",
+            models: models.map { |m| { id: m['id'], name: m['name'], display_name: m['display_name'] } }
+          }
+        rescue => e
+          {
+            provider: "Anthropic",
+            error: "Failed to fetch models: #{e.message}",
+            note: "Falling back to curated list",
+            models: [
+              { id: "claude-sonnet-4-5-20250929", aliases: ["sonnet", "claude-sonnet-4-5"] },
+              { id: "claude-haiku-4-5-20251001", aliases: ["haiku", "claude-haiku-4-5"] },
+              { id: "claude-opus-4-1-20250805", aliases: ["opus", "claude-opus-4-1"] }
+            ]
+          }
+        end
+      end
+
       private
 
         def load_api_key(provided_key)

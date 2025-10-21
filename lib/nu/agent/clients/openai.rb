@@ -69,6 +69,25 @@ module Nu
           tool_registry.for_openai
         end
 
+        def list_models
+          begin
+            response = @client.models.list
+            models = response.dig('data') || []
+
+            {
+              provider: "OpenAI",
+              note: "Live list from OpenAI API",
+              models: models.map { |m| { id: m['id'], owned_by: m['owned_by'] } }
+            }
+          rescue => e
+            {
+              provider: "OpenAI",
+              error: "Failed to fetch models: #{e.message}",
+              models: []
+            }
+          end
+        end
+
         private
 
         def load_api_key(provided_key)

@@ -72,6 +72,31 @@ module Nu
         tool_registry.for_google
       end
 
+      def list_models
+        begin
+          # Try to list models from API
+          result = @client.list_models
+          models = result.dig('models') || []
+
+          {
+            provider: "Google",
+            note: "Live list from Google Gemini API",
+            models: models.map { |m| { name: m['name'], display_name: m.dig('displayName'), supported_generation_methods: m.dig('supportedGenerationMethods') } }
+          }
+        rescue => e
+          {
+            provider: "Google",
+            error: "Failed to fetch models: #{e.message}",
+            note: "Falling back to curated list",
+            models: [
+              { id: "gemini-2.0-flash-exp", aliases: ["gemini", "gemini-2.0-flash"] },
+              { id: "gemini-1.5-pro", aliases: ["gemini-pro"] },
+              { id: "gemini-1.5-flash", aliases: ["gemini-flash"] }
+            ]
+          }
+        end
+      end
+
       private
 
         def load_api_key(provided_key)

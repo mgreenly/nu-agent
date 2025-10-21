@@ -176,6 +176,9 @@ module Nu
           @conversation_id = history.create_conversation
           puts "Conversation reset"
           :continue
+        when '/models'
+          print_models
+          :continue
         when '/help'
           print_help
           :continue
@@ -189,7 +192,35 @@ module Nu
         puts "\nAvailable commands:"
         puts "  /exit   - Exit the REPL"
         puts "  /help   - Show this help message"
+        puts "  /models - List available models for current provider"
         puts "  /reset  - Start a new conversation"
+      end
+
+      def print_models
+        result = client.list_models
+
+        puts "\n#{result[:provider]} Models"
+        puts "=" * 60
+
+        if result[:note]
+          puts "Note: #{result[:note]}"
+        end
+
+        if result[:error]
+          puts "Error: #{result[:error]}"
+        end
+
+        puts "\nAvailable models:"
+        result[:models].each do |model|
+          if model[:id]
+            puts "  • #{model[:id]}"
+            puts "    Aliases: #{model[:aliases].join(', ')}" if model[:aliases]
+          elsif model[:name]
+            puts "  • #{model[:name]}"
+            puts "    Display: #{model[:display_name]}" if model[:display_name]
+          end
+        end
+        puts ""
       end
 
       def setup_signal_handlers
