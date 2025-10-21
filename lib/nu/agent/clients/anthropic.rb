@@ -4,17 +4,22 @@ module Nu
   module Agent
     module Clients
       class Anthropic
-      SYSTEM_PROMPT = <<~PROMPT
-        You are a helpful AI assistant.
-        Today is #{Time.now.strftime('%Y-%m-%d')}.
+        # Explicit imports for external dependencies
+        AnthropicGem = ::Anthropic
+        ApiKey = ::Nu::Agent::ApiKey
+        Error = ::Nu::Agent::Error
 
-        If you can determine the answer to a question on your own using `bash` do that instead of asking.
-      PROMPT
+        SYSTEM_PROMPT = <<~PROMPT
+          You are a helpful AI assistant.
+          Today is #{Time.now.strftime('%Y-%m-%d')}.
 
-      def initialize(api_key: nil)
-        load_api_key(api_key)
-        @client = ::Anthropic::Client.new(access_token: @api_key.value)
-      end
+          If you can determine the answer to a question on your own using `bash` do that instead of asking.
+        PROMPT
+
+        def initialize(api_key: nil)
+          load_api_key(api_key)
+          @client = AnthropicGem::Client.new(access_token: @api_key.value)
+        end
 
       def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
         formatted_messages = format_messages(messages)
@@ -63,22 +68,22 @@ module Nu
 
       private
 
-      def load_api_key(provided_key)
-        if provided_key
-          @api_key = ::Nu::Agent::ApiKey.new(provided_key)
-        else
-          api_key_path = File.join(Dir.home, '.secrets', 'ANTHROPIC_API_KEY')
-
-          if File.exist?(api_key_path)
-            key_content = File.read(api_key_path).strip
-            @api_key = ::Nu::Agent::ApiKey.new(key_content)
+        def load_api_key(provided_key)
+          if provided_key
+            @api_key = ApiKey.new(provided_key)
           else
-            raise ::Nu::Agent::Error, "API key not found at #{api_key_path}"
+            api_key_path = File.join(Dir.home, '.secrets', 'ANTHROPIC_API_KEY')
+
+            if File.exist?(api_key_path)
+              key_content = File.read(api_key_path).strip
+              @api_key = ApiKey.new(key_content)
+            else
+              raise Error, "API key not found at #{api_key_path}"
+            end
           end
+        rescue => e
+          raise Error, "Error loading API key: #{e.message}"
         end
-      rescue => e
-        raise ::Nu::Agent::Error, "Error loading API key: #{e.message}"
-      end
 
       def format_messages(messages)
         # Convert from internal format to Anthropic format

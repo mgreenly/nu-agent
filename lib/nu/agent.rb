@@ -8,6 +8,12 @@ require 'optparse'
 require 'anthropic'
 require 'gemini-ai'
 
+module Nu
+  module Agent
+    class Error < StandardError; end
+  end
+end
+
 require_relative "agent/api_key"
 require_relative "agent/clients/anthropic"
 require_relative "agent/clients/google"
@@ -19,9 +25,3 @@ require_relative "agent/tool"
 require_relative "agent/bash_tool"
 require_relative "agent/tool_registry"
 require_relative "agent/version"
-
-module Nu
-  module Agent
-    class Error < StandardError; end
-  end
-end
