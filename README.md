@@ -1,10 +1,6 @@
 # Nu::Agent
 
-This is a learning experiment to understand how AI agents work, particularly focusing on how agents decide when and how to use tools. The goal is to build a simple but complete agent architecture from first principles.
-
-## Architecture
-
-Nu::Agent implements a database-backed conversational agent with tool calling support. Conversations are stored in DuckDB, allowing full history tracking and replay. The architecture abstracts LLM providers (currently supporting Anthropic's Claude and Google's Gemini) behind a common interface that handles message formatting and tool calling protocols. Tools are defined with JSON schemas and can be invoked by the LLM during conversation. The agent uses a simple orchestrator that manages the conversation loop: user input → LLM response → tool execution (if needed) → LLM response with results → repeat. 
+This is a learning experiment to understand how AI agents work.  In paticular I'm focusing my experiments on having a permanant and complete multi-session memory that the agent uses to build a relevant context from for each query. Also providing tools so that the LLM can explore that memory as it sees fit.  Also just the general idea of using many sub-agents to provide additional metadata for every query.
 
 ## Example
 
@@ -42,3 +38,8 @@ Tokens: 118 in / 13 out / 131 total
 
 Goodbye!
 ```
+
+## Architecture
+
+Nu::Agent implements a database-backed conversational agent with tool calling support. Conversations are stored in DuckDB, allowing full history tracking and replay. The architecture abstracts LLM providers (currently supporting Anthropic's Claude and Google's Gemini) behind a common interface that handles message formatting and tool calling protocols. Tools are defined with JSON schemas and can be invoked by the LLM during conversation. The agent uses a simple orchestrator that manages the conversation loop: user input → LLM response → tool execution (if needed) → LLM response with results → repeat. 
+
