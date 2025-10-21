@@ -2,7 +2,7 @@
 
 module Nu
   module Agent
-    class ApplicationV2
+    class Application
       attr_reader :client, :history, :formatter, :conversation_id
 
       def initialize(options:)
@@ -191,7 +191,7 @@ module Nu
       end
 
       def print_welcome
-        puts "Nu Agent v2 REPL"
+        puts "Nu Agent REPL"
         puts "Using: #{@client.name} (#{@client.model})"
         puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
         puts "Type /help for available commands"
