@@ -52,7 +52,7 @@ module Nu
       private
 
       def register_default_tools
-        register(BashTool.new)
+        register(Tools::Bash.new)
       end
 
       def parameters_to_schema(parameters)
