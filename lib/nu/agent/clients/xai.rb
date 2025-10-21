@@ -10,7 +10,8 @@ module Nu
 
         # Pricing per million tokens (fake/approximate data)
         PRICING = {
-          'grok-3' => { input: 5.00, output: 15.00 }
+          'grok-3' => { input: 5.00, output: 15.00 },
+          'grok-code-fast-1' => { input: 2.00, output: 8.00 }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
@@ -31,7 +32,8 @@ module Nu
             provider: "X.AI",
             note: "X.AI Grok models",
             models: [
-              { id: "grok-3", aliases: ["grok"] }
+              { id: "grok-3", aliases: ["grok"] },
+              { id: "grok-code-fast-1" }
             ]
           }
         end
