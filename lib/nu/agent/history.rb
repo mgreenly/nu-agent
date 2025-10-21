@@ -32,14 +32,19 @@ module Nu
         end
       end
 
-      def messages(conversation_id:, include_in_context_only: true)
+      def messages(conversation_id:, include_in_context_only: true, since: nil)
         @mutex.synchronize do
-          condition = include_in_context_only ? "AND include_in_context = true" : ""
+          conditions = []
+          conditions << "include_in_context = true" if include_in_context_only
+          conditions << "created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'" if since
+
+          where_clause = conditions.empty? ? "" : "AND #{conditions.join(' AND ')}"
+
           result = @conn.query(<<~SQL)
             SELECT id, actor, role, content, model, tokens_input, tokens_output,
                    tool_calls, tool_call_id, tool_result, created_at
             FROM messages
-            WHERE conversation_id = #{conversation_id} #{condition}
+            WHERE conversation_id = #{conversation_id} #{where_clause}
             ORDER BY id ASC
           SQL
 
@@ -86,6 +91,26 @@ module Nu
               "created_at" => row[10]
             }
           end
+        end
+      end
+
+      def session_tokens(conversation_id:, since:)
+        @mutex.synchronize do
+          result = @conn.query(<<~SQL)
+            SELECT
+              COALESCE(SUM(tokens_input), 0) as total_input,
+              COALESCE(SUM(tokens_output), 0) as total_output
+            FROM messages
+            WHERE conversation_id = #{conversation_id}
+              AND created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'
+          SQL
+
+          row = result.to_a.first
+          {
+            "input" => row[0],
+            "output" => row[1],
+            "total" => row[0] + row[1]
+          }
         end
       end
 

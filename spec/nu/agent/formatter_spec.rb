@@ -6,8 +6,16 @@ require 'stringio'
 RSpec.describe Nu::Agent::Formatter do
   let(:history) { instance_double(Nu::Agent::History) }
   let(:output) { StringIO.new }
-  let(:formatter) { described_class.new(history: history, output: output) }
+  let(:session_start_time) { Time.now - 60 }
   let(:conversation_id) { 1 }
+  let(:formatter) do
+    described_class.new(
+      history: history,
+      session_start_time: session_start_time,
+      conversation_id: conversation_id,
+      output: output
+    )
+  end
 
   describe '#display_new_messages' do
     context 'when there are new messages' do
@@ -34,6 +42,11 @@ RSpec.describe Nu::Agent::Formatter do
 
       before do
         allow(history).to receive(:messages_since).and_return(messages)
+        allow(history).to receive(:session_tokens).and_return({
+          'input' => 10,
+          'output' => 5,
+          'total' => 15
+        })
       end
 
       it 'displays assistant messages' do
@@ -43,9 +56,15 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it 'displays token counts for assistant messages' do
+        allow(history).to receive(:session_tokens).and_return({
+          'input' => 10,
+          'output' => 5,
+          'total' => 15
+        })
+
         formatter.display_new_messages(conversation_id: conversation_id)
 
-        expect(output.string).to include('Tokens: 10 in / 5 out / 15 total')
+        expect(output.string).to include('Session tokens: 10 in / 5 out / 15 total')
       end
 
       it 'updates last_message_id' do
@@ -106,6 +125,12 @@ RSpec.describe Nu::Agent::Formatter do
         call_count == 1 ? messages : []
       end
 
+      allow(history).to receive(:session_tokens).and_return({
+        'input' => 5,
+        'output' => 3,
+        'total' => 8
+      })
+
       allow(history).to receive(:workers_idle?).and_return(false, true)
 
       formatter.wait_for_completion(conversation_id: conversation_id, poll_interval: 0.01)
@@ -125,6 +150,12 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it 'displays assistant messages with content and tokens' do
+      allow(history).to receive(:session_tokens).and_return({
+        'input' => 8,
+        'output' => 4,
+        'total' => 12
+      })
+
       message = {
         'id' => 2,
         'actor' => 'orchestrator',
@@ -137,7 +168,7 @@ RSpec.describe Nu::Agent::Formatter do
       formatter.display_message(message)
 
       expect(output.string).to include('Hello back!')
-      expect(output.string).to include('Tokens: 8 in / 4 out / 12 total')
+      expect(output.string).to include('Session tokens: 8 in / 4 out / 12 total')
     end
 
     it 'displays system messages with prefix' do
@@ -146,6 +177,51 @@ RSpec.describe Nu::Agent::Formatter do
       formatter.display_message(message)
 
       expect(output.string).to include('[System] Starting up')
+    end
+
+    it 'queries session tokens from database for cumulative totals' do
+      message1 = {
+        'id' => 1,
+        'actor' => 'orchestrator',
+        'role' => 'assistant',
+        'content' => 'First message',
+        'tokens_input' => 10,
+        'tokens_output' => 5
+      }
+
+      message2 = {
+        'id' => 2,
+        'actor' => 'orchestrator',
+        'role' => 'assistant',
+        'content' => 'Second message',
+        'tokens_input' => 20,
+        'tokens_output' => 8
+      }
+
+      # First call returns just first message tokens
+      # Second call returns cumulative total
+      allow(history).to receive(:session_tokens).and_return(
+        { 'input' => 10, 'output' => 5, 'total' => 15 },
+        { 'input' => 30, 'output' => 13, 'total' => 43 }
+      )
+
+      formatter.display_message(message1)
+      output_after_first = output.string
+
+      formatter.display_message(message2)
+      output_after_second = output.string
+
+      # First message shows session total (just first message)
+      expect(output_after_first).to include('Session tokens: 10 in / 5 out / 15 total')
+
+      # Second message shows cumulative session total from database
+      expect(output_after_second).to include('Session tokens: 30 in / 13 out / 43 total')
+
+      # Verify session_tokens was called with correct parameters
+      expect(history).to have_received(:session_tokens).with(
+        conversation_id: conversation_id,
+        since: session_start_time
+      ).twice
     end
   end
 

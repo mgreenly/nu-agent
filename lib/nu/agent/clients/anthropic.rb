@@ -66,6 +66,10 @@ module Nu
         @model
       end
 
+      def format_tools(tool_registry)
+        tool_registry.for_anthropic
+      end
+
       private
 
         def load_api_key(provided_key)

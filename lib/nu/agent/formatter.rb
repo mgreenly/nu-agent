@@ -3,8 +3,10 @@
 module Nu
   module Agent
     class Formatter
-      def initialize(history:, output: $stdout)
+      def initialize(history:, session_start_time:, conversation_id:, output: $stdout)
         @history = history
+        @session_start_time = session_start_time
+        @conversation_id = conversation_id
         @output = output
         @last_message_id = 0
       end
@@ -79,8 +81,13 @@ module Nu
         end
 
         if message['tokens_input'] && message['tokens_output']
-          total = message['tokens_input'] + message['tokens_output']
-          @output.puts "\nTokens: #{message['tokens_input']} in / #{message['tokens_output']} out / #{total} total"
+          # Query database for session totals
+          tokens = @history.session_tokens(
+            conversation_id: @conversation_id,
+            since: @session_start_time
+          )
+
+          @output.puts "\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} total"
         end
       end
 

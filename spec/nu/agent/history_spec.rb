@@ -121,6 +121,39 @@ RSpec.describe Nu::Agent::History do
       messages = history.messages(conversation_id: 999)
       expect(messages).to eq([])
     end
+
+    it 'filters messages by since parameter' do
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'Old message')
+
+      sleep 0.01
+      cutoff_time = Time.now
+      sleep 0.01
+
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'New message 1')
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'New message 2')
+
+      messages = history.messages(conversation_id: conversation_id, since: cutoff_time)
+
+      expect(messages.length).to eq(2)
+      expect(messages[0]['content']).to eq('New message 1')
+      expect(messages[1]['content']).to eq('New message 2')
+    end
+
+    it 'combines since and include_in_context filters' do
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'Old')
+
+      sleep 0.01
+      cutoff_time = Time.now
+      sleep 0.01
+
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'New in context', include_in_context: true)
+      history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: 'New not in context', include_in_context: false)
+
+      messages = history.messages(conversation_id: conversation_id, since: cutoff_time, include_in_context_only: true)
+
+      expect(messages.length).to eq(1)
+      expect(messages[0]['content']).to eq('New in context')
+    end
   end
 
   describe '#messages_since' do
@@ -138,6 +171,87 @@ RSpec.describe Nu::Agent::History do
       expect(new_messages.length).to eq(2)
       expect(new_messages[0]['content']).to eq('M2')
       expect(new_messages[1]['content']).to eq('M3')
+    end
+  end
+
+  describe '#session_tokens' do
+    let(:conversation_id) { history.create_conversation }
+
+    it 'returns cumulative token counts since a given time' do
+      session_start = Time.now - 60
+
+      sleep 0.01
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: 'assistant',
+        role: 'assistant',
+        content: 'First',
+        tokens_input: 10,
+        tokens_output: 5
+      )
+
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: 'assistant',
+        role: 'assistant',
+        content: 'Second',
+        tokens_input: 20,
+        tokens_output: 8
+      )
+
+      tokens = history.session_tokens(conversation_id: conversation_id, since: session_start)
+
+      expect(tokens['input']).to eq(30)
+      expect(tokens['output']).to eq(13)
+      expect(tokens['total']).to eq(43)
+    end
+
+    it 'excludes messages before the session start time' do
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: 'assistant',
+        role: 'assistant',
+        content: 'Old message',
+        tokens_input: 100,
+        tokens_output: 50
+      )
+
+      sleep 0.01
+      session_start = Time.now
+      sleep 0.01
+
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: 'assistant',
+        role: 'assistant',
+        content: 'New message',
+        tokens_input: 10,
+        tokens_output: 5
+      )
+
+      tokens = history.session_tokens(conversation_id: conversation_id, since: session_start)
+
+      expect(tokens['input']).to eq(10)
+      expect(tokens['output']).to eq(5)
+      expect(tokens['total']).to eq(15)
+    end
+
+    it 'returns zero for messages without tokens' do
+      session_start = Time.now - 60
+
+      sleep 0.01
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: 'user',
+        role: 'user',
+        content: 'User message'
+      )
+
+      tokens = history.session_tokens(conversation_id: conversation_id, since: session_start)
+
+      expect(tokens['input']).to eq(0)
+      expect(tokens['output']).to eq(0)
+      expect(tokens['total']).to eq(0)
     end
   end
 
