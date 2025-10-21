@@ -16,13 +16,13 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
-        # Pricing per million tokens (fake/approximate data)
+        # Pricing per million tokens (verified 2025-10-21)
         PRICING = {
-          'gpt-5' => { input: 4.00, output: 20.00 },
-          'gpt-5-mini' => { input: 1.00, output: 5.00 },
-          'gpt-5-nano' => { input: 0.40, output: 2.00 },
-          'gpt-5-nano-2025-08-07' => { input: 0.40, output: 2.00 },
-          'gpt-5-pro' => { input: 8.00, output: 40.00 }
+          'gpt-5' => { input: 1.25, output: 10.00 },
+          'gpt-5-mini' => { input: 0.25, output: 2.00 },
+          'gpt-5-nano' => { input: 0.05, output: 0.40 },
+          'gpt-5-nano-2025-08-07' => { input: 0.05, output: 0.40 },
+          'gpt-5-pro' => { input: 15.00, output: 120.00 }
         }.freeze
 
         def initialize(api_key: nil, model: nil)

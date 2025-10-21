@@ -8,10 +8,10 @@ module Nu
         ApiKey = ::Nu::Agent::ApiKey
         Error = ::Nu::Agent::Error
 
-        # Pricing per million tokens (fake/approximate data)
+        # Pricing per million tokens (verified 2025-10-21)
         PRICING = {
-          'grok-3' => { input: 5.00, output: 15.00 },
-          'grok-code-fast-1' => { input: 2.00, output: 8.00 }
+          'grok-3' => { input: 3.00, output: 15.00 },
+          'grok-code-fast-1' => { input: 0.20, output: 1.50 }
         }.freeze
 
         def initialize(api_key: nil, model: nil)

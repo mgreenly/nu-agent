@@ -15,10 +15,10 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
-        # Pricing per million tokens (fake/approximate data)
+        # Pricing per million tokens (verified 2025-10-21)
         PRICING = {
           'claude-sonnet-4-5-20250929' => { input: 3.00, output: 15.00 },
-          'claude-haiku-4-5-20251001' => { input: 0.80, output: 4.00 },
+          'claude-haiku-4-5-20251001' => { input: 1.00, output: 5.00 },
           'claude-opus-4-1-20250805' => { input: 15.00, output: 75.00 }
         }.freeze
 

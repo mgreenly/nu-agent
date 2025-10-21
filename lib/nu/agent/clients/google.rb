@@ -16,12 +16,12 @@ module Nu
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 
-        # Pricing per million tokens (fake/approximate data)
+        # Pricing per million tokens (verified 2025-10-21)
         PRICING = {
           'gemini-2.0-flash-exp' => { input: 0.00, output: 0.00 },  # Free tier
-          'gemini-2.5-pro' => { input: 2.50, output: 10.00 },
-          'gemini-2.5-flash' => { input: 0.75, output: 3.00 },
-          'gemini-2.5-flash-lite' => { input: 0.30, output: 1.20 }
+          'gemini-2.5-pro' => { input: 1.25, output: 10.00 },  # <= 200k tokens
+          'gemini-2.5-flash' => { input: 0.30, output: 2.50 },
+          'gemini-2.5-flash-lite' => { input: 0.10, output: 0.40 }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
