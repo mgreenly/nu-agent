@@ -12,6 +12,7 @@ module Nu
         @options = options
         @user_actor = ENV['USER'] || 'user'
         @redact = true
+        @operation_mutex = Mutex.new
         @client = ModelFactory.create(options.model)
         @history = History.new
         @conversation_id = @history.create_conversation
@@ -53,23 +54,25 @@ module Nu
         # Increment workers BEFORE spawning thread
         history.increment_workers
 
-        # Capture values to pass into thread
-        conv_id = conversation_id
-        hist = history
-        cli = client
-        session_start = session_start_time
+        # Capture values to pass into thread under mutex
+        thread = @operation_mutex.synchronize do
+          conv_id = conversation_id
+          hist = history
+          cli = client
+          session_start = session_start_time
 
-        # Process in a thread
-        thread = Thread.new(conv_id, hist, cli, session_start) do |conversation_id, history, client, session_start_time|
-          begin
-            chat_loop(
-              conversation_id: conversation_id,
-              history: history,
-              client: client,
-              session_start_time: session_start_time
-            )
-          ensure
-            history.decrement_workers
+          # Process in a thread
+          Thread.new(conv_id, hist, cli, session_start) do |conversation_id, history, client, session_start_time|
+            begin
+              chat_loop(
+                conversation_id: conversation_id,
+                history: history,
+                client: client,
+                session_start_time: session_start_time
+              )
+            ensure
+              history.decrement_workers
+            end
           end
         end
 
@@ -248,6 +251,44 @@ module Nu
       end
 
       def handle_command(input)
+        # Handle /model NAME command (takes argument)
+        if input.downcase.start_with?('/model ')
+          parts = input.split(' ', 2)
+          if parts.length < 2 || parts[1].strip.empty?
+            puts "Usage: /model <name>"
+            puts "Example: /model gpt-5"
+            puts "Run /models to see available models"
+            return :continue
+          end
+
+          new_model_name = parts[1].strip
+
+          # Switch model under mutex (blocks if thread is running)
+          @operation_mutex.synchronize do
+            # Wait for active threads to complete
+            unless active_threads.empty?
+              puts "Waiting for current operation to complete..."
+              active_threads.each(&:join)
+            end
+
+            # Try to create new client
+            begin
+              new_client = ModelFactory.create(new_model_name)
+            rescue Error => e
+              puts "Error: #{e.message}"
+              return :continue
+            end
+
+            # Switch both client and formatter
+            @client = new_client
+            @formatter.client = new_client
+
+            puts "Switched to: #{@client.name} (#{@client.model})"
+          end
+
+          return :continue
+        end
+
         case input.downcase
         when '/exit'
           :exit
@@ -275,11 +316,12 @@ module Nu
 
       def print_help
         puts "\nAvailable commands:"
-        puts "  /exit   - Exit the REPL"
-        puts "  /help   - Show this help message"
-        puts "  /models - List available models for current provider"
-        puts "  /redact - Toggle redaction of tool results in context"
-        puts "  /reset  - Start a new conversation"
+        puts "  /exit          - Exit the REPL"
+        puts "  /help          - Show this help message"
+        puts "  /model <name>  - Switch to a different model (e.g., /model gpt-5)"
+        puts "  /models        - List available models for current provider"
+        puts "  /redact        - Toggle redaction of tool results in context"
+        puts "  /reset         - Start a new conversation"
       end
 
       def print_models
