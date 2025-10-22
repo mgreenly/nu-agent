@@ -60,6 +60,9 @@ module Nu
       end
 
       def display_message(message)
+        # Only show spell_checker messages in debug mode
+        return if message['actor'] == 'spell_checker' && !@debug
+
         # Error messages
         if message['error']
           display_error(message)

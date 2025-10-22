@@ -23,6 +23,7 @@ module Nu
         # Load settings from database (default both to true)
         @redact = @history.get_config('redaction', default: 'true') == 'true'
         @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
+        @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'false') == 'true'
         @conversation_id = @history.create_conversation
         @formatter = Formatter.new(
           history: @history,
@@ -73,6 +74,15 @@ module Nu
         # Handle commands
         if input.start_with?('/')
           return handle_command(input)
+        end
+
+        # Run spell checker if enabled
+        if @spell_check_enabled
+          spell_checker = SpellChecker.new(
+            history: history,
+            conversation_id: conversation_id
+          )
+          input = spell_checker.check_spelling(input)
         end
 
         # Add user message to history
@@ -440,6 +450,31 @@ module Nu
           return :continue
         end
 
+        # Handle /spellcheck [on/off] command
+        if input.downcase.start_with?('/spellcheck')
+          parts = input.split(' ', 2)
+          if parts.length < 2 || parts[1].strip.empty?
+            @output.output("Usage: /spellcheck <on|off>")
+            @output.output("Current: spellcheck=#{@spell_check_enabled ? 'on' : 'off'}")
+            return :continue
+          end
+
+          setting = parts[1].strip.downcase
+          if setting == 'on'
+            @spell_check_enabled = true
+            history.set_config('spell_check_enabled', 'true')
+            @output.output("spellcheck=on")
+          elsif setting == 'off'
+            @spell_check_enabled = false
+            history.set_config('spell_check_enabled', 'false')
+            @output.output("spellcheck=off")
+          else
+            @output.output("Invalid option. Use: /spellcheck <on|off>")
+          end
+
+          return :continue
+        end
+
         case input.downcase
         when '/exit'
           :exit
@@ -495,6 +530,7 @@ module Nu
         @output.output("  /models              - List available models")
         @output.output("  /redaction <on|off>  - Enable/disable redaction of tool results in context")
         @output.output("  /reset               - Start a new conversation")
+        @output.output("  /spellcheck <on|off> - Enable/disable automatic spell checking of user input")
         @output.output("  /summarizer <on|off> - Enable/disable background conversation summarization")
         @output.output("  /tools               - List available tools")
       end
@@ -533,6 +569,7 @@ module Nu
         @output.output("Debug mode:    #{@debug}")
         @output.output("Redaction:     #{@redact ? 'on' : 'off'}")
         @output.output("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}")
+        @output.output("Spell check:   #{@spell_check_enabled ? 'on' : 'off'}")
 
         # Show summarizer status if enabled
         if @summarizer_enabled
