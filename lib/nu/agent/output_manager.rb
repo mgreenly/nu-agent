@@ -8,7 +8,7 @@ module Nu
       def initialize(debug: false)
         @debug = debug
         @mutex = Mutex.new
-        @spinner = nil  # Future: spinner integration
+        @spinner = Spinner.new
         @waiting = false
       end
 
@@ -38,14 +38,29 @@ module Nu
         end
       end
 
+      # Public methods to control spinner
+      def start_waiting(message = "Thinking...")
+        @mutex.synchronize do
+          @waiting = true
+          @spinner.start(message)
+        end
+      end
+
+      def stop_waiting
+        @mutex.synchronize do
+          @waiting = false
+          @spinner.stop
+        end
+      end
+
       private
 
       def stop_spinner
-        # Future: @spinner&.stop
+        @spinner.stop if @waiting
       end
 
       def restart_spinner
-        # Future: @spinner&.start if @waiting
+        @spinner.start if @waiting
       end
     end
   end

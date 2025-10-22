@@ -5,13 +5,14 @@ module Nu
     class Formatter
       attr_writer :client, :debug
 
-      def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout)
+      def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout, output_manager: nil)
         @history = history
         @session_start_time = session_start_time
         @conversation_id = conversation_id
         @client = client
         @debug = debug
         @output = output
+        @output_manager = output_manager
         @last_message_id = 0
       end
 
@@ -27,13 +28,22 @@ module Nu
           message_id: @last_message_id
         )
 
+        # Stop spinner before displaying any messages
+        @output_manager&.stop_waiting if messages.any?
+
         messages.each do |msg|
           display_message(msg)
           @last_message_id = msg['id']
         end
+
+        # Restart spinner after displaying messages (if still waiting)
+        @output_manager&.start_waiting if messages.any? && !@history.workers_idle?
       end
 
       def wait_for_completion(conversation_id:, poll_interval: 0.1)
+        # Start spinner if output_manager is available
+        @output_manager&.start_waiting
+
         loop do
           display_new_messages(conversation_id: conversation_id)
 
@@ -44,6 +54,9 @@ module Nu
 
         # Display any final messages
         display_new_messages(conversation_id: conversation_id)
+
+        # Stop spinner when done
+        @output_manager&.stop_waiting
       end
 
       def display_message(message)

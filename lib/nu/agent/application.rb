@@ -29,7 +29,8 @@ module Nu
           session_start_time: @session_start_time,
           conversation_id: @conversation_id,
           client: @client,
-          debug: @debug
+          debug: @debug,
+          output_manager: @output
         )
         @active_threads = []
         @summarizer_status = {
