@@ -63,6 +63,12 @@ module Nu
         # Only show spell_checker messages in debug mode
         return if message['actor'] == 'spell_checker' && !@debug
 
+        # Display spell_checker messages in gray (debug style)
+        if message['actor'] == 'spell_checker' && @debug
+          display_spell_checker_message(message)
+          return
+        end
+
         # Error messages
         if message['error']
           display_error(message)
@@ -133,6 +139,15 @@ module Nu
 
       def display_system_message(message)
         @output.puts "\n[System] #{message['content']}"
+      end
+
+      def display_spell_checker_message(message)
+        role_label = message['role'] == 'user' ? 'Spell Check Request' : 'Spell Check Result'
+        @output.puts "\e[90m\n[#{role_label}]"
+        if message['content'] && !message['content'].strip.empty?
+          @output.puts "#{message['content']}"
+        end
+        @output.print "\e[0m"
       end
 
       def display_tool_call(tool_call)
