@@ -12,18 +12,19 @@ module Nu
       end
 
       def check_spelling(text)
-        # Add spell check request to history
+        # Add spell check request to history (not in context for main model)
         @history.add_message(
           conversation_id: @conversation_id,
           actor: ACTOR,
           role: 'user',
-          content: "Fix any spelling errors in the following text. Return ONLY the corrected text with no explanations or additional commentary:\n\n#{text}"
+          content: "Fix any spelling errors in the following text. Return ONLY the corrected text with no explanations or additional commentary:\n\n#{text}",
+          include_in_context: false
         )
 
-        # Get messages for this conversation (just the spell check request)
+        # Get messages for this conversation (including those not in context)
         messages = @history.messages(
           conversation_id: @conversation_id,
-          include_in_context_only: true
+          include_in_context_only: false
         )
 
         # Only send the spell check related messages
@@ -37,7 +38,7 @@ module Nu
 
         corrected_text = response['content'].strip
 
-        # Add the corrected response to history
+        # Add the corrected response to history (not in context for main model)
         @history.add_message(
           conversation_id: @conversation_id,
           actor: ACTOR,
@@ -46,7 +47,8 @@ module Nu
           model: response['model'],
           tokens_input: response['tokens']['input'],
           tokens_output: response['tokens']['output'],
-          spend: response['spend']
+          spend: response['spend'],
+          include_in_context: false
         )
 
         corrected_text
