@@ -66,7 +66,7 @@ module Nu
       private
 
       def register_default_tools
-        register(Tools::Bash.new)
+        register(Tools::ExecuteBash.new)
         register(Tools::ExecuteRuby.new)
         register(Tools::FileEditor.new)
         register(Tools::ListDatabaseTables.new)

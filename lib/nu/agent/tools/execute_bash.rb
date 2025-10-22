@@ -3,7 +3,7 @@
 module Nu
   module Agent
     module Tools
-      class Bash
+      class ExecuteBash
       def name
         "execute_bash"
       end
