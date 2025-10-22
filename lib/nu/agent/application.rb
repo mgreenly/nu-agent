@@ -239,7 +239,7 @@ module Nu
         setup_readline
 
         loop do
-          print "\n\n"
+          print "\n"
           input = Readline.readline("> ", true)  # true = add to history
 
           break if input.nil?  # Ctrl+D
