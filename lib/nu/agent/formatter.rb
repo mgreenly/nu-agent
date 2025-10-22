@@ -85,7 +85,7 @@ module Nu
 
       def display_assistant_message(message)
         # Display any text content
-        @output.puts "\n#{message['content']}" if message['content']
+        @output.puts message['content'] if message['content']
 
         # Display tool calls if present (only in debug mode)
         if @debug && message['tool_calls']
