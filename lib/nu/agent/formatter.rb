@@ -85,7 +85,9 @@ module Nu
 
       def display_assistant_message(message)
         # Display any text content (with leading newline for section spacing)
-        @output.puts "\n#{message['content']}" if message['content']
+        if message['content'] && !message['content'].strip.empty?
+          @output.puts "\n#{message['content']}"
+        end
 
         # Display tool calls if present (only in debug mode)
         if @debug && message['tool_calls']
