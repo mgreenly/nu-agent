@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Formatter
-      attr_writer :client
+      attr_writer :client, :debug
 
       def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout)
         @history = history

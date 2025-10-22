@@ -12,6 +12,7 @@ module Nu
         @options = options
         @user_actor = ENV['USER'] || 'user'
         @redact = true
+        @debug = @options.debug
         @operation_mutex = Mutex.new
         @client = ModelFactory.create(options.model)
         @history = History.new
@@ -21,7 +22,7 @@ module Nu
           session_start_time: @session_start_time,
           conversation_id: @conversation_id,
           client: @client,
-          debug: @options.debug
+          debug: @debug
         )
         @active_threads = []
       end
@@ -352,6 +353,11 @@ module Nu
           @redact = !@redact
           puts "redacted=#{@redact}"
           :continue
+        when '/debug'
+          @debug = !@debug
+          @formatter.debug = @debug
+          puts "debug=#{@debug}"
+          :continue
         when '/models'
           print_models
           :continue
@@ -366,6 +372,7 @@ module Nu
 
       def print_help
         puts "\nAvailable commands:"
+        puts "  /debug         - Toggle debug mode (show/hide tool calls and results)"
         puts "  /exit          - Exit the REPL"
         puts "  /help          - Show this help message"
         puts "  /model <name>  - Switch to a different model (e.g., /model gpt-5)"
