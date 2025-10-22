@@ -96,14 +96,20 @@ module Nu
         # - We're in debug mode (show everything), OR
         # - The message doesn't have tool calls (it's a final response)
         if message['tokens_input'] && message['tokens_output'] && (@debug || !message['tool_calls'])
-          # Query database for session totals
+          # Query database for session totals (for billing)
           tokens = @history.session_tokens(
             conversation_id: @conversation_id,
             since: @session_start_time
           )
 
+          # Get current context size (most recent tokens_input)
+          current_context = @history.current_context_size(
+            conversation_id: @conversation_id,
+            since: @session_start_time
+          )
+
           max_context = @client.max_context
-          percentage = (tokens['total'].to_f / max_context * 100).round(1)
+          percentage = (current_context.to_f / max_context * 100).round(1)
 
           # ANSI color codes: \e[90m = gray, \e[0m = reset
           @output.puts "\e[90m\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} (#{percentage}% of #{max_context})"

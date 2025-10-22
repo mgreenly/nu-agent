@@ -119,6 +119,23 @@ module Nu
         end
       end
 
+      def current_context_size(conversation_id:, since:)
+        @mutex.synchronize do
+          result = @conn.query(<<~SQL)
+            SELECT tokens_input
+            FROM messages
+            WHERE conversation_id = #{conversation_id}
+              AND created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'
+              AND tokens_input IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+          SQL
+
+          row = result.to_a.first
+          row ? row[0] : 0
+        end
+      end
+
       def get_message_by_id(message_id, conversation_id:)
         @mutex.synchronize do
           result = @conn.query(<<~SQL)
