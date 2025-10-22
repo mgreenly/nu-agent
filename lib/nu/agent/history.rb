@@ -184,6 +184,37 @@ module Nu
         end
       end
 
+      def update_conversation_summary(conversation_id:, summary:, model:, cost: nil)
+        @mutex.synchronize do
+          @conn.query(<<~SQL)
+            UPDATE conversations
+            SET summary = '#{escape_sql(summary)}',
+                summary_model = '#{escape_sql(model)}',
+                summary_cost = #{cost || 'NULL'}
+            WHERE id = #{conversation_id}
+          SQL
+        end
+      end
+
+      def get_unsummarized_conversations(exclude_id:)
+        @mutex.synchronize do
+          result = @conn.query(<<~SQL)
+            SELECT id, created_at
+            FROM conversations
+            WHERE summary IS NULL
+              AND id != #{exclude_id}
+            ORDER BY id DESC
+          SQL
+
+          result.map do |row|
+            {
+              'id' => row[0],
+              'created_at' => row[1]
+            }
+          end
+        end
+      end
+
       def set_config(key, value)
         @mutex.synchronize do
           @conn.query(<<~SQL)
@@ -378,7 +409,10 @@ module Nu
             id INTEGER PRIMARY KEY DEFAULT nextval('conversations_id_seq'),
             created_at TIMESTAMP,
             title TEXT,
-            status TEXT
+            status TEXT,
+            summary TEXT,
+            summary_model TEXT,
+            summary_cost FLOAT
           )
         SQL
 
@@ -407,6 +441,11 @@ module Nu
         add_column_if_not_exists('messages', 'tool_result', 'TEXT')
         add_column_if_not_exists('messages', 'spend', 'FLOAT')
         add_column_if_not_exists('messages', 'error', 'TEXT')
+
+        # Add summary columns to conversations
+        add_column_if_not_exists('conversations', 'summary', 'TEXT')
+        add_column_if_not_exists('conversations', 'summary_model', 'TEXT')
+        add_column_if_not_exists('conversations', 'summary_cost', 'FLOAT')
 
         @conn.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS appconfig (

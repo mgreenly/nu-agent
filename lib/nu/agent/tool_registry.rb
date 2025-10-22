@@ -69,6 +69,7 @@ module Nu
         register(Tools::ExecuteBash.new)
         register(Tools::ExecuteRuby.new)
         register(Tools::FileEditor.new)
+        register(Tools::GetSummarizerStatus.new)
         register(Tools::ListDatabaseTables.new)
         register(Tools::DescribeDatabaseTable.new)
         register(Tools::QueryDatabase.new)
