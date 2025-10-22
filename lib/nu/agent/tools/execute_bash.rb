@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'tempfile'
+
 module Nu
   module Agent
     module Tools
@@ -27,14 +29,35 @@ module Nu
 
         raise ArgumentError, "command is required" if command.nil? || command.empty?
 
-        # Debug output
-        if application = context['application']
-          cwd = Dir.pwd
-          application.output.debug("[execute_bash] cwd: #{cwd}")
-          application.output.debug("[execute_bash] command: #{command}")
-        end
+        # Create a temporary file for the script
+        temp_file = nil
+        stdout = ""
+        stderr = ""
+        status = nil
 
-        stdout, stderr, status = Open3.capture3(command)
+        begin
+          # Create temp file in /tmp with .sh extension
+          temp_file = Tempfile.new(['bash_script_', '.sh'], '/tmp')
+          temp_file.write(command)
+          temp_file.close
+
+          # Debug output
+          if application = context['application']
+            cwd = Dir.pwd
+            application.output.debug("[execute_bash] tempfile: #{temp_file.path}")
+            application.output.debug("[execute_bash] cwd: #{cwd}")
+          end
+
+          # Execute the bash script from the current working directory
+          stdout, stderr, status = Open3.capture3('bash', temp_file.path, chdir: Dir.pwd)
+
+        ensure
+          # Always clean up the temporary file
+          if temp_file
+            temp_file.close unless temp_file.closed?
+            temp_file.unlink
+          end
+        end
 
         {
           stdout: stdout,
