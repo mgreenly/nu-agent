@@ -3,11 +3,12 @@
 module Nu
   module Agent
     class Formatter
-      def initialize(history:, session_start_time:, conversation_id:, client:, output: $stdout)
+      def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout)
         @history = history
         @session_start_time = session_start_time
         @conversation_id = conversation_id
         @client = client
+        @debug = debug
         @output = output
         @last_message_id = 0
       end
@@ -46,7 +47,8 @@ module Nu
       def display_message(message)
         # Tool results have role 'user' but include tool_result
         if message['tool_result']
-          display_tool_result(message)
+          # Only display tool results in debug mode
+          display_tool_result(message) if @debug
         else
           case message['role']
           when 'user'
@@ -80,14 +82,17 @@ module Nu
         # Display any text content
         @output.puts "\n#{message['content']}" if message['content']
 
-        # Display tool calls if present
-        if message['tool_calls']
+        # Display tool calls if present (only in debug mode)
+        if @debug && message['tool_calls']
           message['tool_calls'].each do |tc|
             display_tool_call(tc)
           end
         end
 
-        if message['tokens_input'] && message['tokens_output']
+        # Only show token stats if:
+        # - We're in debug mode (show everything), OR
+        # - The message doesn't have tool calls (it's a final response)
+        if message['tokens_input'] && message['tokens_output'] && (@debug || !message['tool_calls'])
           # Query database for session totals
           tokens = @history.session_tokens(
             conversation_id: @conversation_id,
@@ -97,8 +102,9 @@ module Nu
           max_context = @client.max_context
           percentage = (tokens['total'].to_f / max_context * 100).round(1)
 
-          @output.puts "\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} (#{percentage}% of #{max_context})"
-          @output.puts "Session spend: $#{'%.6f' % tokens['spend']}"
+          # ANSI color codes: \e[90m = gray, \e[0m = reset
+          @output.puts "\e[90m\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} (#{percentage}% of #{max_context})"
+          @output.puts "Session spend: $#{'%.6f' % tokens['spend']}\e[0m"
         end
       end
 
@@ -107,19 +113,20 @@ module Nu
       end
 
       def display_tool_call(tool_call)
-        @output.puts "\n[Tool Call] #{tool_call['name']}"
+        @output.puts "\e[90m\n[Tool Call] #{tool_call['name']}"
         if tool_call['arguments'] && !tool_call['arguments'].empty?
           tool_call['arguments'].each do |key, value|
             @output.puts "  #{key}: #{value}"
           end
         end
+        @output.print "\e[0m"
       end
 
       def display_tool_result(message)
         result = message['tool_result']['result']
         name = message['tool_result']['name']
 
-        @output.puts "\n[Tool Result] #{name}"
+        @output.puts "\e[90m\n[Tool Result] #{name}"
         if result.is_a?(Hash)
           result.each do |key, value|
             # Format multiline values (like stdout/stderr) with proper indentation
@@ -133,6 +140,7 @@ module Nu
         else
           @output.puts "  #{result}"
         end
+        @output.print "\e[0m"
       end
     end
   end

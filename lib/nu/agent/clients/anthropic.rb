@@ -12,6 +12,8 @@ module Nu
           You are a helpful AI assistant.
           Today is #{Time.now.strftime('%Y-%m-%d')}.
 
+          Format all responses in raw text, do not use markdown.
+
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
         PROMPT
 

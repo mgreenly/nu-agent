@@ -11,6 +11,7 @@ module Nu
         @session_start_time = Time.now
         @options = options
         @user_actor = ENV['USER'] || 'user'
+        @redact = false
         @client = ModelFactory.create(options.model)
         @history = History.new
         @conversation_id = @history.create_conversation
@@ -18,7 +19,8 @@ module Nu
           history: @history,
           session_start_time: @session_start_time,
           conversation_id: @conversation_id,
-          client: @client
+          client: @client,
+          debug: @options.debug
         )
         @active_threads = []
       end
@@ -87,9 +89,16 @@ module Nu
       def chat_loop(conversation_id:, history:, client:, session_start_time:)
         tool_registry = ToolRegistry.new
 
+        # Get the starting message ID to determine which tool results are "old"
+        start_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
+        start_message_id = start_messages.empty? ? 0 : start_messages.last['id']
+
         loop do
           # Get messages from history (only from current session)
           messages = history.messages(conversation_id: conversation_id, since: session_start_time)
+
+          # Redact old tool results if redaction is enabled
+          messages = redact_old_tool_results(messages, threshold_id: start_message_id) if @redact
 
           # Get tools formatted for this client
           tools = client.format_tools(tool_registry)
@@ -156,6 +165,21 @@ module Nu
         end
       end
 
+      def redact_old_tool_results(messages, threshold_id:)
+        messages.map do |msg|
+          # Only redact tool result messages that are "old" (id <= threshold_id)
+          if msg['tool_result'] && msg['id'] <= threshold_id
+            # Create a copy of the message with redacted result
+            msg.merge('tool_result' => {
+              'name' => msg['tool_result']['name'],
+              'result' => '[REDACTED]'
+            })
+          else
+            msg
+          end
+        end
+      end
+
       def repl
         loop do
           print "\n\n> "
@@ -181,6 +205,10 @@ module Nu
           formatter.reset_session(conversation_id: @conversation_id)
           puts "Conversation reset"
           :continue
+        when '/redact'
+          @redact = !@redact
+          puts "redacted=#{@redact}"
+          :continue
         when '/models'
           print_models
           :continue
@@ -198,6 +226,7 @@ module Nu
         puts "  /exit   - Exit the REPL"
         puts "  /help   - Show this help message"
         puts "  /models - List available models for current provider"
+        puts "  /redact - Toggle redaction of tool results in context"
         puts "  /reset  - Start a new conversation"
       end
 
