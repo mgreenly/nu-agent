@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Application
-      attr_reader :client, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex
+      attr_reader :client, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex, :output
       attr_accessor :active_threads
 
       def initialize(options:)
@@ -16,6 +16,7 @@ module Nu
         @critical_sections = 0
         @critical_mutex = Mutex.new
         @operation_mutex = Mutex.new
+        @output = OutputManager.new(debug: @debug)
         @client = ModelFactory.create(options.model)
         @history = History.new
 
@@ -309,7 +310,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/summarizer']
+        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/summarizer', '/tools']
         all_models = ModelFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -353,9 +354,9 @@ module Nu
         if input.downcase.start_with?('/model ')
           parts = input.split(' ', 2)
           if parts.length < 2 || parts[1].strip.empty?
-            puts "Usage: /model <name>"
-            puts "Example: /model gpt-5"
-            puts "Run /models to see available models"
+            @output.output("Usage: /model <name>")
+            @output.output("Example: /model gpt-5")
+            @output.output("Run /models to see available models")
             return :continue
           end
 
@@ -365,7 +366,7 @@ module Nu
           @operation_mutex.synchronize do
             # Wait for active threads to complete
             unless active_threads.empty?
-              puts "Waiting for current operation to complete..."
+              @output.output("Waiting for current operation to complete...")
               active_threads.each(&:join)
             end
 
@@ -373,7 +374,7 @@ module Nu
             begin
               new_client = ModelFactory.create(new_model_name)
             rescue Error => e
-              puts "Error: #{e.message}"
+              @output.error("Error: #{e.message}")
               return :continue
             end
 
@@ -381,7 +382,7 @@ module Nu
             @client = new_client
             @formatter.client = new_client
 
-            puts "Switched to: #{@client.name} (#{@client.model})"
+            @output.output("Switched to: #{@client.name} (#{@client.model})")
           end
 
           return :continue
@@ -391,8 +392,8 @@ module Nu
         if input.downcase.start_with?('/redaction')
           parts = input.split(' ', 2)
           if parts.length < 2 || parts[1].strip.empty?
-            puts "Usage: /redaction <on|off>"
-            puts "Current: redaction=#{@redact ? 'on' : 'off'}"
+            @output.output("Usage: /redaction <on|off>")
+            @output.output("Current: redaction=#{@redact ? 'on' : 'off'}")
             return :continue
           end
 
@@ -400,13 +401,13 @@ module Nu
           if setting == 'on'
             @redact = true
             history.set_config('redaction', 'true')
-            puts "redaction=on"
+            @output.output("redaction=on")
           elsif setting == 'off'
             @redact = false
             history.set_config('redaction', 'false')
-            puts "redaction=off"
+            @output.output("redaction=off")
           else
-            puts "Invalid option. Use: /redaction <on|off>"
+            @output.output("Invalid option. Use: /redaction <on|off>")
           end
 
           return :continue
@@ -416,8 +417,8 @@ module Nu
         if input.downcase.start_with?('/summarizer')
           parts = input.split(' ', 2)
           if parts.length < 2 || parts[1].strip.empty?
-            puts "Usage: /summarizer <on|off>"
-            puts "Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}"
+            @output.output("Usage: /summarizer <on|off>")
+            @output.output("Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}")
             return :continue
           end
 
@@ -425,14 +426,14 @@ module Nu
           if setting == 'on'
             @summarizer_enabled = true
             history.set_config('summarizer_enabled', 'true')
-            puts "summarizer=on"
-            puts "Summarizer will start on next /reset"
+            @output.output("summarizer=on")
+            @output.output("Summarizer will start on next /reset")
           elsif setting == 'off'
             @summarizer_enabled = false
             history.set_config('summarizer_enabled', 'false')
-            puts "summarizer=off"
+            @output.output("summarizer=off")
           else
-            puts "Invalid option. Use: /summarizer <on|off>"
+            @output.output("Invalid option. Use: /summarizer <on|off>")
           end
 
           return :continue
@@ -444,11 +445,14 @@ module Nu
         when '/clear'
           system('clear')
           :continue
+        when '/tools'
+          print_tools
+          :continue
         when '/reset'
           @conversation_id = history.create_conversation
           @session_start_time = Time.now
           formatter.reset_session(conversation_id: @conversation_id)
-          puts "Conversation reset"
+          @output.output("Conversation reset")
 
           # Start background summarization worker
           start_summarization_worker
@@ -457,7 +461,8 @@ module Nu
         when '/debug'
           @debug = !@debug
           @formatter.debug = @debug
-          puts "debug=#{@debug}"
+          @output.debug = @debug
+          @output.output("debug=#{@debug}")
           :continue
         when '/fix'
           run_fix
@@ -472,40 +477,41 @@ module Nu
           print_help
           :continue
         else
-          puts "Unknown command: #{input}"
+          @output.output("Unknown command: #{input}")
           :continue
         end
       end
 
       def print_help
-        puts "\nAvailable commands:"
-        puts "  /clear              - Clear the screen"
-        puts "  /debug              - Toggle debug mode (show/hide tool calls and results)"
-        puts "  /exit               - Exit the REPL"
-        puts "  /fix                - Scan and fix database corruption issues"
-        puts "  /help               - Show this help message"
-        puts "  /info               - Show current session information"
-        puts "  /model <name>       - Switch to a different model (e.g., /model gpt-5)"
-        puts "  /models             - List available models"
-        puts "  /redaction <on|off> - Enable/disable redaction of tool results in context"
-        puts "  /reset              - Start a new conversation"
-        puts "  /summarizer <on|off> - Enable/disable background conversation summarization"
+        @output.output("\nAvailable commands:")
+        @output.output("  /clear               - Clear the screen")
+        @output.output("  /debug               - Toggle debug mode (show/hide tool calls and results)")
+        @output.output("  /exit                - Exit the REPL")
+        @output.output("  /fix                 - Scan and fix database corruption issues")
+        @output.output("  /help                - Show this help message")
+        @output.output("  /info                - Show current session information")
+        @output.output("  /model <name>        - Switch to a different model (e.g., /model gpt-5)")
+        @output.output("  /models              - List available models")
+        @output.output("  /redaction <on|off>  - Enable/disable redaction of tool results in context")
+        @output.output("  /reset               - Start a new conversation")
+        @output.output("  /summarizer <on|off> - Enable/disable background conversation summarization")
+        @output.output("  /tools               - List available tools")
       end
 
       def run_fix
-        puts ""
-        puts "Scanning database for corruption..."
+        @output.output("")
+        @output.output("Scanning database for corruption...")
 
         corrupted = history.find_corrupted_messages
 
         if corrupted.empty?
-          puts "✓ No corruption found"
+          @output.output("✓ No corruption found")
           return
         end
 
-        puts "Found #{corrupted.length} corrupted message(s):"
+        @output.output("Found #{corrupted.length} corrupted message(s):")
         corrupted.each do |msg|
-          puts "  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})"
+          @output.output("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})")
         end
 
         print "\nDelete these messages? [y/N] "
@@ -514,48 +520,62 @@ module Nu
         if response == 'y'
           ids = corrupted.map { |m| m['id'] }
           count = history.fix_corrupted_messages(ids)
-          puts "✓ Deleted #{count} corrupted message(s)"
+          @output.output("✓ Deleted #{count} corrupted message(s)")
         else
-          puts "Skipped"
+          @output.output("Skipped")
         end
       end
 
       def print_info
-        puts ""
-        puts "Version:       #{Nu::Agent::VERSION}"
-        puts "Debug mode:    #{@debug}"
-        puts "Redaction:     #{@redact ? 'on' : 'off'}"
-        puts "Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}"
+        @output.output("")
+        @output.output("Version:       #{Nu::Agent::VERSION}")
+        @output.output("Debug mode:    #{@debug}")
+        @output.output("Redaction:     #{@redact ? 'on' : 'off'}")
+        @output.output("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}")
 
         # Show summarizer status if enabled
         if @summarizer_enabled
-          puts "  Model:       gpt-5-nano"
+          @output.output("  Model:       gpt-5-nano")
           @status_mutex.synchronize do
             status = @summarizer_status
             if status['running']
-              puts "  Status:      running (#{status['completed']}/#{status['total']} conversations)"
-              puts "  Spend:       $#{'%.6f' % status['spend']}" if status['spend'] > 0
+              @output.output("  Status:      running (#{status['completed']}/#{status['total']} conversations)")
+              @output.output("  Spend:       $#{'%.6f' % status['spend']}") if status['spend'] > 0
             elsif status['total'] > 0
-              puts "  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)"
-              puts "  Spend:       $#{'%.6f' % status['spend']}" if status['spend'] > 0
+              @output.output("  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)")
+              @output.output("  Spend:       $#{'%.6f' % status['spend']}") if status['spend'] > 0
             else
-              puts "  Status:      idle"
+              @output.output("  Status:      idle")
             end
           end
         end
 
-        puts "Database:      #{File.expand_path(history.db_path)}"
+        @output.output("Database:      #{File.expand_path(history.db_path)}")
       end
 
       def print_models
         models = ModelFactory.display_models
 
-        puts "\nAvailable Models:"
-        puts "  Anthropic: #{models[:anthropic].join(', ')}"
-        puts "  Google:    #{models[:google].join(', ')}"
-        puts "  OpenAI:    #{models[:openai].join(', ')}"
-        puts "  X.AI:      #{models[:xai].join(', ')}"
-        puts "\n  Default: gpt-5-nano"
+        @output.output("\nAvailable Models:")
+        @output.output("  Anthropic: #{models[:anthropic].join(', ')}")
+        @output.output("  Google:    #{models[:google].join(', ')}")
+        @output.output("  OpenAI:    #{models[:openai].join(', ')}")
+        @output.output("  X.AI:      #{models[:xai].join(', ')}")
+        @output.output("\n  Default: gpt-5-nano")
+      end
+
+      def print_tools
+        tool_registry = ToolRegistry.new
+
+        @output.output("\nAvailable Tools:")
+        tool_registry.all.each do |tool|
+          # Get first sentence of description
+          desc = tool.description.split(/\.\s+/).first || tool.description
+          desc = desc.strip
+          desc += "." unless desc.end_with?(".")
+
+          @output.output("  #{tool.name.ljust(25)} - #{desc}")
+        end
       end
 
       def setup_signal_handlers
@@ -567,15 +587,15 @@ module Nu
       end
 
       def print_welcome
-        puts "Nu Agent REPL"
-        puts "Using: #{client.name} (#{client.model})"
-        puts "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit."
-        puts "Type /help for available commands"
-        puts "=" * 60
+        @output.output("Nu Agent REPL")
+        @output.output("Using: #{client.name} (#{client.model})")
+        @output.output("Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.")
+        @output.output("Type /help for available commands")
+        @output.output("=" * 60)
       end
 
       def print_goodbye
-        puts "\n\nGoodbye!"
+        @output.output("\n\nGoodbye!")
       end
 
       def build_redaction_index(original_messages, redacted_messages)

@@ -9,7 +9,7 @@ module Nu
         end
 
         def description
-          "Retrieve the full content of a redacted message by its ID. Use this when you need specific details from earlier in the conversation that were redacted to save context space."
+          "Retrieve the full content of a redacted message from the history database by its ID. Use this when you need specific details from earlier in the conversation that were redacted to save context space."
         end
 
         def parameters
