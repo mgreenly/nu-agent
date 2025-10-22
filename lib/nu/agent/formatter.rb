@@ -119,15 +119,8 @@ module Nu
             since: @session_start_time
           )
 
-          # Get current context size (most recent tokens_input for current model)
-          current_context = @history.current_context_size(
-            conversation_id: @conversation_id,
-            since: @session_start_time,
-            model: @client.model
-          )
-
           max_context = @client.max_context
-          percentage = (current_context.to_f / max_context * 100).round(1)
+          percentage = (tokens['input'].to_f / max_context * 100).round(1)
 
           # ANSI color codes: \e[90m = gray, \e[0m = reset
           @output.puts "\e[90m\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})"
