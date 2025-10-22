@@ -1,36 +1,96 @@
 # Nu::Agent
 
-This is a learning experiment to understand how AI agents work.  In paticular I'm focusing my experiments on having a permanant and complete multi-session memory that the agent uses to build a relevant context from for each query. Also providing tools so that the LLM can explore that memory as it sees fit.  Also just the general idea of using many sub-agents to provide additional metadata for every query.
+This is a personal learning experiment to better understand how AI agents work, in paticular how they handle context and tool usage.
+
 
 ## Example
 
+This agent currently has a permanent memory.  It has an idea of a session and only includes that in the context of messages.  Even with that it heavily redacts messages that are replayed in the context back to the model.  The below example demonstrates it using the ruby tool to create an execute a script.  This script is redacted from it's context in the next message.  So in the later step when I ask it to fetch the first few lines it actually has to use the `read_redacted_message` tool to fetch that specific redacted message.
+
+The idea of course being that most large scripts are not relevant for most later queries and don't really need to stay in context.
+
+
 ```
-$ exe/nu-agent --debug --model gemini
+$ exe/nu-agent --debug --model gpt-5-nano
 Nu Agent REPL
-Using: Google (gemini-2.0-flash-exp)
+Using: OpenAI (gpt-5-nano-2025-08-07)
 Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
 Type /help for available commands
 ============================================================
 
 
-> How many files are in the current working directory?
+> Create a ruby script that implements qsort then use it to sort 10 random integers.  Only show me the results.
 
 
-[Tool Call] execute_bash
-  command: ls -l | wc -l
+[Tool Call] execute_ruby
+  script: #!/usr/bin/env ruby
 
-Tokens: 93 in / 11 out / 104 total
+def qsort(arr)
+  return arr if arr.length <= 1
+  pivot = arr.sample
+  left = []
+  middle = []
+  right = []
+  arr.each do |x|
+    if x < pivot
+      left << x
+    elsif x == pivot
+      middle << x
+    else
+      right << x
+    end
+  end
+  qsort(left) + middle + qsort(right)
+end
 
-[Tool Result] execute_bash
+arr = Array.new(10) { rand(100) }
+sorted = qsort(arr)
+puts sorted.join(' ')
+
+Session tokens: 813 in / 926 out / 1739 (0.4% of 400000)
+Session spend: $0.000411
+
+[Tool Result] execute_ruby
   stdout:
-    13
+    11 39 39 46 68 69 79 81 85 89
   stderr:
   exit_code: 0
   success: true
 
-There are 13 files in the current working directory.
+> 11 39 39 46 68 69 79 81 85 89
 
-Tokens: 118 in / 13 out / 131 total
+Session tokens: 1825 in / 1146 out / 2971 (0.7% of 400000)
+Session spend: $0.000550
+
+
+> Can you show me the first 10 lines of that script?
+
+
+[Tool Call] read_redacted_message
+  message_id: 661
+
+Session tokens: 2780 in / 1684 out / 4464 (1.1% of 400000)
+Session spend: $0.000813
+
+[Tool Result] read_redacted_message
+  message_id: 661
+  role: assistant
+  timestamp: 2025-10-21 22:13:08 -0500
+  tool_calls: [{"tool_name" => "execute_ruby", "arguments" => {"script" => "#!/usr/bin/env ruby\n\ndef qsort(arr)\n  return arr if arr.length <= 1\n  pivot = arr.sample\n  left = []\n  middle = []\n  right = []\n  arr.each do |x|\n    if x < pivot\n      left << x\n    elsif x == pivot\n      middle << x\n    else\n      right << x\n    end\n  end\n  qsort(left) + middle + qsort(right)\nend\n\narr = Array.new(10) { rand(100) }\nsorted = qsort(arr)\nputs sorted.join(' ')\n"}}]
+
+> #!/usr/bin/env ruby
+>
+> def qsort(arr)
+>   return arr if arr.length <= 1
+>   pivot = arr.sample
+>   left = []
+>   middle = []
+>   right = []
+>   arr.each do |x|
+>     if x < pivot
+
+Session tokens: 3948 in / 2512 out / 6460 (1.6% of 400000)
+Session spend: $0.001202
 
 
 > /exit
@@ -38,40 +98,3 @@ Tokens: 118 in / 13 out / 131 total
 
 Goodbye!
 ```
-
-## Architecture
-
-Nu::Agent implements a database-backed conversational agent with tool calling support. Conversations are stored in DuckDB, allowing full history tracking and replay. The architecture abstracts LLM providers (currently supporting Anthropic's Claude, Google's Gemini, and OpenAI) behind a common interface that handles message formatting and tool calling protocols. Tools are defined with JSON schemas and can be invoked by the LLM during conversation. The agent uses a simple orchestrator that manages the conversation loop: user input → LLM response → tool execution (if needed) → LLM response with results → repeat.
-
-## Usage
-
-Run the agent with a specific model:
-
-```bash
-# Use Claude Sonnet 4.5 (default)
-exe/nu-agent
-
-# Use a specific model by alias
-exe/nu-agent --model haiku
-exe/nu-agent --model opus
-exe/nu-agent --model gemini
-exe/nu-agent --model gpt-4o
-
-# Use a specific model by full ID
-exe/nu-agent --model claude-sonnet-4-5-20250929
-exe/nu-agent --model gemini-2.0-flash-exp
-```
-
-### Available Models
-
-**Anthropic Claude:**
-- `sonnet` or `claude-sonnet-4-5` → claude-sonnet-4-5-20250929
-- `haiku` or `claude-haiku-4-5` → claude-haiku-4-5-20251001
-- `opus` or `claude-opus-4-1` → claude-opus-4-1-20250805
-
-**Google Gemini:**
-- `gemini` or `gemini-2.0-flash` → gemini-2.0-flash-exp
-
-**OpenAI:**
-- `gpt-5`, `gpt-4o`, `gpt-4o-mini`, etc. 
-
