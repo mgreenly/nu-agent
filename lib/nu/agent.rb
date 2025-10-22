@@ -6,6 +6,7 @@ require 'forwardable'
 require 'json'
 require 'open3'
 require 'optparse'
+require 'readline'
 require 'securerandom'
 
 require 'anthropic'

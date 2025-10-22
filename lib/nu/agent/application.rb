@@ -236,18 +236,67 @@ module Nu
       end
 
       def repl
-        loop do
-          print "\n\n> "
-          input = gets
+        setup_readline
 
-          break if input.nil?
+        loop do
+          input = Readline.readline("\n\n> ", true)  # true = add to history
+
+          break if input.nil?  # Ctrl+D
 
           input = input.strip
-          next if input.empty?
+
+          # Remove from history if empty
+          if input.empty?
+            Readline::HISTORY.pop
+            next
+          end
 
           result = process_input(input)
           break if result == :exit
         end
+      ensure
+        save_history
+      end
+
+      def setup_readline
+        # Set up tab completion
+        commands = ['/exit', '/help', '/model', '/models', '/redact', '/reset']
+        all_models = ModelFactory.available_models.values.flatten
+
+        Readline.completion_proc = proc do |str|
+          # Check if we're completing after '/model '
+          line = Readline.line_buffer
+          if line.start_with?('/model ')
+            # Complete model names
+            prefix_match = line.match(/^\/model\s+(.*)/)
+            if prefix_match
+              partial = prefix_match[1]
+              all_models.grep(/^#{Regexp.escape(partial)}/i)
+            else
+              all_models
+            end
+          else
+            # Complete commands
+            commands.grep(/^#{Regexp.escape(str)}/)
+          end
+        end
+
+        # Load history from file
+        history_file = File.join(Dir.home, '.nu_agent_history')
+        if File.exist?(history_file)
+          File.readlines(history_file).each do |line|
+            Readline::HISTORY.push(line.chomp)
+          end
+        end
+      end
+
+      def save_history
+        history_file = File.join(Dir.home, '.nu_agent_history')
+        File.open(history_file, 'w') do |f|
+          Readline::HISTORY.to_a.last(1000).each { |line| f.puts(line) }
+        end
+      rescue => e
+        # Silently ignore history save errors
       end
 
       def handle_command(input)
@@ -354,8 +403,6 @@ module Nu
       def setup_signal_handlers
         Signal.trap("INT") do
           print_goodbye
-          active_threads.each(&:join) if active_threads
-          history.close if history
           exit(0)
         end
       end
