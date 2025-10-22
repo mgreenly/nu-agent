@@ -262,7 +262,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/debug', '/exit', '/help', '/info', '/model', '/models', '/redact', '/reset']
+        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redact', '/reset']
         all_models = ModelFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -343,6 +343,9 @@ module Nu
         case input.downcase
         when '/exit'
           :exit
+        when '/clear'
+          system('clear')
+          :continue
         when '/reset'
           @conversation_id = history.create_conversation
           @session_start_time = Time.now
@@ -357,6 +360,9 @@ module Nu
           @debug = !@debug
           @formatter.debug = @debug
           puts "debug=#{@debug}"
+          :continue
+        when '/fix'
+          run_fix
           :continue
         when '/info'
           print_info
@@ -375,8 +381,10 @@ module Nu
 
       def print_help
         puts "\nAvailable commands:"
+        puts "  /clear         - Clear the screen"
         puts "  /debug         - Toggle debug mode (show/hide tool calls and results)"
         puts "  /exit          - Exit the REPL"
+        puts "  /fix           - Scan and fix database corruption issues"
         puts "  /help          - Show this help message"
         puts "  /info          - Show current session information"
         puts "  /model <name>  - Switch to a different model (e.g., /model gpt-5)"
@@ -385,39 +393,51 @@ module Nu
         puts "  /reset         - Start a new conversation"
       end
 
+      def run_fix
+        puts ""
+        puts "Scanning database for corruption..."
+
+        corrupted = history.find_corrupted_messages
+
+        if corrupted.empty?
+          puts "✓ No corruption found"
+          return
+        end
+
+        puts "Found #{corrupted.length} corrupted message(s):"
+        corrupted.each do |msg|
+          puts "  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})"
+        end
+
+        print "\nDelete these messages? [y/N] "
+        response = gets.chomp.downcase
+
+        if response == 'y'
+          ids = corrupted.map { |m| m['id'] }
+          count = history.fix_corrupted_messages(ids)
+          puts "✓ Deleted #{count} corrupted message(s)"
+        else
+          puts "Skipped"
+        end
+      end
+
       def print_info
         puts ""
         puts "Version:       #{Nu::Agent::VERSION}"
         puts "Debug mode:    #{@debug}"
         puts "Redaction:     #{@redact}"
-        puts "Database:      #{history.db_path}"
+        puts "Database:      #{File.expand_path(history.db_path)}"
       end
 
       def print_models
-        result = client.list_models
+        models = ModelFactory.display_models
 
-        puts "\n#{result[:provider]} Models"
-        puts "=" * 60
-
-        if result[:note]
-          puts "Note: #{result[:note]}"
-        end
-
-        if result[:error]
-          puts "Error: #{result[:error]}"
-        end
-
-        puts "\nAvailable models:"
-        result[:models].each do |model|
-          if model[:id]
-            puts "  • #{model[:id]}"
-            puts "    Aliases: #{model[:aliases].join(', ')}" if model[:aliases]
-          elsif model[:name]
-            puts "  • #{model[:name]}"
-            puts "    Display: #{model[:display_name]}" if model[:display_name]
-          end
-        end
-        puts ""
+        puts "\nAvailable Models:"
+        puts "  Anthropic: #{models[:anthropic].join(', ')}"
+        puts "  Google:    #{models[:google].join(', ')}"
+        puts "  OpenAI:    #{models[:openai].join(', ')}"
+        puts "  X.AI:      #{models[:xai].join(', ')}"
+        puts "\n  Default: gpt-5-nano"
       end
 
       def setup_signal_handlers

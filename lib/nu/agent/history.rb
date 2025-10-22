@@ -11,6 +11,8 @@ module Nu
         ensure_db_directory(db_path)
         @db = DuckDB::Database.open(db_path)
         @conn = @db.connect
+        @readonly_conn = @db.connect
+        @readonly_conn.query("SET default_null_order='nulls_last'")
         setup_schema
       end
 
@@ -259,21 +261,22 @@ module Nu
         end
       end
 
-      def execute_readonly_query(sql)
+      def execute_query(sql)
         @mutex.synchronize do
+          # Strip trailing semicolon if present
+          sql = sql.strip.chomp(';')
+
           # Validate it's a read-only query
-          normalized_sql = sql.strip.upcase
-          unless normalized_sql.start_with?('SELECT') || normalized_sql.start_with?('SHOW') || normalized_sql.start_with?('DESCRIBE')
-            raise ArgumentError, "Only SELECT, SHOW, and DESCRIBE queries are allowed"
+          normalized_sql = sql.upcase.strip
+          readonly_commands = ['SELECT', 'SHOW', 'DESCRIBE', 'EXPLAIN', 'WITH']
+          is_readonly = readonly_commands.any? { |cmd| normalized_sql.start_with?(cmd) }
+
+          unless is_readonly
+            raise ArgumentError, "Only read-only queries (SELECT, SHOW, DESCRIBE, EXPLAIN, WITH) are allowed"
           end
 
-          # Add LIMIT if not present (only for SELECT queries)
-          if normalized_sql.start_with?('SELECT') && !normalized_sql.include?('LIMIT')
-            sql = "#{sql.strip} LIMIT 100"
-          end
-
-          # Execute query
-          result = @conn.query(sql)
+          # Execute query on read-only connection
+          result = @readonly_conn.query(sql)
 
           # Convert to array of hashes
           rows = result.to_a
@@ -290,8 +293,8 @@ module Nu
             # Use default column names if we can't get real ones
           end
 
-          # Cap at 1000 rows
-          rows = rows.take(1000)
+          # Cap at 500 rows
+          rows = rows.take(500)
 
           # Map to array of hashes
           rows.map do |row|
@@ -304,9 +307,52 @@ module Nu
         end
       end
 
+      def find_corrupted_messages
+        @mutex.synchronize do
+          # Find messages with redacted tool call arguments
+          result = @conn.query(<<~SQL)
+            SELECT id, conversation_id, role, tool_calls, created_at
+            FROM messages
+            WHERE tool_calls IS NOT NULL
+            ORDER BY id DESC
+          SQL
+
+          corrupted = []
+          result.each do |row|
+            id, conv_id, role, tool_calls_json, created_at = row
+            next unless tool_calls_json
+
+            tool_calls = JSON.parse(tool_calls_json)
+            tool_calls.each do |tc|
+              if tc['arguments'] == { 'redacted' => true }
+                corrupted << {
+                  'id' => id,
+                  'conversation_id' => conv_id,
+                  'role' => role,
+                  'tool_name' => tc['name'],
+                  'created_at' => created_at
+                }
+              end
+            end
+          end
+
+          corrupted
+        end
+      end
+
+      def fix_corrupted_messages(message_ids)
+        @mutex.synchronize do
+          message_ids.each do |id|
+            @conn.query("DELETE FROM messages WHERE id = #{id}")
+          end
+          message_ids.length
+        end
+      end
+
       def close
         @mutex.synchronize do
           @conn.close
+          @readonly_conn.close
           @db.close
         end
       end

@@ -10,12 +10,15 @@ module Nu
         Error = ::Nu::Agent::Error
 
         SYSTEM_PROMPT = <<~PROMPT
-          You are a helpful AI assistant.
           Today is #{Time.now.strftime('%Y-%m-%d')}.
 
           Format all responses in raw text, do not use markdown.
 
           If you can determine the answer to a question on your own using `bash` do that instead of asking.
+
+          Prefer ExecuteRuby/ExecuteBash for one-time script execution over creating temporary files.
+
+          You can use your database tools to access memories from before the current conversation.
         PROMPT
 
         # Pricing per million tokens (verified 2025-10-21)

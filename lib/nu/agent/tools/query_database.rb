@@ -9,14 +9,14 @@ module Nu
         end
 
         def description
-          "Execute a read-only SELECT query against the agent's history database. Queries are automatically limited to 100 rows (max 1000). Only SELECT queries are allowed - no INSERT, UPDATE, or DELETE."
+          "Execute a SQL query against the agent's history database using a READ-ONLY connection. Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). Write operations (INSERT, UPDATE, DELETE) are blocked. IMPORTANT: Results are hard-capped at 500 rows maximum. Always use LIMIT 100 or less for efficient queries."
         end
 
         def parameters
           {
             sql: {
               type: "string",
-              description: "The SQL SELECT query to execute (e.g., 'SELECT * FROM messages WHERE role = \"user\" ORDER BY created_at DESC')",
+              description: "The read-only SQL query to execute. Do not include a semicolon. MUST include LIMIT clause (100 or less recommended). Results capped at 500 rows maximum. Example: 'SELECT * FROM messages WHERE role = \"user\" ORDER BY created_at DESC LIMIT 50'",
               required: true
             }
           }
@@ -28,7 +28,7 @@ module Nu
           raise ArgumentError, "sql is required" if sql.nil? || sql.empty?
 
           begin
-            rows = history.execute_readonly_query(sql)
+            rows = history.execute_query(sql)
 
             {
               rows: rows,
