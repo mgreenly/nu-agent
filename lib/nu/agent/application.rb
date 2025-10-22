@@ -11,7 +11,7 @@ module Nu
         @session_start_time = Time.now
         @options = options
         @user_actor = ENV['USER'] || 'user'
-        @redact = false
+        @redact = true
         @client = ModelFactory.create(options.model)
         @history = History.new
         @conversation_id = @history.create_conversation
