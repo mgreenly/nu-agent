@@ -2,19 +2,19 @@
 
 This is a personal learning experiment to better understand how AI agents work, in paticular how they handle context and tool usage.
 
-This agent currently uses a DuckDB database to store a permananet memory.  It also has an idea of a sessions and only includes that in the context of messages.  Even with that it heavily redacts messages that are replayed in the context.  The below example demonstrates it using the ruby tool to create an execute a script.  This script then will only exist as a redacted message with an id in future context to the mdoel.  So when I ask it to fetch the first few lines of the script it actually has to use the `read_redacted_message` tool to fetch the unredacted text.
-
-The idea of course being that most large scripts are not relevant for most later queries and don't really need to stay in context.
-
-This is an area I want to experiement with.  An always on agent with a single permanent history that uses lots of sub-agents to groom that memory behind the scenes and selectively build the most relevant context it can for each new message to the model.
+This agent currently uses a DuckDB database to store a permananet memory.  It also has an idea of sessions and only includes the current session's messages in the context sent to the model.  Even with that it heavily redacts messages that are part of the chat history but then it gives the LLM tooling to fetch those redacted messages.
 
 When I run this I used colerized text that makes it much easier to read.
 
-To help I've show the same example twice below.  Once with-out the --debug flag and then with.  The --debug version can look noisy without the colorization
+To help here I've show the same example twice.  With and without the --debug flag.
+
+The first version is without and is pretty easy to follow.
+
+The second is the same message with the --debug flag.
 
 You can see in the debug version it looks up the redacted messages.
 
-## Example #1
+## Example: --debug=false
 
 ```
 $ exe/nu-agent --model gpt-5-nano
@@ -53,8 +53,7 @@ Session spend: $0.002833
 Goodbye!
 ```
 
-
-## Debug #1
+## Example: --debug=true
 
 ```
 $ exe/nu-agent --debug --model gpt-5-nano
