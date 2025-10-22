@@ -2,9 +2,9 @@
 
 This is a personal learning experiment to better understand how AI agents work, in paticular how they handle context and tool usage.
 
-This agent currently uses a DuckDB database to store a permananet memory.  It also has an idea of sessions and only includes the current session's messages in the context sent to the model.  Even with that it heavily redacts messages that are part of the chat history but then it gives the LLM tooling to fetch those redacted messages.
+This agent currently uses a DuckDB database to store a permananet memory.  It also has an idea of sessions and only includes the current session's messages in the context sent to the model.  Even with that it heavily redacts messages that are part of the chat history but it also gives the LLM tooling so that it can fetch those redacted messages.
 
-When I run this I used colerized text that makes it much easier to read.
+When I run this I use colerized text that makes it much easier to read.
 
 To help here I've show the same example twice.  With and without the --debug flag.
 
