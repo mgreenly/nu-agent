@@ -20,10 +20,10 @@ module Nu
         @client = ModelFactory.create(options.model)
         @history = History.new
 
-        # Load settings from database (default both to true)
+        # Load settings from database (default all to true)
         @redact = @history.get_config('redaction', default: 'true') == 'true'
         @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
-        @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'false') == 'true'
+        @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'true') == 'true'
         @conversation_id = @history.create_conversation
         @formatter = Formatter.new(
           history: @history,
