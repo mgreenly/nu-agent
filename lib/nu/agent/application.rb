@@ -262,7 +262,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/exit', '/help', '/model', '/models', '/redact', '/reset']
+        commands = ['/debug', '/exit', '/help', '/info', '/model', '/models', '/redact', '/reset']
         all_models = ModelFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -358,6 +358,9 @@ module Nu
           @formatter.debug = @debug
           puts "debug=#{@debug}"
           :continue
+        when '/info'
+          print_info
+          :continue
         when '/models'
           print_models
           :continue
@@ -375,10 +378,19 @@ module Nu
         puts "  /debug         - Toggle debug mode (show/hide tool calls and results)"
         puts "  /exit          - Exit the REPL"
         puts "  /help          - Show this help message"
+        puts "  /info          - Show current session information"
         puts "  /model <name>  - Switch to a different model (e.g., /model gpt-5)"
         puts "  /models        - List available models for current provider"
         puts "  /redact        - Toggle redaction of tool results in context"
         puts "  /reset         - Start a new conversation"
+      end
+
+      def print_info
+        puts ""
+        puts "Version:       #{Nu::Agent::VERSION}"
+        puts "Debug mode:    #{@debug}"
+        puts "Redaction:     #{@redact}"
+        puts "Database:      #{history.db_path}"
       end
 
       def print_models

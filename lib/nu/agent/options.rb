@@ -25,6 +25,11 @@ module Nu
             @debug = true
           end
 
+          opts.on("-v", "--version", "Show version") do
+            puts "nu-agent version #{Nu::Agent::VERSION}"
+            exit
+          end
+
           opts.on("-h", "--help", "Prints this help") do
             puts opts
             print_available_models

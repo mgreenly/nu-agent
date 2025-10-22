@@ -3,7 +3,10 @@
 module Nu
   module Agent
     class History
-      def initialize(db_path: 'db/dev.db')
+      attr_reader :db_path
+
+      def initialize(db_path: ENV['NUAGENT_DATABASE'] || File.join(Dir.home, '.nuagent', 'memory.db'))
+        @db_path = db_path
         @mutex = Mutex.new
         ensure_db_directory(db_path)
         @db = DuckDB::Database.open(db_path)
