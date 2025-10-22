@@ -287,6 +287,11 @@ module Nu
               }
             end
 
+            # Redact spell_checker messages
+            if redacted['actor'] == 'spell_checker'
+              redacted['content'] = '[REDACTED - spell check]'
+            end
+
             redacted
           else
             # New messages - return as-is
