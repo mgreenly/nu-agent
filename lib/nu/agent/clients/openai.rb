@@ -52,7 +52,11 @@ module Nu
 
           parameters[:tools] = tools if tools && !tools.empty?
 
-          response = @client.chat(parameters: parameters)
+          begin
+            response = @client.chat(parameters: parameters)
+          rescue Faraday::Error => e
+            return format_error_response(e)
+          end
 
           # Extract content and tool calls
           message = response.dig('choices', 0, 'message') || {}
@@ -126,6 +130,28 @@ module Nu
         end
 
         private
+
+        def format_error_response(error)
+          status = error.response&.dig(:status) || 'unknown'
+          headers = error.response&.dig(:headers) || {}
+
+          # Try multiple ways to get the body
+          body = error.response&.dig(:body) ||
+                 error.response_body ||
+                 error.response&.[](:body) ||
+                 error.message
+
+          {
+            'error' => {
+              'status' => status,
+              'headers' => headers.to_h,
+              'body' => body,
+              'raw_error' => error.inspect  # Add for debugging
+            },
+            'content' => "API Error: #{status}",
+            'model' => @model
+          }
+        end
 
         def load_api_key(provided_key)
           if provided_key

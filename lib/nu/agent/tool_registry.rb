@@ -72,6 +72,7 @@ module Nu
         register(Tools::ListDatabaseTables.new)
         register(Tools::DescribeDatabaseTable.new)
         register(Tools::QueryDatabase.new)
+        register(Tools::ReadRedactedMessage.new)
       end
 
       def parameters_to_schema(parameters)

@@ -97,8 +97,22 @@ module Nu
           # Get messages from history (only from current session)
           messages = history.messages(conversation_id: conversation_id, since: session_start_time)
 
+          # Store original messages for index generation
+          original_messages = messages
+
           # Redact old tool results if redaction is enabled
-          messages = redact_old_tool_results(messages, threshold_id: start_message_id) if @redact
+          if @redact
+            messages = redact_old_tool_results(messages, threshold_id: start_message_id)
+
+            # Build and prepend redaction index
+            index = build_redaction_index(original_messages, messages)
+            if index
+              messages.unshift({
+                'role' => 'user',
+                'content' => index
+              })
+            end
+          end
 
           # Get tools formatted for this client
           tools = client.format_tools(tool_registry)
@@ -106,8 +120,20 @@ module Nu
           # Call LLM with tools
           response = client.send_message(messages: messages, tools: tools)
 
+          # Check if we got an error response
+          if response['error']
+            # Save error message and exit
+            history.add_message(
+              conversation_id: conversation_id,
+              actor: 'api_error',
+              role: 'assistant',
+              content: response['content'],
+              model: response['model'],
+              error: response['error']
+            )
+            break
           # If we got tool calls, execute them
-          if response['tool_calls']
+          elsif response['tool_calls']
             # Save assistant message with tool calls
             history.add_message(
               conversation_id: conversation_id,
@@ -166,15 +192,41 @@ module Nu
       end
 
       def redact_old_tool_results(messages, threshold_id:)
-        messages.map do |msg|
-          # Only redact tool result messages that are "old" (id <= threshold_id)
-          if msg['tool_result'] && msg['id'] <= threshold_id
-            # Create a copy of the message with redacted result
-            msg.merge('tool_result' => {
-              'name' => msg['tool_result']['name'],
-              'result' => '[REDACTED]'
-            })
+        messages.filter_map do |msg|
+          # Skip old messages entirely if they meet certain criteria
+          if msg['id'] && msg['id'] <= threshold_id
+            # Optimization #3: Remove error messages from context
+            next nil if msg['error']
+
+            # Optimization #4: Remove intermediate assistant messages (ones with only tool_calls)
+            next nil if msg['role'] == 'assistant' && msg['tool_calls'] && !msg['content']
+
+            # Build redacted version of old messages
+            redacted = msg.dup
+
+            # Optimization #1: Redact tool_calls arguments
+            if redacted['tool_calls']
+              redacted['tool_calls'] = redacted['tool_calls'].map do |tc|
+                tc.merge('arguments' => { 'redacted' => true })
+              end
+            end
+
+            # Optimization #2: Redact assistant content when it has tool_calls
+            if redacted['role'] == 'assistant' && redacted['tool_calls']
+              redacted['content'] = nil
+            end
+
+            # Original optimization: Redact tool_result
+            if redacted['tool_result']
+              redacted['tool_result'] = {
+                'name' => redacted['tool_result']['name'],
+                'result' => { 'redacted' => true }
+              }
+            end
+
+            redacted
           else
+            # New messages - return as-is
             msg
           end
         end
@@ -276,6 +328,81 @@ module Nu
 
       def print_goodbye
         puts "\n\nGoodbye!"
+      end
+
+      def build_redaction_index(original_messages, redacted_messages)
+        # Find which messages were redacted or removed
+        redacted_info = []
+
+        original_messages.each do |msg|
+          next unless msg['id']
+
+          # Check if this message was removed entirely
+          redacted_version = redacted_messages.find { |m| m['id'] == msg['id'] }
+
+          if redacted_version.nil?
+            # Message was completely removed
+            redacted_info << describe_message(msg)
+          elsif message_was_redacted?(msg, redacted_version)
+            # Message was redacted but still present
+            redacted_info << describe_message(msg)
+          end
+        end
+
+        return nil if redacted_info.empty?
+
+        # Build index message
+        <<~INDEX
+          Redacted messages available via read_redacted_message(id):
+          #{redacted_info.join("\n")}
+
+          Use this tool when you need full details from earlier messages.
+        INDEX
+      end
+
+      def message_was_redacted?(original, redacted)
+        # Check if content/data was redacted
+        return true if original['tool_result'] && redacted['tool_result'] && redacted['tool_result']['result'] == { 'redacted' => true }
+        return true if original['tool_calls'] && redacted['tool_calls'] && redacted['tool_calls'].first&.dig('arguments') == { 'redacted' => true }
+        return true if original['content'] && !redacted['content']
+        false
+      end
+
+      def describe_message(msg)
+        preview = if msg['content'] && !msg['content'].empty?
+          msg['content'][0..50]
+        elsif msg['tool_calls']
+          "Tool: #{msg['tool_calls'].first['name']}"
+        elsif msg['tool_result']
+          "Result: #{msg['tool_result']['name']}"
+        elsif msg['error']
+          "Error: #{msg['error']['status']}"
+        else
+          "Message"
+        end
+
+        "  ##{msg['id']}: [#{msg['role']}] #{preview}... (#{time_ago(msg['created_at'])})"
+      end
+
+      def time_ago(timestamp)
+        return "unknown" unless timestamp
+
+        begin
+          time = timestamp.is_a?(String) ? Time.parse(timestamp) : timestamp
+          seconds = (Time.now - time).to_i
+
+          if seconds < 60
+            "#{seconds}s ago"
+          elsif seconds < 3600
+            "#{(seconds / 60)}m ago"
+          elsif seconds < 86400
+            "#{(seconds / 3600)}h ago"
+          else
+            "#{(seconds / 86400)}d ago"
+          end
+        rescue
+          "unknown"
+        end
       end
 
     end

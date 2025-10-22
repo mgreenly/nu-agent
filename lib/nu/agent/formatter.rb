@@ -45,8 +45,11 @@ module Nu
       end
 
       def display_message(message)
+        # Error messages
+        if message['error']
+          display_error(message)
         # Tool results have role 'user' but include tool_result
-        if message['tool_result']
+        elsif message['tool_result']
           # Only display tool results in debug mode
           display_tool_result(message) if @debug
         else
@@ -141,6 +144,39 @@ module Nu
           @output.puts "  #{result}"
         end
         @output.print "\e[0m"
+      end
+
+      def display_error(message)
+        error = message['error']
+
+        @output.puts "\n#{message['content']}"
+        @output.puts "\nStatus: #{error['status']}"
+
+        @output.puts "\nHeaders:"
+        error['headers'].each do |key, value|
+          @output.puts "  #{key}: #{value}"
+        end
+
+        @output.puts "\nBody:"
+        # Try to parse and pretty print JSON body
+        begin
+          if error['body'].is_a?(String) && !error['body'].empty?
+            parsed = JSON.parse(error['body'])
+            @output.puts JSON.pretty_generate(parsed)
+          elsif error['body']
+            @output.puts error['body']
+          else
+            @output.puts "(empty)"
+          end
+        rescue JSON::ParserError
+          @output.puts error['body']
+        end
+
+        # Show raw error for debugging if body is empty
+        if error['raw_error'] && (error['body'].nil? || error['body'].empty?)
+          @output.puts "\nRaw Error (for debugging):"
+          @output.puts error['raw_error']
+        end
       end
     end
   end

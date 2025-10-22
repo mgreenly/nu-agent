@@ -11,22 +11,23 @@ module Nu
         setup_schema
       end
 
-      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil)
+      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil)
         @mutex.synchronize do
           tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : 'NULL'
           tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : 'NULL'
+          error_json = error ? "'#{escape_sql(JSON.generate(error))}'" : 'NULL'
 
           @conn.query(<<~SQL)
             INSERT INTO messages (
               conversation_id, actor, role, content, model,
               include_in_context, tokens_input, tokens_output, spend,
-              tool_calls, tool_call_id, tool_result, created_at
+              tool_calls, tool_call_id, tool_result, error, created_at
             ) VALUES (
               #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
               '#{escape_sql(content || '')}', #{model ? "'#{escape_sql(model)}'" : 'NULL'},
               #{include_in_context}, #{tokens_input || 'NULL'}, #{tokens_output || 'NULL'},
               #{spend || 'NULL'}, #{tool_calls_json}, #{tool_call_id ? "'#{escape_sql(tool_call_id)}'" : 'NULL'},
-              #{tool_result_json}, CURRENT_TIMESTAMP
+              #{tool_result_json}, #{error_json}, CURRENT_TIMESTAMP
             )
           SQL
         end
@@ -42,7 +43,7 @@ module Nu
 
           result = @conn.query(<<~SQL)
             SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                   tool_calls, tool_call_id, tool_result, created_at
+                   tool_calls, tool_call_id, tool_result, error, created_at
             FROM messages
             WHERE conversation_id = #{conversation_id} #{where_clause}
             ORDER BY id ASC
@@ -60,7 +61,8 @@ module Nu
               "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
               "tool_call_id" => row[8],
               "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-              "created_at" => row[10]
+              "error" => row[10] ? JSON.parse(row[10]) : nil,
+              "created_at" => row[11]
             }
           end
         end
@@ -70,7 +72,7 @@ module Nu
         @mutex.synchronize do
           result = @conn.query(<<~SQL)
             SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                   tool_calls, tool_call_id, tool_result, created_at
+                   tool_calls, tool_call_id, tool_result, error, created_at
             FROM messages
             WHERE conversation_id = #{conversation_id} AND id > #{message_id}
             ORDER BY id ASC
@@ -88,7 +90,8 @@ module Nu
               "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
               "tool_call_id" => row[8],
               "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-              "created_at" => row[10]
+              "error" => row[10] ? JSON.parse(row[10]) : nil,
+              "created_at" => row[11]
             }
           end
         end
@@ -112,6 +115,37 @@ module Nu
             "output" => row[1],
             "total" => row[0] + row[1],
             "spend" => row[2]
+          }
+        end
+      end
+
+      def get_message_by_id(message_id, conversation_id:)
+        @mutex.synchronize do
+          result = @conn.query(<<~SQL)
+            SELECT id, actor, role, content, model, tokens_input, tokens_output,
+                   tool_calls, tool_call_id, tool_result, error, created_at
+            FROM messages
+            WHERE id = #{message_id} AND conversation_id = #{conversation_id}
+            LIMIT 1
+          SQL
+
+          rows = result.to_a
+          return nil if rows.empty?
+
+          row = rows.first
+          {
+            'id' => row[0],
+            'actor' => row[1],
+            'role' => row[2],
+            'content' => row[3],
+            'model' => row[4],
+            'tokens_input' => row[5],
+            'tokens_output' => row[6],
+            'tool_calls' => row[7] ? JSON.parse(row[7]) : nil,
+            'tool_call_id' => row[8],
+            'tool_result' => row[9] ? JSON.parse(row[9]) : nil,
+            'error' => row[10] ? JSON.parse(row[10]) : nil,
+            'created_at' => row[11]
           }
         end
       end
@@ -305,6 +339,7 @@ module Nu
         add_column_if_not_exists('messages', 'tool_call_id', 'TEXT')
         add_column_if_not_exists('messages', 'tool_result', 'TEXT')
         add_column_if_not_exists('messages', 'spend', 'FLOAT')
+        add_column_if_not_exists('messages', 'error', 'TEXT')
 
         @conn.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS appconfig (

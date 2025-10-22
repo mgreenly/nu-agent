@@ -43,7 +43,7 @@ module Nu
               api_key: @api_key.value,
               version: 'v1beta'
             },
-            options: { model: @model, server_sent_events: true }
+            options: { model: @model, server_sent_events: false }
           )
         end
 
@@ -53,7 +53,11 @@ module Nu
         request = { contents: formatted_messages }
         request[:tools] = [{ 'functionDeclarations' => tools }] if tools && !tools.empty?
 
-        result = @client.generate_content(request)
+        begin
+          result = @client.generate_content(request)
+        rescue Faraday::Error => e
+          return format_error_response(e)
+        end
 
         # Extract content and tool calls
         parts = result.dig('candidates', 0, 'content', 'parts') || []
@@ -134,6 +138,28 @@ module Nu
 
       private
 
+        def format_error_response(error)
+          status = error.response&.dig(:status) || 'unknown'
+          headers = error.response&.dig(:headers) || {}
+
+          # Try multiple ways to get the body
+          body = error.response&.dig(:body) ||
+                 error.response_body ||
+                 error.response&.[](:body) ||
+                 error.message
+
+          {
+            'error' => {
+              'status' => status,
+              'headers' => headers.to_h,
+              'body' => body,
+              'raw_error' => error.inspect  # Add for debugging
+            },
+            'content' => "API Error: #{status}",
+            'model' => @model
+          }
+        end
+
         def load_api_key(provided_key)
           if provided_key
             @api_key = ApiKey.new(provided_key)
@@ -161,7 +187,7 @@ module Nu
         formatted = []
 
         if system_prompt && !system_prompt.empty?
-          formatted << { role: 'user', parts: { text: system_prompt } }
+          formatted << { role: 'user', parts: [{ text: system_prompt }] }
         end
 
         messages.each do |msg|
@@ -169,12 +195,12 @@ module Nu
           if msg['tool_result']
             formatted << {
               role: 'function',
-              parts: {
+              parts: [{
                 functionResponse: {
                   name: msg['tool_result']['name'],
                   response: msg['tool_result']['result']
                 }
-              }
+              }]
             }
           # Handle messages with tool calls
           elsif msg['tool_calls']
@@ -204,7 +230,7 @@ module Nu
                    end
             formatted << {
               role: role,
-              parts: { text: msg['content'] }
+              parts: [{ text: msg['content'] }]
             }
           end
         end
