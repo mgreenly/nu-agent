@@ -5,9 +5,11 @@ This is a personal learning experiment to better understand how AI agents work, 
 
 ## Example
 
-This agent currently has a permanent memory.  It has an idea of a session and only includes that in the context of messages.  Even with that it heavily redacts messages that are replayed in the context back to the model.  The below example demonstrates it using the ruby tool to create an execute a script.  This script is redacted from it's context in the next message.  So in the later step when I ask it to fetch the first few lines it actually has to use the `read_redacted_message` tool to fetch that specific redacted message.
+This agent currently uses a DuckDB database to store a permananet memory.  It also has an idea of a sessions and only includes that in the context of messages.  Even with that it heavily redacts messages that are replayed in the context.  The below example demonstrates it using the ruby tool to create an execute a script.  This script then will only exist as a redacted message with an id in future context to the mdoel.  So when I ask it to fetch the first few lines of the script it actually has to use the `read_redacted_message` tool to fetch the unredacted text.
 
 The idea of course being that most large scripts are not relevant for most later queries and don't really need to stay in context.
+
+This is an area I want to experiement with.  An always on agent with a single permanent history that uses lots of sub-agents to groom that memory behind the scenes and selectively build the most relevant context it can for each new message to the model.
 
 
 ```
