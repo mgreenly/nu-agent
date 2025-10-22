@@ -54,6 +54,13 @@ module Nu
             temp_file.write(script)
             temp_file.close
 
+            # Debug output
+            if application = context['application']
+              cwd = Dir.pwd
+              application.output.debug("[execute_ruby] tempfile: #{temp_file.path}")
+              application.output.debug("[execute_ruby] cwd: #{cwd}")
+            end
+
             # Execute the Ruby script from the current working directory
             # Use the same ruby interpreter that's running this code
             ruby_executable = RbConfig.ruby
