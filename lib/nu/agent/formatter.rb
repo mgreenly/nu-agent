@@ -147,7 +147,7 @@ module Nu
         if message['content'] && !message['content'].strip.empty?
           @output.puts "#{message['content']}"
         end
-        @output.print "\e[0m"
+        @output.puts "\e[0m"
       end
 
       def display_tool_call(tool_call)
