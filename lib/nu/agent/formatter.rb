@@ -102,10 +102,11 @@ module Nu
             since: @session_start_time
           )
 
-          # Get current context size (most recent tokens_input)
+          # Get current context size (most recent tokens_input for current model)
           current_context = @history.current_context_size(
             conversation_id: @conversation_id,
-            since: @session_start_time
+            since: @session_start_time,
+            model: @client.model
           )
 
           max_context = @client.max_context

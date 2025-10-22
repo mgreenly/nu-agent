@@ -119,13 +119,14 @@ module Nu
         end
       end
 
-      def current_context_size(conversation_id:, since:)
+      def current_context_size(conversation_id:, since:, model:)
         @mutex.synchronize do
           result = @conn.query(<<~SQL)
             SELECT tokens_input
             FROM messages
             WHERE conversation_id = #{conversation_id}
               AND created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'
+              AND model = '#{escape_sql(model)}'
               AND tokens_input IS NOT NULL
             ORDER BY created_at DESC
             LIMIT 1
