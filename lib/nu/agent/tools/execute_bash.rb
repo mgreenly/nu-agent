@@ -27,6 +27,13 @@ module Nu
 
         raise ArgumentError, "command is required" if command.nil? || command.empty?
 
+        # Debug output
+        if application = context['application']
+          cwd = Dir.pwd
+          application.output.debug("[execute_bash] cwd: #{cwd}")
+          application.output.debug("[execute_bash] command: #{command}")
+        end
+
         stdout, stderr, status = Open3.capture3(command)
 
         {
