@@ -128,18 +128,25 @@ module Nu
 
         active_threads << thread
 
-        # Wait for completion and display
-        formatter.wait_for_completion(conversation_id: conversation_id)
+        begin
+          # Wait for completion and display
+          formatter.wait_for_completion(conversation_id: conversation_id)
 
-        # Mark messages from this turn as redacted for future turns
-        @output.debug("\n[Redaction]\nMarking tool calls and results as redacted.")
-        history.mark_turn_as_redacted(
-          conversation_id: conversation_id,
-          since_message_id: turn_start_message_id
-        )
-
-        # Remove completed thread
-        active_threads.delete(thread)
+          # Mark messages from this turn as redacted for future turns
+          @output.debug("\n[Redaction]\nMarking tool calls and results as redacted.")
+          history.mark_turn_as_redacted(
+            conversation_id: conversation_id,
+            since_message_id: turn_start_message_id
+          )
+        rescue Interrupt
+          # Ctrl-C pressed - abort current operation
+          @output.output("\n\nOperation aborted by user (Ctrl-C)")
+          thread.kill
+          history.decrement_workers
+        ensure
+          # Remove completed thread
+          active_threads.delete(thread)
+        end
 
         :continue
       end
