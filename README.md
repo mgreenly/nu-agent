@@ -1,140 +1,85 @@
 # Nu::Agent
 
-This is a personal learning experiment to better understand how AI agents work, in paticular how they handle context and tool usage.
+A Ruby-based AI agent framework with persistent memory and multi-provider LLM support (Anthropic, Google, OpenAI, X.AI). Features intelligent context management through DuckDB-backed conversation history with automatic redaction and retrieval tools, enabling agents to maintain long-term memory while staying within context limits.
 
-This agent currently uses a DuckDB database to store a permananet memory.  It also has an idea of sessions and only includes the current session's messages in the context sent to the model.  Even with that it heavily redacts messages that are part of the chat history but it also gives the LLM tooling so that it can fetch those redacted messages.
+## Setup
 
-When I run this I use colerized text that makes it much easier to read.
+### Prerequisites
 
-To help here I've show the same example twice.  With and without the --debug flag.
+**DuckDB Installation Required**
 
-The first version is without and is pretty easy to follow.
+The `duckdb` Ruby gem requires DuckDB to be installed with headers available. You have two options:
 
-The second is the same message with the --debug flag.
+**Option 1: System Package Manager** (Recommended)
+```bash
+# Debian/Ubuntu
+sudo apt-get install libduckdb-dev
 
-You can see in the debug version it looks up the redacted messages.
-
-## Example: --debug=false
-
-```
-$ exe/nu-agent --model gpt-5-nano
-Nu Agent REPL
-Using: OpenAI (gpt-5-nano-2025-08-07)
-Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
-Type /help for available commands
-============================================================
-
-
-> Create a ruby script that implements qsort then use it to sort 10 random integers.  Only show me the results.
-
-20 20 51 59 62 63 69 70 83 93
-
-Session tokens: 1800 in / 1889 out / 3689 (0.9% of 400000)
-Session spend: $0.000846
-
-> Can you show me the first 10 lines of that script?
-
-def qsort(arr)
-  return arr if arr.length <= 1
-  pivot = arr.sample
-  less = arr.select { |x| x < pivot }
-  equal = arr.select { |x| x == pivot }
-  greater = arr.select { |x| x > pivot }
-  qsort(less) + equal + qsort(greater)
-end
-
-arr = Array.new(10) { rand(100) }
-
-Session tokens: 5173 in / 6437 out / 11610 (2.9% of 400000)
-Session spend: $0.002833
-
-> /exit
-
-Goodbye!
+# macOS with Homebrew
+brew install duckdb
 ```
 
-## Example: --debug=true
+**Option 2: Manual Installation**
 
+Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duckdb/releases) and extract to a local directory (e.g., `~/.local`):
+
+```bash
+# Example structure:
+~/.local/lib/libduckdb.so       # Library file
+~/.local/include/duckdb.h       # Header file
 ```
-$ exe/nu-agent --debug --model gpt-5-nano
-Nu Agent REPL
-Using: OpenAI (gpt-5-nano-2025-08-07)
-Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.
-Type /help for available commands
-============================================================
 
+### Installation
 
-> Create a ruby script that implements qsort then use it to sort 10 random integers.  Only show me the results.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/nu-agent.git
+   cd nu-agent
+   ```
 
-[Tool Call] execute_ruby
-  script: #!/usr/bin/env ruby
+2. **Configure Bundler for DuckDB**
 
-def qsort(arr)
-  return arr if arr.length <= 1
-  pivot = arr.sample
-  left = []
-  middle = []
-  right = []
-  arr.each do |x|
-    if x < pivot
-      left << x
-    elsif x == pivot
-      middle << x
-    else
-      right << x
-    end
-  end
-  qsort(left) + middle + qsort(right)
-end
+   If you installed DuckDB to a custom location (Option 2), configure bundler:
+   ```bash
+   bundle config build.duckdb --with-duckdb-dir=/path/to/duckdb
 
-arr = Array.new(10) { rand(100) }
-sorted = qsort(arr)
-puts sorted.join(' ')
+   # Example for ~/.local installation:
+   bundle config build.duckdb --with-duckdb-dir=$HOME/.local
+   ```
 
-Session tokens: 813 in / 926 out / 1739 (0.4% of 400000)
-Session spend: $0.000411
+3. **Install dependencies**
+   ```bash
+   bundle install
+   ```
 
-[Tool Result] execute_ruby
-  stdout:
-    11 39 39 46 68 69 79 81 85 89
-  stderr:
-  exit_code: 0
-  success: true
+4. **Configure API keys**
 
-11 39 39 46 68 69 79 81 85 89
+   Create API key files in `~/.secrets/`:
+   ```bash
+   mkdir -p ~/.secrets
+   echo "your-api-key-here" > ~/.secrets/ANTHROPIC_API_KEY
+   echo "your-api-key-here" > ~/.secrets/OPENAI_API_KEY
+   echo "your-api-key-here" > ~/.secrets/GEMINI_API_KEY
+   # Optional: X.AI uses OpenAI-compatible format
+   ```
 
-Session tokens: 1825 in / 1146 out / 2971 (0.7% of 400000)
-Session spend: $0.000550
+5. **Run the agent**
+   ```bash
+   ./exe/nu-agent
 
-> Can you show me the first 10 lines of that script?
+   # Or with options:
+   ./exe/nu-agent --model gpt-5-nano
+   ./exe/nu-agent --debug
+   ```
 
-[Tool Call] read_redacted_message
-  message_id: 661
+### Troubleshooting
 
-Session tokens: 2780 in / 1684 out / 4464 (1.1% of 400000)
-Session spend: $0.000813
+**"cannot load such file -- duckdb" error:**
+- Verify DuckDB is installed and headers are accessible
+- Check your `.bundle/config` has the correct `--with-duckdb-dir` path
+- Try re-running `bundle install` after configuring bundler
 
-[Tool Result] read_redacted_message
-  message_id: 661
-  role: assistant
-  timestamp: 2025-10-21 22:13:08 -0500
-  tool_calls: [{"tool_name" => "execute_ruby", "arguments" => {"script" => "#!/usr/bin/env ruby\n\ndef qsort(arr)\n  return arr if arr.length <= 1\n  pivot = arr.sample\n  left = []\n  middle = []\n  right = []\n  arr.each do |x|\n    if x < pivot\n      left << x\n    elsif x == pivot\n      middle << x\n    else\n      right << x\n    end\n  end\n  qsort(left) + middle + qsort(right)\nend\n\narr = Array.new(10) { rand(100) }\nsorted = qsort(arr)\nputs sorted.join(' ')\n"}}]
-
-#!/usr/bin/env ruby
-
-def qsort(arr)
-  return arr if arr.length <= 1
-  pivot = arr.sample
-  left = []
-  middle = []
-  right = []
-  arr.each do |x|
-    if x < pivot
-
-Session tokens: 3948 in / 2512 out / 6460 (1.6% of 400000)
-Session spend: $0.001202
-
-> /exit
-
-Goodbye!
-```
+**"API key not found" error:**
+- Ensure API key files exist in `~/.secrets/` directory
+- Verify file permissions allow reading
+- Check there are no extra spaces or newlines in the key files
