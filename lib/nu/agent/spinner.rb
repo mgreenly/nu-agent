@@ -19,7 +19,7 @@ module Nu
           return if @running
 
           @message = message if message
-          @start_time = start_time
+          @start_time = start_time if start_time
           @running = true
           @frame_index = 0
 
