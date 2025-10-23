@@ -4,6 +4,7 @@ module Nu
   module Agent
     class Formatter
       attr_writer :client, :debug
+      attr_accessor :turn_start_time
 
       def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout, output_manager: nil)
         @history = history
@@ -14,6 +15,7 @@ module Nu
         @output = output
         @output_manager = output_manager
         @last_message_id = 0
+        @turn_start_time = nil
       end
 
       def reset_session(conversation_id:)
@@ -122,6 +124,12 @@ module Nu
         # - We're in debug mode (show everything), OR
         # - The message doesn't have tool calls (it's a final response)
         if message['tokens_input'] && message['tokens_output'] && (@debug || !message['tool_calls'])
+          # Calculate elapsed time for this turn (only show on final message)
+          elapsed_time = nil
+          if @turn_start_time && !message['tool_calls']
+            elapsed_time = Time.now - @turn_start_time
+          end
+
           # Query database for session totals (for billing)
           tokens = @history.session_tokens(
             conversation_id: @conversation_id,
@@ -132,7 +140,9 @@ module Nu
           percentage = (tokens['total'].to_f / max_context * 100).round(1)
 
           # ANSI color codes: \e[90m = gray, \e[0m = reset
-          @output.puts "\e[90m\nSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})"
+          @output.puts "\e[90m"
+          @output.puts "Elapsed time: #{'%.2f' % elapsed_time}s" if elapsed_time
+          @output.puts "Session tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})"
           @output.puts "Session spend: $#{'%.6f' % tokens['spend']}\e[0m"
         end
       end

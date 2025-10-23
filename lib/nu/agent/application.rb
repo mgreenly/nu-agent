@@ -81,6 +81,9 @@ module Nu
         start_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
         turn_start_message_id = start_messages.empty? ? 0 : start_messages.last['id']
 
+        # Capture turn start time for elapsed time calculation
+        @formatter.turn_start_time = Time.now
+
         # Start spinner before spell check
         @output.start_waiting
 
