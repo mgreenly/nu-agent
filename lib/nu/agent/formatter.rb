@@ -166,11 +166,30 @@ module Nu
 
       def display_tool_call(tool_call)
         @output.puts "\e[90m\n[Tool Call] #{tool_call['name']}"
-        if tool_call['arguments'] && !tool_call['arguments'].empty?
-          tool_call['arguments'].each do |key, value|
-            @output.puts "  #{key}: #{value}"
+
+        begin
+          if tool_call['arguments'] && !tool_call['arguments'].empty?
+            # Get verbosity level (default to 0 if application not set)
+            verbosity = @application ? @application.verbosity : 0
+            name = tool_call['name']
+
+            tool_call['arguments'].each do |key, value|
+              # Hide script/command for execute_python/execute_bash when verbosity <= 1
+              if (name == 'execute_python' && key.to_s == 'script') ||
+                 (name == 'execute_bash' && key.to_s == 'command')
+                if verbosity <= 1
+                  @output.puts "  #{key}: [hidden - use /verbosity 2 or higher to show]"
+                  next
+                end
+              end
+
+              @output.puts "  #{key}: #{value}"
+            end
           end
+        rescue => e
+          @output.puts "  [Error displaying arguments: #{e.message}]"
         end
+
         @output.print "\e[0m"
       end
 
