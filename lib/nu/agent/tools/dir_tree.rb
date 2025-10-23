@@ -11,7 +11,8 @@ module Nu
         def description
           "Get a tree of all directories below a given path. " \
           "Returns a flat list of all subdirectories, useful for understanding project structure. " \
-          "Use this instead of execute_bash with find commands for directory discovery."
+          "Use this instead of execute_bash with find commands for directory discovery. " \
+          "Results are limited to prevent overwhelming output in large projects."
         end
 
         def parameters
@@ -30,6 +31,11 @@ module Nu
               type: "boolean",
               description: "Include hidden directories (those starting with .). Default: false",
               required: false
+            },
+            limit: {
+              type: "integer",
+              description: "Maximum number of directories to return. Default: 1000",
+              required: false
             }
           }
         end
@@ -38,6 +44,7 @@ module Nu
           dir_path = arguments[:path] || arguments["path"] || "."
           max_depth = arguments[:max_depth] || arguments["max_depth"]
           show_hidden = arguments[:show_hidden] || arguments["show_hidden"] || false
+          limit = arguments[:limit] || arguments["limit"] || 1000
 
           # Resolve and validate path
           resolved_path = resolve_path(dir_path)
@@ -46,7 +53,7 @@ module Nu
           # Debug output
           if application = context['application']
             application.output.debug("[dir_tree] path: #{resolved_path}")
-            application.output.debug("[dir_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}")
+            application.output.debug("[dir_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}")
           end
 
           begin
@@ -78,18 +85,23 @@ module Nu
             end
 
             # Parse output - make paths relative to starting directory
-            directories = stdout.split("\n")
-                                .map { |path| path.strip }
-                                .reject { |path| path.empty? }
-                                .map { |path| make_relative(path, resolved_path) }
-                                .reject { |path| path == "." }  # Exclude the starting directory itself
-                                .sort
+            all_directories = stdout.split("\n")
+                                    .map { |path| path.strip }
+                                    .reject { |path| path.empty? }
+                                    .map { |path| make_relative(path, resolved_path) }
+                                    .reject { |path| path == "." }  # Exclude the starting directory itself
+                                    .sort
+
+            total_directories = all_directories.length
+            directories = all_directories.take(limit)
 
             {
               status: "success",
               path: dir_path,
               directories: directories,
-              count: directories.length
+              count: directories.length,
+              total_directories: total_directories,
+              truncated: total_directories > limit
             }
           rescue => e
             {
