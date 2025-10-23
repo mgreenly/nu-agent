@@ -12,3 +12,4 @@
 
 # DuckDB databases
 /db/
+*.db
