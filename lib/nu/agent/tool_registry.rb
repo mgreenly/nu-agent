@@ -75,6 +75,7 @@ module Nu
         register(Tools::DirDelete.new)
         register(Tools::DirList.new)
         register(Tools::ExecuteBash.new)
+        register(Tools::ExecutePython.new)
         register(Tools::ExecuteRuby.new)
         register(Tools::FileCopy.new)
         register(Tools::FileDelete.new)
