@@ -17,7 +17,8 @@ module Nu
           conversation_id: @conversation_id,
           actor: ACTOR,
           role: 'user',
-          content: "Fix any spelling errors in the following text. Return ONLY the corrected text with no explanations or additional commentary:\n\n#{text}"
+          content: "Fix ONLY misspelled words in the following text. Do NOT change capitalization, grammar, or punctuation. Return ONLY the corrected text with no explanations:\n\n#{text}",
+          include_in_context: false
         )
 
         # Get messages for this conversation
@@ -32,7 +33,7 @@ module Nu
         # Call gpt-5-nano to fix spelling
         response = @client.send_message(
           messages: spell_check_messages,
-          system_prompt: "You are a spell checker. Fix spelling errors and return only the corrected text."
+          system_prompt: "You are a spell checker. Fix ONLY misspelled words. Do NOT change capitalization, grammar, punctuation, or style. Return only the corrected text."
         )
 
         corrected_text = response['content'].strip
@@ -46,7 +47,8 @@ module Nu
           model: response['model'],
           tokens_input: response['tokens']['input'],
           tokens_output: response['tokens']['output'],
-          spend: response['spend']
+          spend: response['spend'],
+          include_in_context: false
         )
 
         corrected_text
