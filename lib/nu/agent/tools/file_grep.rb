@@ -117,13 +117,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[file_grep] command: #{cmd}")
+            application.output.debug("[file_grep] command: #{cmd.join(' ')}")
             application.output.debug("[file_grep] output_mode: #{output_mode}")
           end
 
           # Execute ripgrep
           begin
-            stdout, stderr, status = Open3.capture3(cmd)
+            stdout, stderr, status = Open3.capture3(*cmd)
 
             # Ripgrep returns exit code 1 when no matches found (not an error)
             if status.exitstatus > 1
@@ -187,10 +187,11 @@ module Nu
           # Max count per file (helps limit output)
           cmd_parts << "--max-count" << max_results.to_s
 
-          # Pattern and path
+          # Pattern and path - double dash separates pattern from paths
           cmd_parts << "--" << pattern << path
 
-          cmd_parts.join(" ")
+          # Return array so Open3 can properly quote arguments
+          cmd_parts
         end
 
         def parse_files_with_matches(stdout, max_results)
