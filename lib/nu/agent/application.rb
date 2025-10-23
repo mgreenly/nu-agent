@@ -182,7 +182,7 @@ module Nu
           if @redact
             # Debug: show redaction status before
             redacted_count = original_messages.count { |m| m['redacted'] }
-            application.output.debug("[redaction] Messages: #{original_messages.length} total, #{redacted_count} marked as redacted")
+            @output.debug("[redaction] Messages: #{original_messages.length} total, #{redacted_count} marked as redacted")
 
             messages = redact_old_tool_results(messages)
 
