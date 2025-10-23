@@ -11,16 +11,17 @@ module Nu
         @session_start_time = Time.now
         @options = options
         @user_actor = ENV['USER'] || 'user'
-        @debug = @options.debug
         @shutdown = false
         @critical_sections = 0
         @critical_mutex = Mutex.new
         @operation_mutex = Mutex.new
-        @output = OutputManager.new(debug: @debug)
         @client = ModelFactory.create(options.model)
         @history = History.new
 
-        # Load settings from database (default all to true)
+        # Load settings from database (default all to true, except debug which defaults to false)
+        @debug = @history.get_config('debug', default: 'false') == 'true'
+        @debug = true if @options.debug  # Command line option overrides database setting
+        @output = OutputManager.new(debug: @debug)
         @redact = @history.get_config('redaction', default: 'true') == 'true'
         @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
         @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'true') == 'true'
@@ -385,8 +386,16 @@ module Nu
           @operation_mutex.synchronize do
             # Wait for active threads to complete
             unless active_threads.empty?
-              @output.output("Waiting for current operation to complete...")
-              active_threads.each(&:join)
+              # First try to join threads with a short timeout to see if they're actually running
+              still_running = active_threads.any? do |thread|
+                !thread.join(0.05)  # Returns nil if thread is still running after timeout
+              end
+
+              # Only show the message if threads are actually still running
+              if still_running
+                @output.output("Waiting for current operation to complete...")
+                active_threads.each(&:join)
+              end
             end
 
             # Try to create new client
@@ -483,6 +492,35 @@ module Nu
           return :continue
         end
 
+        # Handle /debug [on/off] command
+        if input.downcase.start_with?('/debug')
+          parts = input.split(' ', 2)
+          if parts.length < 2 || parts[1].strip.empty?
+            @output.output("Usage: /debug <on|off>")
+            @output.output("Current: debug=#{@debug ? 'on' : 'off'}")
+            return :continue
+          end
+
+          setting = parts[1].strip.downcase
+          if setting == 'on'
+            @debug = true
+            @formatter.debug = true
+            @output.debug = true
+            history.set_config('debug', 'true')
+            @output.output("debug=on")
+          elsif setting == 'off'
+            @debug = false
+            @formatter.debug = false
+            @output.debug = false
+            history.set_config('debug', 'false')
+            @output.output("debug=off")
+          else
+            @output.output("Invalid option. Use: /debug <on|off>")
+          end
+
+          return :continue
+        end
+
         case input.downcase
         when '/exit'
           :exit
@@ -501,12 +539,6 @@ module Nu
           # Start background summarization worker
           start_summarization_worker
 
-          :continue
-        when '/debug'
-          @debug = !@debug
-          @formatter.debug = @debug
-          @output.debug = @debug
-          @output.output("debug=#{@debug}")
           :continue
         when '/fix'
           run_fix
@@ -529,7 +561,7 @@ module Nu
       def print_help
         @output.output("\nAvailable commands:")
         @output.output("  /clear               - Clear the screen")
-        @output.output("  /debug               - Toggle debug mode (show/hide tool calls and results)")
+        @output.output("  /debug <on|off>      - Enable/disable debug mode (show/hide tool calls and results)")
         @output.output("  /exit                - Exit the REPL")
         @output.output("  /fix                 - Scan and fix database corruption issues")
         @output.output("  /help                - Show this help message")
@@ -574,6 +606,7 @@ module Nu
       def print_info
         @output.output("")
         @output.output("Version:       #{Nu::Agent::VERSION}")
+        @output.output("Orchestrator:  #{@client.name} (#{@client.model})")
         @output.output("Debug mode:    #{@debug}")
         @output.output("Redaction:     #{@redact ? 'on' : 'off'}")
         @output.output("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}")
