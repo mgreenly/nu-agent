@@ -144,6 +144,7 @@ module Nu
           )
         rescue Interrupt
           # Ctrl-C pressed - abort all operations and return to prompt
+          @output.stop_waiting
           @output.output("\n\nOperation aborted by user (Ctrl-C)")
 
           # Kill all active threads (main chat loop, summarizer, etc.)
@@ -160,6 +161,8 @@ module Nu
             history.decrement_workers
           end
         ensure
+          # Always stop the waiting spinner
+          @output.stop_waiting
           # Remove completed thread
           active_threads.delete(thread) if thread
         end
