@@ -339,7 +339,14 @@ module Nu
 
         loop do
           print "\n"
-          input = Readline.readline("> ", true)  # true = add to history
+
+          begin
+            input = Readline.readline("> ", true)  # true = add to history
+          rescue Interrupt
+            # Ctrl-C while waiting for input - exit program
+            puts "\n"
+            break
+          end
 
           break if input.nil?  # Ctrl+D
 
@@ -703,8 +710,8 @@ module Nu
         print "\033[2J\033[H"
         @output.output("Nu Agent REPL")
         @output.output("Using: #{client.name} (#{client.model})")
-        @output.output("Type your prompts below. Press Ctrl-D or /exit to quit.")
-        @output.output("Press Ctrl-C to abort current operation.")
+        @output.output("Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.")
+        @output.output("(Ctrl-C during processing aborts operation)")
         @output.output("Type /help for available commands")
         @output.output("=" * 60)
       end
