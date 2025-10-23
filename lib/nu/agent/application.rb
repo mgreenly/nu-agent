@@ -132,7 +132,7 @@ module Nu
         formatter.wait_for_completion(conversation_id: conversation_id)
 
         # Mark messages from this turn as redacted for future turns
-        @output.debug("\n[redaction] Marking tool calls/results from this turn as redacted")
+        @output.debug("\n[Redaction]\nMarking tool calls and results as redacted.")
         history.mark_turn_as_redacted(
           conversation_id: conversation_id,
           since_message_id: turn_start_message_id
