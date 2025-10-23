@@ -84,51 +84,55 @@ module Nu
         # Start spinner before spell check
         @output.start_waiting
 
-        # Run spell checker if enabled
-        if @spell_check_enabled
-          spell_checker = SpellChecker.new(
-            history: history,
-            conversation_id: conversation_id
-          )
-          input = spell_checker.check_spelling(input)
-        end
-
-        # Add user message to history
-        history.add_message(
-          conversation_id: conversation_id,
-          actor: @user_actor,
-          role: 'user',
-          content: input
-        )
-
-        # Increment workers BEFORE spawning thread
-        history.increment_workers
-
-        # Capture values to pass into thread under mutex
-        thread = @operation_mutex.synchronize do
-          conv_id = conversation_id
-          hist = history
-          cli = client
-          session_start = session_start_time
-
-          # Process in a thread
-          Thread.new(conv_id, hist, cli, session_start) do |conversation_id, history, client, session_start_time|
-            begin
-              chat_loop(
-                conversation_id: conversation_id,
-                history: history,
-                client: client,
-                session_start_time: session_start_time
-              )
-            ensure
-              history.decrement_workers
-            end
-          end
-        end
-
-        active_threads << thread
+        thread = nil
+        workers_incremented = false
 
         begin
+          # Run spell checker if enabled
+          if @spell_check_enabled
+            spell_checker = SpellChecker.new(
+              history: history,
+              conversation_id: conversation_id
+            )
+            input = spell_checker.check_spelling(input)
+          end
+
+          # Add user message to history
+          history.add_message(
+            conversation_id: conversation_id,
+            actor: @user_actor,
+            role: 'user',
+            content: input
+          )
+
+          # Increment workers BEFORE spawning thread
+          history.increment_workers
+          workers_incremented = true
+
+          # Capture values to pass into thread under mutex
+          thread = @operation_mutex.synchronize do
+            conv_id = conversation_id
+            hist = history
+            cli = client
+            session_start = session_start_time
+
+            # Process in a thread
+            Thread.new(conv_id, hist, cli, session_start) do |conversation_id, history, client, session_start_time|
+              begin
+                chat_loop(
+                  conversation_id: conversation_id,
+                  history: history,
+                  client: client,
+                  session_start_time: session_start_time
+                )
+              ensure
+                history.decrement_workers
+              end
+            end
+          end
+
+          active_threads << thread
+
           # Wait for completion and display
           formatter.wait_for_completion(conversation_id: conversation_id)
 
@@ -141,11 +145,18 @@ module Nu
         rescue Interrupt
           # Ctrl-C pressed - abort current operation
           @output.output("\n\nOperation aborted by user (Ctrl-C)")
-          thread.kill
-          history.decrement_workers
+
+          # Kill thread if it was created
+          if thread
+            thread.kill
+            history.decrement_workers
+          elsif workers_incremented
+            # Workers were incremented but thread wasn't created yet
+            history.decrement_workers
+          end
         ensure
           # Remove completed thread
-          active_threads.delete(thread)
+          active_threads.delete(thread) if thread
         end
 
         :continue
