@@ -3,13 +3,17 @@
 module Nu
   module Agent
     module Tools
-      class QueryDatabase
+      class DatabaseQuery
         def name
-          "query_database"
+          "database_query"
         end
 
         def description
-          "Execute a SQL query against the agent's history database using a READ-ONLY connection. Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). Write operations (INSERT, UPDATE, DELETE) are blocked. IMPORTANT: Results are hard-capped at 500 rows maximum. Always use LIMIT 100 or less for efficient queries."
+          "PREFERRED tool for querying conversation history. " \
+          "Execute SQL queries against the agent's history database using a READ-ONLY connection. " \
+          "Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). Write operations (INSERT, UPDATE, DELETE) are blocked. " \
+          "IMPORTANT: Results are hard-capped at 500 rows maximum. Always use LIMIT 100 or less for efficient queries. " \
+          "Use database_tables to see available tables and database_schema to understand table structure first."
         end
 
         def parameters
@@ -25,7 +29,16 @@ module Nu
         def execute(arguments:, history:, context:)
           sql = arguments[:sql] || arguments["sql"]
 
-          raise ArgumentError, "sql is required" if sql.nil? || sql.empty?
+          if sql.nil? || sql.empty?
+            return {
+              error: "sql query is required"
+            }
+          end
+
+          # Debug output
+          if application = context['application']
+            application.output.debug("[database_query] sql: #{sql.length > 100 ? sql[0..100] + '...' : sql}")
+          end
 
           begin
             rows = history.execute_query(sql)

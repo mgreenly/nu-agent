@@ -3,13 +3,14 @@
 module Nu
   module Agent
     module Tools
-      class GetSummarizerStatus
+      class AgentSummarizer
         def name
-          "get_summarizer_status"
+          "agent_summarizer"
         end
 
         def description
-          "Get the current status of the background conversation summarization worker. Returns progress information including how many conversations have been summarized, how many failed, and what it's currently working on."
+          "Get background summarization status. " \
+          "Returns progress information including how many conversations have been summarized, how many failed, and what is currently being processed."
         end
 
         def parameters
@@ -17,6 +18,11 @@ module Nu
         end
 
         def execute(arguments:, history:, context:)
+          # Debug output
+          if application = context['application']
+            application.output.debug("[agent_summarizer] checking status")
+          end
+
           # Get the Application instance from context
           # The context includes the Application's summarizer_status and status_mutex
           application = context['application']

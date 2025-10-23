@@ -3,13 +3,15 @@
 module Nu
   module Agent
     module Tools
-      class ReadRedactedMessage
+      class DatabaseMessage
         def name
-          "read_redacted_message"
+          "database_message"
         end
 
         def description
-          "Retrieve the full content of a redacted message from the history database by its ID. Use this when you need specific details from earlier in the conversation that were redacted to save context space."
+          "PREFERRED tool for retrieving specific messages by ID from conversation history. " \
+          "Use this when you need full details from earlier messages that were redacted to save context space. " \
+          "Returns complete message content including role, timestamp, content, tool calls, and results."
         end
 
         def parameters
@@ -25,9 +27,18 @@ module Nu
         def execute(arguments:, history:, context:)
           message_id = arguments[:message_id] || arguments["message_id"]
 
-          raise ArgumentError, "message_id is required" if message_id.nil?
+          if message_id.nil?
+            return {
+              error: "message_id is required"
+            }
+          end
 
           conversation_id = context['conversation_id']
+
+          # Debug output
+          if application = context['application']
+            application.output.debug("[database_message] message_id: #{message_id}")
+          end
 
           begin
             message = history.get_message_by_id(message_id, conversation_id: conversation_id)

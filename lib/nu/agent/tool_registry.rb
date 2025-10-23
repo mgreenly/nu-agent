@@ -66,14 +66,25 @@ module Nu
       private
 
       def register_default_tools
+        register(Tools::AgentSummarizer.new)
+        register(Tools::DatabaseMessage.new)
+        register(Tools::DatabaseQuery.new)
+        register(Tools::DatabaseSchema.new)
+        register(Tools::DatabaseTables.new)
+        register(Tools::DirCreate.new)
+        register(Tools::DirDelete.new)
+        register(Tools::DirList.new)
         register(Tools::ExecuteBash.new)
         register(Tools::ExecuteRuby.new)
-        register(Tools::FileEditor.new)
-        register(Tools::GetSummarizerStatus.new)
-        register(Tools::ListDatabaseTables.new)
-        register(Tools::DescribeDatabaseTable.new)
-        register(Tools::QueryDatabase.new)
-        register(Tools::ReadRedactedMessage.new)
+        register(Tools::FileCopy.new)
+        register(Tools::FileDelete.new)
+        register(Tools::FileEdit.new)
+        register(Tools::FileGlob.new)
+        register(Tools::FileGrep.new)
+        register(Tools::FileMove.new)
+        register(Tools::FileRead.new)
+        register(Tools::FileStat.new)
+        register(Tools::FileWrite.new)
       end
 
       def parameters_to_schema(parameters)

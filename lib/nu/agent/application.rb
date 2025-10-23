@@ -76,6 +76,9 @@ module Nu
           return handle_command(input)
         end
 
+        # Start spinner before spell check
+        @output.start_waiting
+
         # Run spell checker if enabled
         if @spell_check_enabled
           spell_checker = SpellChecker.new(
@@ -326,7 +329,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/summarizer', '/tools']
+        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools']
         all_models = ModelFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -574,7 +577,6 @@ module Nu
         @output.output("Debug mode:    #{@debug}")
         @output.output("Redaction:     #{@redact ? 'on' : 'off'}")
         @output.output("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}")
-        @output.output("Spell check:   #{@spell_check_enabled ? 'on' : 'off'}")
 
         # Show summarizer status if enabled
         if @summarizer_enabled
@@ -593,6 +595,10 @@ module Nu
           end
         end
 
+        @output.output("Spellcheck:    #{@spell_check_enabled ? 'on' : 'off'}")
+        if @spell_check_enabled
+          @output.output("  Model:       gpt-5-nano")
+        end
         @output.output("Database:      #{File.expand_path(history.db_path)}")
       end
 
@@ -630,6 +636,7 @@ module Nu
       end
 
       def print_welcome
+        print "\033[2J\033[H"
         @output.output("Nu Agent REPL")
         @output.output("Using: #{client.name} (#{client.model})")
         @output.output("Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.")

@@ -11,20 +11,9 @@ module Nu
         end
 
         def description
-          <<~DESC
-            Execute a Ruby script and return the output. This is the PREFERRED scripting tool for:
-            - Complex data processing and manipulation
-            - File operations using Ruby's File/FileUtils libraries
-            - Working with structured data (JSON, YAML, CSV, etc.)
-            - String manipulation and text processing
-            - Access to all installed Ruby gems
-            - Multi-line logic and control flow
-
-            The script is executed from the current working directory and has access to all
-            Ruby standard libraries and installed gems.
-
-            Use this instead of bash for complex operations that benefit from Ruby's expressiveness.
-          DESC
+          "Execute Ruby code. " \
+          "Preferred for complex data processing, structured data (JSON/YAML/CSV), string manipulation, and multi-line logic. " \
+          "Has access to all Ruby standard libraries and installed gems. Use instead of bash for operations that benefit from Ruby's expressiveness."
         end
 
         def parameters

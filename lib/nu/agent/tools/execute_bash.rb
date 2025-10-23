@@ -11,7 +11,8 @@ module Nu
       end
 
       def description
-        "Execute a bash command and return the output. Use this to run shell commands, check system information, or perform file operations."
+        "Execute bash commands. " \
+        "Use this to run shell commands, check system information, or perform operations not covered by specialized tools."
       end
 
       def parameters
