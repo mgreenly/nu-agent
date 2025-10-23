@@ -132,7 +132,7 @@ module Nu
         formatter.wait_for_completion(conversation_id: conversation_id)
 
         # Mark messages from this turn as redacted for future turns
-        @output.debug("[redaction] Marking messages > #{turn_start_message_id} as redacted")
+        @output.debug("\n[redaction] Marking tool calls/results from this turn as redacted")
         history.mark_turn_as_redacted(
           conversation_id: conversation_id,
           since_message_id: turn_start_message_id
@@ -182,7 +182,7 @@ module Nu
           if @redact
             # Debug: show redaction status before
             redacted_count = original_messages.count { |m| m['redacted'] }
-            @output.debug("[redaction] Messages: #{original_messages.length} total, #{redacted_count} marked as redacted")
+            @output.debug("\n[redaction] Messages: #{original_messages.length} total, #{redacted_count} marked as redacted")
 
             messages = redact_old_tool_results(messages)
 
