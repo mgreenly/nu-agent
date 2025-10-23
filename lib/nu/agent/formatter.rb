@@ -190,6 +190,14 @@ module Nu
               next
             end
 
+            # Skip 'stdout' and 'stderr' for execute_python/execute_bash when verbosity <= 1
+            if (name == 'execute_python' || name == 'execute_bash') &&
+               (key.to_s == 'stdout' || key.to_s == 'stderr') &&
+               verbosity <= 1
+              @output.puts "  #{key}: [hidden - use /verbosity 2 or higher to show]"
+              next
+            end
+
             # Format multiline values (like stdout/stderr) with proper indentation
             if value.to_s.include?("\n")
               @output.puts "  #{key}:"
