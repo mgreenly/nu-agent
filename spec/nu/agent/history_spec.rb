@@ -201,9 +201,11 @@ RSpec.describe Nu::Agent::History do
 
       tokens = history.session_tokens(conversation_id: conversation_id, since: session_start)
 
-      expect(tokens['input']).to eq(30)
+      # Input tokens should be MAX (20), not SUM (30), because each API call
+      # reports the total context size, which already includes previous messages
+      expect(tokens['input']).to eq(20)
       expect(tokens['output']).to eq(13)
-      expect(tokens['total']).to eq(43)
+      expect(tokens['total']).to eq(33)
     end
 
     it 'excludes messages before the session start time' do

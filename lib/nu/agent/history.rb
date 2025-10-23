@@ -108,7 +108,7 @@ module Nu
         @mutex.synchronize do
           result = @conn.query(<<~SQL)
             SELECT
-              COALESCE(SUM(tokens_input), 0) as total_input,
+              COALESCE(MAX(tokens_input), 0) as total_input,
               COALESCE(SUM(tokens_output), 0) as total_output,
               COALESCE(SUM(spend), 0.0) as total_spend
             FROM messages

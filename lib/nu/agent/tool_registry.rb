@@ -74,6 +74,7 @@ module Nu
         register(Tools::DirCreate.new)
         register(Tools::DirDelete.new)
         register(Tools::DirList.new)
+        register(Tools::DirTree.new)
         register(Tools::ExecuteBash.new)
         register(Tools::ExecutePython.new)
         register(Tools::FileCopy.new)

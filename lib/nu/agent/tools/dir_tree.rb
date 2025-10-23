@@ -1,0 +1,149 @@
+# frozen_string_literal: true
+
+module Nu
+  module Agent
+    module Tools
+      class DirTree
+        def name
+          "dir_tree"
+        end
+
+        def description
+          "Get a tree of all directories below a given path. " \
+          "Returns a flat list of all subdirectories, useful for understanding project structure. " \
+          "Use this instead of execute_bash with find commands for directory discovery."
+        end
+
+        def parameters
+          {
+            path: {
+              type: "string",
+              description: "Directory to start from (relative to project root or absolute within project). Defaults to current directory.",
+              required: false
+            },
+            max_depth: {
+              type: "integer",
+              description: "Maximum depth to traverse. If not specified, traverses all levels.",
+              required: false
+            },
+            show_hidden: {
+              type: "boolean",
+              description: "Include hidden directories (those starting with .). Default: false",
+              required: false
+            }
+          }
+        end
+
+        def execute(arguments:, history:, context:)
+          dir_path = arguments[:path] || arguments["path"] || "."
+          max_depth = arguments[:max_depth] || arguments["max_depth"]
+          show_hidden = arguments[:show_hidden] || arguments["show_hidden"] || false
+
+          # Resolve and validate path
+          resolved_path = resolve_path(dir_path)
+          validate_path(resolved_path)
+
+          # Debug output
+          if application = context['application']
+            application.output.debug("[dir_tree] path: #{resolved_path}")
+            application.output.debug("[dir_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}")
+          end
+
+          begin
+            unless File.exist?(resolved_path)
+              return {
+                status: "error",
+                error: "Directory not found: #{dir_path}"
+              }
+            end
+
+            unless File.directory?(resolved_path)
+              return {
+                status: "error",
+                error: "Not a directory: #{dir_path}"
+              }
+            end
+
+            # Build find command
+            cmd = build_find_command(resolved_path, max_depth, show_hidden)
+
+            # Execute find
+            stdout, stderr, status = Open3.capture3(*cmd)
+
+            unless status.success?
+              return {
+                status: "error",
+                error: "Failed to list directories: #{stderr}"
+              }
+            end
+
+            # Parse output - make paths relative to starting directory
+            directories = stdout.split("\n")
+                                .map { |path| path.strip }
+                                .reject { |path| path.empty? }
+                                .map { |path| make_relative(path, resolved_path) }
+                                .reject { |path| path == "." }  # Exclude the starting directory itself
+                                .sort
+
+            {
+              status: "success",
+              path: dir_path,
+              directories: directories,
+              count: directories.length
+            }
+          rescue => e
+            {
+              status: "error",
+              error: "Failed to list directories: #{e.message}"
+            }
+          end
+        end
+
+        private
+
+        def resolve_path(dir_path)
+          if dir_path.start_with?('/')
+            File.expand_path(dir_path)
+          else
+            File.expand_path(dir_path, Dir.pwd)
+          end
+        end
+
+        def validate_path(dir_path)
+          project_root = File.expand_path(Dir.pwd)
+
+          unless dir_path.start_with?(project_root)
+            raise ArgumentError, "Access denied: Directory must be within project directory (#{project_root})"
+          end
+
+          if dir_path.include?('..')
+            raise ArgumentError, "Access denied: Path cannot contain '..'"
+          end
+        end
+
+        def build_find_command(path, max_depth, show_hidden)
+          cmd = ["find", path, "-type", "d"]
+
+          # Add max depth if specified
+          cmd += ["-maxdepth", max_depth.to_s] if max_depth
+
+          # Exclude hidden directories unless show_hidden is true
+          cmd += ["-not", "-path", "*/.*"] unless show_hidden
+
+          cmd
+        end
+
+        def make_relative(absolute_path, base_path)
+          # Remove base_path prefix to make it relative
+          if absolute_path.start_with?(base_path)
+            relative = absolute_path[base_path.length..-1]
+            relative = relative[1..-1] if relative.start_with?('/')  # Remove leading slash
+            relative.empty? ? "." : relative
+          else
+            absolute_path
+          end
+        end
+      end
+    end
+  end
+end
