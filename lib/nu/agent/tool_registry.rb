@@ -85,6 +85,7 @@ module Nu
         register(Tools::FileMove.new)
         register(Tools::FileRead.new)
         register(Tools::FileStat.new)
+        register(Tools::FileTree.new)
         register(Tools::FileWrite.new)
       end
 
