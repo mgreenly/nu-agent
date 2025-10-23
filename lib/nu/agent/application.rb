@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Application
-      attr_reader :client, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex, :output
+      attr_reader :client, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex, :output, :verbosity
       attr_accessor :active_threads
 
       def initialize(options:)
@@ -33,7 +33,8 @@ module Nu
           conversation_id: @conversation_id,
           client: @client,
           debug: @debug,
-          output_manager: @output
+          output_manager: @output,
+          application: self
         )
         @active_threads = []
         @summarizer_status = {
