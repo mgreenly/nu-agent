@@ -691,18 +691,20 @@ module Nu
       end
 
       def setup_signal_handlers
-        Signal.trap("INT") do
-          @shutdown = true
-          print_goodbye
-          exit(0)
-        end
+        # Don't trap INT - let it raise Interrupt exception so we can handle it gracefully
+        # Signal.trap("INT") do
+        #   @shutdown = true
+        #   print_goodbye
+        #   exit(0)
+        # end
       end
 
       def print_welcome
         print "\033[2J\033[H"
         @output.output("Nu Agent REPL")
         @output.output("Using: #{client.name} (#{client.model})")
-        @output.output("Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.")
+        @output.output("Type your prompts below. Press Ctrl-D or /exit to quit.")
+        @output.output("Press Ctrl-C to abort current operation.")
         @output.output("Type /help for available commands")
         @output.output("=" * 60)
       end
