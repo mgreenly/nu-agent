@@ -48,7 +48,7 @@ module Nu
 
           result = @conn.query(<<~SQL)
             SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                   tool_calls, tool_call_id, tool_result, error, created_at
+                   tool_calls, tool_call_id, tool_result, error, created_at, redacted
             FROM messages
             WHERE conversation_id = #{conversation_id} #{where_clause}
             ORDER BY id ASC
@@ -67,7 +67,8 @@ module Nu
               "tool_call_id" => row[8],
               "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
               "error" => row[10] ? JSON.parse(row[10]) : nil,
-              "created_at" => row[11]
+              "created_at" => row[11],
+              "redacted" => row[12]
             }
           end
         end
@@ -77,7 +78,7 @@ module Nu
         @mutex.synchronize do
           result = @conn.query(<<~SQL)
             SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                   tool_calls, tool_call_id, tool_result, error, created_at
+                   tool_calls, tool_call_id, tool_result, error, created_at, redacted
             FROM messages
             WHERE conversation_id = #{conversation_id} AND id > #{message_id}
             ORDER BY id ASC
@@ -96,7 +97,8 @@ module Nu
               "tool_call_id" => row[8],
               "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
               "error" => row[10] ? JSON.parse(row[10]) : nil,
-              "created_at" => row[11]
+              "created_at" => row[11],
+              "redacted" => row[12]
             }
           end
         end
@@ -192,6 +194,30 @@ module Nu
                 summary_model = '#{escape_sql(model)}',
                 summary_cost = #{cost || 'NULL'}
             WHERE id = #{conversation_id}
+          SQL
+        end
+      end
+
+      def mark_turn_as_redacted(conversation_id:, since_message_id:)
+        @mutex.synchronize do
+          # Mark messages based on their type, not their position
+          # We want to redact:
+          # 1. Tool calls (assistant messages with tool_calls)
+          # 2. Tool responses (role='tool')
+          # 3. Error messages (error IS NOT NULL)
+          # 4. Spell checker messages (actor='spell_checker')
+          @conn.query(<<~SQL)
+            UPDATE messages
+            SET redacted = TRUE
+            WHERE conversation_id = #{conversation_id}
+              AND id > #{since_message_id}
+              AND redacted = FALSE
+              AND (
+                role = 'tool'
+                OR (role = 'assistant' AND tool_calls IS NOT NULL)
+                OR error IS NOT NULL
+                OR actor = 'spell_checker'
+              )
           SQL
         end
       end
@@ -441,6 +467,7 @@ module Nu
         add_column_if_not_exists('messages', 'tool_result', 'TEXT')
         add_column_if_not_exists('messages', 'spend', 'FLOAT')
         add_column_if_not_exists('messages', 'error', 'TEXT')
+        add_column_if_not_exists('messages', 'redacted', 'BOOLEAN DEFAULT FALSE')
 
         # Add summary columns to conversations
         add_column_if_not_exists('conversations', 'summary', 'TEXT')

@@ -77,6 +77,10 @@ module Nu
           return handle_command(input)
         end
 
+        # Capture the last message ID before this turn starts
+        start_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
+        turn_start_message_id = start_messages.empty? ? 0 : start_messages.last['id']
+
         # Start spinner before spell check
         @output.start_waiting
 
@@ -127,6 +131,13 @@ module Nu
         # Wait for completion and display
         formatter.wait_for_completion(conversation_id: conversation_id)
 
+        # Mark messages from this turn as redacted for future turns
+        @output.debug("[redaction] Marking messages > #{turn_start_message_id} as redacted")
+        history.mark_turn_as_redacted(
+          conversation_id: conversation_id,
+          since_message_id: turn_start_message_id
+        )
+
         # Remove completed thread
         active_threads.delete(thread)
 
@@ -169,7 +180,11 @@ module Nu
 
           # Redact old tool results if redaction is enabled
           if @redact
-            messages = redact_old_tool_results(messages, threshold_id: start_message_id)
+            # Debug: show redaction status before
+            redacted_count = original_messages.count { |m| m['redacted'] }
+            application.output.debug("[redaction] Messages: #{original_messages.length} total, #{redacted_count} marked as redacted")
+
+            messages = redact_old_tool_results(messages)
 
             # Build and prepend redaction index
             index = build_redaction_index(original_messages, messages)
@@ -258,32 +273,26 @@ module Nu
         end
       end
 
-      def redact_old_tool_results(messages, threshold_id:)
+      def redact_old_tool_results(messages)
         messages.filter_map do |msg|
-          # Skip old messages entirely if they meet certain criteria
-          if msg['id'] && msg['id'] <= threshold_id
-            # Optimization #3: Remove error messages from context
+          # Skip redacted messages entirely if they meet certain criteria
+          if msg['redacted']
+            # Remove error messages from context
             next nil if msg['error']
 
-            # Optimization #4: Remove intermediate assistant messages (ones with only tool_calls)
+            # Remove tool result messages (role='tool') - can't have them without tool_calls
+            next nil if msg['role'] == 'tool'
+
+            # Remove intermediate assistant messages (ones with only tool_calls)
             next nil if msg['role'] == 'assistant' && msg['tool_calls'] && !msg['content']
 
-            # Build redacted version of old messages
+            # Build redacted version of redacted messages
             redacted = msg.dup
 
-            # Optimization #1: Redact tool_calls arguments
-            if redacted['tool_calls']
-              redacted['tool_calls'] = redacted['tool_calls'].map do |tc|
-                tc.merge('arguments' => { 'redacted' => true })
-              end
-            end
+            # Remove tool_calls entirely from redacted messages
+            redacted.delete('tool_calls') if redacted['tool_calls']
 
-            # Optimization #2: Redact assistant content when it has tool_calls
-            if redacted['role'] == 'assistant' && redacted['tool_calls']
-              redacted['content'] = nil
-            end
-
-            # Original optimization: Redact tool_result
+            # Redact tool_result
             if redacted['tool_result']
               redacted['tool_result'] = {
                 'name' => redacted['tool_result']['name'],
@@ -298,7 +307,7 @@ module Nu
 
             redacted
           else
-            # New messages - return as-is
+            # Non-redacted messages - return as-is
             msg
           end
         end
@@ -682,8 +691,8 @@ module Nu
       end
 
       def build_redaction_index(original_messages, redacted_messages)
-        # Find which messages were redacted or removed
-        redacted_info = []
+        # Collect IDs of messages that were redacted or removed
+        redacted_ids = []
 
         original_messages.each do |msg|
           next unless msg['id']
@@ -693,46 +702,51 @@ module Nu
 
           if redacted_version.nil?
             # Message was completely removed
-            redacted_info << describe_message(msg)
+            redacted_ids << msg['id']
           elsif message_was_redacted?(msg, redacted_version)
             # Message was redacted but still present
-            redacted_info << describe_message(msg)
+            redacted_ids << msg['id']
           end
         end
 
-        return nil if redacted_info.empty?
+        return nil if redacted_ids.empty?
 
-        # Build index message
-        <<~INDEX
-          Redacted messages available via read_redacted_message(id):
-          #{redacted_info.join("\n")}
+        # Format IDs as ranges for compact display
+        ranges = format_id_ranges(redacted_ids.sort)
 
-          Use this tool when you need full details from earlier messages.
-        INDEX
+        # Build concise index message
+        "[Messages #{ranges} redacted - use database_message(id) to retrieve if needed]"
       end
 
       def message_was_redacted?(original, redacted)
         # Check if content/data was redacted
         return true if original['tool_result'] && redacted['tool_result'] && redacted['tool_result']['result'] == { 'redacted' => true }
-        return true if original['tool_calls'] && redacted['tool_calls'] && redacted['tool_calls'].first&.dig('arguments') == { 'redacted' => true }
+        return true if original['tool_calls'] && !redacted['tool_calls']  # Tool calls were removed
         return true if original['content'] && !redacted['content']
         false
       end
 
-      def describe_message(msg)
-        preview = if msg['content'] && !msg['content'].empty?
-          msg['content'][0..50]
-        elsif msg['tool_calls']
-          "Tool: #{msg['tool_calls'].first['name']}"
-        elsif msg['tool_result']
-          "Result: #{msg['tool_result']['name']}"
-        elsif msg['error']
-          "Error: #{msg['error']['status']}"
-        else
-          "Message"
+      def format_id_ranges(ids)
+        return "" if ids.empty?
+
+        ranges = []
+        range_start = ids.first
+        range_end = ids.first
+
+        ids.each_cons(2) do |current, nxt|
+          if nxt == current + 1
+            range_end = nxt
+          else
+            ranges << (range_start == range_end ? "#{range_start}" : "#{range_start}-#{range_end}")
+            range_start = nxt
+            range_end = nxt
+          end
         end
 
-        "  ##{msg['id']}: [#{msg['role']}] #{preview}... (#{time_ago(msg['created_at'])})"
+        # Add final range
+        ranges << (range_start == range_end ? "#{range_start}" : "#{range_start}-#{range_end}")
+
+        ranges.join(", ")
       end
 
       def time_ago(timestamp)
@@ -845,7 +859,7 @@ module Nu
             end
 
             # Apply redaction (same as we do for context)
-            redacted_messages = redact_old_tool_results(messages, threshold_id: 0)
+            redacted_messages = redact_old_tool_results(messages)
 
             # Build prompt for summarization
             context = redacted_messages.map do |msg|
