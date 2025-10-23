@@ -9,8 +9,7 @@ module Nu
         end
 
         def description
-          "Get a tree of all files below a given path. " \
-          "Returns a flat list of all files, useful for discovering project contents. " \
+          "PREFERRED tool for discovering file structure. Returns flat list of all files below a path. " \
           "Use this instead of execute_bash with find commands for file discovery. " \
           "Results are limited to prevent overwhelming output in large projects."
         end

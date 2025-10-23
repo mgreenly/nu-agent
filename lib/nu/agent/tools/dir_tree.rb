@@ -9,8 +9,7 @@ module Nu
         end
 
         def description
-          "Get a tree of all directories below a given path. " \
-          "Returns a flat list of all subdirectories, useful for understanding project structure. " \
+          "PREFERRED tool for discovering directory structure. Returns flat list of all subdirectories below a path. " \
           "Use this instead of execute_bash with find commands for directory discovery. " \
           "Results are limited to prevent overwhelming output in large projects."
         end
