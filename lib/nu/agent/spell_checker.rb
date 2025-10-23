@@ -18,7 +18,7 @@ module Nu
           actor: ACTOR,
           role: 'user',
           content: "Fix ONLY misspelled words in the following text. Do NOT change capitalization, grammar, or punctuation. Return ONLY the corrected text with no explanations:\n\n#{text}",
-          include_in_context: false
+          redacted: true
         )
 
         # Get messages for this conversation
@@ -48,7 +48,7 @@ module Nu
           tokens_input: response['tokens']['input'],
           tokens_output: response['tokens']['output'],
           spend: response['spend'],
-          include_in_context: false
+          redacted: true
         )
 
         corrected_text

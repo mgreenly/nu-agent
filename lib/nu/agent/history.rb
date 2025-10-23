@@ -16,7 +16,7 @@ module Nu
         setup_schema
       end
 
-      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil)
+      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil, redacted: false)
         @mutex.synchronize do
           tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : 'NULL'
           tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : 'NULL'
@@ -26,13 +26,13 @@ module Nu
             INSERT INTO messages (
               conversation_id, actor, role, content, model,
               include_in_context, tokens_input, tokens_output, spend,
-              tool_calls, tool_call_id, tool_result, error, created_at
+              tool_calls, tool_call_id, tool_result, error, redacted, created_at
             ) VALUES (
               #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
               '#{escape_sql(content || '')}', #{model ? "'#{escape_sql(model)}'" : 'NULL'},
               #{include_in_context}, #{tokens_input || 'NULL'}, #{tokens_output || 'NULL'},
               #{spend || 'NULL'}, #{tool_calls_json}, #{tool_call_id ? "'#{escape_sql(tool_call_id)}'" : 'NULL'},
-              #{tool_result_json}, #{error_json}, CURRENT_TIMESTAMP
+              #{tool_result_json}, #{error_json}, #{redacted}, CURRENT_TIMESTAMP
             )
           SQL
         end

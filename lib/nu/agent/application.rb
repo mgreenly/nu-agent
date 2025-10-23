@@ -283,6 +283,9 @@ module Nu
             # Remove tool result messages (role='tool') - can't have them without tool_calls
             next nil if msg['role'] == 'tool'
 
+            # Remove spell checker messages entirely
+            next nil if msg['actor'] == 'spell_checker'
+
             # Remove intermediate assistant messages (ones with only tool_calls)
             next nil if msg['role'] == 'assistant' && msg['tool_calls'] && !msg['content']
 
@@ -298,11 +301,6 @@ module Nu
                 'name' => redacted['tool_result']['name'],
                 'result' => { 'redacted' => true }
               }
-            end
-
-            # Redact spell_checker messages
-            if redacted['actor'] == 'spell_checker'
-              redacted['content'] = '[REDACTED - spell check]'
             end
 
             redacted
