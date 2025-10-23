@@ -143,12 +143,17 @@ module Nu
             since_message_id: turn_start_message_id
           )
         rescue Interrupt
-          # Ctrl-C pressed - abort current operation
+          # Ctrl-C pressed - abort all operations and return to prompt
           @output.output("\n\nOperation aborted by user (Ctrl-C)")
 
-          # Kill thread if it was created
-          if thread
-            thread.kill
+          # Kill all active threads (main chat loop, summarizer, etc.)
+          active_threads.each do |t|
+            t.kill if t.alive?
+          end
+          active_threads.clear
+
+          # Clean up worker count if needed
+          if thread && thread.alive?
             history.decrement_workers
           elsif workers_incremented
             # Workers were incremented but thread wasn't created yet
