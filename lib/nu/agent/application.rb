@@ -145,7 +145,7 @@ module Nu
         rescue Interrupt
           # Ctrl-C pressed - abort all operations and return to prompt
           @output.stop_waiting
-          puts "\n\e[90m(Ctrl-C) Operation aborted by user.\e[0m"
+          puts "\e[90m(Ctrl-C) Operation aborted by user.\e[0m"
 
           # Kill all active threads (main chat loop, summarizer, etc.)
           active_threads.each do |t|
