@@ -19,6 +19,9 @@ module Nu
           Prefer ExecuteRuby/ExecuteBash for one-time script execution over creating temporary files.
 
           You can use your database tools to access memories from before the current conversation.
+
+          # Pseudonyms
+          - "project" can mean "the current directory"
         PROMPT
 
         # Pricing per million tokens (verified 2025-10-21)
