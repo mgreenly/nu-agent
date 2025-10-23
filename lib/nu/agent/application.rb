@@ -25,6 +25,7 @@ module Nu
         @redact = @history.get_config('redaction', default: 'true') == 'true'
         @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
         @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'true') == 'true'
+        @verbosity = @history.get_config('verbosity', default: '0').to_i
         @conversation_id = @history.create_conversation
         @formatter = Formatter.new(
           history: @history,
@@ -373,7 +374,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools']
+        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
         all_models = ModelFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -564,6 +565,27 @@ module Nu
           return :continue
         end
 
+        # Handle /verbosity [NUM] command
+        if input.downcase.start_with?('/verbosity')
+          parts = input.split(' ', 2)
+          if parts.length < 2 || parts[1].strip.empty?
+            @output.output("Usage: /verbosity <number>")
+            @output.output("Current: verbosity=#{@verbosity}")
+            return :continue
+          end
+
+          value = parts[1].strip
+          if value =~ /^\d+$/
+            @verbosity = value.to_i
+            history.set_config('verbosity', value)
+            @output.output("verbosity=#{@verbosity}")
+          else
+            @output.output("Invalid option. Use: /verbosity <number>")
+          end
+
+          return :continue
+        end
+
         case input.downcase
         when '/exit'
           :exit
@@ -612,6 +634,7 @@ module Nu
         @output.output("  /model <name>        - Switch to a different model (e.g., /model gpt-5)")
         @output.output("  /models              - List available models")
         @output.output("  /redaction <on|off>  - Enable/disable redaction of tool results in context")
+        @output.output("  /verbosity <number>  - Set verbosity level for debug output (default: 0)")
         @output.output("  /reset               - Start a new conversation")
         @output.output("  /spellcheck <on|off> - Enable/disable automatic spell checking of user input")
         @output.output("  /summarizer <on|off> - Enable/disable background conversation summarization")
@@ -651,6 +674,7 @@ module Nu
         @output.output("Version:       #{Nu::Agent::VERSION}")
         @output.output("Orchestrator:  #{@client.name} (#{@client.model})")
         @output.output("Debug mode:    #{@debug}")
+        @output.output("Verbosity:     #{@verbosity}")
         @output.output("Redaction:     #{@redact ? 'on' : 'off'}")
         @output.output("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}")
 
