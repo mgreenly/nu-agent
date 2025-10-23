@@ -10,6 +10,8 @@ module Nu
         @mutex = Mutex.new
         @spinner = Spinner.new
         @waiting = false
+        @waiting_message = nil
+        @waiting_start_time = nil
       end
 
       def output(message)
@@ -39,16 +41,20 @@ module Nu
       end
 
       # Public methods to control spinner
-      def start_waiting(message = "Thinking...")
+      def start_waiting(message = "Thinking...", start_time: nil)
         @mutex.synchronize do
           @waiting = true
-          @spinner.start(message)
+          @waiting_message = message
+          @waiting_start_time = start_time
+          @spinner.start(message, start_time: start_time)
         end
       end
 
       def stop_waiting
         @mutex.synchronize do
           @waiting = false
+          @waiting_message = nil
+          @waiting_start_time = nil
           @spinner.stop
         end
       end
@@ -60,7 +66,7 @@ module Nu
       end
 
       def restart_spinner
-        @spinner.start if @waiting
+        @spinner.start(@waiting_message, start_time: @waiting_start_time) if @waiting
       end
     end
   end

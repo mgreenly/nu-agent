@@ -141,9 +141,12 @@ module Nu
 
           # ANSI color codes: \e[90m = gray, \e[0m = reset
           @output.puts "\e[90m"
-          @output.puts "Elapsed time: #{'%.2f' % elapsed_time}s" if elapsed_time
           @output.puts "Session tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})"
-          @output.puts "Session spend: $#{'%.6f' % tokens['spend']}\e[0m"
+          @output.puts "Session spend: $#{'%.6f' % tokens['spend']}"
+          if elapsed_time
+            @output.puts "Elapsed time: #{'%.2f' % elapsed_time}s"
+          end
+          @output.print "\e[0m"
         end
       end
 

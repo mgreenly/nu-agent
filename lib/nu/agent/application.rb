@@ -84,8 +84,8 @@ module Nu
         # Capture turn start time for elapsed time calculation
         @formatter.turn_start_time = Time.now
 
-        # Start spinner before spell check
-        @output.start_waiting
+        # Start spinner before spell check (with elapsed time tracking)
+        @output.start_waiting("Thinking...", start_time: @formatter.turn_start_time)
 
         thread = nil
         workers_incremented = false
