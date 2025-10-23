@@ -6,7 +6,7 @@ module Nu
       attr_writer :client, :debug
       attr_accessor :turn_start_time
 
-      def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout, output_manager: nil, application: nil)
+      def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout, output_manager: nil)
         @history = history
         @session_start_time = session_start_time
         @conversation_id = conversation_id
@@ -14,7 +14,6 @@ module Nu
         @debug = debug
         @output = output
         @output_manager = output_manager
-        @application = application
         @last_message_id = 0
         @turn_start_time = nil
       end
@@ -180,24 +179,7 @@ module Nu
 
         @output.puts "\e[90m\n[Tool Result] #{name}"
         if result.is_a?(Hash)
-          # Get verbosity level (default to 0 if application not set)
-          verbosity = @application ? @application.verbosity : 0
-
           result.each do |key, value|
-            # Skip 'content' field for file_read when verbosity <= 1
-            if name == 'file_read' && key.to_s == 'content' && verbosity <= 1
-              @output.puts "  content: [hidden - use /verbosity 2 or higher to show]"
-              next
-            end
-
-            # Skip 'stdout' and 'stderr' for execute_python/execute_bash when verbosity <= 1
-            if (name == 'execute_python' || name == 'execute_bash') &&
-               (key.to_s == 'stdout' || key.to_s == 'stderr') &&
-               verbosity <= 1
-              @output.puts "  #{key}: [hidden - use /verbosity 2 or higher to show]"
-              next
-            end
-
             # Format multiline values (like stdout/stderr) with proper indentation
             if value.to_s.include?("\n")
               @output.puts "  #{key}:"
