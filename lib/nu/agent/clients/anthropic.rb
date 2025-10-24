@@ -19,6 +19,8 @@ module Nu
 
           You can use your database tools to access memories from before the current conversation.
 
+          You can use your tools to write scripts and you have access to the internet.
+
           # Pseudonyms
           - "project" can mean "the current directory"
         PROMPT
