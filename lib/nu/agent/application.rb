@@ -141,7 +141,7 @@ module Nu
           thread = @operation_mutex.synchronize do
             conv_id = conversation_id
             hist = history
-            cli = client
+            cli = orchestrator
             session_start = session_start_time
 
             # Process in a thread
