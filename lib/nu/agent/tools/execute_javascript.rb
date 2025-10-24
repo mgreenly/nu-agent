@@ -10,11 +10,18 @@ module Nu
           "execute_javascript"
         end
 
+        def available?
+          deno_path = File.join(Dir.home, '.deno', 'bin', 'deno')
+          File.exist?(deno_path) && File.executable?(deno_path)
+        end
+
         def description
           "PREFERRED tool for script generation and execution. " \
-          "Execute JavaScript code using Deno for: data processing, file operations, API calls, JSON/text manipulation, web scraping, and any computational tasks. " \
+          "Execute JavaScript code using Deno (server-side runtime, NOT a browser). " \
+          "Perfect for: data processing, file operations, API calls, JSON/text manipulation, HTTP requests, and computational tasks. " \
           "Has access to Deno standard library and can import npm packages. " \
-          "Has full internet access and can make HTTP/HTTPS requests using fetch API. " \
+          "IMPORTANT: Browser APIs are NOT available (no DOM, window, document, DOMParser, etc.). " \
+          "Has full internet access via fetch API. " \
           "Code execution is sandboxed with read/write access limited to the current working directory. " \
           "Supports modern JavaScript features including async/await, fetch API, and ES modules."
         end

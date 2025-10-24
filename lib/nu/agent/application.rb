@@ -808,6 +808,11 @@ module Nu
           desc = desc.strip
           desc += "." unless desc.end_with?(".")
 
+          # Check if tool has credentials (if applicable)
+          if tool.respond_to?(:available?) && !tool.available?
+            desc += " (missing creds)"
+          end
+
           @output.output("  #{tool.name.ljust(25)} - #{desc}")
         end
       end

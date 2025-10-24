@@ -48,7 +48,11 @@
 - **Nu::Agent::Tools::DirTree** - Generates hierarchical directory structure visualization
 
 ### Execution Tools
-- **Nu::Agent::Tools::ExecuteJavascript** - Executes JavaScript code using Deno with directory-restricted permissions (ONLY tool for script execution)
+- **Nu::Agent::Tools::ExecuteBash** - Sandboxed bash command execution using bubblewrap with directory and network restrictions
+- **Nu::Agent::Tools::ExecuteJavascript** - JavaScript execution using Deno with directory-restricted permissions
+
+### Internet Tools
+- **Nu::Agent::Tools::SearchInternet** - Web search using Google Custom Search API with configurable result counts
 
 ### Meta Tools
 - **Nu::Agent::Tools::AgentSummarizer** - Background conversation summarization for context compression

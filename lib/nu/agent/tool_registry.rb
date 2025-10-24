@@ -20,6 +20,13 @@ module Nu
         @tools.values
       end
 
+      def available
+        @tools.values.select do |tool|
+          # Include tools that don't have available? method, or have it and return true
+          !tool.respond_to?(:available?) || tool.available?
+        end
+      end
+
       def execute(name:, arguments:, history:, context:)
         tool = find(name)
         raise Error, "Unknown tool: #{name}" unless tool
@@ -29,7 +36,7 @@ module Nu
 
       # Format tools for Anthropic API
       def for_anthropic
-        all.map do |tool|
+        available.map do |tool|
           {
             name: tool.name,
             description: tool.description,
@@ -40,7 +47,7 @@ module Nu
 
       # Format tools for Google API
       def for_google
-        all.map do |tool|
+        available.map do |tool|
           {
             name: tool.name,
             description: tool.description,
@@ -51,7 +58,7 @@ module Nu
 
       # Format tools for OpenAI API
       def for_openai
-        all.map do |tool|
+        available.map do |tool|
           {
             type: 'function',
             function: {
@@ -75,6 +82,7 @@ module Nu
         register(Tools::DirDelete.new)
         register(Tools::DirList.new)
         register(Tools::DirTree.new)
+        register(Tools::ExecuteBash.new)
         register(Tools::ExecuteJavascript.new)
         register(Tools::FileCopy.new)
         register(Tools::FileDelete.new)
@@ -86,6 +94,7 @@ module Nu
         register(Tools::FileStat.new)
         register(Tools::FileTree.new)
         register(Tools::FileWrite.new)
+        register(Tools::SearchInternet.new)
       end
 
       def parameters_to_schema(parameters)
