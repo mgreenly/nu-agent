@@ -5,7 +5,7 @@ require 'stringio'
 
 RSpec.describe Nu::Agent::Formatter do
   let(:history) { instance_double(Nu::Agent::History) }
-  let(:client) { instance_double('Client', max_context: 200_000) }
+  let(:orchestrator) { instance_double('Orchestrator', max_context: 200_000) }
   let(:output) { StringIO.new }
   let(:session_start_time) { Time.now - 60 }
   let(:conversation_id) { 1 }
@@ -14,7 +14,7 @@ RSpec.describe Nu::Agent::Formatter do
       history: history,
       session_start_time: session_start_time,
       conversation_id: conversation_id,
-      client: client,
+      orchestrator: orchestrator,
       output: output
     )
   end

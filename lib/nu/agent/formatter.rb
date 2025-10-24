@@ -3,14 +3,14 @@
 module Nu
   module Agent
     class Formatter
-      attr_writer :client, :debug
+      attr_writer :orchestrator, :debug
       attr_accessor :turn_start_time
 
-      def initialize(history:, session_start_time:, conversation_id:, client:, debug: false, output: $stdout, output_manager: nil, application: nil)
+      def initialize(history:, session_start_time:, conversation_id:, orchestrator:, debug: false, output: $stdout, output_manager: nil, application: nil)
         @history = history
         @session_start_time = session_start_time
         @conversation_id = conversation_id
-        @client = client
+        @orchestrator = orchestrator
         @debug = debug
         @output = output
         @output_manager = output_manager
@@ -137,7 +137,7 @@ module Nu
             since: @session_start_time
           )
 
-          max_context = @client.max_context
+          max_context = @orchestrator.max_context
           percentage = (tokens['total'].to_f / max_context * 100).round(1)
 
           # ANSI color codes: \e[90m = gray, \e[0m = reset

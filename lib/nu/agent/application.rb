@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Application
-      attr_reader :client, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex, :output, :verbosity
+      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex, :output, :verbosity
       attr_accessor :active_threads
 
       def initialize(options:)
@@ -35,8 +35,8 @@ module Nu
           raise Error, "Models not configured. Run with --reset-models <model_name> to initialize."
         end
 
-        # Create client with configured model
-        @client = ClientFactory.create(orchestrator_model)
+        # Create orchestrator client with configured model
+        @orchestrator = ClientFactory.create(orchestrator_model)
         @spellchecker_model = spellchecker_model
         @summarizer_model = summarizer_model
 
@@ -53,7 +53,7 @@ module Nu
           history: @history,
           session_start_time: @session_start_time,
           conversation_id: @conversation_id,
-          client: @client,
+          orchestrator: @orchestrator,
           debug: @debug,
           output_manager: @output,
           application: self
@@ -445,7 +445,7 @@ module Nu
           # /model without arguments - show current models
           if parts.length == 1
             @output.output("Current Models:")
-            @output.output("  Orchestrator:  #{@client.model}")
+            @output.output("  Orchestrator:  #{@orchestrator.model}")
             @output.output("  Spellchecker:  #{@spellchecker_model}")
             @output.output("  Summarizer:    #{@summarizer_model}")
             return :continue
@@ -491,12 +491,12 @@ module Nu
                 return :continue
               end
 
-              # Switch both client and formatter
-              @client = new_client
-              @formatter.client = new_client
+              # Switch both orchestrator and formatter
+              @orchestrator = new_client
+              @formatter.orchestrator = new_client
               @history.set_config('model_orchestrator', new_model_name)
 
-              @output.output("Switched orchestrator to: #{@client.name} (#{@client.model})")
+              @output.output("Switched orchestrator to: #{@orchestrator.name} (#{@orchestrator.model})")
             end
 
           when 'spellchecker'
@@ -746,7 +746,7 @@ module Nu
 
         # Models section
         @output.output("Models:")
-        @output.output("  Orchestrator:  #{@client.model}")
+        @output.output("  Orchestrator:  #{@orchestrator.model}")
         @output.output("  Spellchecker:  #{@spellchecker_model}")
         @output.output("  Summarizer:    #{@summarizer_model}")
 
@@ -823,7 +823,7 @@ module Nu
       def print_welcome
         print "\033[2J\033[H"
         @output.output("Nu Agent REPL")
-        @output.output("Using: #{client.name} (#{client.model})")
+        @output.output("Using: #{orchestrator.name} (#{orchestrator.model})")
         @output.output("Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.")
         @output.output("(Ctrl-C during processing aborts operation)")
         @output.output("Type /help for available commands")
