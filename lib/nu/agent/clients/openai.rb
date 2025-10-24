@@ -24,22 +24,23 @@ module Nu
           - "project" can mean "the current directory"
         PROMPT
 
-        # Pricing per million tokens (verified 2025-10-21)
-        PRICING = {
-          'gpt-5' => { input: 1.25, output: 10.00 },
-          'gpt-5-mini' => { input: 0.25, output: 2.00 },
-          'gpt-5-nano' => { input: 0.05, output: 0.40 },
-          'gpt-5-nano-2025-08-07' => { input: 0.05, output: 0.40 },
-          'gpt-5-pro' => { input: 15.00, output: 120.00 }
-        }.freeze
-
-        # Max context window in tokens (verified 2025-10-21)
-        MAX_CONTEXT = {
-          'gpt-5' => 400_000,
-          'gpt-5-mini' => 400_000,
-          'gpt-5-nano' => 400_000,
-          'gpt-5-nano-2025-08-07' => 400_000,
-          'gpt-5-pro' => 400_000
+        # Model configurations (verified 2025-10-21)
+        MODELS = {
+          'gpt-5-nano-2025-08-07' => {
+            display_name: 'GPT-5 Nano',
+            max_context: 400_000,
+            pricing: { input: 0.05, output: 0.40 }
+          },
+          'gpt-5-mini' => {
+            display_name: 'GPT-5 Mini',
+            max_context: 400_000,
+            pricing: { input: 0.25, output: 2.00 }
+          },
+          'gpt-5' => {
+            display_name: 'GPT-5',
+            max_context: 400_000,
+            pricing: { input: 1.25, output: 10.00 }
+          }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
@@ -100,7 +101,7 @@ module Nu
         end
 
         def max_context
-          MAX_CONTEXT[@model] || MAX_CONTEXT['gpt-5']
+          MODELS.dig(@model, :max_context) || MODELS.dig('gpt-5', :max_context)
         end
 
         def format_tools(tool_registry)
@@ -108,28 +109,16 @@ module Nu
         end
 
         def list_models
-          begin
-            response = @client.models.list
-            models = response.dig('data') || []
-
-            {
-              provider: "OpenAI",
-              note: "Live list from OpenAI API",
-              models: models.map { |m| { id: m['id'], owned_by: m['owned_by'] } }
-            }
-          rescue => e
-            {
-              provider: "OpenAI",
-              error: "Failed to fetch models: #{e.message}",
-              models: []
-            }
-          end
+          {
+            provider: "OpenAI",
+            models: MODELS.map { |id, info| { id: id, display_name: info[:display_name] } }
+          }
         end
 
         def calculate_cost(input_tokens:, output_tokens:)
           return 0.0 if input_tokens.nil? || output_tokens.nil?
 
-          pricing = PRICING[@model] || PRICING['gpt-5']
+          pricing = MODELS.dig(@model, :pricing) || MODELS.dig('gpt-5', :pricing)
           input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
           output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
           input_cost + output_cost

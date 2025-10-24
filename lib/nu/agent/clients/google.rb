@@ -24,25 +24,28 @@ module Nu
           - "project" can mean "the current directory"
         PROMPT
 
-        # Pricing per million tokens (verified 2025-10-21)
-        PRICING = {
-          'gemini-2.0-flash-exp' => { input: 0.00, output: 0.00 },  # Free tier
-          'gemini-2.5-pro' => { input: 1.25, output: 10.00 },  # <= 200k tokens
-          'gemini-2.5-flash' => { input: 0.30, output: 2.50 },
-          'gemini-2.5-flash-lite' => { input: 0.10, output: 0.40 }
-        }.freeze
-
-        # Max context window in tokens (verified 2025-10-21)
-        MAX_CONTEXT = {
-          'gemini-2.0-flash-exp' => 1_048_576,
-          'gemini-2.5-pro' => 1_048_576,
-          'gemini-2.5-flash' => 1_048_576,
-          'gemini-2.5-flash-lite' => 1_048_576
+        # Model configurations (verified 2025-10-21)
+        MODELS = {
+          'gemini-2.5-flash-lite' => {
+            display_name: 'Gemini 2.5 Flash Lite',
+            max_context: 1_048_576,
+            pricing: { input: 0.10, output: 0.40 }
+          },
+          'gemini-2.5-flash' => {
+            display_name: 'Gemini 2.5 Flash',
+            max_context: 1_048_576,
+            pricing: { input: 0.30, output: 2.50 }
+          },
+          'gemini-2.5-pro' => {
+            display_name: 'Gemini 2.5 Pro',
+            max_context: 1_048_576,
+            pricing: { input: 1.25, output: 10.00 }
+          }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
-          @model = model || 'gemini-2.0-flash-exp'
+          @model = model || 'gemini-2.5-flash'
           @client = Gemini.new(
             credentials: {
               service: 'generative-language-api',
@@ -101,7 +104,7 @@ module Nu
       end
 
       def max_context
-        MAX_CONTEXT[@model] || MAX_CONTEXT['gemini-2.0-flash-exp']
+        MODELS.dig(@model, :max_context) || MODELS.dig('gemini-2.5-flash', :max_context)
       end
 
       def format_tools(tool_registry)
@@ -109,34 +112,16 @@ module Nu
       end
 
       def list_models
-        begin
-          # Try to list models from API
-          result = @client.models
-          models = result.dig('models') || []
-
-          {
-            provider: "Google",
-            note: "Live list from Google Gemini API",
-            models: models.map { |m| { name: m['name'], display_name: m.dig('displayName'), supported_generation_methods: m.dig('supportedGenerationMethods') } }
-          }
-        rescue => e
-          {
-            provider: "Google",
-            error: "Failed to fetch models: #{e.message}",
-            note: "Falling back to curated list",
-            models: [
-              { id: "gemini-2.0-flash-exp", aliases: ["gemini", "gemini-2.0-flash"] },
-              { id: "gemini-1.5-pro", aliases: ["gemini-pro"] },
-              { id: "gemini-1.5-flash", aliases: ["gemini-flash"] }
-            ]
-          }
-        end
+        {
+          provider: "Google",
+          models: MODELS.map { |id, info| { id: id, display_name: info[:display_name] } }
+        }
       end
 
       def calculate_cost(input_tokens:, output_tokens:)
         return 0.0 if input_tokens.nil? || output_tokens.nil?
 
-        pricing = PRICING[@model] || PRICING['gemini-2.0-flash-exp']
+        pricing = MODELS.dig(@model, :pricing) || MODELS.dig('gemini-2.5-flash', :pricing)
         input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
         output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
         input_cost + output_cost

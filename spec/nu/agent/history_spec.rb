@@ -283,7 +283,7 @@ RSpec.describe Nu::Agent::History do
     end
   end
 
-  describe '#execute_readonly_query' do
+  describe '#execute_query' do
     let(:conversation_id) { history.create_conversation }
 
     before do
@@ -292,38 +292,43 @@ RSpec.describe Nu::Agent::History do
     end
 
     it 'executes SELECT queries' do
-      result = history.execute_readonly_query("SELECT content FROM messages WHERE conversation_id = #{conversation_id}")
+      result = history.execute_query("SELECT content FROM messages WHERE conversation_id = #{conversation_id}")
 
       expect(result).to be_an(Array)
       expect(result.length).to eq(2)
       expect(result.first).to have_key('content')
     end
 
-    it 'adds LIMIT clause if missing' do
-      result = history.execute_readonly_query("SELECT * FROM messages")
-
-      expect(result.length).to be <= 100
-    end
-
-    it 'caps results at 1000 rows' do
-      # Add more than 1000 messages
-      1100.times do |i|
+    it 'caps results at 500 rows' do
+      # Add more than 500 messages
+      510.times do |i|
         history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: "Message #{i}")
       end
 
-      result = history.execute_readonly_query("SELECT * FROM messages LIMIT 2000")
+      result = history.execute_query("SELECT * FROM messages")
 
-      expect(result.length).to eq(1000)
+      expect(result.length).to eq(500)
+    end
+
+    it 'caps results at 500 rows even with higher LIMIT' do
+      # Add more than 500 messages
+      510.times do |i|
+        history.add_message(conversation_id: conversation_id, actor: 'user', role: 'user', content: "Message #{i}")
+      end
+
+      result = history.execute_query("SELECT * FROM messages LIMIT 1000")
+
+      expect(result.length).to eq(500)
     end
 
     it 'rejects non-SELECT queries' do
       expect {
-        history.execute_readonly_query("INSERT INTO messages (content) VALUES ('bad')")
-      }.to raise_error(ArgumentError, /Only SELECT, SHOW, and DESCRIBE/)
+        history.execute_query("INSERT INTO messages (content) VALUES ('bad')")
+      }.to raise_error(ArgumentError, /Only read-only queries/)
     end
 
     it 'allows SHOW queries' do
-      result = history.execute_readonly_query("SHOW TABLES")
+      result = history.execute_query("SHOW TABLES")
 
       expect(result).to be_an(Array)
     end

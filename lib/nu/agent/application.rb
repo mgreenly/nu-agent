@@ -15,7 +15,7 @@ module Nu
         @critical_sections = 0
         @critical_mutex = Mutex.new
         @operation_mutex = Mutex.new
-        @client = ModelFactory.create(options.model)
+        @client = ClientFactory.create(options.model)
         @history = History.new
 
         # Load settings from database (default all to true, except debug which defaults to false)
@@ -376,7 +376,7 @@ module Nu
       def setup_readline
         # Set up tab completion
         commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
-        all_models = ModelFactory.available_models.values.flatten
+        all_models = ClientFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
           # Check if we're completing after '/model '
@@ -445,7 +445,7 @@ module Nu
 
             # Try to create new client
             begin
-              new_client = ModelFactory.create(new_model_name)
+              new_client = ClientFactory.create(new_model_name)
             rescue Error => e
               @output.error("Error: #{e.message}")
               return :continue
@@ -704,7 +704,7 @@ module Nu
       end
 
       def print_models
-        models = ModelFactory.display_models
+        models = ClientFactory.display_models
 
         @output.output("\nAvailable Models:")
         @output.output("  Anthropic: #{models[:anthropic].join(', ')}")
@@ -879,8 +879,8 @@ module Nu
           summarizer_status['failed'] = 0
         end
 
-        # Create a gpt-5-nano client for summarization
-        summarizer = ModelFactory.create('gpt-5-nano')
+        # Create a gemini-2.5-flash client for summarization
+        summarizer = ClientFactory.create('gemini-2.5-flash')
 
         conversations.each do |conv|
           # Check for shutdown signal before processing each conversation
@@ -904,7 +904,7 @@ module Nu
                 history.update_conversation_summary(
                   conversation_id: conv_id,
                   summary: "empty conversation",
-                  model: 'gpt-5-nano',
+                  model: 'gemini-2.5-flash',
                   cost: 0.0
                 )
               ensure
@@ -986,7 +986,7 @@ module Nu
                 history.update_conversation_summary(
                   conversation_id: conv_id,
                   summary: summary,
-                  model: 'gpt-5-nano',
+                  model: 'gemini-2.5-flash',
                   cost: cost
                 )
               ensure

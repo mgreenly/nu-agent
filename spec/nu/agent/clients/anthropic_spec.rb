@@ -62,7 +62,7 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
     it 'sends formatted messages to the Anthropic API' do
       expect(mock_anthropic_client).to receive(:messages).with(
         parameters: hash_including(
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'claude-sonnet-4-5',
           messages: [
             { role: 'user', content: 'Hello' },
             { role: 'assistant', content: 'Hi there!' }
@@ -78,7 +78,7 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
 
       expect(response).to include(
         'content' => "Hello! How can I help you?",
-        'model' => 'claude-sonnet-4-5-20250929',
+        'model' => 'claude-sonnet-4-5',
         'tokens' => {
           'input' => 15,
           'output' => 10
@@ -90,7 +90,7 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
     it 'includes the system prompt' do
       expect(mock_anthropic_client).to receive(:messages).with(
         parameters: hash_including(
-          system: a_string_including('helpful AI assistant')
+          system: a_string_including('raw text, do not use markdown')
         )
       )
 
@@ -118,7 +118,7 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
 
   describe '#model' do
     it 'returns the model identifier' do
-      expect(client.model).to eq('claude-sonnet-4-5-20250929')
+      expect(client.model).to eq('claude-sonnet-4-5')
     end
   end
 

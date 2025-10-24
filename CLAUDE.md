@@ -9,9 +9,9 @@
 - **Nu::Agent::Formatter** - Terminal output formatter with debug modes, token tracking, and message display
 - **Nu::Agent::OutputManager** - Thread-safe output coordinator synchronizing spinner and message display
 - **Nu::Agent::Spinner** - Animated terminal spinner with elapsed time tracking for long-running operations
-- **Nu::Agent::SpellChecker** - Automatic user input spell correction using gpt-5-nano LLM
+- **Nu::Agent::SpellChecker** - Automatic user input spell correction using gemini-2.5-flash LLM
 - **Nu::Agent::ApiKey** - Secure API key wrapper preventing accidental logging or inspection
-- **Nu::Agent::ModelFactory** - Factory pattern implementation for creating provider-specific LLM clients
+- **Nu::Agent::ClientFactory** - Factory pattern implementation for creating provider-specific LLM clients
 - **Nu::Agent::ToolRegistry** - Tool registration system with provider-specific schema formatting
 
 ## LLM Client Classes

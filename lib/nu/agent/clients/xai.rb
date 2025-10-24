@@ -8,16 +8,18 @@ module Nu
         ApiKey = ::Nu::Agent::ApiKey
         Error = ::Nu::Agent::Error
 
-        # Pricing per million tokens (verified 2025-10-21)
-        PRICING = {
-          'grok-3' => { input: 3.00, output: 15.00 },
-          'grok-code-fast-1' => { input: 0.20, output: 1.50 }
-        }.freeze
-
-        # Max context window in tokens (verified 2025-10-21)
-        MAX_CONTEXT = {
-          'grok-3' => 1_000_000,
-          'grok-code-fast-1' => 256_000
+        # Model configurations (verified 2025-10-21)
+        MODELS = {
+          'grok-3' => {
+            display_name: 'Grok 3',
+            max_context: 1_000_000,
+            pricing: { input: 3.00, output: 15.00 }
+          },
+          'grok-code-fast-1' => {
+            display_name: 'Grok Code Fast 1',
+            max_context: 256_000,
+            pricing: { input: 0.20, output: 1.50 }
+          }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
@@ -36,22 +38,18 @@ module Nu
         def list_models
           {
             provider: "X.AI",
-            note: "X.AI Grok models",
-            models: [
-              { id: "grok-3", aliases: ["grok"] },
-              { id: "grok-code-fast-1" }
-            ]
+            models: MODELS.map { |id, info| { id: id, display_name: info[:display_name] } }
           }
         end
 
         def max_context
-          MAX_CONTEXT[@model] || MAX_CONTEXT['grok-3']
+          MODELS.dig(@model, :max_context) || MODELS.dig('grok-3', :max_context)
         end
 
         def calculate_cost(input_tokens:, output_tokens:)
           return 0.0 if input_tokens.nil? || output_tokens.nil?
 
-          pricing = PRICING[@model] || PRICING['grok-beta']
+          pricing = MODELS.dig(@model, :pricing) || MODELS.dig('grok-3', :pricing)
           input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
           output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
           input_cost + output_cost

@@ -6,7 +6,7 @@ module Nu
       attr_reader :model, :debug
 
       def initialize(args = ARGV)
-        @model = 'gpt-5-nano'
+        @model = 'gpt-5-nano-2025-08-07'
         @debug = false
         parse(args)
       end
@@ -39,14 +39,14 @@ module Nu
       end
 
       def print_available_models
-        models = ModelFactory.display_models
+        models = ClientFactory.display_models
 
         puts "\nAvailable Models:"
         puts "  Anthropic: #{models[:anthropic].join(', ')}"
         puts "  Google:    #{models[:google].join(', ')}"
         puts "  OpenAI:    #{models[:openai].join(', ')}"
         puts "  X.AI:      #{models[:xai].join(', ')}"
-        puts "\n  Default: gpt-5-nano"
+        puts "\n  Default: gpt-5-nano-2025-08-07"
       end
     end
   end

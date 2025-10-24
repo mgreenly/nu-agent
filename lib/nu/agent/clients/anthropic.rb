@@ -23,23 +23,28 @@ module Nu
           - "project" can mean "the current directory"
         PROMPT
 
-        # Pricing per million tokens (verified 2025-10-21)
-        PRICING = {
-          'claude-sonnet-4-5-20250929' => { input: 3.00, output: 15.00 },
-          'claude-haiku-4-5-20251001' => { input: 1.00, output: 5.00 },
-          'claude-opus-4-1-20250805' => { input: 15.00, output: 75.00 }
-        }.freeze
-
-        # Max context window in tokens (verified 2025-10-21)
-        MAX_CONTEXT = {
-          'claude-sonnet-4-5-20250929' => 200_000,
-          'claude-haiku-4-5-20251001' => 200_000,
-          'claude-opus-4-1-20250805' => 200_000
+        # Model configurations (verified 2025-10-21)
+        MODELS = {
+          'claude-haiku-4-5' => {
+            display_name: 'Claude Haiku 4.5',
+            max_context: 200_000,
+            pricing: { input: 1.00, output: 5.00 }
+          },
+          'claude-sonnet-4-5' => {
+            display_name: 'Claude Sonnet 4.5',
+            max_context: 200_000,
+            pricing: { input: 3.00, output: 15.00 }
+          },
+          'claude-opus-4-1' => {
+            display_name: 'Claude Opus 4.1',
+            max_context: 200_000,
+            pricing: { input: 15.00, output: 75.00 }
+          }
         }.freeze
 
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
-          @model = model || 'claude-sonnet-4-5-20250929'
+          @model = model || 'claude-sonnet-4-5'
           @client = AnthropicGem::Client.new(access_token: @api_key.value)
         end
 
@@ -97,7 +102,7 @@ module Nu
       end
 
       def max_context
-        MAX_CONTEXT[@model] || MAX_CONTEXT['claude-sonnet-4-5-20250929']
+        MODELS.dig(@model, :max_context) || MODELS.dig('claude-sonnet-4-5', :max_context)
       end
 
       def format_tools(tool_registry)
@@ -105,35 +110,16 @@ module Nu
       end
 
       def list_models
-        begin
-          # Use the anthropic gem's underlying connection to call the models endpoint
-          response = @client.connection.get('v1/models')
-          models_data = JSON.parse(response.body)
-          models = models_data['data'] || []
-
-          {
-            provider: "Anthropic",
-            note: "Live list from Anthropic API",
-            models: models.map { |m| { id: m['id'], name: m['name'], display_name: m['display_name'] } }
-          }
-        rescue => e
-          {
-            provider: "Anthropic",
-            error: "Failed to fetch models: #{e.message}",
-            note: "Falling back to curated list",
-            models: [
-              { id: "claude-sonnet-4-5-20250929", aliases: ["sonnet", "claude-sonnet-4-5"] },
-              { id: "claude-haiku-4-5-20251001", aliases: ["haiku", "claude-haiku-4-5"] },
-              { id: "claude-opus-4-1-20250805", aliases: ["opus", "claude-opus-4-1"] }
-            ]
-          }
-        end
+        {
+          provider: "Anthropic",
+          models: MODELS.map { |id, info| { id: id, display_name: info[:display_name] } }
+        }
       end
 
       def calculate_cost(input_tokens:, output_tokens:)
         return 0.0 if input_tokens.nil? || output_tokens.nil?
 
-        pricing = PRICING[@model] || PRICING['claude-sonnet-4-5-20250929']
+        pricing = MODELS.dig(@model, :pricing) || MODELS.dig('claude-sonnet-4-5', :pricing)
         input_cost = (input_tokens / 1_000_000.0) * pricing[:input]
         output_cost = (output_tokens / 1_000_000.0) * pricing[:output]
         input_cost + output_cost

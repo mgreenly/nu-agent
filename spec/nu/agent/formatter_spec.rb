@@ -5,6 +5,7 @@ require 'stringio'
 
 RSpec.describe Nu::Agent::Formatter do
   let(:history) { instance_double(Nu::Agent::History) }
+  let(:client) { instance_double('Client', max_context: 200_000) }
   let(:output) { StringIO.new }
   let(:session_start_time) { Time.now - 60 }
   let(:conversation_id) { 1 }
@@ -13,6 +14,7 @@ RSpec.describe Nu::Agent::Formatter do
       history: history,
       session_start_time: session_start_time,
       conversation_id: conversation_id,
+      client: client,
       output: output
     )
   end
@@ -42,6 +44,7 @@ RSpec.describe Nu::Agent::Formatter do
 
       before do
         allow(history).to receive(:messages_since).and_return(messages)
+        allow(history).to receive(:workers_idle?).and_return(true)
         allow(history).to receive(:session_tokens).and_return({
           'input' => 10,
           'output' => 5,
@@ -66,7 +69,7 @@ RSpec.describe Nu::Agent::Formatter do
 
         formatter.display_new_messages(conversation_id: conversation_id)
 
-        expect(output.string).to include('Session tokens: 10 in / 5 out / 15 total')
+        expect(output.string).to include('Session tokens: 10 in / 5 out / 15 Total')
       end
 
       it 'updates last_message_id' do
@@ -172,7 +175,7 @@ RSpec.describe Nu::Agent::Formatter do
       formatter.display_message(message)
 
       expect(output.string).to include('Hello back!')
-      expect(output.string).to include('Session tokens: 8 in / 4 out / 12 total')
+      expect(output.string).to include('Session tokens: 8 in / 4 out / 12 Total')
     end
 
     it 'displays system messages with prefix' do
@@ -216,10 +219,10 @@ RSpec.describe Nu::Agent::Formatter do
       output_after_second = output.string
 
       # First message shows session total (just first message)
-      expect(output_after_first).to include('Session tokens: 10 in / 5 out / 15 total')
+      expect(output_after_first).to include('Session tokens: 10 in / 5 out / 15 Total')
 
       # Second message shows cumulative session total from database
-      expect(output_after_second).to include('Session tokens: 30 in / 13 out / 43 total')
+      expect(output_after_second).to include('Session tokens: 30 in / 13 out / 43 Total')
 
       # Verify session_tokens was called with correct parameters
       expect(history).to have_received(:session_tokens).with(

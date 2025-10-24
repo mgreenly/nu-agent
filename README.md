@@ -68,7 +68,7 @@ Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duc
    ./exe/nu-agent
 
    # Or with options:
-   ./exe/nu-agent --model gpt-5-nano
+   ./exe/nu-agent --model gpt-5-nano-2025-08-07
    ./exe/nu-agent --debug
    ```
 

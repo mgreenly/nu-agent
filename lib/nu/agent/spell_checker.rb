@@ -8,7 +8,7 @@ module Nu
       def initialize(history:, conversation_id:)
         @history = history
         @conversation_id = conversation_id
-        @client = ModelFactory.create('gpt-5-nano')
+        @client = ClientFactory.create('gemini-2.5-flash')
       end
 
       def check_spelling(text)
@@ -30,7 +30,7 @@ module Nu
         # Only send the spell check related messages
         spell_check_messages = messages.select { |m| m['actor'] == ACTOR }
 
-        # Call gpt-5-nano to fix spelling
+        # Call gemini-2.5-flash to fix spelling
         response = @client.send_message(
           messages: spell_check_messages,
           system_prompt: "You are a spell checker. Fix ONLY misspelled words. Do NOT change capitalization, grammar, punctuation, or style. Return only the corrected text."
