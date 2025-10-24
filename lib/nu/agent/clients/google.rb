@@ -24,6 +24,9 @@ module Nu
           - "project" can mean "the current directory"
         PROMPT
 
+        # Default model (cheapest option)
+        DEFAULT_MODEL = 'gemini-2.5-flash-lite'
+
         # Model configurations (verified 2025-10-21)
         MODELS = {
           'gemini-2.5-flash-lite' => {

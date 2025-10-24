@@ -9,12 +9,10 @@ module Nu
       OPENAI_MODELS = ['gpt-5-nano-2025-08-07', 'gpt-5-mini', 'gpt-5'].freeze
       XAI_MODELS = ['grok-3', 'grok-code-fast-1'].freeze
 
-      # Default model if none specified
-      DEFAULT_MODEL = 'gpt-5-nano-2025-08-07'
-
       class << self
-        def create(model_name = nil)
-          model_name ||= DEFAULT_MODEL
+        def create(model_name)
+          raise Error, "Model name is required" if model_name.nil? || model_name.to_s.strip.empty?
+
           model_name = model_name.to_s.downcase.strip
 
           # Check which provider this model belongs to

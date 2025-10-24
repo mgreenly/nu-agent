@@ -8,6 +8,9 @@ module Nu
         ApiKey = ::Nu::Agent::ApiKey
         Error = ::Nu::Agent::Error
 
+        # Default model (cheapest option)
+        DEFAULT_MODEL = 'grok-code-fast-1'
+
         # Model configurations (verified 2025-10-21)
         MODELS = {
           'grok-3' => {

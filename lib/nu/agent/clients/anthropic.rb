@@ -23,6 +23,9 @@ module Nu
           - "project" can mean "the current directory"
         PROMPT
 
+        # Default model (cheapest option)
+        DEFAULT_MODEL = 'claude-haiku-4-5'
+
         # Model configurations (verified 2025-10-21)
         MODELS = {
           'claude-haiku-4-5' => {

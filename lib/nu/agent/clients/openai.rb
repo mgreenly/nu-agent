@@ -24,6 +24,9 @@ module Nu
           - "project" can mean "the current directory"
         PROMPT
 
+        # Default model (good balance of cost and quality)
+        DEFAULT_MODEL = 'gpt-5-mini'
+
         # Model configurations (verified 2025-10-21)
         MODELS = {
           'gpt-5-nano-2025-08-07' => {

@@ -3,10 +3,10 @@
 module Nu
   module Agent
     class Options
-      attr_reader :model, :debug
+      attr_reader :reset_model, :debug
 
       def initialize(args = ARGV)
-        @model = 'gpt-5-nano-2025-08-07'
+        @reset_model = nil
         @debug = false
         parse(args)
       end
@@ -17,8 +17,8 @@ module Nu
         OptionParser.new do |opts|
           opts.banner = "Usage: nu-agent [options]"
 
-          opts.on("--model MODEL", String, "Model to use (see available models below)") do |model|
-            @model = model
+          opts.on("--reset-models MODEL", String, "Reset all model configs to MODEL") do |model|
+            @reset_model = model
           end
 
           opts.on("--debug", "Enable debug logging") do
@@ -41,12 +41,23 @@ module Nu
       def print_available_models
         models = ClientFactory.display_models
 
-        puts "\nAvailable Models:"
-        puts "  Anthropic: #{models[:anthropic].join(', ')}"
-        puts "  Google:    #{models[:google].join(', ')}"
-        puts "  OpenAI:    #{models[:openai].join(', ')}"
-        puts "  X.AI:      #{models[:xai].join(', ')}"
-        puts "\n  Default: gpt-5-nano-2025-08-07"
+        # Get defaults from each client
+        anthropic_default = Nu::Agent::Clients::Anthropic::DEFAULT_MODEL
+        google_default = Nu::Agent::Clients::Google::DEFAULT_MODEL
+        openai_default = Nu::Agent::Clients::OpenAI::DEFAULT_MODEL
+        xai_default = Nu::Agent::Clients::XAI::DEFAULT_MODEL
+
+        # Mark defaults with asterisk
+        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(', ')
+        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(', ')
+        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(', ')
+        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(', ')
+
+        puts "\nAvailable Models (* = default):"
+        puts "  Anthropic: #{anthropic_list}"
+        puts "  Google:    #{google_list}"
+        puts "  OpenAI:    #{openai_list}"
+        puts "  X.AI:      #{xai_list}"
       end
     end
   end

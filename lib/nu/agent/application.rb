@@ -15,8 +15,30 @@ module Nu
         @critical_sections = 0
         @critical_mutex = Mutex.new
         @operation_mutex = Mutex.new
-        @client = ClientFactory.create(options.model)
         @history = History.new
+
+        # Load or initialize model configurations
+        orchestrator_model = @history.get_config('model_orchestrator')
+        spellchecker_model = @history.get_config('model_spellchecker')
+        summarizer_model = @history.get_config('model_summarizer')
+
+        # Handle --reset-model flag
+        if @options.reset_model
+          @history.set_config('model_orchestrator', @options.reset_model)
+          @history.set_config('model_spellchecker', @options.reset_model)
+          @history.set_config('model_summarizer', @options.reset_model)
+          orchestrator_model = @options.reset_model
+          spellchecker_model = @options.reset_model
+          summarizer_model = @options.reset_model
+        elsif orchestrator_model.nil? || spellchecker_model.nil? || summarizer_model.nil?
+          # Models not configured and no reset flag provided
+          raise Error, "Models not configured. Run with --reset-models <model_name> to initialize."
+        end
+
+        # Create client with configured model
+        @client = ClientFactory.create(orchestrator_model)
+        @spellchecker_model = spellchecker_model
+        @summarizer_model = summarizer_model
 
         # Load settings from database (default all to true, except debug which defaults to false)
         @debug = @history.get_config('debug', default: 'false') == 'true'
@@ -97,7 +119,8 @@ module Nu
           if @spell_check_enabled
             spell_checker = SpellChecker.new(
               history: history,
-              conversation_id: conversation_id
+              conversation_id: conversation_id,
+              model: @spellchecker_model
             )
             input = spell_checker.check_spelling(input)
           end
@@ -415,47 +438,92 @@ module Nu
       end
 
       def handle_command(input)
-        # Handle /model NAME command (takes argument)
-        if input.downcase.start_with?('/model ')
-          parts = input.split(' ', 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @output.output("Usage: /model <name>")
-            @output.output("Example: /model gpt-5")
+        # Handle /model command with subcommands
+        parts = input.split(' ')
+        if parts.first&.downcase == '/model'
+
+          # /model without arguments - show current models
+          if parts.length == 1
+            @output.output("Current Models:")
+            @output.output("  Orchestrator:  #{@client.model}")
+            @output.output("  Spellchecker:  #{@spellchecker_model}")
+            @output.output("  Summarizer:    #{@summarizer_model}")
+            return :continue
+          end
+
+          # /model <subcommand> <name>
+          if parts.length < 3
+            @output.output("Usage:")
+            @output.output("  /model                        Show current models")
+            @output.output("  /model orchestrator <name>    Set orchestrator model")
+            @output.output("  /model spellchecker <name>    Set spellchecker model")
+            @output.output("  /model summarizer <name>      Set summarizer model")
+            @output.output("")
+            @output.output("Example: /model orchestrator gpt-5")
             @output.output("Run /models to see available models")
             return :continue
           end
 
-          new_model_name = parts[1].strip
+          subcommand = parts[1].strip.downcase
+          new_model_name = parts[2].strip
 
-          # Switch model under mutex (blocks if thread is running)
-          @operation_mutex.synchronize do
-            # Wait for active threads to complete
-            unless active_threads.empty?
-              # First try to join threads with a short timeout to see if they're actually running
-              still_running = active_threads.any? do |thread|
-                !thread.join(0.05)  # Returns nil if thread is still running after timeout
+          case subcommand
+          when 'orchestrator'
+            # Switch model under mutex (blocks if thread is running)
+            @operation_mutex.synchronize do
+              # Wait for active threads to complete
+              unless active_threads.empty?
+                still_running = active_threads.any? do |thread|
+                  !thread.join(0.05)
+                end
+
+                if still_running
+                  @output.output("Waiting for current operation to complete...")
+                  active_threads.each(&:join)
+                end
               end
 
-              # Only show the message if threads are actually still running
-              if still_running
-                @output.output("Waiting for current operation to complete...")
-                active_threads.each(&:join)
+              # Try to create new client
+              begin
+                new_client = ClientFactory.create(new_model_name)
+              rescue Error => e
+                @output.error("Error: #{e.message}")
+                return :continue
               end
+
+              # Switch both client and formatter
+              @client = new_client
+              @formatter.client = new_client
+              @history.set_config('model_orchestrator', new_model_name)
+
+              @output.output("Switched orchestrator to: #{@client.name} (#{@client.model})")
             end
 
-            # Try to create new client
+          when 'spellchecker'
             begin
-              new_client = ClientFactory.create(new_model_name)
+              # Validate model exists
+              ClientFactory.create(new_model_name)
+              @spellchecker_model = new_model_name
+              @history.set_config('model_spellchecker', new_model_name)
+              @output.output("Switched spellchecker to: #{new_model_name}")
             rescue Error => e
               @output.error("Error: #{e.message}")
-              return :continue
             end
 
-            # Switch both client and formatter
-            @client = new_client
-            @formatter.client = new_client
+          when 'summarizer'
+            begin
+              # Validate model exists
+              ClientFactory.create(new_model_name)
+              @summarizer_model = new_model_name
+              @history.set_config('model_summarizer', new_model_name)
+              @output.output("Switched summarizer to: #{new_model_name}")
+            rescue Error => e
+              @output.error("Error: #{e.message}")
+            end
 
-            @output.output("Switched to: #{@client.name} (#{@client.model})")
+          else
+            @output.output("Unknown subcommand: #{subcommand}")
+            @output.output("Valid subcommands: orchestrator, spellchecker, summarizer")
           end
 
           return :continue
@@ -632,7 +700,7 @@ module Nu
         @output.output("  /fix                 - Scan and fix database corruption issues")
         @output.output("  /help                - Show this help message")
         @output.output("  /info                - Show current session information")
-        @output.output("  /model <name>        - Switch to a different model (e.g., /model gpt-5)")
+        @output.output("  /model [orchestrator|spellchecker|summarizer] <name> - Switch model")
         @output.output("  /models              - List available models")
         @output.output("  /redaction <on|off>  - Enable/disable redaction of tool results in context")
         @output.output("  /verbosity <number>  - Set verbosity level for debug output (default: 0)")
@@ -673,7 +741,13 @@ module Nu
       def print_info
         @output.output("")
         @output.output("Version:       #{Nu::Agent::VERSION}")
-        @output.output("Orchestrator:  #{@client.name} (#{@client.model})")
+
+        # Models section
+        @output.output("Models:")
+        @output.output("  Orchestrator:  #{@client.model}")
+        @output.output("  Spellchecker:  #{@spellchecker_model}")
+        @output.output("  Summarizer:    #{@summarizer_model}")
+
         @output.output("Debug mode:    #{@debug}")
         @output.output("Verbosity:     #{@verbosity}")
         @output.output("Redaction:     #{@redact ? 'on' : 'off'}")
@@ -681,7 +755,6 @@ module Nu
 
         # Show summarizer status if enabled
         if @summarizer_enabled
-          @output.output("  Model:       gpt-5-nano")
           @status_mutex.synchronize do
             status = @summarizer_status
             if status['running']
@@ -697,21 +770,29 @@ module Nu
         end
 
         @output.output("Spellcheck:    #{@spell_check_enabled ? 'on' : 'off'}")
-        if @spell_check_enabled
-          @output.output("  Model:       gpt-5-nano")
-        end
         @output.output("Database:      #{File.expand_path(history.db_path)}")
       end
 
       def print_models
         models = ClientFactory.display_models
 
-        @output.output("\nAvailable Models:")
-        @output.output("  Anthropic: #{models[:anthropic].join(', ')}")
-        @output.output("  Google:    #{models[:google].join(', ')}")
-        @output.output("  OpenAI:    #{models[:openai].join(', ')}")
-        @output.output("  X.AI:      #{models[:xai].join(', ')}")
-        @output.output("\n  Default: gpt-5-nano")
+        # Get defaults from each client
+        anthropic_default = Nu::Agent::Clients::Anthropic::DEFAULT_MODEL
+        google_default = Nu::Agent::Clients::Google::DEFAULT_MODEL
+        openai_default = Nu::Agent::Clients::OpenAI::DEFAULT_MODEL
+        xai_default = Nu::Agent::Clients::XAI::DEFAULT_MODEL
+
+        # Mark defaults with asterisk
+        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(', ')
+        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(', ')
+        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(', ')
+        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(', ')
+
+        @output.output("\nAvailable Models (* = default):")
+        @output.output("  Anthropic: #{anthropic_list}")
+        @output.output("  Google:    #{google_list}")
+        @output.output("  OpenAI:    #{openai_list}")
+        @output.output("  X.AI:      #{xai_list}")
       end
 
       def print_tools
@@ -843,14 +924,15 @@ module Nu
           status_mtx = @status_mutex
           app = self
 
-          thread = Thread.new(conv_id, hist, status, status_mtx, app) do |current_conversation_id, history, summarizer_status, status_mutex, application|
+          thread = Thread.new(conv_id, hist, status, status_mtx, app, @summarizer_model) do |current_conversation_id, history, summarizer_status, status_mutex, application, summarizer_model|
             begin
               summarize_conversations(
                 current_conversation_id: current_conversation_id,
                 history: history,
                 summarizer_status: summarizer_status,
                 status_mutex: status_mutex,
-                application: application
+                application: application,
+                summarizer_model: summarizer_model
               )
             rescue => e
               status_mutex.synchronize do
@@ -863,7 +945,7 @@ module Nu
         end
       end
 
-      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:)
+      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:, summarizer_model:)
         # Get conversations that need summarization
         conversations = history.get_unsummarized_conversations(exclude_id: current_conversation_id)
 
@@ -879,8 +961,8 @@ module Nu
           summarizer_status['failed'] = 0
         end
 
-        # Create a gemini-2.5-flash client for summarization
-        summarizer = ClientFactory.create('gemini-2.5-flash')
+        # Create a client for summarization
+        summarizer = ClientFactory.create(summarizer_model)
 
         conversations.each do |conv|
           # Check for shutdown signal before processing each conversation
@@ -904,7 +986,7 @@ module Nu
                 history.update_conversation_summary(
                   conversation_id: conv_id,
                   summary: "empty conversation",
-                  model: 'gemini-2.5-flash',
+                  model: summarizer_model,
                   cost: 0.0
                 )
               ensure
@@ -986,7 +1068,7 @@ module Nu
                 history.update_conversation_summary(
                   conversation_id: conv_id,
                   summary: summary,
-                  model: 'gemini-2.5-flash',
+                  model: summarizer_model,
                   cost: cost
                 )
               ensure

@@ -5,10 +5,10 @@ module Nu
     class SpellChecker
       ACTOR = 'spell_checker'
 
-      def initialize(history:, conversation_id:)
+      def initialize(history:, conversation_id:, model:)
         @history = history
         @conversation_id = conversation_id
-        @client = ClientFactory.create('gemini-2.5-flash')
+        @client = ClientFactory.create(model)
       end
 
       def check_spelling(text)

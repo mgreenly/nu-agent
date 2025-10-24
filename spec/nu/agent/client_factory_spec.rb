@@ -70,10 +70,10 @@ RSpec.describe Nu::Agent::ClientFactory do
       expect(client.model).to eq('grok-code-fast-1')
     end
 
-    it 'creates a default client when no model is specified' do
-      client = described_class.create
-      expect(client).to be_a(Nu::Agent::Clients::OpenAI)
-      expect(client.model).to eq('gpt-5-nano-2025-08-07')
+    it 'raises an error when no model is specified' do
+      expect {
+        described_class.create(nil)
+      }.to raise_error(Nu::Agent::Error, /Model name is required/)
     end
 
     it 'raises an error for unknown models' do
