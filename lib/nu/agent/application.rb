@@ -35,10 +35,10 @@ module Nu
           raise Error, "Models not configured. Run with --reset-models <model_name> to initialize."
         end
 
-        # Create orchestrator client with configured model
+        # Create client instances with configured models
         @orchestrator = ClientFactory.create(orchestrator_model)
-        @spellchecker_model = spellchecker_model
-        @summarizer_model = summarizer_model
+        @spellchecker = ClientFactory.create(spellchecker_model)
+        @summarizer = ClientFactory.create(summarizer_model)
 
         # Load settings from database (default all to true, except debug which defaults to false)
         @debug = @history.get_config('debug', default: 'false') == 'true'
@@ -120,7 +120,7 @@ module Nu
             spell_checker = SpellChecker.new(
               history: history,
               conversation_id: conversation_id,
-              model: @spellchecker_model
+              client: @spellchecker
             )
             input = spell_checker.check_spelling(input)
           end
@@ -446,8 +446,8 @@ module Nu
           if parts.length == 1
             @output.output("Current Models:")
             @output.output("  Orchestrator:  #{@orchestrator.model}")
-            @output.output("  Spellchecker:  #{@spellchecker_model}")
-            @output.output("  Summarizer:    #{@summarizer_model}")
+            @output.output("  Spellchecker:  #{@spellchecker.model}")
+            @output.output("  Summarizer:    #{@summarizer.model}")
             return :continue
           end
 
@@ -501,9 +501,9 @@ module Nu
 
           when 'spellchecker'
             begin
-              # Validate model exists
-              ClientFactory.create(new_model_name)
-              @spellchecker_model = new_model_name
+              # Create new client
+              new_client = ClientFactory.create(new_model_name)
+              @spellchecker = new_client
               @history.set_config('model_spellchecker', new_model_name)
               @output.output("Switched spellchecker to: #{new_model_name}")
             rescue Error => e
@@ -512,9 +512,9 @@ module Nu
 
           when 'summarizer'
             begin
-              # Validate model exists
-              ClientFactory.create(new_model_name)
-              @summarizer_model = new_model_name
+              # Create new client
+              new_client = ClientFactory.create(new_model_name)
+              @summarizer = new_client
               @history.set_config('model_summarizer', new_model_name)
               @output.output("Switched summarizer to: #{new_model_name}")
             rescue Error => e
@@ -747,8 +747,8 @@ module Nu
         # Models section
         @output.output("Models:")
         @output.output("  Orchestrator:  #{@orchestrator.model}")
-        @output.output("  Spellchecker:  #{@spellchecker_model}")
-        @output.output("  Summarizer:    #{@summarizer_model}")
+        @output.output("  Spellchecker:  #{@spellchecker.model}")
+        @output.output("  Summarizer:    #{@summarizer.model}")
 
         @output.output("Debug mode:    #{@debug}")
         @output.output("Verbosity:     #{@verbosity}")
@@ -926,7 +926,7 @@ module Nu
           status_mtx = @status_mutex
           app = self
 
-          thread = Thread.new(conv_id, hist, status, status_mtx, app, @summarizer_model) do |current_conversation_id, history, summarizer_status, status_mutex, application, summarizer_model|
+          thread = Thread.new(conv_id, hist, status, status_mtx, app, @summarizer) do |current_conversation_id, history, summarizer_status, status_mutex, application, summarizer|
             begin
               summarize_conversations(
                 current_conversation_id: current_conversation_id,
@@ -934,7 +934,7 @@ module Nu
                 summarizer_status: summarizer_status,
                 status_mutex: status_mutex,
                 application: application,
-                summarizer_model: summarizer_model
+                summarizer: summarizer
               )
             rescue => e
               status_mutex.synchronize do
@@ -947,7 +947,7 @@ module Nu
         end
       end
 
-      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:, summarizer_model:)
+      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:, summarizer:)
         # Get conversations that need summarization
         conversations = history.get_unsummarized_conversations(exclude_id: current_conversation_id)
 
@@ -962,9 +962,6 @@ module Nu
           summarizer_status['completed'] = 0
           summarizer_status['failed'] = 0
         end
-
-        # Create a client for summarization
-        summarizer = ClientFactory.create(summarizer_model)
 
         conversations.each do |conv|
           # Check for shutdown signal before processing each conversation
@@ -988,7 +985,7 @@ module Nu
                 history.update_conversation_summary(
                   conversation_id: conv_id,
                   summary: "empty conversation",
-                  model: summarizer_model,
+                  model: summarizer.model,
                   cost: 0.0
                 )
               ensure
@@ -1070,7 +1067,7 @@ module Nu
                 history.update_conversation_summary(
                   conversation_id: conv_id,
                   summary: summary,
-                  model: summarizer_model,
+                  model: summarizer.model,
                   cost: cost
                 )
               ensure
