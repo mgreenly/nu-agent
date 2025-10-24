@@ -11,18 +11,19 @@ module Nu
         end
 
         def description
-          "Execute JavaScript/TypeScript code using Deno. " \
-          "Preferred for web APIs, JSON processing, async operations, and modern JavaScript features. " \
+          "PREFERRED tool for script generation and execution. " \
+          "Execute JavaScript code using Deno for: data processing, file operations, API calls, JSON/text manipulation, web scraping, and any computational tasks. " \
           "Has access to Deno standard library and can import npm packages. " \
+          "Has full internet access and can make HTTP/HTTPS requests using fetch API. " \
           "Code execution is sandboxed with read/write access limited to the current working directory. " \
-          "Use instead of bash for operations that benefit from JavaScript's async capabilities and ecosystem."
+          "Supports modern JavaScript features including async/await, fetch API, and ES modules."
         end
 
         def parameters
           {
             script: {
               type: "string",
-              description: "The JavaScript/TypeScript script to execute",
+              description: "The JavaScript script to execute",
               required: true
             }
           }
@@ -53,13 +54,14 @@ module Nu
             end
 
             # Execute the JavaScript script from the current working directory
-            # Permissions are limited to current directory for read/write
+            # Permissions: read/write limited to current directory, full network access
             deno_path = File.join(Dir.home, '.deno', 'bin', 'deno')
             stdout, stderr, status = Open3.capture3(
               deno_path,
               'run',
               '--allow-read=.',
               '--allow-write=.',
+              '--allow-net',
               temp_file.path,
               chdir: Dir.pwd
             )

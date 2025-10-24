@@ -29,6 +29,23 @@ Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duc
 ~/.local/include/duckdb.h       # Header file
 ```
 
+**Deno Installation Required**
+
+The `execute_javascript` tool requires Deno to be installed. Install using the official installer:
+
+```bash
+curl -fsSL https://deno.land/x/install/install.sh | sh
+```
+
+This installs Deno to `~/.deno/bin/deno`. Add to your PATH by adding to `~/.bashrc`:
+
+```bash
+export DENO_INSTALL="$HOME/.deno"
+export PATH="$DENO_INSTALL/bin:$PATH"
+```
+
+Then reload your shell: `source ~/.bashrc`
+
 ### Installation
 
 1. **Clone the repository**

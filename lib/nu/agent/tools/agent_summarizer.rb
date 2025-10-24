@@ -9,7 +9,7 @@ module Nu
         end
 
         def description
-          "Get background summarization status. " \
+          "PREFERRED tool for checking background summarization status. " \
           "Returns progress information including how many conversations have been summarized, how many failed, and what is currently being processed."
         end
 
