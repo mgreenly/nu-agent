@@ -49,6 +49,7 @@
 
 ### Execution Tools
 - **Nu::Agent::Tools::ExecuteBash** - Executes bash commands in sandboxed temporary scripts
+- **Nu::Agent::Tools::ExecuteJavascript** - Executes JavaScript/TypeScript code using Deno with directory-restricted permissions
 - **Nu::Agent::Tools::ExecutePython** - Executes Python code with stdout/stderr capture
 
 ### Meta Tools
