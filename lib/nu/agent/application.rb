@@ -517,6 +517,7 @@ module Nu
               @summarizer = new_client
               @history.set_config('model_summarizer', new_model_name)
               @output.output("Switched summarizer to: #{new_model_name}")
+              @output.output("Note: Change takes effect at the start of the next session (/reset)")
             rescue Error => e
               @output.error("Error: #{e.message}")
             end
