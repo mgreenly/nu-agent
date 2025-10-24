@@ -824,7 +824,6 @@ module Nu
       def print_welcome
         print "\033[2J\033[H"
         @output.output("Nu Agent REPL")
-        @output.output("Using: #{orchestrator.name} (#{orchestrator.model})")
         @output.output("Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.")
         @output.output("(Ctrl-C during processing aborts operation)")
         @output.output("Type /help for available commands")
