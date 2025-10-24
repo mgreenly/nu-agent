@@ -810,7 +810,7 @@ module Nu
 
           # Check if tool has credentials (if applicable)
           if tool.respond_to?(:available?) && !tool.available?
-            desc += " (missing creds)"
+            desc += " (disabled)"
           end
 
           @output.output("  #{tool.name.ljust(25)} - #{desc}")
