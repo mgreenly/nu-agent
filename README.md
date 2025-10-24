@@ -2,6 +2,11 @@
 
 A Ruby-based AI agent framework with persistent memory and multi-provider LLM support (Anthropic, Google, OpenAI, X.AI). Features intelligent context management through DuckDB-backed conversation history with automatic redaction and retrieval tools, enabling agents to maintain long-term memory while staying within context limits.
 
+## Features
+
+- **Lifetime Memory Storage** - DuckDB-backed conversation history provides persistent, queryable memory across all conversations
+- **Secure Script Execution** - Deno runtime for all script execution with sandboxed permissions (directory-restricted file access, controlled network access)
+
 ## Setup
 
 ### Prerequisites
