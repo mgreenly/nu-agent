@@ -101,6 +101,52 @@ module Nu
         @output.puts "\nTokens: #{total_input} in / #{total_output} out / #{total} total"
       end
 
+      def display_thread_event(thread_name, status)
+        # Only show thread events at verbosity level 1+
+        verbosity = @application ? @application.verbosity : 0
+        return if verbosity < 1
+
+        @output.puts "\e[90m[Thread] #{thread_name} #{status}\e[0m"
+      end
+
+      def display_llm_request(messages, tools = nil)
+        # Only show LLM request at verbosity level 3+
+        verbosity = @application ? @application.verbosity : 0
+        return if verbosity < 3
+
+        @output.puts "\e[90m"
+        @output.puts "\n" + "=" * 80
+        @output.puts "[LLM Request] Sending #{messages.length} message(s) to model"
+        @output.puts "=" * 80
+
+        messages.each_with_index do |msg, i|
+          @output.puts "\n--- Message #{i + 1} (role: #{msg['role']}) ---"
+          if msg['content']
+            content_preview = msg['content'].to_s[0...200]
+            @output.puts content_preview
+            @output.puts "... (#{msg['content'].to_s.length} chars total)" if msg['content'].to_s.length > 200
+          end
+          if msg['tool_calls']
+            @output.puts "  [Contains #{msg['tool_calls'].length} tool call(s)]"
+          end
+          if msg['tool_result']
+            @output.puts "  [Tool result for: #{msg['tool_result']['name']}]"
+          end
+        end
+
+        # Level 4: Also show tools
+        if verbosity >= 4 && tools && !tools.empty?
+          @output.puts "\n--- Tools (#{tools.length} available) ---"
+          tools.each do |tool|
+            name = tool['name'] || tool[:name]
+            @output.puts "  - #{name}"
+          end
+        end
+
+        @output.puts "=" * 80
+        @output.print "\e[0m"
+      end
+
       private
 
       def display_user_message(message)
@@ -161,52 +207,6 @@ module Nu
         if message['content'] && !message['content'].strip.empty?
           @output.puts "#{message['content']}"
         end
-        @output.print "\e[0m"
-      end
-
-      def display_thread_event(thread_name, status)
-        # Only show thread events at verbosity level 1+
-        verbosity = @application ? @application.verbosity : 0
-        return if verbosity < 1
-
-        @output.puts "\e[90m[Thread] #{thread_name} #{status}\e[0m"
-      end
-
-      def display_llm_request(messages, tools = nil)
-        # Only show LLM request at verbosity level 3+
-        verbosity = @application ? @application.verbosity : 0
-        return if verbosity < 3
-
-        @output.puts "\e[90m"
-        @output.puts "\n" + "=" * 80
-        @output.puts "[LLM Request] Sending #{messages.length} message(s) to model"
-        @output.puts "=" * 80
-
-        messages.each_with_index do |msg, i|
-          @output.puts "\n--- Message #{i + 1} (role: #{msg['role']}) ---"
-          if msg['content']
-            content_preview = msg['content'].to_s[0...200]
-            @output.puts content_preview
-            @output.puts "... (#{msg['content'].to_s.length} chars total)" if msg['content'].to_s.length > 200
-          end
-          if msg['tool_calls']
-            @output.puts "  [Contains #{msg['tool_calls'].length} tool call(s)]"
-          end
-          if msg['tool_result']
-            @output.puts "  [Tool result for: #{msg['tool_result']['name']}]"
-          end
-        end
-
-        # Level 4: Also show tools
-        if verbosity >= 4 && tools && !tools.empty?
-          @output.puts "\n--- Tools (#{tools.length} available) ---"
-          tools.each do |tool|
-            name = tool['name'] || tool[:name]
-            @output.puts "  - #{name}"
-          end
-        end
-
-        @output.puts "=" * 80
         @output.print "\e[0m"
       end
 
