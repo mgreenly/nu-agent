@@ -52,20 +52,23 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 
 ---
 
-## Phase 3: Enhanced Debug Verbosity (CURRENT)
+## Phase 3: Enhanced Debug Verbosity ✅ COMPLETE
 
 ### Tasks
-- [ ] Update verbosity levels in Formatter:
-  - **Level 0**: Tool name only ("Using file_read")
-  - **Level 1**: Tool name + first 30 chars of each param
+- [x] Update verbosity levels in Formatter:
+  - **Level 0**: Tool name only (no parameters shown)
+  - **Level 1**: Tool name + up to 30 chars per param + thread lifecycle events
   - **Level 2**: Tool name + full params (current behavior)
-  - **Level 3**: Level 2 + show markdown document sent to LLM
-  - **Level 4**: Level 3 + show conversation history
-- [ ] Test each verbosity level
+  - **Level 3**: Level 2 + show messages sent to LLM
+  - **Level 4**: Level 3 + show tools array
+- [x] Test each verbosity level
+- [x] Add thread lifecycle notifications for exchange-related threads
 
 ### Notes
-- Current implementation already has some verbosity support (see formatter.rb:172-220)
-- Extend this pattern for levels 3-4
+- Implemented 5 distinct verbosity levels (0-4)
+- Level 1 shows thread start/finish for Orchestrator (exchange threads)
+- Levels 3-4 show complete LLM request context
+- All 20 new verbosity specs pass
 
 ---
 

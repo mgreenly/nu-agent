@@ -164,26 +164,80 @@ module Nu
         @output.print "\e[0m"
       end
 
+      def display_thread_event(thread_name, status)
+        # Only show thread events at verbosity level 1+
+        verbosity = @application ? @application.verbosity : 0
+        return if verbosity < 1
+
+        @output.puts "\e[90m[Thread] #{thread_name} #{status}\e[0m"
+      end
+
+      def display_llm_request(messages, tools = nil)
+        # Only show LLM request at verbosity level 3+
+        verbosity = @application ? @application.verbosity : 0
+        return if verbosity < 3
+
+        @output.puts "\e[90m"
+        @output.puts "\n" + "=" * 80
+        @output.puts "[LLM Request] Sending #{messages.length} message(s) to model"
+        @output.puts "=" * 80
+
+        messages.each_with_index do |msg, i|
+          @output.puts "\n--- Message #{i + 1} (role: #{msg['role']}) ---"
+          if msg['content']
+            content_preview = msg['content'].to_s[0...200]
+            @output.puts content_preview
+            @output.puts "... (#{msg['content'].to_s.length} chars total)" if msg['content'].to_s.length > 200
+          end
+          if msg['tool_calls']
+            @output.puts "  [Contains #{msg['tool_calls'].length} tool call(s)]"
+          end
+          if msg['tool_result']
+            @output.puts "  [Tool result for: #{msg['tool_result']['name']}]"
+          end
+        end
+
+        # Level 4: Also show tools
+        if verbosity >= 4 && tools && !tools.empty?
+          @output.puts "\n--- Tools (#{tools.length} available) ---"
+          tools.each do |tool|
+            name = tool['name'] || tool[:name]
+            @output.puts "  - #{name}"
+          end
+        end
+
+        @output.puts "=" * 80
+        @output.print "\e[0m"
+      end
+
       def display_tool_call(tool_call)
+        # Get verbosity level (default to 0 if application not set)
+        verbosity = @application ? @application.verbosity : 0
+
         @output.puts "\e[90m\n[Tool Call] #{tool_call['name']}"
+
+        # Level 0: Show tool name only, no arguments
+        if verbosity == 0
+          @output.print "\e[0m"
+          return
+        end
 
         begin
           if tool_call['arguments'] && !tool_call['arguments'].empty?
-            # Get verbosity level (default to 0 if application not set)
-            verbosity = @application ? @application.verbosity : 0
-            name = tool_call['name']
-
             tool_call['arguments'].each do |key, value|
-              # Hide script/command for execute_python/execute_bash when verbosity <= 1
-              if (name == 'execute_python' && key.to_s == 'script') ||
-                 (name == 'execute_bash' && key.to_s == 'command')
-                if verbosity <= 1
-                  @output.puts "  #{key}: [hidden - use /verbosity 2 or higher to show]"
-                  next
-                end
-              end
+              value_str = value.to_s
 
-              @output.puts "  #{key}: #{value}"
+              # Level 1: Truncate each param to 30 characters
+              if verbosity == 1
+                if value_str.length > 30
+                  @output.puts "  #{key}: #{value_str[0...30]}..."
+                else
+                  @output.puts "  #{key}: #{value_str}"
+                end
+              # Level 2+: Show full value
+              else
+                @output.puts "  #{key}: #{value_str}"
+              end
             end
           end
         rescue => e
@@ -197,38 +251,56 @@ module Nu
         result = message['tool_result']['result']
         name = message['tool_result']['name']
 
+        # Get verbosity level (default to 0 if application not set)
+        verbosity = @application ? @application.verbosity : 0
+
         @output.puts "\e[90m\n[Tool Result] #{name}"
+
+        # Level 0: Show tool name only, no result details
+        if verbosity == 0
+          @output.print "\e[0m"
+          return
+        end
 
         begin
           if result.is_a?(Hash)
-            # Get verbosity level (default to 0 if application not set)
-            verbosity = @application ? @application.verbosity : 0
-
             result.each do |key, value|
-              # Skip 'content' field for file_read when verbosity <= 1
-              if name == 'file_read' && key.to_s == 'content' && verbosity <= 1
-                @output.puts "  content: [hidden - use /verbosity 2 or higher to show]"
-                next
-              end
+              value_str = value.to_s
 
-              # Skip 'stdout' and 'stderr' for execute_python/execute_bash when verbosity <= 1
-              if (name == 'execute_python' || name == 'execute_bash') &&
-                 (key.to_s == 'stdout' || key.to_s == 'stderr') &&
-                 verbosity <= 1
-                @output.puts "  #{key}: [hidden - use /verbosity 2 or higher to show]"
-                next
-              end
-
-              # Format multiline values (like stdout/stderr) with proper indentation
-              if value.to_s.include?("\n")
-                @output.puts "  #{key}:"
-                value.to_s.lines.each { |line| @output.puts "    #{line}" }
+              # Level 1: Truncate each field to 30 characters
+              if verbosity == 1
+                # Handle multiline values - just show first line truncated
+                if value_str.include?("\n")
+                  first_line = value_str.lines.first.chomp
+                  if first_line.length > 30
+                    @output.puts "  #{key}: #{first_line[0...30]}..."
+                  else
+                    @output.puts "  #{key}: #{first_line}..."
+                  end
+                elsif value_str.length > 30
+                  @output.puts "  #{key}: #{value_str[0...30]}..."
+                else
+                  @output.puts "  #{key}: #{value_str}"
+                end
+              # Level 2+: Show full value
               else
-                @output.puts "  #{key}: #{value}"
+                # Format multiline values with proper indentation
+                if value_str.include?("\n")
+                  @output.puts "  #{key}:"
+                  value_str.lines.each { |line| @output.puts "    #{line}" }
+                else
+                  @output.puts "  #{key}: #{value_str}"
+                end
               end
             end
           else
-            @output.puts "  #{result}"
+            # Non-hash result
+            result_str = result.to_s
+            if verbosity == 1 && result_str.length > 30
+              @output.puts "  #{result_str[0...30]}..."
+            else
+              @output.puts "  #{result_str}"
+            end
           end
         rescue => e
           @output.puts "  [Error displaying result: #{e.message}]"

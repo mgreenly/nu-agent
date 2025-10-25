@@ -256,4 +256,168 @@ RSpec.describe Nu::Agent::Formatter do
       expect { formatter.display_token_summary(conversation_id: conversation_id) }.not_to raise_error
     end
   end
+
+  describe 'verbosity levels' do
+    let(:application) { instance_double('Application') }
+    let(:formatter_with_app) do
+      described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        output: output,
+        application: application
+      )
+    end
+
+    let(:tool_call_message) do
+      {
+        'id' => 5,
+        'actor' => 'orchestrator',
+        'role' => 'assistant',
+        'content' => nil,
+        'tokens_input' => 20,
+        'tokens_output' => 10,
+        'tool_calls' => [
+          {
+            'name' => 'file_read',
+            'arguments' => {
+              'path' => '/very/long/path/to/some/file/that/is/longer/than/thirty/characters.txt',
+              'encoding' => 'utf-8'
+            }
+          }
+        ]
+      }
+    end
+
+    let(:tool_result_message) do
+      {
+        'id' => 6,
+        'actor' => 'orchestrator',
+        'role' => 'user',
+        'tool_result' => {
+          'name' => 'file_read',
+          'result' => {
+            'content' => 'This is a very long file content that should be truncated when verbosity is 1 and shown in full when verbosity is 2 or higher',
+            'size' => 1024
+          }
+        }
+      }
+    end
+
+    before do
+      # Enable debug mode to show tool calls/results
+      formatter_with_app.debug = true
+      allow(history).to receive(:session_tokens).and_return({
+        'input' => 20,
+        'output' => 10,
+        'total' => 30,
+        'spend' => 0.000300
+      })
+      allow(history).to receive(:workers_idle?).and_return(true)
+    end
+
+    describe 'level 0: tool name only' do
+      before do
+        allow(application).to receive(:verbosity).and_return(0)
+      end
+
+      it 'displays tool call name without arguments' do
+        formatter_with_app.display_message(tool_call_message)
+
+        expect(output.string).to include('[Tool Call] file_read')
+        expect(output.string).not_to include('path:')
+        expect(output.string).not_to include('encoding:')
+        expect(output.string).not_to include('/very/long/path')
+      end
+
+      it 'displays tool result name without result details' do
+        formatter_with_app.display_message(tool_result_message)
+
+        expect(output.string).to include('[Tool Result] file_read')
+        expect(output.string).not_to include('content:')
+        expect(output.string).not_to include('size:')
+        expect(output.string).not_to include('This is a very long')
+      end
+    end
+
+    describe 'level 1: tool name + first 30 chars of params + thread notifications' do
+      before do
+        allow(application).to receive(:verbosity).and_return(1)
+      end
+
+      it 'displays tool call arguments truncated to 30 characters' do
+        formatter_with_app.display_message(tool_call_message)
+
+        expect(output.string).to include('[Tool Call] file_read')
+        expect(output.string).to include('path:')
+        expect(output.string).to include('/very/long/path/to/some/file/t...')
+        expect(output.string).to include('encoding: utf-8')
+        expect(output.string).not_to include('longer/than/thirty/characters.txt')
+      end
+
+      it 'displays tool result fields truncated to 30 characters' do
+        formatter_with_app.display_message(tool_result_message)
+
+        expect(output.string).to include('[Tool Result] file_read')
+        expect(output.string).to include('content:')
+        expect(output.string).to include('This is a very long file conte...')
+        expect(output.string).to include('size: 1024')
+        expect(output.string).not_to include('truncated when verbosity')
+      end
+
+      it 'does not truncate short values' do
+        short_message = {
+          'id' => 7,
+          'actor' => 'orchestrator',
+          'role' => 'user',
+          'tool_result' => {
+            'name' => 'test_tool',
+            'result' => {
+              'status' => 'ok',
+              'value' => 'short'
+            }
+          }
+        }
+
+        formatter_with_app.display_message(short_message)
+
+        expect(output.string).to include('status: ok')
+        expect(output.string).to include('value: short')
+        expect(output.string).not_to include('...')
+      end
+    end
+
+    describe 'level 2: full params' do
+      before do
+        allow(application).to receive(:verbosity).and_return(2)
+      end
+
+      it 'displays tool call arguments in full' do
+        formatter_with_app.display_message(tool_call_message)
+
+        expect(output.string).to include('[Tool Call] file_read')
+        expect(output.string).to include('path: /very/long/path/to/some/file/that/is/longer/than/thirty/characters.txt')
+        expect(output.string).to include('encoding: utf-8')
+      end
+
+      it 'displays tool result fields in full' do
+        formatter_with_app.display_message(tool_result_message)
+
+        expect(output.string).to include('[Tool Result] file_read')
+        expect(output.string).to include('content: This is a very long file content that should be truncated when verbosity is 1 and shown in full when verbosity is 2 or higher')
+        expect(output.string).to include('size: 1024')
+      end
+    end
+
+    describe 'level 3 and 4: documented in application specs' do
+      # Levels 3 and 4 involve showing the request/context sent to the LLM
+      # These are tested in application_spec.rb since they require chat_loop context
+      it 'is a placeholder for application-level tests' do
+        # Level 3: Show messages sent to LLM
+        # Level 4: Show messages + conversation history
+        # See application_spec.rb for these tests
+      end
+    end
+  end
 end

@@ -152,9 +152,13 @@ module Nu
             cli = orchestrator
             session_start = session_start_time
             exch_id = exchange_id
+            fmt = formatter
+
+            # Display thread start event
+            formatter.display_thread_event("Orchestrator", "Starting")
 
             # Process in a thread
-            Thread.new(conv_id, hist, cli, session_start, exch_id) do |conversation_id, history, client, session_start_time, exchange_id|
+            Thread.new(conv_id, hist, cli, session_start, exch_id, fmt) do |conversation_id, history, client, session_start_time, exchange_id, formatter|
               begin
                 chat_loop(
                   conversation_id: conversation_id,
@@ -165,6 +169,8 @@ module Nu
                 )
               ensure
                 history.decrement_workers
+                # Display thread finished event
+                formatter.display_thread_event("Orchestrator", "Finished")
               end
             end
           end
@@ -280,6 +286,9 @@ module Nu
 
           # Get tools formatted for this client
           tools = client.format_tools(tool_registry)
+
+          # Display LLM request (verbosity level 3+)
+          @output.display_llm_request(messages, tools)
 
           # Call LLM with tools
           response = client.send_message(messages: messages, tools: tools)
