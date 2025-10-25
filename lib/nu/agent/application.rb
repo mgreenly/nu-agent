@@ -341,7 +341,7 @@ module Nu
           end
 
           # Display LLM request (verbosity level 3+)
-          @output.display_llm_request(messages, tools)
+          @formatter.display_llm_request(messages, tools)
 
           # Call LLM with tools
           response = client.send_message(messages: messages, tools: tools)
