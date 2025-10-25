@@ -135,7 +135,16 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 
 ---
 
+## Data Migration
+
+Existing messages can have NULL exchange_id. To migrate old data:
+
+1. Run `/migrate-exchanges` command in the REPL
+2. Analyzes all conversations and creates exchanges retroactively
+3. Groups messages intelligently based on user messages
+4. Safe to run - won't duplicate existing exchanges
+
 ## Version History
 
 - v0.5.0 - Base version before refactoring (2025-10-24)
-- v0.6.0 - (Planned) After Phase 1 completion (database schema changes)
+- v0.6.0 - Phase 1 complete: exchanges table and migration (2025-10-24)
