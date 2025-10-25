@@ -33,23 +33,26 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 
 ---
 
-## Phase 2: Integrate Exchanges into Flow (CURRENT)
+## Phase 2: Integrate Exchanges into Flow ✅ COMPLETE
 
 ### Tasks
-- [ ] Modify `process_input` to create exchange at the start
-- [ ] Update `chat_loop` to accept and track `exchange_id`
-- [ ] Pass `exchange_id` to all `add_message` calls
-- [ ] Complete the exchange when `chat_loop` finishes
-- [ ] Handle exchange completion on errors and aborts
-- [ ] Test that exchanges are created/completed correctly
+- [x] Modify `process_input` to create exchange at the start
+- [x] Update `chat_loop` to accept and track `exchange_id`
+- [x] Pass `exchange_id` to all `add_message` calls
+- [x] Complete the exchange when `chat_loop` finishes
+- [x] Handle exchange completion on errors and aborts
+- [x] Test that exchanges are created/completed correctly
 
 ### Notes
 - Track exchange metrics: tokens, spend, message count, tool call count
 - Set exchange status appropriately: 'in_progress', 'completed', 'failed', 'aborted'
+- Exchange created after spell check, before user message added
+- All messages in an exchange have the same exchange_id
+- Metrics calculated throughout chat_loop and saved on completion
 
 ---
 
-## Phase 3: Enhanced Debug Verbosity
+## Phase 3: Enhanced Debug Verbosity (CURRENT)
 
 ### Tasks
 - [ ] Update verbosity levels in Formatter:

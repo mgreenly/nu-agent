@@ -113,6 +113,7 @@ module Nu
 
         thread = nil
         workers_incremented = false
+        exchange_id = nil
 
         begin
           # Run spell checker if enabled
@@ -125,9 +126,16 @@ module Nu
             input = spell_checker.check_spelling(input)
           end
 
+          # Create exchange for this interaction
+          exchange_id = history.create_exchange(
+            conversation_id: conversation_id,
+            user_message: input
+          )
+
           # Add user message to history
           history.add_message(
             conversation_id: conversation_id,
+            exchange_id: exchange_id,
             actor: @user_actor,
             role: 'user',
             content: input
@@ -143,15 +151,17 @@ module Nu
             hist = history
             cli = orchestrator
             session_start = session_start_time
+            exch_id = exchange_id
 
             # Process in a thread
-            Thread.new(conv_id, hist, cli, session_start) do |conversation_id, history, client, session_start_time|
+            Thread.new(conv_id, hist, cli, session_start, exch_id) do |conversation_id, history, client, session_start_time, exchange_id|
               begin
                 chat_loop(
                   conversation_id: conversation_id,
                   history: history,
                   client: client,
-                  session_start_time: session_start_time
+                  session_start_time: session_start_time,
+                  exchange_id: exchange_id
                 )
               ensure
                 history.decrement_workers
@@ -174,6 +184,14 @@ module Nu
           # Ctrl-C pressed - abort all operations and return to prompt
           @output.stop_waiting
           print "\e[90m\n(Ctrl-C) Operation aborted by user.\e[0m\n"
+
+          # Mark exchange as aborted
+          if exchange_id
+            history.update_exchange(
+              exchange_id: exchange_id,
+              updates: { status: 'aborted', completed_at: Time.now }
+            )
+          end
 
           # Kill all active threads (main chat loop, summarizer, etc.)
           active_threads.each do |t|
@@ -218,12 +236,22 @@ module Nu
         end
       end
 
-      def chat_loop(conversation_id:, history:, client:, session_start_time:)
+      def chat_loop(conversation_id:, history:, client:, session_start_time:, exchange_id:)
         tool_registry = ToolRegistry.new
 
         # Get the starting message ID to determine which tool results are "old"
         start_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
         start_message_id = start_messages.empty? ? 0 : start_messages.last['id']
+
+        # Track exchange metrics
+        exchange_metrics = {
+          tokens_input: 0,
+          tokens_output: 0,
+          spend: 0.0,
+          message_count: 0,
+          tool_call_count: 0
+        }
+        final_assistant_message = nil
 
         loop do
           # Get messages from history (only from current session)
@@ -261,11 +289,23 @@ module Nu
             # Save error message and exit
             history.add_message(
               conversation_id: conversation_id,
+              exchange_id: exchange_id,
               actor: 'api_error',
               role: 'assistant',
               content: response['content'],
               model: response['model'],
               error: response['error']
+            )
+            exchange_metrics[:message_count] += 1
+
+            # Mark exchange as failed
+            history.update_exchange(
+              exchange_id: exchange_id,
+              updates: {
+                status: 'failed',
+                error: response['error'].to_json,
+                completed_at: Time.now
+              }.merge(exchange_metrics)
             )
             break
           # If we got tool calls, execute them
@@ -273,6 +313,7 @@ module Nu
             # Save assistant message with tool calls
             history.add_message(
               conversation_id: conversation_id,
+              exchange_id: exchange_id,
               actor: 'orchestrator',
               role: 'assistant',
               content: response['content'],
@@ -282,6 +323,13 @@ module Nu
               spend: response['spend'],
               tool_calls: response['tool_calls']
             )
+
+            # Update exchange metrics
+            exchange_metrics[:tokens_input] = [exchange_metrics[:tokens_input], response['tokens']['input']].max
+            exchange_metrics[:tokens_output] += response['tokens']['output']
+            exchange_metrics[:spend] += response['spend']
+            exchange_metrics[:message_count] += 1
+            exchange_metrics[:tool_call_count] += response['tool_calls'].length
 
             # Execute each tool and save results
             response['tool_calls'].each do |tool_call|
@@ -296,6 +344,7 @@ module Nu
               # Store both name and result for client formatting
               history.add_message(
                 conversation_id: conversation_id,
+                exchange_id: exchange_id,
                 actor: tool_call['name'],
                 role: 'tool',
                 content: nil,
@@ -305,6 +354,7 @@ module Nu
                   'result' => result
                 }
               )
+              exchange_metrics[:message_count] += 1
             end
 
             # Loop back to send results to LLM
@@ -313,6 +363,7 @@ module Nu
             # No tool calls, save final response and exit
             history.add_message(
               conversation_id: conversation_id,
+              exchange_id: exchange_id,
               actor: 'orchestrator',
               role: 'assistant',
               content: response['content'],
@@ -320,6 +371,22 @@ module Nu
               tokens_input: response['tokens']['input'],
               tokens_output: response['tokens']['output'],
               spend: response['spend']
+            )
+
+            # Update exchange metrics
+            exchange_metrics[:tokens_input] = [exchange_metrics[:tokens_input], response['tokens']['input']].max
+            exchange_metrics[:tokens_output] += response['tokens']['output']
+            exchange_metrics[:spend] += response['spend']
+            exchange_metrics[:message_count] += 1
+
+            # Save final assistant message for exchange
+            final_assistant_message = response['content']
+
+            # Complete the exchange
+            history.complete_exchange(
+              exchange_id: exchange_id,
+              assistant_message: final_assistant_message,
+              metrics: exchange_metrics
             )
 
             break
