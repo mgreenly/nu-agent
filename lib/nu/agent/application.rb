@@ -298,6 +298,7 @@ module Nu
           tool_call_count: 0
         }
         final_assistant_message = nil
+        first_iteration = true
 
         loop do
           # Get messages from history (only from current session)
@@ -327,9 +328,8 @@ module Nu
           # Get tools formatted for this client
           tools = client.format_tools(tool_registry)
 
-          # Build context document (only on first iteration, when we have a user message but no assistant responses)
-          has_assistant_messages = messages.any? { |m| m['role'] == 'assistant' }
-          if !has_assistant_messages
+          # Build context document (only on first iteration of this exchange's loop)
+          if first_iteration
             document = build_context_document(messages, tool_registry)
             if document && !document.empty?
               # Prepend document to messages
@@ -338,6 +338,7 @@ module Nu
                 'content' => document
               })
             end
+            first_iteration = false
           end
 
           # Display LLM request (verbosity level 3+)
