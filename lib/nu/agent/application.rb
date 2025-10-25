@@ -43,7 +43,20 @@ module Nu
         # Load settings from database (default all to true, except debug which defaults to false)
         @debug = @history.get_config('debug', default: 'false') == 'true'
         @debug = true if @options.debug  # Command line option overrides database setting
-        @output = OutputManager.new(debug: @debug)
+
+        # Initialize TUI if requested
+        @tui = nil
+        if @options.tui
+          begin
+            @tui = TUIManager.new
+          rescue => e
+            $stderr.puts "Warning: Failed to initialize TUI: #{e.message}"
+            $stderr.puts "Falling back to standard mode"
+            @tui = nil
+          end
+        end
+
+        @output = OutputManager.new(debug: @debug, tui: @tui)
         @redact = @history.get_config('redaction', default: 'true') == 'true'
         @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
         @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'true') == 'true'
@@ -95,6 +108,9 @@ module Nu
       ensure
         # Signal threads to shutdown
         @shutdown = true
+
+        # Close TUI before waiting for threads
+        @tui&.close
 
         # Wait for any critical sections (database writes) to complete
         timeout = 5.0
@@ -520,16 +536,24 @@ module Nu
       end
 
       def repl
-        setup_readline
+        setup_readline unless @tui
 
         loop do
-          print "\n"
+          print "\n" unless @tui
 
           begin
-            input = Readline.readline("> ", true)  # true = add to history
+            if @tui && @tui.active
+              input = @tui.readline("> ")
+            else
+              input = Readline.readline("> ", true)  # true = add to history
+            end
           rescue Interrupt
             # Ctrl-C while waiting for input - exit program
-            puts "\n"
+            if @tui && @tui.active
+              @tui.write_output("\n")
+            else
+              puts "\n"
+            end
             break
           end
 
@@ -537,9 +561,9 @@ module Nu
 
           input = input.strip
 
-          # Remove from history if empty
+          # Remove from history if empty (only for Readline mode)
           if input.empty?
-            Readline::HISTORY.pop
+            Readline::HISTORY.pop unless @tui
             next
           end
 
@@ -547,7 +571,7 @@ module Nu
           break if result == :exit
         end
       ensure
-        save_history
+        save_history unless @tui
       end
 
       def setup_readline
@@ -1368,8 +1392,12 @@ module Nu
                 application: application
               )
             rescue => e
-              $stderr.puts "[Man Indexer] Worker thread error: #{e.class}: #{e.message}"
-              $stderr.puts e.backtrace.first(10).join("\n")
+              application.output.error("[Man Indexer] Worker thread error: #{e.class}: #{e.message}")
+              if application.instance_variable_get(:@debug)
+                e.backtrace.first(10).each do |line|
+                  application.output.debug("  #{line}")
+                end
+              end
               status_mutex.synchronize do
                 indexer_status['running'] = false
               end
@@ -1385,16 +1413,20 @@ module Nu
         begin
           embeddings_client = Clients::OpenAIEmbeddings.new
         rescue => e
-          $stderr.puts "\n[Man Indexer] ERROR: Failed to create OpenAI Embeddings client"
-          $stderr.puts "  #{e.message}"
-          $stderr.puts "\nMan page indexing requires OpenAI embeddings API access."
-          $stderr.puts "Please ensure your OpenAI API key has access to text-embedding-3-small."
+          application.output.error("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client")
+          application.output.error("  #{e.message}")
+          application.output.error("Man page indexing requires OpenAI embeddings API access.")
+          application.output.error("Please ensure your OpenAI API key has access to text-embedding-3-small.")
           status_mutex.synchronize { indexer_status['running'] = false }
           return
         end
 
-        # Create man indexer
-        man_indexer = ManIndexer.new(history: history, embeddings_client: embeddings_client)
+        # Create man indexer with output for debug messages
+        man_indexer = ManIndexer.new(
+          history: history,
+          embeddings_client: embeddings_client,
+          output: application.output
+        )
 
         loop do
           # Check for shutdown or disabled
@@ -1478,15 +1510,15 @@ module Nu
 
                 # Check for model access issues
                 if error_code == 'model_not_found' && error_msg.include?('text-embedding-3-small')
-                  $stderr.puts "\n[Man Indexer] ERROR: OpenAI API key does not have access to text-embedding-3-small"
-                  $stderr.puts "  Please enable embeddings API access in your OpenAI project settings"
-                  $stderr.puts "  Visit: https://platform.openai.com/settings"
+                  application.output.error("[Man Indexer] ERROR: OpenAI API key does not have access to text-embedding-3-small")
+                  application.output.error("  Please enable embeddings API access in your OpenAI project settings")
+                  application.output.error("  Visit: https://platform.openai.com/settings")
 
                   # Stop indexing - no point continuing
                   status_mutex.synchronize { indexer_status['running'] = false }
                   break
                 else
-                  $stderr.puts "\n[Man Indexer] API Error: #{error_msg}"
+                  application.output.debug("[Man Indexer] API Error: #{error_msg}")
                 end
               end
 
@@ -1526,9 +1558,13 @@ module Nu
               indexer_status['failed'] += records.length
             end
 
-            # Log error to stderr for debugging
-            $stderr.puts "\n[Man Indexer] Error processing batch: #{e.class}: #{e.message}"
-            $stderr.puts e.backtrace.first(5).join("\n") if @debug
+            # Log error using thread-safe output
+            application.output.debug("[Man Indexer] Error processing batch: #{e.class}: #{e.message}")
+            if application.instance_variable_get(:@debug)
+              e.backtrace.first(5).each do |line|
+                application.output.debug("  #{line}")
+              end
+            end
           end
 
           # Rate limiting: sleep to maintain 10 req/min (6 seconds between requests)

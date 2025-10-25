@@ -17,6 +17,7 @@ Gem::Specification.new do |spec|
   spec.executables = ["nu-agent"]
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "curses", "~> 1.4"
   spec.add_dependency "duckdb", "~> 1.1"
   spec.add_dependency "gemini-ai", "~> 4.0"
   spec.add_dependency "ruby-anthropic", "~> 0.4.2"

@@ -4,9 +4,11 @@ module Nu
   module Agent
     class OutputManager
       attr_accessor :debug
+      attr_reader :tui
 
-      def initialize(debug: false)
+      def initialize(debug: false, tui: nil)
         @debug = debug
+        @tui = tui
         @mutex = Mutex.new
         @spinner = Spinner.new
         @waiting = false
@@ -15,33 +17,50 @@ module Nu
       end
 
       def output(message)
-        @mutex.synchronize do
-          stop_spinner
-          puts message
-          restart_spinner
+        # Use TUI if available, otherwise stdout
+        if @tui && @tui.active
+          @tui.write_output(message)
+        else
+          @mutex.synchronize do
+            stop_spinner
+            puts message
+            restart_spinner
+          end
         end
       end
 
       def debug(message)
         return unless @debug
 
-        @mutex.synchronize do
-          stop_spinner
-          puts "\e[90m#{message}\e[0m"
-          restart_spinner
+        # Use TUI if available, otherwise stdout
+        if @tui && @tui.active
+          @tui.write_debug(message)
+        else
+          @mutex.synchronize do
+            stop_spinner
+            puts "\e[90m#{message}\e[0m"
+            restart_spinner
+          end
         end
       end
 
       def error(message)
-        @mutex.synchronize do
-          stop_spinner
-          puts "\e[31m#{message}\e[0m"
-          restart_spinner
+        # Use TUI if available, otherwise stdout
+        if @tui && @tui.active
+          @tui.write_error(message)
+        else
+          @mutex.synchronize do
+            stop_spinner
+            puts "\e[31m#{message}\e[0m"
+            restart_spinner
+          end
         end
       end
 
-      # Public methods to control spinner
+      # Public methods to control spinner (disabled in TUI mode)
       def start_waiting(message = "Thinking...", start_time: nil)
+        return if @tui && @tui.active # No spinner in TUI mode
+
         @mutex.synchronize do
           @waiting = true
           @waiting_message = message
@@ -51,6 +70,8 @@ module Nu
       end
 
       def stop_waiting
+        return if @tui && @tui.active # No spinner in TUI mode
+
         @mutex.synchronize do
           @waiting = false
           @waiting_message = nil

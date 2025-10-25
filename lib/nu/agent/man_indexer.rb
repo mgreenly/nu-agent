@@ -3,9 +3,10 @@
 module Nu
   module Agent
     class ManIndexer
-      def initialize(history:, embeddings_client:)
+      def initialize(history:, embeddings_client:, output: nil)
         @history = history
         @embeddings = embeddings_client
+        @output = output
       end
 
       # Discover all available man pages on the system
@@ -35,11 +36,17 @@ module Nu
       def extract_description(source)
         # Parse source: "grep.1" -> name="grep", section="1"
         name, section = source.split('.')
-        return nil unless name && section
+        unless name && section
+          @output&.debug("[Man Indexer] Skipping #{source}: invalid source format")
+          return nil
+        end
 
         # Get man page content
         output = `man #{section} #{name} 2>/dev/null`
-        return nil if output.nil? || output.empty?
+        if output.nil? || output.empty?
+          @output&.debug("[Man Indexer] Skipping #{source}: man page not accessible")
+          return nil
+        end
 
         # Extract sections using all-caps headers
         sections = extract_sections(output, ['NAME', 'SYNOPSIS', 'DESCRIPTION'])
@@ -60,15 +67,22 @@ module Nu
         end
 
         # Return nil if we didn't get any sections
-        return nil if doc_parts.empty?
+        if doc_parts.empty?
+          @output&.debug("[Man Indexer] Skipping #{source}: no NAME/SYNOPSIS/DESCRIPTION sections found")
+          return nil
+        end
 
         document = doc_parts.join("\n\n")
 
         # Truncate if too long (8000 tokens ~ 32000 chars rough estimate)
-        document = document[0, 32000] if document.length > 32000
+        if document.length > 32000
+          @output&.debug("[Man Indexer] Truncating #{source}: content too long (#{document.length} chars)")
+          document = document[0, 32000]
+        end
 
         document
       rescue => e
+        @output&.debug("[Man Indexer] Error processing #{source}: #{e.class}: #{e.message}")
         nil
       end
 

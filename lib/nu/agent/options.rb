@@ -3,11 +3,12 @@
 module Nu
   module Agent
     class Options
-      attr_reader :reset_model, :debug
+      attr_reader :reset_model, :debug, :tui
 
       def initialize(args = ARGV)
         @reset_model = nil
         @debug = false
+        @tui = false
         parse(args)
       end
 
@@ -23,6 +24,10 @@ module Nu
 
           opts.on("--debug", "Enable debug logging") do
             @debug = true
+          end
+
+          opts.on("--tui", "Enable split-pane terminal UI") do
+            @tui = true
           end
 
           opts.on("-v", "--version", "Show version") do
