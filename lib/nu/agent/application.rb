@@ -398,7 +398,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
+        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/migrate-exchanges', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
         all_models = ClientFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -678,6 +678,9 @@ module Nu
         when '/fix'
           run_fix
           :continue
+        when '/migrate-exchanges'
+          run_migrate_exchanges
+          :continue
         when '/info'
           print_info
           :continue
@@ -701,6 +704,7 @@ module Nu
         @output.output("  /fix                           - Scan and fix database corruption issues")
         @output.output("  /help                          - Show this help message")
         @output.output("  /info                          - Show current session information")
+        @output.output("  /migrate-exchanges             - Create exchanges from existing messages (one-time migration)")
         @output.output("  /model orchestrator <name>     - Switch orchestrator model")
         @output.output("  /model spellchecker <name>     - Switch spellchecker model")
         @output.output("  /model summarizer <name>       - Switch summarizer model")
@@ -739,6 +743,31 @@ module Nu
         else
           @output.output("Skipped")
         end
+      end
+
+      def run_migrate_exchanges
+        @output.output("")
+        @output.output("This will analyze all messages and group them into exchanges.")
+        @output.output("Existing exchanges will NOT be affected.")
+        @output.output("")
+        print "Continue with migration? [y/N] "
+        response = gets.chomp.downcase
+
+        return unless response == 'y'
+
+        @output.output("")
+        @output.output("Migrating exchanges...")
+
+        start_time = Time.now
+        stats = history.migrate_exchanges
+        elapsed = Time.now - start_time
+
+        @output.output("")
+        @output.output("Migration complete!")
+        @output.output("  Conversations processed: #{stats[:conversations]}")
+        @output.output("  Exchanges created: #{stats[:exchanges_created]}")
+        @output.output("  Messages updated: #{stats[:messages_updated]}")
+        @output.output("  Time elapsed: #{'%.2f' % elapsed}s")
       end
 
       def print_info
