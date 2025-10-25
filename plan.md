@@ -135,6 +135,15 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 - Debug verbosity levels work as specified
 - Performance is acceptable (threading doesn't slow things down)
 - Code is cleaner and more maintainable than before
+- **All features have comprehensive specs that pass**
+
+## Testing Policy
+
+Starting from Phase 2 onwards:
+- Every phase must have comprehensive RSpec tests
+- Tests must pass before phase is considered complete
+- Tests cover happy path, edge cases, and error conditions
+- Use descriptive test names that document behavior
 
 ---
 
