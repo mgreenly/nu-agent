@@ -16,7 +16,7 @@ module Nu
         setup_schema
       end
 
-      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil, redacted: false)
+      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil, redacted: false, exchange_id: nil)
         @mutex.synchronize do
           tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : 'NULL'
           tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : 'NULL'
@@ -26,13 +26,13 @@ module Nu
             INSERT INTO messages (
               conversation_id, actor, role, content, model,
               include_in_context, tokens_input, tokens_output, spend,
-              tool_calls, tool_call_id, tool_result, error, redacted, created_at
+              tool_calls, tool_call_id, tool_result, error, redacted, exchange_id, created_at
             ) VALUES (
               #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
               '#{escape_sql(content || '')}', #{model ? "'#{escape_sql(model)}'" : 'NULL'},
               #{include_in_context}, #{tokens_input || 'NULL'}, #{tokens_output || 'NULL'},
               #{spend || 'NULL'}, #{tool_calls_json}, #{tool_call_id ? "'#{escape_sql(tool_call_id)}'" : 'NULL'},
-              #{tool_result_json}, #{error_json}, #{redacted}, CURRENT_TIMESTAMP
+              #{tool_result_json}, #{error_json}, #{redacted}, #{exchange_id || 'NULL'}, CURRENT_TIMESTAMP
             )
           SQL
         end
@@ -195,6 +195,148 @@ module Nu
                 summary_cost = #{cost || 'NULL'}
             WHERE id = #{conversation_id}
           SQL
+        end
+      end
+
+      def create_exchange(conversation_id:, user_message:)
+        @mutex.synchronize do
+          # Get the next exchange number for this conversation
+          result = @conn.query(<<~SQL)
+            SELECT COALESCE(MAX(exchange_number), 0) + 1 as next_number
+            FROM exchanges
+            WHERE conversation_id = #{conversation_id}
+          SQL
+          exchange_number = result.to_a.first.first
+
+          # Create the exchange
+          result = @conn.query(<<~SQL)
+            INSERT INTO exchanges (
+              conversation_id, exchange_number, started_at, status, user_message
+            ) VALUES (
+              #{conversation_id}, #{exchange_number}, CURRENT_TIMESTAMP, 'in_progress', '#{escape_sql(user_message)}'
+            )
+            RETURNING id
+          SQL
+          result.to_a.first.first
+        end
+      end
+
+      def update_exchange(exchange_id:, updates: {})
+        @mutex.synchronize do
+          set_clauses = []
+
+          updates.each do |key, value|
+            case key.to_s
+            when 'status', 'summary', 'summary_model', 'error', 'assistant_message'
+              set_clauses << "#{key} = '#{escape_sql(value)}'"
+            when 'completed_at'
+              if value.is_a?(Time)
+                set_clauses << "#{key} = '#{value.strftime('%Y-%m-%d %H:%M:%S.%6N')}'"
+              else
+                set_clauses << "#{key} = CURRENT_TIMESTAMP"
+              end
+            when 'tokens_input', 'tokens_output', 'spend', 'message_count', 'tool_call_count'
+              set_clauses << "#{key} = #{value || 'NULL'}"
+            end
+          end
+
+          return if set_clauses.empty?
+
+          @conn.query(<<~SQL)
+            UPDATE exchanges
+            SET #{set_clauses.join(', ')}
+            WHERE id = #{exchange_id}
+          SQL
+        end
+      end
+
+      def complete_exchange(exchange_id:, summary: nil, assistant_message: nil, metrics: {})
+        @mutex.synchronize do
+          set_clauses = ["status = 'completed'", "completed_at = CURRENT_TIMESTAMP"]
+
+          if summary
+            set_clauses << "summary = '#{escape_sql(summary)}'"
+          end
+
+          if assistant_message
+            set_clauses << "assistant_message = '#{escape_sql(assistant_message)}'"
+          end
+
+          # Add metrics
+          metrics.each do |key, value|
+            case key.to_s
+            when 'tokens_input', 'tokens_output', 'spend', 'message_count', 'tool_call_count'
+              set_clauses << "#{key} = #{value || 'NULL'}"
+            end
+          end
+
+          @conn.query(<<~SQL)
+            UPDATE exchanges
+            SET #{set_clauses.join(', ')}
+            WHERE id = #{exchange_id}
+          SQL
+        end
+      end
+
+      def get_exchange_messages(exchange_id:)
+        @mutex.synchronize do
+          result = @conn.query(<<~SQL)
+            SELECT id, actor, role, content, model, tokens_input, tokens_output,
+                   tool_calls, tool_call_id, tool_result, error, created_at, redacted
+            FROM messages
+            WHERE exchange_id = #{exchange_id}
+            ORDER BY id ASC
+          SQL
+
+          result.map do |row|
+            {
+              "id" => row[0],
+              "actor" => row[1],
+              "role" => row[2],
+              "content" => row[3],
+              "model" => row[4],
+              "tokens_input" => row[5],
+              "tokens_output" => row[6],
+              "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
+              "tool_call_id" => row[8],
+              "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
+              "error" => row[10] ? JSON.parse(row[10]) : nil,
+              "created_at" => row[11],
+              "redacted" => row[12]
+            }
+          end
+        end
+      end
+
+      def get_conversation_exchanges(conversation_id:)
+        @mutex.synchronize do
+          result = @conn.query(<<~SQL)
+            SELECT id, exchange_number, started_at, completed_at, status,
+                   user_message, assistant_message, summary,
+                   tokens_input, tokens_output, spend,
+                   message_count, tool_call_count
+            FROM exchanges
+            WHERE conversation_id = #{conversation_id}
+            ORDER BY exchange_number ASC
+          SQL
+
+          result.map do |row|
+            {
+              "id" => row[0],
+              "exchange_number" => row[1],
+              "started_at" => row[2],
+              "completed_at" => row[3],
+              "status" => row[4],
+              "user_message" => row[5],
+              "assistant_message" => row[6],
+              "summary" => row[7],
+              "tokens_input" => row[8],
+              "tokens_output" => row[9],
+              "spend" => row[10],
+              "message_count" => row[11],
+              "tool_call_count" => row[12]
+            }
+          end
         end
       end
 
@@ -431,6 +573,10 @@ module Nu
         SQL
 
         @conn.query(<<~SQL)
+          CREATE SEQUENCE IF NOT EXISTS exchanges_id_seq START 1
+        SQL
+
+        @conn.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY DEFAULT nextval('conversations_id_seq'),
             created_at TIMESTAMP,
@@ -439,6 +585,27 @@ module Nu
             summary TEXT,
             summary_model TEXT,
             summary_cost FLOAT
+          )
+        SQL
+
+        @conn.query(<<~SQL)
+          CREATE TABLE IF NOT EXISTS exchanges (
+            id INTEGER PRIMARY KEY DEFAULT nextval('exchanges_id_seq'),
+            conversation_id INTEGER NOT NULL,
+            exchange_number INTEGER NOT NULL,
+            started_at TIMESTAMP NOT NULL,
+            completed_at TIMESTAMP,
+            summary TEXT,
+            summary_model TEXT,
+            status TEXT,
+            error TEXT,
+            user_message TEXT,
+            assistant_message TEXT,
+            tokens_input INTEGER,
+            tokens_output INTEGER,
+            spend FLOAT,
+            message_count INTEGER,
+            tool_call_count INTEGER
           )
         SQL
 
@@ -468,6 +635,7 @@ module Nu
         add_column_if_not_exists('messages', 'spend', 'FLOAT')
         add_column_if_not_exists('messages', 'error', 'TEXT')
         add_column_if_not_exists('messages', 'redacted', 'BOOLEAN DEFAULT FALSE')
+        add_column_if_not_exists('messages', 'exchange_id', 'INTEGER')
 
         # Add summary columns to conversations
         add_column_if_not_exists('conversations', 'summary', 'TEXT')
