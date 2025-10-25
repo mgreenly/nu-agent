@@ -99,7 +99,145 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 
 ---
 
-## Phase 5: Threaded Context Building
+## Phase 5: Architecture Redesign ✅ COMPLETE
+
+### Overview
+Major architectural redesign to separate message storage from LLM context building.
+
+### Tasks
+- [x] Redesign spell checker as RAG sub-process
+- [x] Create inner `tool_calling_loop` function
+- [x] Refactor `chat_loop` to use new architecture
+- [x] Remove old redaction logic
+- [x] Update verbosity display for new architecture
+- [x] Test the complete redesign (all 154 specs passing)
+
+### Architecture Changes
+
+**Old Architecture (Pre-Phase 5):**
+- User messages were modified (spell checked) before saving
+- Markdown document prepended as user message to history
+- Complex post-turn redaction marking via `mark_turn_as_redacted`
+- Redaction index built by comparing before/after messages
+
+**New Architecture (Post-Phase 5):**
+1. **Message Storage**: User messages saved unmodified to database
+2. **Redaction**: Messages created with `redacted=true` flag from the start (in `tool_calling_loop`)
+3. **Context Building**: Markdown document built per exchange with:
+   - RAG context (redacted ranges, spell check results, fun facts)
+   - Available tools list
+   - Original user query
+4. **LLM Request**: Sends conversation history + markdown document where:
+   - Conversation history = unredacted messages from **previous exchanges only** (current conversation)
+   - Markdown document = context for the **current exchange**
+   - Not saved this way (history and document sent separately but not stored as such)
+5. **Spell Checking**: Now a RAG sub-process that adds corrections to context
+6. **Inner/Outer Loop**:
+   - Outer (`chat_loop`): Build context, call inner loop, save final response
+   - Inner (`tool_calling_loop`): Handle tool calling iterations, save as redacted
+
+### What Gets Saved as Redacted
+- Tool calls (assistant messages with tool_calls)
+- Tool results (role='tool')
+- Intermediate LLM responses during tool calling
+
+### What Gets Saved as Unredacted
+- Original user queries
+- Final LLM responses (no tool calls)
+- Error messages (so user can see them)
+
+### Removed Methods
+- `redact_old_tool_results` - No longer needed
+- `get_redacted_message_ranges` - Replaced by simple filtering
+- `message_was_redacted?` - No longer needed
+- `mark_turn_as_redacted` - Commented out (messages now created as redacted)
+
+### Notes
+- All existing specs continue to pass (154/154)
+- Simpler redaction logic: `messages.reject { |m| m['redacted'] }`
+- Spell checker results appear in RAG context, not as separate messages
+- Future expansion: acronyms, jargon translation, clarity improvements
+
+---
+
+## Phase 6: Orchestrator Ownership & Transaction-Based Exchanges ✅ COMPLETE
+
+### Overview
+Major architectural refactoring to give the orchestrator full ownership of exchange processing with atomic transactions.
+
+### Goals
+1. Per-thread database connections (eliminate global mutex bottleneck)
+2. Orchestrator owns entire exchange lifecycle (create → process → complete)
+3. Atomic exchanges via transactions (all-or-nothing saves)
+4. Clean rollback on interruption (no orphaned exchanges)
+
+### Tasks
+- [x] Refactor History to use per-thread connections
+  - [x] Replace single `@conn` with connection pool (`@connections`)
+  - [x] Add `connection` method for thread-local connection access
+  - [x] Remove all `@mutex.synchronize` blocks around queries
+  - [x] Keep `@connection_mutex` only for connection pool management
+  - [x] Update `close` method to close all pooled connections
+- [x] Add transaction support to History class
+  - [x] Implement `transaction(&block)` method
+  - [x] Auto-commit on success, auto-rollback on exception
+- [x] Move exchange creation into chat_loop (orchestrator owns exchange)
+  - [x] Change `chat_loop` signature from `exchange_id:` to `user_input:`
+  - [x] Wrap entire `chat_loop` in `history.transaction do` block
+  - [x] Create exchange inside transaction
+  - [x] Add user message inside transaction
+  - [x] Process and complete exchange inside transaction
+- [x] Simplify process_input (just spawn orchestrator with raw input)
+  - [x] Remove exchange creation from `process_input`
+  - [x] Pass `user_input:` to `chat_loop` instead of `exchange_id:`
+  - [x] Update thread to capture and pass raw user input
+- [x] Remove exchange abort logic from process_input
+  - [x] Remove `update_exchange(..., status: 'aborted')` on Ctrl-C
+  - [x] Transaction rollback handles cleanup automatically
+  - [x] No orphaned exchanges in database
+- [x] Test the refactored flow
+  - [x] All 154 specs pass
+  - [x] Manual testing confirms correct behavior
+
+### Architecture Changes
+
+**Old Architecture:**
+- Single shared database connection with global mutex
+- Exchange created in `process_input` before orchestrator runs
+- User message saved before orchestrator runs
+- Aborted exchanges marked in database with status='aborted'
+- Serialized database access (one thread at a time)
+
+**New Architecture (Post-Phase 6):**
+1. **Per-Thread Connections**: Each thread has its own DuckDB connection
+2. **Orchestrator Ownership**: Orchestrator fully owns exchange lifecycle
+3. **Atomic Exchanges**: `history.transaction do` wraps entire exchange
+4. **Clean Rollback**: Ctrl-C or crash → transaction rolls back → no database trace
+5. **Concurrent Access**: Multiple orchestrator threads can access DB simultaneously
+6. **Long-Running Transactions**: Orchestrator holds transaction for entire exchange duration (safe with per-thread connections)
+
+**Transaction Outcomes:**
+- ✅ **Success**: Thread completes → transaction commits → exchange saved
+- ✅ **Error**: Thread raises exception → transaction rolls back → nothing saved
+- ✅ **Interrupt**: User hits Ctrl-C → thread killed → transaction rolls back → nothing saved
+
+### Benefits
+- **Atomicity**: Either complete exchange exists or nothing exists (no partial data)
+- **Concurrency**: Multiple orchestrators can run in parallel without blocking
+- **Simplicity**: Cleaner error handling, no special abort logic needed
+- **Consistency**: Database always in consistent state (no orphaned exchanges)
+- **Performance**: Eliminates global mutex bottleneck for database access
+
+### Notes
+- DuckDB's MVCC handles concurrent transactions well
+- Per-thread connections eliminate lock contention
+- Long orchestrator transactions don't block other threads
+- Summarizer thread also benefits from per-thread connection
+- All tests continue to pass (154/154)
+
+---
+
+## Phase 7: Threaded Context Building
 
 ### Tasks
 - [ ] Implement RAG thread(s)
@@ -121,7 +259,7 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 
 ---
 
-## Phase 6: Polish
+## Phase 7: Polish
 
 ### Tasks
 - [ ] Add exchange summarization (similar to conversation summarization)

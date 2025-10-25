@@ -4,7 +4,7 @@ module Nu
   module Agent
     class Formatter
       attr_writer :orchestrator, :debug
-      attr_accessor :turn_start_time
+      attr_accessor :exchange_start_time
 
       def initialize(history:, session_start_time:, conversation_id:, orchestrator:, debug: false, output: $stdout, output_manager: nil, application: nil)
         @history = history
@@ -16,7 +16,7 @@ module Nu
         @output_manager = output_manager
         @application = application
         @last_message_id = 0
-        @turn_start_time = nil
+        @exchange_start_time = nil
       end
 
       def reset_session(conversation_id:)
@@ -102,40 +102,108 @@ module Nu
       end
 
       def display_thread_event(thread_name, status)
-        # Only show thread events at verbosity level 1+
-        verbosity = @application ? @application.verbosity : 0
-        return if verbosity < 1
+        # Only show in debug mode
+        return unless @debug
 
-        @output.puts "\e[90m[Thread] #{thread_name} #{status}\e[0m"
+        # Stop spinner to avoid output on same line
+        @output_manager&.stop_waiting
+        @output.puts "\n\e[90m[Thread] #{thread_name} #{status}\e[0m"
+        # Restart spinner with preserved start time
+        @output_manager&.start_waiting("Thinking...", start_time: @exchange_start_time) unless @history.workers_idle?
       end
 
-      def display_llm_request(messages, tools = nil)
-        # Only show LLM request at verbosity level 3+
+      def display_message_created(actor:, role:, redacted: false, content: nil, tool_calls: nil, tool_result: nil)
+        # Only show in debug mode
+        return unless @debug
+
         verbosity = @application ? @application.verbosity : 0
-        return if verbosity < 3
+        return if verbosity < 2
 
-        @output.puts "\e[90m"
-        @output.puts "\n" + "=" * 80
-        @output.puts "[LLM Request] Sending #{messages.length} message(s) to model"
-        @output.puts "=" * 80
+        # Stop spinner to avoid output on same line
+        @output_manager&.stop_waiting
 
-        messages.each_with_index do |msg, i|
-          @output.puts "\n--- Message #{i + 1} (role: #{msg['role']}) ---"
-          if msg['content']
-            content_preview = msg['content'].to_s[0...200]
-            @output.puts content_preview
-            @output.puts "... (#{msg['content'].to_s.length} chars total)" if msg['content'].to_s.length > 200
-          end
-          if msg['tool_calls']
-            @output.puts "  [Contains #{msg['tool_calls'].length} tool call(s)]"
-          end
-          if msg['tool_result']
-            @output.puts "  [Tool result for: #{msg['tool_result']['name']}]"
-          end
+        # Determine message direction based on role (from code's perspective)
+        # Out = sent to LLM, In = received from LLM
+        direction = case role
+        when 'user', 'tool', 'system'
+          'Out'
+        when 'assistant'
+          'In'
+        else
+          ''
         end
 
-        # Level 4: Also show tools
-        if verbosity >= 4 && tools && !tools.empty?
+        # Level 2: Basic notification
+        msg_type = redacted ? "redacted message" : "message"
+
+        if verbosity == 2
+          @output.puts "\n\e[90m[Message #{direction}] Created #{msg_type}\e[0m"
+          # Restart spinner with preserved start time
+          @output_manager&.start_waiting("Thinking...", start_time: @exchange_start_time) unless @history.workers_idle?
+          return
+        end
+
+        # Level 3+: Show message creation with details on separate lines
+        if verbosity >= 3
+          @output.puts "\n\e[90m[Message #{direction}] Created #{msg_type}"
+          @output.puts "  role: #{role}"
+          @output.puts "  actor: #{actor}"
+
+          # Show content preview and/or tool information
+          if tool_calls && tool_calls.length > 0
+            tool_names = tool_calls.map { |tc| tc['name'] }.join(', ')
+            @output.puts "  tool_calls: #{tool_names}"
+
+            # Show preview of arguments
+            tool_calls.each do |tc|
+              if tc['arguments'] && !tc['arguments'].empty?
+                args_str = tc['arguments'].to_json
+                max_length = verbosity >= 6 ? 100 : 30
+                preview = args_str[0...max_length]
+                @output.puts "    #{tc['name']}: #{preview}#{args_str.length > max_length ? '...' : ''}"
+              end
+            end
+          end
+
+          if tool_result
+            @output.puts "  tool_result: #{tool_result['name']}"
+
+            # Show preview of result
+            if tool_result['result']
+              result_str = tool_result['result'].is_a?(Hash) ? tool_result['result'].to_json : tool_result['result'].to_s
+              max_length = verbosity >= 6 ? 100 : 30
+              preview = result_str[0...max_length]
+              @output.puts "    result: #{preview}#{result_str.length > max_length ? '...' : ''}"
+            end
+          end
+
+          if content && !content.empty?
+            # Level 3-5: Show first 30 chars
+            # Level 6+: Show first 100 chars
+            max_length = verbosity >= 6 ? 100 : 30
+            preview = content[0...max_length]
+            @output.puts "  content: #{preview}#{content.length > max_length ? '...' : ''}"
+          end
+
+          @output.print "\e[0m"
+        end
+
+        # Restart spinner with preserved start time
+        @output_manager&.start_waiting("Thinking...", start_time: @exchange_start_time) unless @history.workers_idle?
+      end
+
+      def display_llm_request(messages, tools = nil, markdown_document = nil)
+        # Only show in debug mode
+        return unless @debug
+
+        # Only show LLM request at verbosity level 4+
+        verbosity = @application ? @application.verbosity : 0
+        return if verbosity < 4
+
+        @output.puts "\e[90m"
+
+        # Level 5: Show tools first
+        if verbosity >= 5 && tools && !tools.empty?
           @output.puts "\n--- Tools (#{tools.length} available) ---"
           tools.each do |tool|
             name = tool['name'] || tool[:name]
@@ -143,7 +211,39 @@ module Nu
           end
         end
 
-        @output.puts "=" * 80
+        # Separate history from markdown document
+        # The markdown document is always the last message (if present)
+        history_messages = markdown_document ? messages[0...-1] : messages
+
+        # Show conversation history (unredacted messages)
+        if !history_messages.empty?
+          @output.puts "\n--- Conversation History (#{history_messages.length} unredacted message(s)) ---"
+          history_messages.each_with_index do |msg, i|
+            @output.puts "\n  Message #{i + 1} (role: #{msg['role']})"
+            if msg['content']
+              content_preview = msg['content'].to_s[0...200]
+              @output.puts "  #{content_preview}"
+              @output.puts "  ... (#{msg['content'].to_s.length} chars total)" if msg['content'].to_s.length > 200
+            end
+            if msg['tool_calls']
+              @output.puts "  [Contains #{msg['tool_calls'].length} tool call(s)]"
+            end
+            if msg['tool_result']
+              @output.puts "  [Tool result for: #{msg['tool_result']['name']}]"
+            end
+          end
+        end
+
+        # Show markdown document (context + tools + user query)
+        if markdown_document
+          @output.puts "\n--- Exchange Request ---"
+          # Show first 500 chars of markdown document
+          preview = markdown_document[0...500]
+          @output.puts preview
+          @output.puts "... (#{markdown_document.length} chars total)" if markdown_document.length > 500
+          @output.puts "--- Exchange Request ---"
+        end
+
         @output.print "\e[0m"
       end
 
@@ -162,8 +262,9 @@ module Nu
 
         # Display tool calls if present (only in debug mode)
         if @debug && message['tool_calls']
-          message['tool_calls'].each do |tc|
-            display_tool_call(tc)
+          total_count = message['tool_calls'].length
+          message['tool_calls'].each_with_index do |tc, index|
+            display_tool_call(tc, index: index + 1, total: total_count)
           end
         end
 
@@ -171,10 +272,10 @@ module Nu
         # - We're in debug mode (show everything), OR
         # - The message doesn't have tool calls (it's a final response)
         if message['tokens_input'] && message['tokens_output'] && (@debug || !message['tool_calls'])
-          # Calculate elapsed time for this turn (only show on final message)
+          # Calculate elapsed time for this exchange (only show on final message)
           elapsed_time = nil
-          if @turn_start_time && !message['tool_calls']
-            elapsed_time = Time.now - @turn_start_time
+          if @exchange_start_time && !message['tool_calls']
+            elapsed_time = Time.now - @exchange_start_time
           end
 
           # Query database for session totals (for billing)
@@ -210,14 +311,16 @@ module Nu
         @output.print "\e[0m"
       end
 
-      def display_tool_call(tool_call)
+      def display_tool_call(tool_call, index: nil, total: nil)
         # Get verbosity level (default to 0 if application not set)
         verbosity = @application ? @application.verbosity : 0
 
-        @output.puts "\e[90m\n[Tool Call] #{tool_call['name']}"
+        # Show count indicator if multiple tool calls
+        count_indicator = (index && total && total > 1) ? " (#{index}/#{total})" : ""
+        @output.puts "\e[90m\n[Tool Call Request] #{tool_call['name']}#{count_indicator}"
 
         # Level 0: Show tool name only, no arguments
-        if verbosity == 0
+        if verbosity < 1
           @output.print "\e[0m"
           return
         end
@@ -227,14 +330,14 @@ module Nu
             tool_call['arguments'].each do |key, value|
               value_str = value.to_s
 
-              # Level 1: Truncate each param to 30 characters
-              if verbosity == 1
+              # Level 1-3: Truncate each param to 30 characters
+              if verbosity < 4
                 if value_str.length > 30
                   @output.puts "  #{key}: #{value_str[0...30]}..."
                 else
                   @output.puts "  #{key}: #{value_str}"
                 end
-              # Level 2+: Show full value
+              # Level 4+: Show full value
               else
                 @output.puts "  #{key}: #{value_str}"
               end
@@ -254,10 +357,10 @@ module Nu
         # Get verbosity level (default to 0 if application not set)
         verbosity = @application ? @application.verbosity : 0
 
-        @output.puts "\e[90m\n[Tool Result] #{name}"
+        @output.puts "\e[90m\n[Tool Use Response] #{name}"
 
         # Level 0: Show tool name only, no result details
-        if verbosity == 0
+        if verbosity < 1
           @output.print "\e[0m"
           return
         end
@@ -267,8 +370,8 @@ module Nu
             result.each do |key, value|
               value_str = value.to_s
 
-              # Level 1: Truncate each field to 30 characters
-              if verbosity == 1
+              # Level 1-3: Truncate each field to 30 characters
+              if verbosity < 4
                 # Handle multiline values - just show first line truncated
                 if value_str.include?("\n")
                   first_line = value_str.lines.first.chomp
@@ -282,7 +385,7 @@ module Nu
                 else
                   @output.puts "  #{key}: #{value_str}"
                 end
-              # Level 2+: Show full value
+              # Level 4+: Show full value
               else
                 # Format multiline values with proper indentation
                 if value_str.include?("\n")
@@ -296,7 +399,7 @@ module Nu
           else
             # Non-hash result
             result_str = result.to_s
-            if verbosity == 1 && result_str.length > 30
+            if verbosity < 4 && result_str.length > 30
               @output.puts "  #{result_str[0...30]}..."
             else
               @output.puts "  #{result_str}"

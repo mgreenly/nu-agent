@@ -101,46 +101,16 @@ module Nu
           return handle_command(input)
         end
 
-        # Capture the last message ID before this turn starts
-        start_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
-        turn_start_message_id = start_messages.empty? ? 0 : start_messages.last['id']
+        # Capture exchange start time for elapsed time calculation
+        @formatter.exchange_start_time = Time.now
 
-        # Capture turn start time for elapsed time calculation
-        @formatter.turn_start_time = Time.now
-
-        # Start spinner before spell check (with elapsed time tracking)
-        @output.start_waiting("Thinking...", start_time: @formatter.turn_start_time)
+        # Start spinner (with elapsed time tracking)
+        @output.start_waiting("Thinking...", start_time: @formatter.exchange_start_time)
 
         thread = nil
         workers_incremented = false
-        exchange_id = nil
 
         begin
-          # Run spell checker if enabled
-          if @spell_check_enabled
-            spell_checker = SpellChecker.new(
-              history: history,
-              conversation_id: conversation_id,
-              client: @spellchecker
-            )
-            input = spell_checker.check_spelling(input)
-          end
-
-          # Create exchange for this interaction
-          exchange_id = history.create_exchange(
-            conversation_id: conversation_id,
-            user_message: input
-          )
-
-          # Add user message to history
-          history.add_message(
-            conversation_id: conversation_id,
-            exchange_id: exchange_id,
-            actor: @user_actor,
-            role: 'user',
-            content: input
-          )
-
           # Increment workers BEFORE spawning thread
           history.increment_workers
           workers_incremented = true
@@ -151,26 +121,24 @@ module Nu
             hist = history
             cli = orchestrator
             session_start = session_start_time
-            exch_id = exchange_id
+            user_in = input
             fmt = formatter
 
             # Display thread start event
             formatter.display_thread_event("Orchestrator", "Starting")
 
-            # Process in a thread
-            Thread.new(conv_id, hist, cli, session_start, exch_id, fmt) do |conversation_id, history, client, session_start_time, exchange_id, formatter|
+            # Spawn orchestrator thread with raw user input
+            Thread.new(conv_id, hist, cli, session_start, user_in) do |conversation_id, history, client, session_start_time, user_input|
               begin
                 chat_loop(
                   conversation_id: conversation_id,
                   history: history,
                   client: client,
                   session_start_time: session_start_time,
-                  exchange_id: exchange_id
+                  user_input: user_input
                 )
               ensure
                 history.decrement_workers
-                # Display thread finished event
-                formatter.display_thread_event("Orchestrator", "Finished")
               end
             end
           end
@@ -180,26 +148,15 @@ module Nu
           # Wait for completion and display
           formatter.wait_for_completion(conversation_id: conversation_id)
 
-          # Mark messages from this turn as redacted for future turns
-          @output.debug("\n[Redaction]\nMarking tool calls and results as redacted.")
-          history.mark_turn_as_redacted(
-            conversation_id: conversation_id,
-            since_message_id: turn_start_message_id
-          )
+          # Display thread finished event (after all output is shown)
+          formatter.display_thread_event("Orchestrator", "Finished")
         rescue Interrupt
-          # Ctrl-C pressed - abort all operations and return to prompt
+          # Ctrl-C pressed - kill thread and return to prompt
+          # Transaction will rollback automatically - no exchange will be saved
           @output.stop_waiting
           print "\e[90m\n(Ctrl-C) Operation aborted by user.\e[0m\n"
 
-          # Mark exchange as aborted
-          if exchange_id
-            history.update_exchange(
-              exchange_id: exchange_id,
-              updates: { status: 'aborted', completed_at: Time.now }
-            )
-          end
-
-          # Kill all active threads (main chat loop, summarizer, etc.)
+          # Kill all active threads (orchestrator, summarizer, etc.)
           active_threads.each do |t|
             t.kill if t.alive?
           end
@@ -242,114 +199,69 @@ module Nu
         end
       end
 
-      def build_context_document(messages, tool_registry)
+      def build_context_document(user_query:, tool_registry:, redacted_message_ranges: nil, conversation_id: nil)
         builder = DocumentBuilder.new
 
-        # Phase 4/5: Add context sections
-        # Full RAG threading will be implemented later in Phase 5
+        # Context section (RAG - Retrieval Augmented Generation)
+        # Multiple RAG sub-processes will be added here in the future
+        rag_content = []
 
-        # Context section (random fun fact for now)
-        fun_fact = get_random_fun_fact
-        builder.add_section('Context', fun_fact)
+        # RAG sub-process 1: Redacted message ranges
+        if redacted_message_ranges && !redacted_message_ranges.empty?
+          rag_content << "Redacted messages: #{redacted_message_ranges}"
+        end
+
+        # RAG sub-process 2: Spell checking (if enabled)
+        if @spell_check_enabled && @spellchecker
+          spell_checker = SpellChecker.new(
+            history: history,
+            conversation_id: conversation_id,
+            client: @spellchecker
+          )
+          corrected_query = spell_checker.check_spelling(user_query)
+
+          if corrected_query != user_query
+            rag_content << "The user said '#{user_query}' but means '#{corrected_query}'"
+          end
+        end
+
+        # If no RAG content was generated, indicate that
+        if rag_content.empty?
+          rag_content << "No Augmented Information Generated"
+        end
+
+        builder.add_section('Context', rag_content.join("\n\n"))
 
         # Available Tools section
         tool_names = tool_registry.available.map { |tool| tool.name }
         tools_list = tool_names.join(', ')
         builder.add_section('Available Tools', tools_list)
 
+        # User Query section (final section - ends the document)
+        builder.add_section('User Query', user_query)
+
         builder.build
       end
 
-      def get_random_fun_fact
-        facts = [
-          "The first computer programmer was Ada Lovelace, who wrote algorithms for Charles Babbage's Analytical Engine in the 1840s.",
-          "The term 'bug' in computing originated when a moth got trapped in a Harvard Mark II computer in 1947.",
-          "The first 1GB hard drive, introduced in 1980, weighed over 500 pounds and cost $40,000.",
-          "Python was named after the British comedy group Monty Python, not the snake.",
-          "The first computer mouse was made of wood and was invented by Doug Engelbart in 1964.",
-          "CAPTCHA stands for 'Completely Automated Public Turing test to tell Computers and Humans Apart'.",
-          "The original name for Windows was 'Interface Manager'.",
-          "The first domain name ever registered was Symbolics.com on March 15, 1985.",
-          "SQLite is the most widely deployed database engine in the world, found in billions of devices.",
-          "The '@' symbol in email addresses was chosen by Ray Tomlinson in 1971 because it was unlikely to appear in anyone's name.",
-          "The first computer virus was created in 1983 and was called 'Elk Cloner'. It infected Apple II computers.",
-          "Ruby was designed to make programmers happy and prioritize human needs over computer needs.",
-          "The term 'cloud computing' was inspired by the cloud symbol used in flowcharts to represent the Internet.",
-          "Linus Torvalds originally wanted to call Linux 'Freax', but the FTP admin named the directory 'Linux'.",
-          "The first webcam was created at Cambridge University to monitor a coffee pot, so researchers wouldn't walk to an empty pot."
-        ]
+      def tool_calling_loop(messages:, tools:, client:, history:, conversation_id:, exchange_id:, tool_registry:)
+        # Inner loop that handles tool calling until we get a final response
+        # All tool calls and intermediate responses are saved as redacted
 
-        facts.sample
-      end
-
-      def chat_loop(conversation_id:, history:, client:, session_start_time:, exchange_id:)
-        tool_registry = ToolRegistry.new
-
-        # Get the starting message ID to determine which tool results are "old"
-        start_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
-        start_message_id = start_messages.empty? ? 0 : start_messages.last['id']
-
-        # Track exchange metrics
-        exchange_metrics = {
+        metrics = {
           tokens_input: 0,
           tokens_output: 0,
           spend: 0.0,
           message_count: 0,
           tool_call_count: 0
         }
-        final_assistant_message = nil
-        first_iteration = true
 
         loop do
-          # Get messages from history (only from current session)
-          messages = history.messages(conversation_id: conversation_id, since: session_start_time)
-
-          # Store original messages for index generation
-          original_messages = messages
-
-          # Redact old tool results if redaction is enabled
-          if @redact
-            # Debug: show redaction status before
-            redacted_count = original_messages.count { |m| m['redacted'] }
-            @output.debug("\n[redaction] Messages: #{original_messages.length} total, #{redacted_count} marked as redacted")
-
-            messages = redact_old_tool_results(messages)
-
-            # Build and prepend redaction index
-            index = build_redaction_index(original_messages, messages)
-            if index
-              messages.unshift({
-                'role' => 'user',
-                'content' => index
-              })
-            end
-          end
-
-          # Get tools formatted for this client
-          tools = client.format_tools(tool_registry)
-
-          # Build context document (only on first iteration of this exchange's loop)
-          if first_iteration
-            document = build_context_document(messages, tool_registry)
-            if document && !document.empty?
-              # Prepend document to messages
-              messages.unshift({
-                'role' => 'user',
-                'content' => document
-              })
-            end
-            first_iteration = false
-          end
-
-          # Display LLM request (verbosity level 3+)
-          @formatter.display_llm_request(messages, tools)
-
-          # Call LLM with tools
+          # Send request to LLM
           response = client.send_message(messages: messages, tools: tools)
 
-          # Check if we got an error response
+          # Check for errors first
           if response['error']
-            # Save error message and exit
+            # Save error message (unredacted so user can see it)
             history.add_message(
               conversation_id: conversation_id,
               exchange_id: exchange_id,
@@ -357,23 +269,22 @@ module Nu
               role: 'assistant',
               content: response['content'],
               model: response['model'],
-              error: response['error']
+              error: response['error'],
+              redacted: false
             )
-            exchange_metrics[:message_count] += 1
+            @formatter.display_message_created(actor: 'api_error', role: 'assistant', content: response['content'])
+            return { error: true, response: response, metrics: metrics }
+          end
 
-            # Mark exchange as failed
-            history.update_exchange(
-              exchange_id: exchange_id,
-              updates: {
-                status: 'failed',
-                error: response['error'].to_json,
-                completed_at: Time.now
-              }.merge(exchange_metrics)
-            )
-            break
-          # If we got tool calls, execute them
-          elsif response['tool_calls']
-            # Save assistant message with tool calls
+          # Update metrics (after error check, with nil protection)
+          metrics[:tokens_input] = [metrics[:tokens_input], response['tokens']['input'] || 0].max
+          metrics[:tokens_output] += response['tokens']['output'] || 0
+          metrics[:spend] += response['spend'] || 0.0
+          metrics[:message_count] += 1
+
+          # Check for tool calls
+          if response['tool_calls']
+            # Save assistant message with tool calls (REDACTED)
             history.add_message(
               conversation_id: conversation_id,
               exchange_id: exchange_id,
@@ -381,118 +292,209 @@ module Nu
               role: 'assistant',
               content: response['content'],
               model: response['model'],
-              tokens_input: response['tokens']['input'],
-              tokens_output: response['tokens']['output'],
-              spend: response['spend'],
-              tool_calls: response['tool_calls']
+              tokens_input: response['tokens']['input'] || 0,
+              tokens_output: response['tokens']['output'] || 0,
+              spend: response['spend'] || 0.0,
+              tool_calls: response['tool_calls'],
+              redacted: true  # Tool calls are redacted
+            )
+            @formatter.display_message_created(
+              actor: 'orchestrator',
+              role: 'assistant',
+              content: response['content'],
+              tool_calls: response['tool_calls'],
+              redacted: true
             )
 
-            # Update exchange metrics
-            exchange_metrics[:tokens_input] = [exchange_metrics[:tokens_input], response['tokens']['input']].max
-            exchange_metrics[:tokens_output] += response['tokens']['output']
-            exchange_metrics[:spend] += response['spend']
-            exchange_metrics[:message_count] += 1
-            exchange_metrics[:tool_call_count] += response['tool_calls'].length
+            # Display content as normal output if present (LLM explaining what it's doing)
+            if response['content'] && !response['content'].strip.empty?
+              @output.stop_waiting
+              puts "\n#{response['content']}"
+              @output.start_waiting("Thinking...", start_time: @formatter.exchange_start_time)
+            end
 
-            # Execute each tool and save results
+            metrics[:tool_call_count] += response['tool_calls'].length
+
+            # Add assistant message to in-memory messages
+            messages << {
+              'role' => 'assistant',
+              'content' => response['content'],
+              'tool_calls' => response['tool_calls']
+            }
+
+            # Execute each tool call
             response['tool_calls'].each do |tool_call|
               result = tool_registry.execute(
                 name: tool_call['name'],
                 arguments: tool_call['arguments'],
                 history: history,
-                context: { 'conversation_id' => conversation_id, 'application' => self }
+                context: {
+                  conversation_id: conversation_id,
+                  model: client.model
+                }
               )
 
-              # Save tool result
-              # Store both name and result for client formatting
+              # Save tool result (REDACTED)
+              tool_result_data = {
+                'name' => tool_call['name'],
+                'result' => result
+              }
               history.add_message(
                 conversation_id: conversation_id,
                 exchange_id: exchange_id,
-                actor: tool_call['name'],
+                actor: 'orchestrator',
                 role: 'tool',
-                content: nil,
+                content: '',
                 tool_call_id: tool_call['id'],
-                tool_result: {
+                tool_result: tool_result_data,
+                redacted: true  # Tool results are redacted
+              )
+              @formatter.display_message_created(
+                actor: 'orchestrator',
+                role: 'tool',
+                tool_result: tool_result_data,
+                redacted: true
+              )
+
+              # Add tool result to in-memory messages (must match format expected by clients)
+              messages << {
+                'role' => 'tool',
+                'tool_call_id' => tool_call['id'],
+                'content' => result.is_a?(Hash) ? result.to_json : result.to_s,
+                'tool_result' => {
                   'name' => tool_call['name'],
                   'result' => result
                 }
-              )
-              exchange_metrics[:message_count] += 1
+              }
             end
 
-            # Loop back to send results to LLM
-            next
+            # Continue loop to get next LLM response
           else
-            # No tool calls, save final response and exit
+            # No tool calls - this is the final response
+            # Return it (will be saved as unredacted by caller)
+            return { error: false, response: response, metrics: metrics }
+          end
+        end
+      end
+
+      def chat_loop(conversation_id:, history:, client:, session_start_time:, user_input:)
+        # Orchestrator owns the entire exchange - wrap everything in a transaction
+        # Either the exchange completes successfully or nothing is saved
+        history.transaction do
+          tool_registry = ToolRegistry.new
+
+          # Create exchange and add user message (atomic with rest of exchange)
+          exchange_id = history.create_exchange(
+            conversation_id: conversation_id,
+            user_message: user_input
+          )
+
+          history.add_message(
+            conversation_id: conversation_id,
+            exchange_id: exchange_id,
+            actor: @user_actor,
+            role: 'user',
+            content: user_input
+          )
+          @formatter.display_message_created(actor: @user_actor, role: 'user', content: user_input)
+
+          # Get conversation history (only unredacted messages from previous exchanges)
+          all_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
+
+          # Get redacted message IDs and format as ranges
+          redacted_message_ranges = nil
+          if @redact
+            redacted_ids = all_messages.select { |m| m['redacted'] }.map { |m| m['id'] }.compact
+            redacted_message_ranges = format_id_ranges(redacted_ids.sort) if redacted_ids.any?
+          end
+
+          # Filter to only unredacted messages from PREVIOUS exchanges (exclude current exchange)
+          history_messages = all_messages.reject { |m| m['redacted'] || m['exchange_id'] == exchange_id }
+
+          # User query is the input we just received
+          user_query = user_input
+
+          # Build context document (markdown) with RAG, tools, and user query
+          markdown_document = build_context_document(
+            user_query: user_query,
+            tool_registry: tool_registry,
+            redacted_message_ranges: redacted_message_ranges,
+            conversation_id: conversation_id
+          )
+
+          # Build initial messages array: history + markdown document
+          messages = history_messages.dup
+          messages << {
+            'role' => 'user',
+            'content' => markdown_document
+          }
+
+          # Get tools formatted for this client
+          tools = client.format_tools(tool_registry)
+
+          # Display LLM request (verbosity level 3+)
+          @formatter.display_llm_request(messages, tools, markdown_document)
+
+          # Call inner tool calling loop
+          result = tool_calling_loop(
+            messages: messages,
+            tools: tools,
+            client: client,
+            history: history,
+            conversation_id: conversation_id,
+            exchange_id: exchange_id,
+            tool_registry: tool_registry
+          )
+
+          # Handle result
+          if result[:error]
+            # Mark exchange as failed
+            history.update_exchange(
+              exchange_id: exchange_id,
+              updates: {
+                status: 'failed',
+                error: result[:response]['error'].to_json,
+                completed_at: Time.now
+              }.merge(result[:metrics])
+            )
+          else
+            # Save final assistant response (unredacted)
+            final_response = result[:response]
             history.add_message(
               conversation_id: conversation_id,
               exchange_id: exchange_id,
               actor: 'orchestrator',
               role: 'assistant',
-              content: response['content'],
-              model: response['model'],
-              tokens_input: response['tokens']['input'],
-              tokens_output: response['tokens']['output'],
-              spend: response['spend']
+              content: final_response['content'],
+              model: final_response['model'],
+              tokens_input: final_response['tokens']['input'] || 0,
+              tokens_output: final_response['tokens']['output'] || 0,
+              spend: final_response['spend'] || 0.0,
+              redacted: false  # Final response is unredacted
+            )
+            @formatter.display_message_created(
+              actor: 'orchestrator',
+              role: 'assistant',
+              content: final_response['content'],
+              redacted: false
             )
 
-            # Update exchange metrics
-            exchange_metrics[:tokens_input] = [exchange_metrics[:tokens_input], response['tokens']['input']].max
-            exchange_metrics[:tokens_output] += response['tokens']['output']
-            exchange_metrics[:spend] += response['spend']
-            exchange_metrics[:message_count] += 1
-
-            # Save final assistant message for exchange
-            final_assistant_message = response['content']
+            # Update metrics to include final response (with nil protection)
+            metrics = result[:metrics]
+            metrics[:tokens_input] = [metrics[:tokens_input], final_response['tokens']['input'] || 0].max
+            metrics[:tokens_output] += final_response['tokens']['output'] || 0
+            metrics[:spend] += final_response['spend'] || 0.0
+            metrics[:message_count] += 1
 
             # Complete the exchange
             history.complete_exchange(
               exchange_id: exchange_id,
-              assistant_message: final_assistant_message,
-              metrics: exchange_metrics
+              assistant_message: final_response['content'],
+              metrics: metrics
             )
-
-            break
           end
         end
-      end
-
-      def redact_old_tool_results(messages)
-        messages.filter_map do |msg|
-          # Skip redacted messages entirely if they meet certain criteria
-          if msg['redacted']
-            # Remove error messages from context
-            next nil if msg['error']
-
-            # Remove tool result messages (role='tool') - can't have them without tool_calls
-            next nil if msg['role'] == 'tool'
-
-            # Remove spell checker messages entirely
-            next nil if msg['actor'] == 'spell_checker'
-
-            # Remove intermediate assistant messages (ones with only tool_calls)
-            next nil if msg['role'] == 'assistant' && msg['tool_calls'] && !msg['content']
-
-            # Build redacted version of redacted messages
-            redacted = msg.dup
-
-            # Remove tool_calls entirely from redacted messages
-            redacted.delete('tool_calls') if redacted['tool_calls']
-
-            # Redact tool_result
-            if redacted['tool_result']
-              redacted['tool_result'] = {
-                'name' => redacted['tool_result']['name'],
-                'result' => { 'redacted' => true }
-              }
-            end
-
-            redacted
-          else
-            # Non-redacted messages - return as-is
-            msg
-          end
-        end
+        # Transaction commits here on success, rolls back on exception
       end
 
       def repl
@@ -796,6 +798,7 @@ module Nu
           print_tools
           :continue
         when '/reset'
+          system('clear')
           @conversation_id = history.create_conversation
           @session_start_time = Time.now
           formatter.reset_session(conversation_id: @conversation_id)
@@ -841,6 +844,13 @@ module Nu
         @output.output("  /models                        - List available models")
         @output.output("  /redaction <on|off>            - Enable/disable redaction of tool results in context")
         @output.output("  /verbosity <number>            - Set verbosity level for debug output (default: 0)")
+        @output.output("                                   - Level 0: Thread lifecycle events + tool names only")
+        @output.output("                                   - Level 1: Level 0 + truncated tool call/result params (30 chars)")
+        @output.output("                                   - Level 2: Level 1 + message creation notifications")
+        @output.output("                                   - Level 3: Level 2 + message role/actor + truncated content/params (30 chars)")
+        @output.output("                                   - Level 4: Level 3 + full tool params + messages sent to LLM")
+        @output.output("                                   - Level 5: Level 4 + tools array")
+        @output.output("                                   - Level 6: Level 5 + longer message content previews (100 chars)")
         @output.output("  /reset                         - Start a new conversation")
         @output.output("  /spellcheck <on|off>           - Enable/disable automatic spell checking of user input")
         @output.output("  /summarizer <on|off>           - Enable/disable background conversation summarization")
@@ -998,42 +1008,6 @@ module Nu
         @output.output("\n\nGoodbye!")
       end
 
-      def build_redaction_index(original_messages, redacted_messages)
-        # Collect IDs of messages that were redacted or removed
-        redacted_ids = []
-
-        original_messages.each do |msg|
-          next unless msg['id']
-
-          # Check if this message was removed entirely
-          redacted_version = redacted_messages.find { |m| m['id'] == msg['id'] }
-
-          if redacted_version.nil?
-            # Message was completely removed
-            redacted_ids << msg['id']
-          elsif message_was_redacted?(msg, redacted_version)
-            # Message was redacted but still present
-            redacted_ids << msg['id']
-          end
-        end
-
-        return nil if redacted_ids.empty?
-
-        # Format IDs as ranges for compact display
-        ranges = format_id_ranges(redacted_ids.sort)
-
-        # Build concise index message
-        "[Messages #{ranges} redacted - use database_message(id) to retrieve if needed]"
-      end
-
-      def message_was_redacted?(original, redacted)
-        # Check if content/data was redacted
-        return true if original['tool_result'] && redacted['tool_result'] && redacted['tool_result']['result'] == { 'redacted' => true }
-        return true if original['tool_calls'] && !redacted['tool_calls']  # Tool calls were removed
-        return true if original['content'] && !redacted['content']
-        false
-      end
-
       def format_id_ranges(ids)
         return "" if ids.empty?
 
@@ -1164,11 +1138,11 @@ module Nu
               next
             end
 
-            # Apply redaction (same as we do for context)
-            redacted_messages = redact_old_tool_results(messages)
+            # Filter to only unredacted messages (same as we do for context)
+            unredacted_messages = messages.reject { |m| m['redacted'] }
 
             # Build prompt for summarization
-            context = redacted_messages.map do |msg|
+            context = unredacted_messages.map do |msg|
               role = msg['role'] == 'tool' ? 'assistant' : msg['role']
               content = msg['content'] || ''
               "#{role}: #{content}"
