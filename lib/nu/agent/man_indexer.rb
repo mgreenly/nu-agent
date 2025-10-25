@@ -1,0 +1,121 @@
+# frozen_string_literal: true
+
+module Nu
+  module Agent
+    class ManIndexer
+      def initialize(history:, embeddings_client:)
+        @history = history
+        @embeddings = embeddings_client
+      end
+
+      # Discover all available man pages on the system
+      def get_all_man_pages
+        output = `man -k . 2>/dev/null`
+        return [] if output.nil? || output.empty?
+
+        man_pages = []
+        output.each_line do |line|
+          # Parse: "grep (1) - print lines matching a pattern"
+          if line =~ /^(\S+)\s+\((\d+)\)\s+-\s+(.*)$/
+            name = $1
+            section = $2
+            description = $3.strip
+
+            # Source format: "name.section"
+            source = "#{name}.#{section}"
+            man_pages << source
+          end
+        end
+
+        man_pages.uniq.sort
+      end
+
+      # Extract NAME, SYNOPSIS, and DESCRIPTION sections from a man page
+      # Returns a formatted document combining these sections
+      def extract_description(source)
+        # Parse source: "grep.1" -> name="grep", section="1"
+        name, section = source.split('.')
+        return nil unless name && section
+
+        # Get man page content
+        output = `man #{section} #{name} 2>/dev/null`
+        return nil if output.nil? || output.empty?
+
+        # Extract sections using all-caps headers
+        sections = extract_sections(output, ['NAME', 'SYNOPSIS', 'DESCRIPTION'])
+
+        # Build combined document
+        doc_parts = []
+
+        if sections['NAME']
+          doc_parts << "NAME\n#{sections['NAME']}"
+        end
+
+        if sections['SYNOPSIS']
+          doc_parts << "SYNOPSIS\n#{sections['SYNOPSIS']}"
+        end
+
+        if sections['DESCRIPTION']
+          doc_parts << "DESCRIPTION\n#{sections['DESCRIPTION']}"
+        end
+
+        # Return nil if we didn't get any sections
+        return nil if doc_parts.empty?
+
+        document = doc_parts.join("\n\n")
+
+        # Truncate if too long (8000 tokens ~ 32000 chars rough estimate)
+        document = document[0, 32000] if document.length > 32000
+
+        document
+      rescue => e
+        nil
+      end
+
+      private
+
+      # Extract specific sections from man page content
+      # Sections are identified by all-caps headers at the start of a line
+      def extract_sections(content, section_names)
+        lines = content.lines
+        sections = {}
+        current_section = nil
+        current_lines = []
+
+        lines.each do |line|
+          # Check if this line is a section header (all caps, possibly with whitespace)
+          if line =~ /^\s*([A-Z][A-Z\s]+)\s*$/
+            section_name = line.strip
+
+            # Save previous section if it was one we're looking for
+            if current_section && section_names.include?(current_section)
+              sections[current_section] = current_lines.join.strip
+            end
+
+            # Start new section
+            current_section = section_name
+            current_lines = []
+          elsif current_section
+            # Accumulate lines for current section
+            current_lines << line
+          end
+        end
+
+        # Don't forget the last section
+        if current_section && section_names.include?(current_section)
+          sections[current_section] = current_lines.join.strip
+        end
+
+        sections
+      end
+
+      # Check if a man page exists and is accessible
+      def man_page_exists?(source)
+        name, section = source.split('.')
+        return false unless name && section
+
+        system("man #{section} #{name} > /dev/null 2>&1")
+      end
+    end
+  end
+end

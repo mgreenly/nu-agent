@@ -50,6 +50,17 @@ module Nu
           }
         }.freeze
 
+        # Rate limiting for embeddings API
+        EMBEDDING_RATE_LIMIT = {
+          requests_per_minute: 10,
+          batch_size: 10
+        }.freeze
+
+        # Embedding model pricing (per 1M tokens)
+        EMBEDDING_PRICING = {
+          'text-embedding-3-small' => 0.020
+        }.freeze
+
         def initialize(api_key: nil, model: nil)
           load_api_key(api_key)
           @model = model || 'gpt-5'
@@ -96,6 +107,42 @@ module Nu
             },
             'spend' => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
             'finish_reason' => response.dig('choices', 0, 'finish_reason')
+          }
+        end
+
+        # Generate embeddings for text input
+        # @param text [String, Array<String>] Single text or array of texts to embed
+        # @param model [String] Embedding model to use (default: text-embedding-3-small)
+        # @return [Hash] Response with embeddings, tokens, and cost
+        def generate_embedding(text, model: 'text-embedding-3-small')
+          input = text.is_a?(Array) ? text : [text]
+
+          begin
+            response = @client.embeddings(
+              parameters: {
+                model: model,
+                input: input
+              }
+            )
+          rescue Faraday::Error => e
+            return format_error_response(e)
+          end
+
+          # Extract embeddings
+          embeddings = response['data'].map { |d| d['embedding'] }
+
+          # Get usage information
+          total_tokens = response.dig('usage', 'total_tokens') || 0
+
+          # Calculate cost
+          pricing = EMBEDDING_PRICING[model] || 0.020
+          cost = (total_tokens / 1_000_000.0) * pricing
+
+          {
+            'embeddings' => text.is_a?(Array) ? embeddings : embeddings.first,
+            'model' => model,
+            'tokens' => total_tokens,
+            'spend' => cost
           }
         end
 

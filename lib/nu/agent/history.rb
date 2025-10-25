@@ -559,6 +559,55 @@ module Nu
         row ? row[0] : default
       end
 
+      # Get all indexed sources for a given kind
+      def get_indexed_sources(kind:)
+        result = connection.query(<<~SQL)
+          SELECT source FROM text_embedding_3_small WHERE kind = '#{escape_sql(kind)}'
+        SQL
+        result.map { |row| row[0] }
+      end
+
+      # Store embeddings in the database
+      def store_embeddings(kind:, records:)
+        records.each do |record|
+          source = record[:source]
+          content = record[:content]
+          embedding = record[:embedding]
+
+          # Convert embedding array to DuckDB array format
+          embedding_str = "[#{embedding.join(', ')}]"
+
+          connection.query(<<~SQL)
+            INSERT INTO text_embedding_3_small (kind, source, content, embedding)
+            VALUES ('#{escape_sql(kind)}', '#{escape_sql(source)}', '#{escape_sql(content)}', #{embedding_str})
+            ON CONFLICT (kind, source) DO NOTHING
+          SQL
+        end
+      end
+
+      # Get embedding statistics
+      def embedding_stats(kind: nil)
+        where_clause = kind ? "WHERE kind = '#{escape_sql(kind)}'" : ""
+
+        result = connection.query(<<~SQL)
+          SELECT kind, COUNT(*) as count
+          FROM text_embedding_3_small
+          #{where_clause}
+          GROUP BY kind
+        SQL
+
+        result.map do |row|
+          { 'kind' => row[0], 'count' => row[1] }
+        end
+      end
+
+      # Clear all embeddings for a given kind
+      def clear_embeddings(kind:)
+        connection.query(<<~SQL)
+          DELETE FROM text_embedding_3_small WHERE kind = '#{escape_sql(kind)}'
+        SQL
+      end
+
       def increment_workers
         result = connection.query("SELECT value FROM appconfig WHERE key = 'active_workers'")
         row = result.to_a.first
@@ -782,6 +831,40 @@ module Nu
         add_column_if_not_exists('conversations', 'summary', 'TEXT')
         add_column_if_not_exists('conversations', 'summary_model', 'TEXT')
         add_column_if_not_exists('conversations', 'summary_cost', 'FLOAT')
+
+        # Embeddings table for semantic search
+        connection.query(<<~SQL)
+          CREATE SEQUENCE IF NOT EXISTS text_embedding_3_small_id_seq START 1
+        SQL
+
+        connection.query(<<~SQL)
+          CREATE TABLE IF NOT EXISTS text_embedding_3_small (
+            id INTEGER PRIMARY KEY DEFAULT nextval('text_embedding_3_small_id_seq'),
+            kind TEXT NOT NULL,
+            source TEXT NOT NULL,
+            content TEXT NOT NULL,
+            embedding FLOAT[1536],
+            indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(kind, source)
+          )
+        SQL
+
+        connection.query(<<~SQL)
+          CREATE INDEX IF NOT EXISTS idx_kind ON text_embedding_3_small(kind)
+        SQL
+
+        # Install and load VSS extension for vector similarity search
+        begin
+          connection.query("INSTALL vss")
+          connection.query("LOAD vss")
+
+          # Create HNSW index for vector similarity search
+          connection.query(<<~SQL)
+            CREATE INDEX IF NOT EXISTS idx_embedding_hnsw ON text_embedding_3_small USING HNSW(embedding)
+          SQL
+        rescue => e
+          # VSS extension might not be available or already loaded, that's OK
+        end
 
         connection.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS appconfig (

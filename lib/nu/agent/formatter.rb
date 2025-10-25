@@ -258,6 +258,9 @@ module Nu
         # Display any text content (with leading newline for section spacing)
         if message['content'] && !message['content'].strip.empty?
           @output.puts "\n#{message['content']}"
+        elsif !message['tool_calls'] && message['tokens_output'] && message['tokens_output'] > 0
+          # LLM generated output but content is empty (unusual case - possibly API issue)
+          @output.puts "\n\e[90m(LLM returned empty response - this may be an API/model issue)\e[0m"
         end
 
         # Display tool calls if present (only in debug mode)

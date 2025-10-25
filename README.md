@@ -1,11 +1,17 @@
 # Nu::Agent
 
-A Ruby-based AI agent framework with persistent memory and multi-provider LLM support (Anthropic, Google, OpenAI, X.AI). Features intelligent context management through DuckDB-backed conversation history with automatic redaction and retrieval tools, enabling agents to maintain long-term memory while staying within context limits.
+A toy AI Agent learning experiment.
 
 ## Features
 
-- **Lifetime Memory Storage** - DuckDB-backed conversation history provides persistent, queryable memory across all conversations
-- **Script Execution** - Direct execution of bash commands and Python scripts with filesystem permission enforcement
+- **Learning Friendly** - Debug modes, model switching, configurable verbosity, and conversation reset.
+- **Multi-Model Orchestration** - Uses Claude, GPT, Gemini, and Grok models. Routes specific tasks to specialized models.
+- **Rich Tool Library** - File operations, shell execution, Python REPL, database queries, directory traversal, and semantic grep.
+- **Persistent Memory** - Conversations stored in DuckDB with message/exchange/session hierarchy.
+- **Retrieval Augmented Generation (RAG)** - Vector embeddings for conversation history and document stores. (wip)
+- **Background Intelligence** - Automatic conversation summarization with configurable models. (wip)
+- **Model Context Protocol (MCP)** - Support for external tool providers. (coming)
+- **Language Server Protocol (LSP)** - Direct integration with language servers for enhanced code generation context. (coming)
 
 ## Setup
 

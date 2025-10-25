@@ -74,6 +74,7 @@ module Nu
 
       def register_default_tools
         register(Tools::AgentSummarizer.new)
+        register(Tools::ManIndexer.new)
         register(Tools::DatabaseMessage.new)
         register(Tools::DatabaseQuery.new)
         register(Tools::DatabaseSchema.new)

@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Application
-      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :status_mutex, :output, :verbosity
+      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :man_indexer_status, :status_mutex, :output, :verbosity
       attr_accessor :active_threads
 
       def initialize(options:)
@@ -68,7 +68,20 @@ module Nu
           'last_summary' => nil,
           'spend' => 0.0
         }
+        @man_indexer_status = {
+          'running' => false,
+          'total' => 0,
+          'completed' => 0,
+          'failed' => 0,
+          'skipped' => 0,
+          'current_batch' => nil,
+          'session_spend' => 0.0,
+          'session_tokens' => 0
+        }
         @status_mutex = Mutex.new
+
+        # Initialize index_man_enabled to false on startup
+        @history.set_config('index_man_enabled', 'false')
 
         # Start background summarization worker
         start_summarization_worker
@@ -123,19 +136,21 @@ module Nu
             session_start = session_start_time
             user_in = input
             fmt = formatter
+            app = self
 
             # Display thread start event
             formatter.display_thread_event("Orchestrator", "Starting")
 
             # Spawn orchestrator thread with raw user input
-            Thread.new(conv_id, hist, cli, session_start, user_in) do |conversation_id, history, client, session_start_time, user_input|
+            Thread.new(conv_id, hist, cli, session_start, user_in, app) do |conversation_id, history, client, session_start_time, user_input, application|
               begin
                 chat_loop(
                   conversation_id: conversation_id,
                   history: history,
                   client: client,
                   session_start_time: session_start_time,
-                  user_input: user_input
+                  user_input: user_input,
+                  application: application
                 )
               ensure
                 history.decrement_workers
@@ -243,7 +258,7 @@ module Nu
         builder.build
       end
 
-      def tool_calling_loop(messages:, tools:, client:, history:, conversation_id:, exchange_id:, tool_registry:)
+      def tool_calling_loop(messages:, tools:, client:, history:, conversation_id:, exchange_id:, tool_registry:, application:)
         # Inner loop that handles tool calling until we get a final response
         # All tool calls and intermediate responses are saved as redacted
 
@@ -329,8 +344,9 @@ module Nu
                 arguments: tool_call['arguments'],
                 history: history,
                 context: {
-                  conversation_id: conversation_id,
-                  model: client.model
+                  'conversation_id' => conversation_id,
+                  'model' => client.model,
+                  'application' => application
                 }
               )
 
@@ -371,13 +387,18 @@ module Nu
             # Continue loop to get next LLM response
           else
             # No tool calls - this is the final response
+            # Check if content is empty (LLM sent empty response)
+            if response['content'].nil? || response['content'].strip.empty?
+              # Log this as a warning but continue
+              # The response will be saved and displayed (or not displayed if empty)
+            end
             # Return it (will be saved as unredacted by caller)
             return { error: false, response: response, metrics: metrics }
           end
         end
       end
 
-      def chat_loop(conversation_id:, history:, client:, session_start_time:, user_input:)
+      def chat_loop(conversation_id:, history:, client:, session_start_time:, user_input:, application:)
         # Orchestrator owns the entire exchange - wrap everything in a transaction
         # Either the exchange completes successfully or nothing is saved
         history.transaction do
@@ -443,7 +464,8 @@ module Nu
             history: history,
             conversation_id: conversation_id,
             exchange_id: exchange_id,
-            tool_registry: tool_registry
+            tool_registry: tool_registry,
+            application: application
           )
 
           # Handle result
@@ -530,7 +552,7 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/info', '/migrate-exchanges', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
+        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/index-man', '/info', '/migrate-exchanges', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
         all_models = ClientFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
@@ -738,6 +760,95 @@ module Nu
           return :continue
         end
 
+        # Handle /index-man [on|off|reset] command
+        if input.downcase.start_with?('/index-man')
+          parts = input.split(' ', 2)
+          if parts.length < 2 || parts[1].strip.empty?
+            @output.output("Usage: /index-man <on|off|reset>")
+            enabled = history.get_config('index_man_enabled') == 'true'
+            @output.output("Current: index-man=#{enabled ? 'on' : 'off'}")
+
+            # Show status if available
+            @status_mutex.synchronize do
+              status = @man_indexer_status
+              if status['running']
+                @output.output("Status: running (#{status['completed']}/#{status['total']} man pages)")
+                @output.output("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
+                @output.output("Session spend: $#{'%.6f' % status['session_spend']}")
+              elsif status['total'] > 0
+                @output.output("Status: completed (#{status['completed']}/#{status['total']} man pages)")
+                @output.output("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
+                @output.output("Session spend: $#{'%.6f' % status['session_spend']}")
+              end
+            end
+
+            return :continue
+          end
+
+          setting = parts[1].strip.downcase
+          if setting == 'on'
+            history.set_config('index_man_enabled', 'true')
+            @output.output("index-man=on")
+            @output.output("Starting man page indexer...")
+
+            # Start the indexer worker
+            start_man_indexer_worker
+
+            # Show initial status
+            sleep(0.5)  # Give it a moment to start
+            @status_mutex.synchronize do
+              status = @man_indexer_status
+              @output.output("Indexing #{status['total']} man pages...")
+              @output.output("This will take approximately #{(status['total'] / 10.0 / 60.0).ceil} minutes")
+            end
+
+          elsif setting == 'off'
+            history.set_config('index_man_enabled', 'false')
+            @output.output("index-man=off")
+            @output.output("Indexer will stop after current batch completes")
+
+            # Show final status
+            @status_mutex.synchronize do
+              status = @man_indexer_status
+              if status['completed'] > 0
+                @output.output("Indexed: #{status['completed']}/#{status['total']} man pages")
+                @output.output("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
+                @output.output("Session spend: $#{'%.6f' % status['session_spend']}")
+              end
+            end
+          elsif setting == 'reset'
+            # Stop indexing if running
+            if history.get_config('index_man_enabled') == 'true'
+              history.set_config('index_man_enabled', 'false')
+              @output.output("Stopping indexer before reset...")
+              sleep(1)  # Give worker time to stop
+            end
+
+            # Get count before clearing
+            stats = history.embedding_stats(kind: 'man_page')
+            count = stats.find { |s| s['kind'] == 'man_page' }&.fetch('count', 0) || 0
+
+            # Clear all man_page embeddings
+            history.clear_embeddings(kind: 'man_page')
+
+            # Reset status counters
+            @status_mutex.synchronize do
+              @man_indexer_status['total'] = 0
+              @man_indexer_status['completed'] = 0
+              @man_indexer_status['failed'] = 0
+              @man_indexer_status['skipped'] = 0
+              @man_indexer_status['session_spend'] = 0.0
+              @man_indexer_status['session_tokens'] = 0
+            end
+
+            @output.output("Reset complete: Cleared #{count} man page embeddings")
+          else
+            @output.output("Invalid option. Use: /index-man <on|off|reset>")
+          end
+
+          return :continue
+        end
+
         # Handle /debug [on/off] command
         if input.downcase.start_with?('/debug')
           parts = input.split(' ', 2)
@@ -836,6 +947,7 @@ module Nu
         @output.output("  /exit                          - Exit the REPL")
         @output.output("  /fix                           - Scan and fix database corruption issues")
         @output.output("  /help                          - Show this help message")
+        @output.output("  /index-man <on|off|reset>      - Enable/disable background man page indexing, or reset database")
         @output.output("  /info                          - Show current session information")
         @output.output("  /migrate-exchanges             - Create exchanges from existing messages (one-time migration)")
         @output.output("  /model orchestrator <name>     - Switch orchestrator model")
@@ -1236,6 +1348,197 @@ module Nu
         status_mutex.synchronize do
           summarizer_status['running'] = false
           summarizer_status['current_conversation_id'] = nil
+        end
+      end
+
+      def start_man_indexer_worker
+        # Capture values for thread
+        @operation_mutex.synchronize do
+          hist = history
+          status = @man_indexer_status
+          status_mtx = @status_mutex
+          app = self
+
+          thread = Thread.new(hist, status, status_mtx, app) do |history, indexer_status, status_mutex, application|
+            begin
+              index_man_pages(
+                history: history,
+                indexer_status: indexer_status,
+                status_mutex: status_mutex,
+                application: application
+              )
+            rescue => e
+              $stderr.puts "[Man Indexer] Worker thread error: #{e.class}: #{e.message}"
+              $stderr.puts e.backtrace.first(10).join("\n")
+              status_mutex.synchronize do
+                indexer_status['running'] = false
+              end
+            end
+          end
+
+          active_threads << thread
+        end
+      end
+
+      def index_man_pages(history:, indexer_status:, status_mutex:, application:)
+        # Create OpenAI Embeddings client
+        begin
+          embeddings_client = Clients::OpenAIEmbeddings.new
+        rescue => e
+          $stderr.puts "\n[Man Indexer] ERROR: Failed to create OpenAI Embeddings client"
+          $stderr.puts "  #{e.message}"
+          $stderr.puts "\nMan page indexing requires OpenAI embeddings API access."
+          $stderr.puts "Please ensure your OpenAI API key has access to text-embedding-3-small."
+          status_mutex.synchronize { indexer_status['running'] = false }
+          return
+        end
+
+        # Create man indexer
+        man_indexer = ManIndexer.new(history: history, embeddings_client: embeddings_client)
+
+        loop do
+          # Check for shutdown or disabled
+          break if application.instance_variable_get(:@shutdown)
+          break unless history.get_config('index_man_enabled') == 'true'
+
+          # Get all man pages from system
+          all_man_pages = man_indexer.get_all_man_pages
+
+          # Get already indexed man pages from DB
+          indexed = history.get_indexed_sources(kind: 'man_page')
+
+          # Calculate exclusive set (not yet indexed)
+          to_index = all_man_pages - indexed
+
+          # Update total count
+          status_mutex.synchronize do
+            indexer_status['running'] = true
+            indexer_status['total'] = all_man_pages.length
+            indexer_status['completed'] = indexed.length
+          end
+
+          # Break if nothing left to index
+          if to_index.empty?
+            status_mutex.synchronize do
+              indexer_status['running'] = false
+            end
+            break
+          end
+
+          # Process in batches of 10
+          batch = to_index.take(10)
+
+          # Update current batch
+          status_mutex.synchronize do
+            indexer_status['current_batch'] = batch
+          end
+
+          # Extract DESCRIPTION sections
+          records = []
+          batch.each do |source|
+            # Check for shutdown before processing each man page
+            break if application.instance_variable_get(:@shutdown)
+
+            description = man_indexer.extract_description(source)
+
+            if description.nil? || description.empty?
+              # Skip this man page
+              status_mutex.synchronize do
+                indexer_status['skipped'] += 1
+              end
+              next
+            end
+
+            records << {
+              source: source,
+              content: description
+            }
+          end
+
+          # Skip API call if no valid descriptions
+          if records.empty?
+            sleep(1)
+            next
+          end
+
+          # Check for shutdown before expensive API call
+          break if application.instance_variable_get(:@shutdown)
+
+          # Call OpenAI embeddings API (batch request)
+          begin
+            contents = records.map { |r| r[:content] }
+            response = embeddings_client.generate_embedding(contents)
+
+            # Check for errors
+            if response['error']
+              error_body = response['error']['body']
+              if error_body && error_body['error']
+                error_msg = error_body['error']['message']
+                error_code = error_body['error']['code']
+
+                # Check for model access issues
+                if error_code == 'model_not_found' && error_msg.include?('text-embedding-3-small')
+                  $stderr.puts "\n[Man Indexer] ERROR: OpenAI API key does not have access to text-embedding-3-small"
+                  $stderr.puts "  Please enable embeddings API access in your OpenAI project settings"
+                  $stderr.puts "  Visit: https://platform.openai.com/settings"
+
+                  # Stop indexing - no point continuing
+                  status_mutex.synchronize { indexer_status['running'] = false }
+                  break
+                else
+                  $stderr.puts "\n[Man Indexer] API Error: #{error_msg}"
+                end
+              end
+
+              status_mutex.synchronize do
+                indexer_status['failed'] += records.length
+              end
+              sleep(6)  # Rate limiting
+              next
+            end
+
+            # Get embeddings
+            embeddings = response['embeddings']
+
+            # Add embeddings to records
+            records.each_with_index do |record, i|
+              record[:embedding] = embeddings[i]
+            end
+
+            # Store in database
+            application.send(:enter_critical_section)
+            begin
+              history.store_embeddings(kind: 'man_page', records: records)
+            ensure
+              application.send(:exit_critical_section)
+            end
+
+            # Update status
+            status_mutex.synchronize do
+              indexer_status['completed'] += records.length
+              indexer_status['session_spend'] += response['spend'] || 0.0
+              indexer_status['session_tokens'] += response['tokens'] || 0
+            end
+
+          rescue => e
+            # On error, mark batch as failed and log the error
+            status_mutex.synchronize do
+              indexer_status['failed'] += records.length
+            end
+
+            # Log error to stderr for debugging
+            $stderr.puts "\n[Man Indexer] Error processing batch: #{e.class}: #{e.message}"
+            $stderr.puts e.backtrace.first(5).join("\n") if @debug
+          end
+
+          # Rate limiting: sleep to maintain 10 req/min (6 seconds between requests)
+          sleep(6) unless application.instance_variable_get(:@shutdown)
+        end
+
+        # Mark as complete
+        status_mutex.synchronize do
+          indexer_status['running'] = false
+          indexer_status['current_batch'] = nil
         end
       end
 
