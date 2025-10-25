@@ -253,7 +253,7 @@ module Nu
         builder.add_section('Context', fun_fact)
 
         # Available Tools section
-        tool_names = tool_registry.available_tools.map { |tool| tool[:name] }
+        tool_names = tool_registry.available.map { |tool| tool[:name] }
         tools_list = tool_names.join(', ')
         builder.add_section('Available Tools', tools_list)
 
