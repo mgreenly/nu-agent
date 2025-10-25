@@ -5,7 +5,7 @@ A Ruby-based AI agent framework with persistent memory and multi-provider LLM su
 ## Features
 
 - **Lifetime Memory Storage** - DuckDB-backed conversation history provides persistent, queryable memory across all conversations
-- **Secure Script Execution** - Deno runtime for all script execution with sandboxed permissions (directory-restricted file access, controlled network access)
+- **Script Execution** - Direct execution of bash commands and Python scripts with filesystem permission enforcement
 
 ## Setup
 
@@ -33,23 +33,6 @@ Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duc
 ~/.local/lib/libduckdb.so       # Library file
 ~/.local/include/duckdb.h       # Header file
 ```
-
-**Deno Installation Required**
-
-The `execute_javascript` tool requires Deno to be installed. Install using the official installer:
-
-```bash
-curl -fsSL https://deno.land/x/install/install.sh | sh
-```
-
-This installs Deno to `~/.deno/bin/deno`. Add to your PATH by adding to `~/.bashrc`:
-
-```bash
-export DENO_INSTALL="$HOME/.deno"
-export PATH="$DENO_INSTALL/bin:$PATH"
-```
-
-Then reload your shell: `source ~/.bashrc`
 
 ### Installation
 

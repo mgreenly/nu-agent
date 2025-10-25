@@ -83,7 +83,7 @@ module Nu
         register(Tools::DirList.new)
         register(Tools::DirTree.new)
         register(Tools::ExecuteBash.new)
-        register(Tools::ExecuteJavascript.new)
+        register(Tools::ExecutePython.new)
         register(Tools::FileCopy.new)
         register(Tools::FileDelete.new)
         register(Tools::FileEdit.new)

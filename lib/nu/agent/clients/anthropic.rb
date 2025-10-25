@@ -15,9 +15,9 @@ module Nu
 
           If you can determine the answer to a question on your own, use your tools to find it instead of asking.
 
-          Use execute_javascript for all script execution.
+          Use execute_bash for shell commands and execute_python for Python scripts.
 
-          You have no other tool to execute processes on the host.
+          These are your only tools to execute processes on the host.
 
           You can use your database tools to access memories from before the current conversation.
 

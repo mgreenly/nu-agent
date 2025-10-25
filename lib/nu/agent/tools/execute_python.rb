@@ -5,47 +5,51 @@ require 'open3'
 module Nu
   module Agent
     module Tools
-      class ExecuteBash
+      class ExecutePython
         def name
-          "execute_bash"
+          "execute_python"
+        end
+
+        def available?
+          system('which python3 > /dev/null 2>&1')
         end
 
         def description
-          "Execute bash commands directly on the host system. " \
-          "Perfect for: system operations, running CLI tools, file operations, data processing, testing commands. " \
-          "Commands run in the current working directory with full system access. " \
+          "Execute Python code directly on the host system. " \
+          "Perfect for: data analysis, scripting, calculations, file processing, API calls. " \
+          "Code runs in the current working directory with full system access. " \
           "File system permissions apply normally - operations will fail with errors if permissions are insufficient."
         end
 
         def parameters
           {
-            command: {
+            code: {
               type: "string",
-              description: "The bash command to execute",
+              description: "The Python code to execute",
               required: true
             },
             timeout: {
               type: "integer",
-              description: "Command timeout in seconds (default: 30, max: 300)",
+              description: "Code timeout in seconds (default: 30, max: 300)",
               required: false
             }
           }
         end
 
         def execute(arguments:, history:, context:)
-          command = arguments[:command] || arguments["command"]
+          code = arguments[:code] || arguments["code"]
           timeout_seconds = arguments[:timeout] || arguments["timeout"] || 30
 
-          raise ArgumentError, "command is required" if command.nil? || command.empty?
+          raise ArgumentError, "code is required" if code.nil? || code.empty?
 
           # Clamp timeout to reasonable range
           timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
 
           # Debug output
           if application = context['application']
-            application.output.debug("[execute_bash] command: #{command}")
-            application.output.debug("[execute_bash] timeout: #{timeout_seconds}s")
-            application.output.debug("[execute_bash] cwd: #{Dir.pwd}")
+            application.output.debug("[execute_python] code length: #{code.length} chars")
+            application.output.debug("[execute_python] timeout: #{timeout_seconds}s")
+            application.output.debug("[execute_python] cwd: #{Dir.pwd}")
           end
 
           stdout = ""
@@ -53,10 +57,10 @@ module Nu
           exit_code = nil
 
           begin
-            # Use timeout command with bash
-            cmd = ['timeout', "#{timeout_seconds}s", 'bash', '-c', command]
+            # Use timeout command with python3
+            cmd = ['timeout', "#{timeout_seconds}s", 'python3', '-c', code]
 
-            # Execute command
+            # Execute code
             stdout, stderr, status = Open3.capture3(*cmd, chdir: Dir.pwd)
             exit_code = status.exitstatus
 
@@ -68,7 +72,7 @@ module Nu
           # Check if command timed out (exit code 124 from timeout command)
           timed_out = (exit_code == 124)
           if timed_out
-            stderr = "Command timed out after #{timeout_seconds} seconds"
+            stderr = "Code timed out after #{timeout_seconds} seconds"
           end
 
           {
