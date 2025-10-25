@@ -242,6 +242,23 @@ module Nu
         end
       end
 
+      def build_context_document(messages, tool_registry)
+        builder = DocumentBuilder.new
+
+        # Phase 4: Add placeholder sections
+        # Phase 5 will implement actual RAG threading
+
+        # Context section (placeholder for RAG results)
+        builder.add_section('Context', '(RAG context will be added in Phase 5)')
+
+        # Available Tools section
+        tool_names = tool_registry.available_tools.map { |tool| tool[:name] }
+        tools_list = tool_names.join(', ')
+        builder.add_section('Available Tools', tools_list)
+
+        builder.build
+      end
+
       def chat_loop(conversation_id:, history:, client:, session_start_time:, exchange_id:)
         tool_registry = ToolRegistry.new
 
@@ -286,6 +303,19 @@ module Nu
 
           # Get tools formatted for this client
           tools = client.format_tools(tool_registry)
+
+          # Build context document (only on first iteration, when we have a user message but no assistant responses)
+          has_assistant_messages = messages.any? { |m| m['role'] == 'assistant' }
+          if !has_assistant_messages
+            document = build_context_document(messages, tool_registry)
+            if document && !document.empty?
+              # Prepend document to messages
+              messages.unshift({
+                'role' => 'user',
+                'content' => document
+              })
+            end
+          end
 
           # Display LLM request (verbosity level 3+)
           @output.display_llm_request(messages, tools)

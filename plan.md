@@ -72,30 +72,30 @@ Major refactoring to introduce **exchanges** as a core concept and implement str
 
 ---
 
-## Phase 4: Markdown Document Builder
+## Phase 4: Markdown Document Builder ✅ COMPLETE
 
 ### Tasks
-- [ ] Create `DocumentBuilder` class
-  - [ ] `add_section(title, content)` - add a markdown section
-  - [ ] `build` - return complete markdown string
-- [ ] Add RAG context section (placeholder for now)
-- [ ] Add tool descriptions section (placeholder for now)
-- [ ] Add user query section
-- [ ] Refactor `chat_loop` to use DocumentBuilder
-- [ ] Test with simple markdown (no threading yet)
+- [x] Create `DocumentBuilder` class
+  - [x] `add_section(title, content)` - add a markdown section
+  - [x] `build` - return complete markdown string
+- [x] Add RAG context section (placeholder for now)
+- [x] Add tool descriptions section (lists all available tools)
+- [x] Refactor `chat_loop` to use DocumentBuilder
+- [x] Test with simple markdown (no threading yet)
 
 ### Notes
+- Created DocumentBuilder with simple API: add_section(title, content) and build()
+- Context document is prepended to first exchange message only
 - Document structure:
   ```markdown
   # Context
-  [RAG results here]
+  (RAG context will be added in Phase 5)
 
   # Available Tools
-  [Tool descriptions here]
-
-  # User Request
-  [User's message]
+  tool1, tool2, tool3, ...
   ```
+- All 14 DocumentBuilder specs pass
+- Integration tested and working in chat_loop
 
 ---
 
