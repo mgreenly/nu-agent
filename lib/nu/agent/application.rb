@@ -245,11 +245,12 @@ module Nu
       def build_context_document(messages, tool_registry)
         builder = DocumentBuilder.new
 
-        # Phase 4: Add placeholder sections
-        # Phase 5 will implement actual RAG threading
+        # Phase 4/5: Add context sections
+        # Full RAG threading will be implemented later in Phase 5
 
-        # Context section (placeholder for RAG results)
-        builder.add_section('Context', '(RAG context will be added in Phase 5)')
+        # Context section (random fun fact for now)
+        fun_fact = get_random_fun_fact
+        builder.add_section('Context', fun_fact)
 
         # Available Tools section
         tool_names = tool_registry.available_tools.map { |tool| tool[:name] }
@@ -257,6 +258,28 @@ module Nu
         builder.add_section('Available Tools', tools_list)
 
         builder.build
+      end
+
+      def get_random_fun_fact
+        facts = [
+          "The first computer programmer was Ada Lovelace, who wrote algorithms for Charles Babbage's Analytical Engine in the 1840s.",
+          "The term 'bug' in computing originated when a moth got trapped in a Harvard Mark II computer in 1947.",
+          "The first 1GB hard drive, introduced in 1980, weighed over 500 pounds and cost $40,000.",
+          "Python was named after the British comedy group Monty Python, not the snake.",
+          "The first computer mouse was made of wood and was invented by Doug Engelbart in 1964.",
+          "CAPTCHA stands for 'Completely Automated Public Turing test to tell Computers and Humans Apart'.",
+          "The original name for Windows was 'Interface Manager'.",
+          "The first domain name ever registered was Symbolics.com on March 15, 1985.",
+          "SQLite is the most widely deployed database engine in the world, found in billions of devices.",
+          "The '@' symbol in email addresses was chosen by Ray Tomlinson in 1971 because it was unlikely to appear in anyone's name.",
+          "The first computer virus was created in 1983 and was called 'Elk Cloner'. It infected Apple II computers.",
+          "Ruby was designed to make programmers happy and prioritize human needs over computer needs.",
+          "The term 'cloud computing' was inspired by the cloud symbol used in flowcharts to represent the Internet.",
+          "Linus Torvalds originally wanted to call Linux 'Freax', but the FTP admin named the directory 'Linux'.",
+          "The first webcam was created at Cambridge University to monitor a coffee pot, so researchers wouldn't walk to an empty pot."
+        ]
+
+        facts.sample
       end
 
       def chat_loop(conversation_id:, history:, client:, session_start_time:, exchange_id:)
