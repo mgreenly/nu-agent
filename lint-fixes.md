@@ -1,7 +1,13 @@
 # RuboCop Lint Fixes Progress
 
-**Current Status:** 151 total offenses (down from 289 initial)
-**Progress:** 138 offenses fixed (48% reduction)
+**Current Status (as of 2025-10-26):**
+- Total offenses: ~150 (down from 289 initial)
+- Progress: 138+ offenses fixed (48%+ reduction)
+- Application.rb: 1,038 lines (down from 1,236 - 16% reduction)
+- handle_command: 157 lines, complexity 31 (down from 312 lines, complexity 70)
+- Tests: 349 passing (up from 260 - 89 new specs added)
+
+**Latest Achievement:** ✅ Command Pattern extraction complete (14/16 commands)
 
 ## ✅ Completed Phases
 
@@ -42,30 +48,45 @@
 ## 📊 Cumulative Extraction Progress
 
 **Overall Impact:**
-- Application.rb: **1236 → 896 lines** (340 lines / 27% reduction)
-- Total offenses: **289 → 151** (138 fixed / 48% reduction)
-- Tests: **260 → 273** (13 new specs added, all passing)
+- Application.rb: **1236 → 1038 lines** (198 lines / 16% reduction, but +142 from command infrastructure)
+- handle_command method: **312 → 157 lines** (155 lines / 50% reduction)
+- handle_command complexity: **70 → 31** (39 points / 56% reduction)
+- Total offenses: **289 → ~150** (138+ fixed / 48%+ reduction)
+- Tests: **260 → 349** (89 new specs added, all passing)
 
 **Extractions Summary:**
-| Extraction | Lines Reduced | New Class | Tests | Net Offenses |
-|------------|---------------|-----------|-------|--------------|
-| ManPageIndexer | 123 | 202 lines | 5 specs | -10 |
-| ConversationSummarizer | 122 | 182 lines | 7 specs | -3 |
-| ToolCallOrchestrator | 95 | 176 lines | 6 specs | -3 |
-| **Total** | **340** | **560 lines** | **18 specs** | **-16** |
+| Extraction | Lines Reduced | New Code | Tests | Net Offenses |
+|------------|---------------|----------|-------|--------------|
+| ManPageIndexer | 123 | 202 lines (1 class) | 5 specs | -10 |
+| ConversationSummarizer | 122 | 182 lines (1 class) | 7 specs | -3 |
+| ToolCallOrchestrator | 95 | 176 lines (1 class) | 6 specs | -3 |
+| Command Pattern | 155* | 464 lines (16 classes) | 38 specs | TBD |
+| **Total** | **495** | **1,024 lines** | **56 specs** | **-16+** |
 
-**✅ Extraction #4 Complete: Command Pattern - Phase 1**
+*From handle_command method only; application.rb grew by 142 lines due to public method additions
+
+**✅ Extraction #4 Complete: Command Pattern (2025-10-26)**
 - **Approach:** Command pattern with registry (following Open/Closed Principle)
-- **Completed:** 14 commands extracted (out of 16 total)
-  - **Phase 1 (Simple):** `/help`, `/tools`, `/info`, `/models`, `/fix`, `/migrate-exchanges`, `/exit`, `/clear`
-  - **Phase 2 (Toggle/Value):** `/debug`, `/verbosity`, `/redaction`, `/summarizer`, `/spellcheck`, `/reset`
-- **Infrastructure:** BaseCommand, CommandRegistry
-- **Tests:** 38 new command specs (all passing, 349 total)
+- **Status:** 14/16 commands extracted (87.5% complete)
+- **Commands Extracted:**
+  - **Simple commands (8):** `/help`, `/tools`, `/info`, `/models`, `/fix`, `/migrate-exchanges`, `/exit`, `/clear`
+  - **Toggle/Value commands (6):** `/debug`, `/verbosity`, `/redaction`, `/summarizer`, `/spellcheck`, `/reset`
+- **Infrastructure Created:**
+  - BaseCommand (26 lines, 2 specs) - Abstract base class with protected app accessor
+  - CommandRegistry (48 lines, 10 specs) - Command registration and dispatch
+  - 14 command classes (total 464 lines, 38 specs)
+- **Test Coverage:** 38 new specs (all passing, 349 total tests)
 - **Impact:**
-  - handle_command: 312 → 157 lines (155 lines reduced, 50%)
-  - Complexity: 70 → 31 (39 points reduced, 56%)
-  - Application.rb: 896 → 1038 lines (temporarily larger due to new infrastructure)
-- **Remaining commands:** /model, /index-man (2 complex commands with subcommands)
+  - handle_command: **312 → 157 lines** (50% reduction)
+  - Cyclomatic complexity: **70 → 31** (56% reduction)
+  - Application.rb: 896 → 1038 lines (+142, includes public method additions)
+- **Benefits:**
+  - ✅ Open/Closed Principle - Add commands without modifying existing code
+  - ✅ Single Responsibility - Each command is a separate class
+  - ✅ Testability - Commands tested in isolation
+  - ✅ Maintainability - Easy to find and modify command logic
+- **Remaining commands:** `/model` (~100 lines), `/index-man` (~90 lines)
+- **Commit:** `7f64313` - "Extract 14 commands using Command Pattern"
 
 ## 📋 Command Extraction Details
 
