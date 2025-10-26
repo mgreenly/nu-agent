@@ -39,106 +39,119 @@
 - **Tests:** 6 new specs, all passing
 - **Impact:** Removed 7 offenses from application.rb, added 4 to new class (net -3)
 
-## 🚀 Next Steps: Architectural Refactoring (Start Fresh)
+## 📊 Cumulative Extraction Progress
 
-### Why Start with application.rb (the root)?
+**Overall Impact:**
+- Application.rb: **1236 → 896 lines** (340 lines / 27% reduction)
+- Total offenses: **289 → 151** (138 fixed / 48% reduction)
+- Tests: **260 → 273** (13 new specs added, all passing)
 
-**Decision:** Refactor from the **core outward**, not leaves inward.
+**Extractions Summary:**
+| Extraction | Lines Reduced | New Class | Tests | Net Offenses |
+|------------|---------------|-----------|-------|--------------|
+| ManPageIndexer | 123 | 202 lines | 5 specs | -10 |
+| ConversationSummarizer | 122 | 182 lines | 7 specs | -3 |
+| ToolCallOrchestrator | 95 | 176 lines | 6 specs | -3 |
+| **Total** | **340** | **560 lines** | **18 specs** | **-16** |
 
-**Rationale:**
-1. **Avoid churn** - Fixing leaves (tools, formatters) first means:
-   - We might change their interfaces when we refactor the core anyway
-   - Double work, wasted effort
-   - Inconsistent patterns across codebase
+## 🎯 Next Priority: CommandHandler Extraction
 
-2. **God Object anti-pattern** - `application.rb` (1236 lines) does EVERYTHING:
-   - Command handling (312-line method!)
-   - Orchestration (tool calling, chat loops)
-   - Man page indexing (117 lines)
-   - Conversation summarization (107 lines)
-   - Thread management
-   - This is the ROOT CAUSE of complexity
+**Target:** Extract `handle_command` method - the largest remaining complexity
 
-3. **Cascading benefits** - Extract from core → establishes patterns → rest follows naturally
+### Current State
+- **Location:** `lib/nu/agent/application.rb:496` (as of 2025-10-26)
+- **Size:** 312 lines (largest method in application.rb)
+- **Complexity:** 70 cyclomatic complexity, 70 perceived complexity
+- **Problem:** Massive switch statement handling 15+ different commands
 
-4. **Don't move the problem** - Moving methods to modules just hides complexity
-   - Need REAL architectural changes
-   - Break responsibilities into proper classes
-   - Each class solves ONE problem
+### Why This Matters
+1. **Violates Open/Closed Principle** - Can't add new commands without modifying existing code
+2. **Single largest offender** - 312 lines in one method
+3. **Hard to test** - All commands coupled together
+4. **Hard to extend** - Adding new commands requires touching this giant method
 
-### Recommended Extraction Order
+### Proposed Solution: Command Pattern
 
-#### Phase 1: Extract from application.rb (Priority)
+Extract each command into its own class:
+- `/debug` → `DebugCommand`
+- `/model` → `ModelCommand`
+- `/help` → `HelpCommand`
+- `/info` → `InfoCommand`
+- `/tools` → `ToolsCommand`
+- etc.
 
-**Target:** Reduce 1236 → ~250 lines by extracting 4 major components:
+Each command class implements a common interface:
+```ruby
+class BaseCommand
+  def execute(input, application)
+    # Command logic here
+  end
+end
+```
 
-1. **CommandHandler** (~350 lines)
-   - Extract `handle_command` (312 lines) into command pattern
-   - Each command becomes a class: `ListCommand`, `InfoCommand`, etc.
-   - **Why:** Massive switch statement violates Open/Closed Principle
-   - **Benefit:** Add new commands without touching existing code
+### Expected Impact
+- **Lines reduced:** ~350 lines (includes helper methods)
+- **Application.rb:** 896 → ~550 lines (38% reduction from current)
+- **Offenses removed:** ~4-5 major complexity offenses
+- **Final target:** Application.rb < 600 lines (from original 1236)
 
-2. **ManPageIndexer** (~120 lines)
-   - Extract `index_man_pages` method
-   - Self-contained: parses man pages, builds embeddings
-   - **Why:** Different responsibility from app orchestration
-   - **Benefit:** Can test/improve indexing independently
+### How to Start
 
-3. **ConversationSummarizer** (~110 lines)
-   - Extract `summarize_conversations` and background worker logic
-   - **Why:** Summarization is a separate concern
-   - **Benefit:** Could use different LLM, run separately, etc.
+```bash
+# 1. Check current state
+bundle exec rubocop --only Metrics/MethodLength lib/nu/agent/application.rb
+# Should show: handle_command (312 lines)
 
-4. **ToolCallOrchestrator** (~120 lines)
-   - Extract `tool_calling_loop` (111 lines)
-   - Handles LLM tool calling protocol
-   - **Why:** Complex protocol logic separate from app lifecycle
-   - **Benefit:** Could support different tool calling strategies
+# 2. Analyze handle_command structure
+grep -n "def handle_command" lib/nu/agent/application.rb
+# Current line: 496
 
-**Remaining in Application:** (~250 lines)
-- Initialization
-- Main REPL loop
-- Session management
-- Delegating to extracted components
+# 3. Identify all commands
+grep "when\|if.*start_with" lib/nu/agent/application.rb | grep -A1 "def handle_command"
+# Lists: /model, /redaction, /summarizer, /spellcheck, /index-man, /debug,
+#        /verbosity, /exit, /clear, /tools, /reset, /fix, /migrate-exchanges,
+#        /info, /models, /help
 
-#### Phase 2: Let Other Refactorings Follow
+# 4. Design command registry pattern
+# - CommandRegistry to map command names to classes
+# - BaseCommand interface for consistency
+# - Extract one command at a time with tests (TDD)
+```
 
-After establishing patterns from application.rb:
+### Success Criteria
 
+- [ ] application.rb < 600 lines (from current 896)
+- [ ] Each command class < 100 lines
+- [ ] Each command has isolated tests
+- [ ] All 273+ tests passing
+- [ ] Command pattern allows easy addition of new commands
+- [ ] No changes to user-facing behavior
+
+## 🚀 After CommandHandler
+
+Once CommandHandler is extracted, application.rb should be ~550-600 lines with:
+- ✅ Worker management (ManPageIndexer, ConversationSummarizer)
+- ✅ Tool calling protocol (ToolCallOrchestrator)
+- ✅ Command handling (CommandHandler)
+- Remaining: Initialization, REPL loop, chat_loop, session management
+
+**Then consider:**
 - **History** (751 lines) → Extract QueryBuilder, SchemaManager
 - **Formatter** (338 lines) → Extract message type formatters
-- **Tools** → Apply same patterns consistently
+- Minor method extractions within Application
 
-### Key Principle
+## 📝 Key Principles
 
 **"You can't just move the problem to a different file"**
 
 ✅ **Good refactoring:** Extract classes with clear single responsibilities
 ❌ **Bad refactoring:** Move methods to modules just to game metrics
 
-### How to Start Next Session
-
-```bash
-# 1. Check current state
-bundle exec rubocop --only Metrics/ClassLength
-# Should show: application.rb (1236/250)
-
-# 2. Analyze application.rb structure
-grep -n "def handle_command" lib/nu/agent/application.rb
-# Line 620, 312 lines - this is the main target
-
-# 3. Plan extraction strategy
-# Read handle_command, identify all command types
-# Design command pattern structure
-```
-
-### Success Criteria
-
-- [ ] application.rb < 250 lines
-- [ ] Each extracted class < 250 lines
-- [ ] Each class has ONE clear responsibility
-- [ ] All 255 tests still passing
-- [ ] No interfaces changed (backward compatible)
+**Development Workflow:**
+- Always follow TDD (write tests first)
+- Run `rake test` after each extraction
+- Run `rake lint` to verify metrics improvement
+- Commit frequently with clear messages
 
 ## Notes
 
