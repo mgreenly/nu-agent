@@ -140,6 +140,7 @@ module Nu
         msg_type = redacted ? "redacted message" : "message"
 
         if verbosity == 2
+          @console.puts("")
           @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
           # Restart spinner with preserved start time
           @console.show_spinner("Thinking...") unless @history.workers_idle?
@@ -148,6 +149,7 @@ module Nu
 
         # Level 3+: Show message creation with details on separate lines
         if verbosity >= 3
+          @console.puts("")
           @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
           @console.puts("\e[90m  role: #{role}\e[0m")
           @console.puts("\e[90m  actor: #{actor}\e[0m")
