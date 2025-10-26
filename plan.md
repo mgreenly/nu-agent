@@ -1347,3 +1347,44 @@ Each phase is independently testable and can be reverted if needed.
 Stop at any phase if it meets requirements. Don't over-engineer.
 
 **Note**: Phase 5 is now SIMPLER than originally planned - external editor is easier to implement and more powerful than inline multiline editing.
+
+## Implementation Strategy (Updated 2025-10-26)
+
+### Code Preservation
+- **Tag**: `tui-experiment` - Preserves ncurses TUI implementation before Console I/O simplification
+- Existing TUI code will be removed as new ConsoleIO is implemented
+- No parallel modes - ConsoleIO will be the only console system
+- No flags needed to distinguish modes (--tui flag will be removed)
+
+### Development Approach
+1. **Test-Driven Development (TDD)**:
+   - Write RSpec tests FIRST before implementing features
+   - Each phase should have comprehensive test coverage
+   - Tests validate behavior before code is written
+
+2. **Code Quality**:
+   - Run Rubocop on all new and modified files
+   - Correct all errors and warnings before committing
+   - Existing files exempt from Rubocop requirements
+
+3. **Incremental Removal**:
+   - Remove old TUI code as ConsoleIO replaces functionality
+   - Files to remove after Phase 1 complete:
+     - `lib/nu/agent/tui_manager.rb`
+     - `lib/nu/agent/output_manager.rb`
+     - `lib/nu/agent/output_buffer.rb`
+
+4. **Testing Strategy**:
+   - RSpec test suite for ConsoleIO class
+   - Test individual methods (redraw, input parsing, etc.)
+   - Mock IO for deterministic testing
+   - Integration tests with real terminal (optional/manual)
+
+### Migration Path
+1. Write RSpec tests for ConsoleIO Phase 1 features
+2. Implement ConsoleIO to pass tests
+3. Update Application to use ConsoleIO instead of TUIManager/OutputManager
+4. Update Formatter to use ConsoleIO output methods
+5. Remove old TUI files
+6. Update Options to remove --tui flag
+7. Repeat for subsequent phases
