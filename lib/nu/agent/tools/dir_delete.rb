@@ -9,7 +9,9 @@ module Nu
         end
 
         def description
-          "PREFERRED tool for deleting directories. REQUIRES TWO-STEP CONFIRMATION: First call shows preview, second call with confirm_delete=true deletes. " \
+          "PREFERRED tool for deleting directories. " \
+            "REQUIRES TWO-STEP CONFIRMATION: First call shows preview, " \
+            "second call with confirm_delete=true deletes. " \
             "WARNING: Cannot be undone, all files and subdirectories are permanently removed. " \
             "Use with extreme caution."
         end
@@ -23,7 +25,8 @@ module Nu
             },
             confirm_delete: {
               type: "boolean",
-              description: "Set to true to confirm deletion after reviewing what will be deleted. Required for actual deletion.",
+              description: "Set to true to confirm deletion after reviewing what will be deleted. " \
+                           "Required for actual deletion.",
               required: false
             }
           }

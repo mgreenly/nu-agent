@@ -79,7 +79,8 @@ RSpec.describe Nu::Agent::Formatter do
         formatter.debug = true
 
         expect(mock_console).to receive(:puts).with("Hi there!")
-        expect(mock_console).to receive(:puts).with("\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m")
+        token_str = "\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m"
+        expect(mock_console).to receive(:puts).with(token_str)
         expect(mock_console).to receive(:puts).with("\e[90mSession spend: $0.000150\e[0m")
 
         formatter.display_new_messages(conversation_id: conversation_id)
@@ -304,7 +305,8 @@ RSpec.describe Nu::Agent::Formatter do
         "tool_result" => {
           "name" => "file_read",
           "result" => {
-            "content" => "This is a very long file content that should be truncated when verbosity is 1 and shown in full when verbosity is 2 or higher",
+            "content" => "This is a very long file content that should be truncated when verbosity is 1 " \
+                         "and shown in full when verbosity is 2 or higher",
             "size" => 1024
           }
         }
@@ -566,7 +568,8 @@ RSpec.describe Nu::Agent::Formatter do
         expect(mock_console).to receive(:puts).with("").ordered
         expect(mock_console).to receive(:puts).with("The temperature is 48°F.").ordered
         expect(mock_console).to receive(:puts).with("").ordered
-        expect(mock_console).to receive(:puts).with("\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m").ordered
+        token_str = "\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m"
+        expect(mock_console).to receive(:puts).with(token_str).ordered
         expect(mock_console).to receive(:puts).with("\e[90mSession spend: $0.000150\e[0m").ordered
 
         formatter_debug.display_message(message)

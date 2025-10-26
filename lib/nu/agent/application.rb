@@ -1104,14 +1104,16 @@ module Nu
             if status["running"]
               output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)",
                           type: :debug)
-              output_line("  Spend:       $#{format('%.6f', status['spend'])}", type: :debug) if status["spend"].positive?
+              output_line("  Spend:       $#{format('%.6f', status['spend'])}", 
+type: :debug) if status["spend"].positive?
             elsif status["total"].positive?
               completed = status["completed"]
               total = status["total"]
               failed = status["failed"]
               output_line("  Status:      completed (#{completed}/#{total} conversations, #{failed} failed)",
                           type: :debug)
-              output_line("  Spend:       $#{format('%.6f', status['spend'])}", type: :debug) if status["spend"].positive?
+              output_line("  Spend:       $#{format('%.6f', status['spend'])}", 
+type: :debug) if status["spend"].positive?
             else
               output_line("  Status:      idle", type: :debug)
             end

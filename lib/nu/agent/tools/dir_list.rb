@@ -9,7 +9,8 @@ module Nu
         end
 
         def description
-          "PREFERRED tool for listing directory contents. Returns structured list of files and directories with optional details. " \
+          "PREFERRED tool for listing directory contents. " \
+            "Returns structured list of files and directories with optional details. " \
             "Use this instead of execute_bash with ls commands. " \
             "Supports sorting by name/mtime/size, filtering hidden files, and detailed file information."
         end
@@ -18,7 +19,8 @@ module Nu
           {
             path: {
               type: "string",
-              description: "Path to the directory to list (relative to project root or absolute within project). Defaults to current directory.",
+              description: "Path to the directory to list (relative to project root or absolute within project). " \
+                           "Defaults to current directory.",
               required: false
             },
             show_hidden: {
@@ -28,12 +30,14 @@ module Nu
             },
             details: {
               type: "boolean",
-              description: "Include detailed information (size, type, mtime) for each entry like 'ls -l'. Default: false",
+              description: "Include detailed information (size, type, mtime) for each entry like 'ls -l'. " \
+                           "Default: false",
               required: false
             },
             sort_by: {
               type: "string",
-              description: "How to sort results: 'name' (alphabetical), 'mtime' (modification time, newest first), 'size' (largest first), or 'none'. Default: 'name'",
+              description: "How to sort results: 'name' (alphabetical), 'mtime' (modification time, newest first), " \
+                           "'size' (largest first), or 'none'. Default: 'name'",
               required: false
             },
             limit: {

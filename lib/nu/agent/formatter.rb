@@ -295,7 +295,9 @@ module Nu
           inp = tokens["input"]
           out = tokens["output"]
           total = tokens["total"]
-          @console.puts("\e[90mSession tokens: #{inp} in / #{out} out / #{total} Total / (#{percentage}% of #{max_context})\e[0m")
+          pct = percentage
+          max = max_context
+          @console.puts("\e[90mSession tokens: #{inp} in / #{out} out / #{total} Total / (#{pct}% of #{max})\e[0m")
         end
         @console.puts("\e[90mSession spend: $#{'%.6f' % tokens['spend']}\e[0m") if @debug
         return unless elapsed_time

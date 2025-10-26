@@ -9,8 +9,10 @@ module Nu
         end
 
         def description
-          "PREFERRED tool for finding files by name/pattern. Use this instead of execute_bash with find/ls commands. " \
-            "Returns structured JSON array of file paths, sorted by modification time (most recent first) by default. " \
+          "PREFERRED tool for finding files by name/pattern. " \
+            "Use this instead of execute_bash with find/ls commands. " \
+            "Returns structured JSON array of file paths, " \
+            "sorted by modification time (most recent first) by default. " \
             "Perfect for navigating unfamiliar codebases and discovering files.\n" \
             "\nPattern examples:\n" \
             "- '**/*.rb' - All Ruby files recursively\n" \
@@ -41,7 +43,8 @@ module Nu
             },
             sort_by: {
               type: "string",
-              description: "How to sort results: 'mtime' (modification time, newest first), 'name' (alphabetical), or 'none' (default: 'mtime')",
+              description: "How to sort results: 'mtime' (modification time, newest first), " \
+                           "'name' (alphabetical), or 'none' (default: 'mtime')",
               required: false
             }
           }

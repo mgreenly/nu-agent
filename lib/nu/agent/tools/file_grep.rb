@@ -39,7 +39,9 @@ module Nu
             },
             output_mode: {
               type: "string",
-              description: "Output format: 'files_with_matches' (just file paths), 'content' (matching lines with context), or 'count' (match counts). Default: 'files_with_matches'",
+              description: "Output format: 'files_with_matches' (just file paths), " \
+                           "'content' (matching lines with context), or 'count' (match counts). " \
+                           "Default: 'files_with_matches'",
               required: false
             },
             glob: {

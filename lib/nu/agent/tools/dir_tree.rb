@@ -18,7 +18,8 @@ module Nu
           {
             path: {
               type: "string",
-              description: "Directory to start from (relative to project root or absolute within project). Defaults to current directory.",
+              description: "Directory to start from (relative to project root or absolute within project). " \
+                           "Defaults to current directory.",
               required: false
             },
             max_depth: {
