@@ -1035,7 +1035,8 @@ module Nu
 
         output_line("Found #{corrupted.length} corrupted message(s):", type: :debug)
         corrupted.each do |msg|
-          output_line("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})", type: :debug)
+          output_line("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})",
+                      type: :debug)
         end
 
         if @tui&.active
@@ -1101,10 +1102,13 @@ module Nu
           @status_mutex.synchronize do
             status = @summarizer_status
             if status["running"]
-              output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)", type: :debug)
+              output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)",
+                          type: :debug)
               output_line("  Spend:       $#{'%.6f' % status['spend']}", type: :debug) if status["spend"].positive?
             elsif status["total"].positive?
-              output_line("  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)", type: :debug)
+              output_line(
+                "  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)", type: :debug
+              )
               output_line("  Spend:       $#{'%.6f' % status['spend']}", type: :debug) if status["spend"].positive?
             else
               output_line("  Status:      idle", type: :debug)

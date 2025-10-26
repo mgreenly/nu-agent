@@ -34,7 +34,7 @@ module Nu
           end
 
           # Debug output
-          application = context["application"]
+          context["application"]
 
           columns = history.describe_table(table_name)
 

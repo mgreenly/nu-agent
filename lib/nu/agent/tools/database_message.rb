@@ -36,7 +36,7 @@ module Nu
           conversation_id = context["conversation_id"]
 
           # Debug output
-          application = context["application"]
+          context["application"]
 
           begin
             message = history.get_message_by_id(message_id, conversation_id: conversation_id)

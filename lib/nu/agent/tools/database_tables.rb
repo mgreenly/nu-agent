@@ -20,7 +20,7 @@ module Nu
 
         def execute(arguments:, history:, context:)
           # Debug output
-          application = context["application"]
+          context["application"]
 
           tables = history.list_tables
 

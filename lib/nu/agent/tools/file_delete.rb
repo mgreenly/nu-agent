@@ -38,7 +38,7 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context["application"]
+          context["application"]
 
           begin
             unless File.exist?(resolved_path)
