@@ -1404,15 +1404,23 @@ Stop at any phase if it meets requirements. Don't over-engineer.
   - Must use `instance_double(IO)` for stdin, stdout, and pipe objects
   - Must use `allow(pipe_write).to receive(:write)` to permit signaling in background threads
   - Queue operations need rescue blocks for ThreadError (queue empty)
+  - **Pipe read mocking**: Use `allow(pipe_read).to receive(:read_nonblock).with(1024).and_return("")` instead of raising exceptions
+  - **Stdin wait_readable**: Use `allow(stdin).to receive(:wait_readable).and_return(nil)` for flush_stdin calls
 
 - **Test isolation**: Terminal setup must be mocked/skipped in unit tests
   - `initialize` test marked as pending (requires actual terminal)
   - Use `allocate` + `instance_variable_set` pattern to create test instances without calling initialize
   - Integration/manual tests needed for actual terminal interaction
 
+- **String mutability in tests**: Critical for input buffer testing
+  - Use `String.new("text")` instead of frozen string literals (`"text"`)
+  - Required because implementation uses `.insert!` and `.slice!` which modify in place
+  - Example: `console.instance_variable_set(:@input_buffer, String.new("hello"))`
+
 - **Thread safety testing**: Concurrent puts() calls validated thread safety
   - Use 100 threads to stress test the queue and mutex synchronization
   - Background threads in tests may fail if mocks not set up correctly
+  - Tests can hang if IO.select mocks aren't configured properly
 
 ### Rubocop Configuration Decisions
 - **Metrics chosen**:
@@ -1445,18 +1453,21 @@ Stop at any phase if it meets requirements. Don't over-engineer.
   - No complex width calculations needed (yet)
 
 ### Known Issues / Future Work
-- **Test mock expectations**: Some tests fail due to missing `allow` statements for pipe_write
-  - Need to add `allow(pipe_write).to receive(:write)` in affected tests
-  - Particularly impacts concurrent puts() tests
-
 - **Terminal cleanup reliability**:
   - `at_exit` hook ensures cleanup on normal exit
   - May need additional signal handling for robustness
+  - SIGTERM and other signals should restore terminal state
 
 - **Input buffer limitations**:
   - Currently single-line only (Phase 1 scope)
   - No cursor movement within line (Phase 2)
   - No line wrapping handling (future enhancement)
+  - Long lines will wrap naturally but buffer keeps full text
+
+- **Test hanging prevention**:
+  - IO.select in tests requires proper mocking or tests will hang
+  - Use timeouts in test runs to catch infinite loops
+  - Background threads must be properly cleaned up in test teardown
 
 ### Dependencies
 - **Ruby stdlib only**:
@@ -1473,7 +1484,24 @@ Stop at any phase if it meets requirements. Don't over-engineer.
 - **Mutex contention**: Only on stdout writes, very brief critical sections
 - **Pipe overhead**: Negligible - single byte writes for signaling
 
-### Files Created
+### Files Created/Modified
 - `lib/nu/agent/console_io.rb` (349 lines) - Main implementation
-- `spec/nu/agent/console_io_spec.rb` (290 lines) - Test suite
+- `spec/nu/agent/console_io_spec.rb` (297 lines) - Test suite with 26 examples
 - `.rubocop.yml` - Code quality configuration
+- `Gemfile` - Added rubocop dependency
+- `lib/nu/agent.rb` - Required console_io
+
+### Test Results
+- **26 examples, 0 failures, 1 pending**
+- Pending test: `#initialize` (requires actual terminal)
+- All tests pass Rubocop with 0 offenses
+- Thread safety validated with 100 concurrent threads
+- All Phase 1 core features fully tested
+
+### TDD Success Metrics
+- ✅ Tests written before implementation
+- ✅ All implementation code passes tests
+- ✅ All code passes Rubocop
+- ✅ Comprehensive coverage of Phase 1 features
+- ✅ Test suite runs in <1 second (0.25s)
+- ✅ No flaky tests - deterministic results
