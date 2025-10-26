@@ -1,5 +1,7 @@
 # Nu::Agent
 
+[![CI](https://github.com/mgreenly/nu-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/ci.yml)
+
 A toy AI Personal/Coding Agent.
 
 ## Features
