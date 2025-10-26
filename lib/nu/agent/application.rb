@@ -3,9 +3,10 @@
 module Nu
   module Agent
     class Application
-      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status,
-                  :man_indexer_status, :status_mutex, :verbosity, :console, :debug
-      attr_accessor :active_threads
+      attr_reader :orchestrator, :history, :formatter, :summarizer_status,
+                  :man_indexer_status, :status_mutex, :console, :tui
+      attr_accessor :active_threads, :debug, :verbosity, :redact, :summarizer_enabled, :spell_check_enabled,
+                    :conversation_id, :session_start_time
 
       def initialize(options:)
         $stdout.sync = true
@@ -89,6 +90,10 @@ module Nu
 
         # Initialize index_man_enabled to false on startup
         @history.set_config("index_man_enabled", "false")
+
+        # Initialize command registry
+        @command_registry = Commands::CommandRegistry.new
+        register_commands
 
         # Start background summarization worker
         start_summarization_worker
@@ -199,26 +204,6 @@ module Nu
         :continue
       end
 
-      private
-
-      def enter_critical_section
-        @critical_mutex.synchronize do
-          @critical_sections += 1
-        end
-      end
-
-      def exit_critical_section
-        @critical_mutex.synchronize do
-          @critical_sections -= 1
-        end
-      end
-
-      def in_critical_section?
-        @critical_mutex.synchronize do
-          @critical_sections.positive?
-        end
-      end
-
       # Helper to output text via ConsoleIO
       def output_line(text, type: :normal)
         case type
@@ -236,6 +221,52 @@ module Nu
       def output_lines(*lines, type: :normal)
         lines.each do |line|
           output_line(line, type: type)
+        end
+      end
+
+      # Clear the screen
+      def clear_screen
+        if @tui&.active
+          @tui.clear_output
+        else
+          system("clear")
+        end
+      end
+
+      private
+
+      def register_commands
+        @command_registry.register("/help", Commands::HelpCommand)
+        @command_registry.register("/tools", Commands::ToolsCommand)
+        @command_registry.register("/info", Commands::InfoCommand)
+        @command_registry.register("/models", Commands::ModelsCommand)
+        @command_registry.register("/fix", Commands::FixCommand)
+        @command_registry.register("/migrate-exchanges", Commands::MigrateExchangesCommand)
+        @command_registry.register("/exit", Commands::ExitCommand)
+        @command_registry.register("/clear", Commands::ClearCommand)
+        @command_registry.register("/debug", Commands::DebugCommand)
+        @command_registry.register("/verbosity", Commands::VerbosityCommand)
+        @command_registry.register("/redaction", Commands::RedactionCommand)
+        @command_registry.register("/summarizer", Commands::SummarizerCommand)
+        @command_registry.register("/spellcheck", Commands::SpellcheckCommand)
+        @command_registry.register("/reset", Commands::ResetCommand)
+      end
+
+      def enter_critical_section
+        @critical_mutex.synchronize do
+          @critical_sections += 1
+        end
+      end
+
+      def exit_critical_section
+        @critical_mutex.synchronize do
+          @critical_sections -= 1
+        end
+      end
+
+      def in_critical_section?
+        @critical_mutex.synchronize do
+          @critical_sections.positive?
         end
       end
 
@@ -494,6 +525,12 @@ module Nu
       end
 
       def handle_command(input)
+        # Check if command is registered in the command registry
+        command_name = input.split.first&.downcase
+        if @command_registry.registered?(command_name)
+          return @command_registry.execute(command_name, input, self)
+        end
+
         # Handle /model command with subcommands
         parts = input.split
         if parts.first&.downcase == "/model"
@@ -588,94 +625,6 @@ module Nu
             @console.puts("")
             output_line("Unknown subcommand: #{subcommand}", type: :debug)
             output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :debug)
-          end
-
-          return :continue
-        end
-
-        # Handle /redaction [on/off] command
-        if input.downcase.start_with?("/redaction")
-          parts = input.split(" ", 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @console.puts("")
-            output_line("Usage: /redaction <on|off>", type: :debug)
-            output_line("Current: redaction=#{@redact ? 'on' : 'off'}", type: :debug)
-            return :continue
-          end
-
-          setting = parts[1].strip.downcase
-          if setting == "on"
-            @redact = true
-            history.set_config("redaction", "true")
-            @console.puts("")
-            output_line("redaction=on", type: :debug)
-          elsif setting == "off"
-            @redact = false
-            history.set_config("redaction", "false")
-            @console.puts("")
-            output_line("redaction=off", type: :debug)
-          else
-            @console.puts("")
-            output_line("Invalid option. Use: /redaction <on|off>", type: :debug)
-          end
-
-          return :continue
-        end
-
-        # Handle /summarizer [on/off] command
-        if input.downcase.start_with?("/summarizer")
-          parts = input.split(" ", 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @console.puts("")
-            output_line("Usage: /summarizer <on|off>", type: :debug)
-            output_line("Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}", type: :debug)
-            return :continue
-          end
-
-          setting = parts[1].strip.downcase
-          if setting == "on"
-            @summarizer_enabled = true
-            history.set_config("summarizer_enabled", "true")
-            @console.puts("")
-            output_line("summarizer=on", type: :debug)
-            output_line("Summarizer will start on next /reset", type: :debug)
-          elsif setting == "off"
-            @summarizer_enabled = false
-            history.set_config("summarizer_enabled", "false")
-            @console.puts("")
-            output_line("summarizer=off", type: :debug)
-          else
-            @console.puts("")
-            output_line("Invalid option. Use: /summarizer <on|off>", type: :debug)
-          end
-
-          return :continue
-        end
-
-        # Handle /spellcheck [on/off] command
-        if input.downcase.start_with?("/spellcheck")
-          parts = input.split(" ", 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @console.puts("")
-            output_line("Usage: /spellcheck <on|off>", type: :debug)
-            output_line("Current: spellcheck=#{@spell_check_enabled ? 'on' : 'off'}", type: :debug)
-            return :continue
-          end
-
-          setting = parts[1].strip.downcase
-          if setting == "on"
-            @spell_check_enabled = true
-            history.set_config("spell_check_enabled", "true")
-            @console.puts("")
-            output_line("spellcheck=on", type: :debug)
-          elsif setting == "off"
-            @spell_check_enabled = false
-            history.set_config("spell_check_enabled", "false")
-            @console.puts("")
-            output_line("spellcheck=off", type: :debug)
-          else
-            @console.puts("")
-            output_line("Invalid option. Use: /spellcheck <on|off>", type: :debug)
           end
 
           return :continue
@@ -776,103 +725,10 @@ module Nu
           return :continue
         end
 
-        # Handle /debug [on/off] command
-        if input.downcase.start_with?("/debug")
-          parts = input.split(" ", 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @console.puts("\e[90mUsage: /debug <on|off>\e[0m")
-            @console.puts("\e[90mCurrent: debug=#{@debug ? 'on' : 'off'}\e[0m")
-            return :continue
-          end
-
-          setting = parts[1].strip.downcase
-          if setting == "on"
-            @debug = true
-            @formatter.debug = true
-            history.set_config("debug", "true")
-            @console.puts("\e[90mdebug=on\e[0m")
-          elsif setting == "off"
-            @debug = false
-            @formatter.debug = false
-            history.set_config("debug", "false")
-            @console.puts("\e[90mdebug=off\e[0m")
-          else
-            @console.puts("\e[90mInvalid option. Use: /debug <on|off>\e[0m")
-          end
-
-          return :continue
-        end
-
-        # Handle /verbosity [NUM] command
-        if input.downcase.start_with?("/verbosity")
-          parts = input.split(" ", 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @console.puts("\e[90mUsage: /verbosity <number>\e[0m")
-            @console.puts("\e[90mCurrent: verbosity=#{@verbosity}\e[0m")
-            return :continue
-          end
-
-          value = parts[1].strip
-          if value =~ /^\d+$/
-            @verbosity = value.to_i
-            history.set_config("verbosity", value)
-            @console.puts("\e[90mverbosity=#{@verbosity}\e[0m")
-          else
-            @console.puts("\e[90mInvalid option. Use: /verbosity <number>\e[0m")
-          end
-
-          return :continue
-        end
-
-        case input.downcase
-        when "/exit"
-          :exit
-        when "/clear"
-          if @tui&.active
-            @tui.clear_output
-          else
-            system("clear")
-          end
-          :continue
-        when "/tools"
-          print_tools
-          :continue
-        when "/reset"
-          if @tui&.active
-            @tui.clear_output
-          else
-            system("clear")
-          end
-          @conversation_id = history.create_conversation
-          @session_start_time = Time.now
-          formatter.reset_session(conversation_id: @conversation_id)
-          @console.puts("")
-          output_line("Conversation reset", type: :debug)
-
-          # Start background summarization worker
-          start_summarization_worker
-
-          :continue
-        when "/fix"
-          run_fix
-          :continue
-        when "/migrate-exchanges"
-          run_migrate_exchanges
-          :continue
-        when "/info"
-          print_info
-          :continue
-        when "/models"
-          print_models
-          :continue
-        when "/help"
-          print_help
-          :continue
-        else
-          @console.puts("")
-          output_line("Unknown command: #{input}", type: :debug)
-          :continue
-        end
+        # Unknown command
+        @console.puts("")
+        output_line("Unknown command: #{input}", type: :debug)
+        :continue
       end
 
       def print_help
@@ -907,6 +763,8 @@ module Nu
         HELP
         output_lines(*help_text.lines.map(&:chomp), type: :debug)
       end
+
+      public
 
       def run_fix
         @console.puts("")
@@ -1055,6 +913,29 @@ module Nu
         end
       end
 
+      def start_summarization_worker
+        # Don't start if summarizer is disabled
+        return unless @summarizer_enabled
+
+        # Capture values for thread
+        @operation_mutex.synchronize do
+          # Create summarizer worker and start thread
+          summarizer_worker = ConversationSummarizer.new(
+            history: history,
+            summarizer: @summarizer,
+            application: self,
+            status: @summarizer_status,
+            status_mutex: @status_mutex,
+            current_conversation_id: conversation_id
+          )
+
+          thread = summarizer_worker.start_worker
+          active_threads << thread
+        end
+      end
+
+      private
+
       def setup_signal_handlers
         # Don't trap INT - let it raise Interrupt exception so we can handle it gracefully
         # Signal.trap("INT") do
@@ -1122,28 +1003,6 @@ module Nu
           "unknown"
         end
       end
-
-      def start_summarization_worker
-        # Don't start if summarizer is disabled
-        return unless @summarizer_enabled
-
-        # Capture values for thread
-        @operation_mutex.synchronize do
-          # Create summarizer worker and start thread
-          summarizer_worker = ConversationSummarizer.new(
-            history: history,
-            summarizer: @summarizer,
-            application: self,
-            status: @summarizer_status,
-            status_mutex: @status_mutex,
-            current_conversation_id: conversation_id
-          )
-
-          thread = summarizer_worker.start_worker
-          active_threads << thread
-        end
-      end
-
 
       def start_man_indexer_worker
         # Capture values for thread

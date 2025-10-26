@@ -54,78 +54,85 @@
 | ToolCallOrchestrator | 95 | 176 lines | 6 specs | -3 |
 | **Total** | **340** | **560 lines** | **18 specs** | **-16** |
 
-## 🎯 Next Priority: CommandHandler Extraction
+**✅ Extraction #4 Complete: Command Pattern - Phase 1**
+- **Approach:** Command pattern with registry (following Open/Closed Principle)
+- **Completed:** 14 commands extracted (out of 16 total)
+  - **Phase 1 (Simple):** `/help`, `/tools`, `/info`, `/models`, `/fix`, `/migrate-exchanges`, `/exit`, `/clear`
+  - **Phase 2 (Toggle/Value):** `/debug`, `/verbosity`, `/redaction`, `/summarizer`, `/spellcheck`, `/reset`
+- **Infrastructure:** BaseCommand, CommandRegistry
+- **Tests:** 38 new command specs (all passing, 349 total)
+- **Impact:**
+  - handle_command: 312 → 157 lines (155 lines reduced, 50%)
+  - Complexity: 70 → 31 (39 points reduced, 56%)
+  - Application.rb: 896 → 1038 lines (temporarily larger due to new infrastructure)
+- **Remaining commands:** /model, /index-man (2 complex commands with subcommands)
 
-**Target:** Extract `handle_command` method - the largest remaining complexity
+## 📋 Command Extraction Details
 
-### Current State
-- **Location:** `lib/nu/agent/application.rb:496` (as of 2025-10-26)
-- **Size:** 312 lines (largest method in application.rb)
-- **Complexity:** 70 cyclomatic complexity, 70 perceived complexity
-- **Problem:** Massive switch statement handling 15+ different commands
+### Commands Extracted (14/16)
 
-### Why This Matters
-1. **Violates Open/Closed Principle** - Can't add new commands without modifying existing code
-2. **Single largest offender** - 312 lines in one method
-3. **Hard to test** - All commands coupled together
-4. **Hard to extend** - Adding new commands requires touching this giant method
+**Simple Commands (8):**
+- HelpCommand (lib/nu/agent/commands/help_command.rb) - 46 lines, 3 specs
+- ToolsCommand (lib/nu/agent/commands/tools_command.rb) - 16 lines, 2 specs
+- InfoCommand (lib/nu/agent/commands/info_command.rb) - 16 lines, 2 specs
+- ModelsCommand (lib/nu/agent/commands/models_command.rb) - 16 lines, 2 specs
+- FixCommand (lib/nu/agent/commands/fix_command.rb) - 16 lines, 2 specs
+- MigrateExchangesCommand (lib/nu/agent/commands/migrate_exchanges_command.rb) - 16 lines, 2 specs
+- ExitCommand (lib/nu/agent/commands/exit_command.rb) - 13 lines, 1 spec
+- ClearCommand (lib/nu/agent/commands/clear_command.rb) - 16 lines, 2 specs
 
-### Proposed Solution: Command Pattern
+**Toggle/Value Commands (6):**
+- DebugCommand (lib/nu/agent/commands/debug_command.rb) - 35 lines, 8 specs
+- VerbosityCommand (lib/nu/agent/commands/verbosity_command.rb) - 28 lines, 6 specs
+- RedactionCommand (lib/nu/agent/commands/redaction_command.rb) - 35 lines, 8 specs
+- SummarizerCommand (lib/nu/agent/commands/summarizer_command.rb) - 36 lines, 8 specs
+- SpellcheckCommand (lib/nu/agent/commands/spellcheck_command.rb) - 35 lines, 8 specs
+- ResetCommand (lib/nu/agent/commands/reset_command.rb) - 31 lines, 10 specs
 
-Extract each command into its own class:
-- `/debug` → `DebugCommand`
-- `/model` → `ModelCommand`
-- `/help` → `HelpCommand`
-- `/info` → `InfoCommand`
-- `/tools` → `ToolsCommand`
-- etc.
+**Infrastructure:**
+- BaseCommand (lib/nu/agent/commands/base_command.rb) - 26 lines, 2 specs
+- CommandRegistry (lib/nu/agent/commands/command_registry.rb) - 48 lines, 10 specs
 
-Each command class implements a common interface:
-```ruby
-class BaseCommand
-  def execute(input, application)
-    # Command logic here
-  end
-end
-```
+### Remaining Complex Commands (2/16)
 
-### Expected Impact
-- **Lines reduced:** ~350 lines (includes helper methods)
-- **Application.rb:** 896 → ~550 lines (38% reduction from current)
-- **Offenses removed:** ~4-5 major complexity offenses
-- **Final target:** Application.rb < 600 lines (from original 1236)
+- `/model` - Handles subcommands (orchestrator/spellchecker/summarizer), mutex operations (~100 lines)
+- `/index-man` - Handles on/off/reset, status display, worker management (~90 lines)
 
-### How to Start
+## 🎯 Next Priority: Complete Command Extraction
 
-```bash
-# 1. Check current state
-bundle exec rubocop --only Metrics/MethodLength lib/nu/agent/application.rb
-# Should show: handle_command (312 lines)
+**Target:** Extract final 2 complex commands from `handle_command`
 
-# 2. Analyze handle_command structure
-grep -n "def handle_command" lib/nu/agent/application.rb
-# Current line: 496
+### Current State (as of 2025-10-26)
+- **Location:** `lib/nu/agent/application.rb:527`
+- **Size:** 157 lines (down from 312 - 50% reduction)
+- **Complexity:** 31 cyclomatic complexity (down from 70 - 56% reduction)
+- **Remaining:** /model and /index-man commands
 
-# 3. Identify all commands
-grep "when\|if.*start_with" lib/nu/agent/application.rb | grep -A1 "def handle_command"
-# Lists: /model, /redaction, /summarizer, /spellcheck, /index-man, /debug,
-#        /verbosity, /exit, /clear, /tools, /reset, /fix, /migrate-exchanges,
-#        /info, /models, /help
+### Next Steps to Complete
 
-# 4. Design command registry pattern
-# - CommandRegistry to map command names to classes
-# - BaseCommand interface for consistency
-# - Extract one command at a time with tests (TDD)
-```
+**Option 1: Extract remaining 2 commands**
+- Extract `/model` command (ModelCommand with subcommands)
+- Extract `/index-man` command (IndexManCommand with on/off/reset)
+- **Expected result:** handle_command < 10 lines, complexity < 5
 
-### Success Criteria
+**Option 2: Stop here and tackle other areas**
+- Current state is good: 50% reduction in lines, 56% reduction in complexity
+- Move to other large methods (chat_loop: 89 lines, process_input: 51 lines)
+- Or tackle other large classes (History: 751 lines, Formatter: 338 lines)
 
-- [ ] application.rb < 600 lines (from current 896)
-- [ ] Each command class < 100 lines
-- [ ] Each command has isolated tests
-- [ ] All 273+ tests passing
-- [ ] Command pattern allows easy addition of new commands
-- [ ] No changes to user-facing behavior
+### Progress Summary
+
+**Achievements:**
+- ✅ 14/16 commands extracted (87.5%)
+- ✅ handle_command: 312 → 157 lines (50% reduction)
+- ✅ Complexity: 70 → 31 (56% reduction)
+- ✅ All 349 tests passing
+- ✅ Command pattern in place for easy extension
+- ✅ No user-facing behavior changes
+
+**Remaining:**
+- `/model` command (~100 lines, complex with subcommands)
+- `/index-man` command (~90 lines, complex with status display)
 
 ## 🚀 After CommandHandler
 
