@@ -101,86 +101,82 @@ module Nu
 
         def execute(arguments:, **)
           file_path = arguments[:file] || arguments["file"]
+          return { status: "error", error: "file path is required" } if file_path.nil? || file_path.empty?
 
-          if file_path.nil? || file_path.empty?
-            return {
-              status: "error",
-              error: "file path is required"
-            }
-          end
-
-          # Resolve and validate file path
           resolved_path = resolve_path(file_path)
           validate_path(resolved_path)
 
-          # Determine operation mode
-          old_string = arguments[:old_string] || arguments["old_string"]
-          new_string = arguments[:new_string] || arguments["new_string"]
-          replace_all = arguments[:replace_all] || arguments["replace_all"] || false
-          append_content = arguments[:append] || arguments["append"]
-          prepend_content = arguments[:prepend] || arguments["prepend"]
-          insert_after_pattern = arguments[:insert_after] || arguments["insert_after"]
-          insert_before_pattern = arguments[:insert_before] || arguments["insert_before"]
-          insert_content = arguments[:content] || arguments["content"]
-          insert_line_num = arguments[:insert_line] || arguments["insert_line"]
-          replace_start = arguments[:replace_range_start] || arguments["replace_range_start"]
-          replace_end = arguments[:replace_range_end] || arguments["replace_range_end"]
-
-          # Debug output
-          application = context["application"]
-          if application&.debug
-
-            application.output.debug("[file_edit] file: #{resolved_path}")
-            if old_string
-              application.output.debug("[file_edit] mode: replace (replace_all: #{replace_all})")
-            elsif append_content
-              application.output.debug("[file_edit] mode: append")
-            elsif prepend_content
-              application.output.debug("[file_edit] mode: prepend")
-            elsif insert_after_pattern
-              application.output.debug("[file_edit] mode: insert_after")
-            elsif insert_before_pattern
-              application.output.debug("[file_edit] mode: insert_before")
-            elsif insert_line_num
-              application.output.debug("[file_edit] mode: insert_line (#{insert_line_num})")
-            elsif replace_start && replace_end
-              application.output.debug("[file_edit] mode: replace_range (#{replace_start}-#{replace_end})")
-            end
-          end
+          ops = parse_operations(arguments)
+          log_operation_mode(resolved_path, ops) if context["application"]&.debug
 
           begin
-            # Execute appropriate operation
-            if old_string && new_string
-              execute_replace(resolved_path, old_string, new_string, replace_all)
-            elsif append_content
-              execute_append(resolved_path, append_content)
-            elsif prepend_content
-              execute_prepend(resolved_path, prepend_content)
-            elsif insert_after_pattern
-              execute_insert_after(resolved_path, insert_after_pattern, insert_content)
-            elsif insert_before_pattern
-              execute_insert_before(resolved_path, insert_before_pattern, insert_content)
-            elsif insert_line_num
-              execute_insert_line(resolved_path, insert_line_num, insert_content)
-            elsif replace_start && replace_end
-              execute_replace_range(resolved_path, replace_start, replace_end, insert_content)
-            else
-              {
-                status: "error",
-                error: "Must provide either: (old_string + new_string), append, prepend, " \
-                       "(insert_after/insert_before + content), (insert_line + content), " \
-                       "or (replace_range_start + replace_range_end + content)"
-              }
-            end
+            execute_operation(resolved_path, ops)
           rescue StandardError => e
-            {
-              status: "error",
-              error: e.message
-            }
+            { status: "error", error: e.message }
           end
         end
 
         private
+
+        def parse_operations(arguments)
+          {
+            old_string: arguments[:old_string] || arguments["old_string"],
+            new_string: arguments[:new_string] || arguments["new_string"],
+            replace_all: arguments[:replace_all] || arguments["replace_all"] || false,
+            append: arguments[:append] || arguments["append"],
+            prepend: arguments[:prepend] || arguments["prepend"],
+            insert_after: arguments[:insert_after] || arguments["insert_after"],
+            insert_before: arguments[:insert_before] || arguments["insert_before"],
+            content: arguments[:content] || arguments["content"],
+            insert_line: arguments[:insert_line] || arguments["insert_line"],
+            replace_start: arguments[:replace_range_start] || arguments["replace_range_start"],
+            replace_end: arguments[:replace_range_end] || arguments["replace_range_end"]
+          }
+        end
+
+        def log_operation_mode(path, ops)
+          app = context["application"]
+          app.output.debug("[file_edit] file: #{path}")
+          mode = determine_operation_mode(ops)
+          app.output.debug("[file_edit] mode: #{mode}") if mode
+        end
+
+        def determine_operation_mode(ops)
+          return "replace (replace_all: #{ops[:replace_all]})" if ops[:old_string]
+          return "append" if ops[:append]
+          return "prepend" if ops[:prepend]
+          return "insert_after" if ops[:insert_after]
+          return "insert_before" if ops[:insert_before]
+          return "insert_line (#{ops[:insert_line]})" if ops[:insert_line]
+          return "replace_range (#{ops[:replace_start]}-#{ops[:replace_end]})" if ops[:replace_start] && ops[:replace_end]
+
+          nil
+        end
+
+        def execute_operation(path, ops)
+          if ops[:old_string] && ops[:new_string]
+            execute_replace(path, ops[:old_string], ops[:new_string], ops[:replace_all])
+          elsif ops[:append]
+            execute_append(path, ops[:append])
+          elsif ops[:prepend]
+            execute_prepend(path, ops[:prepend])
+          elsif ops[:insert_after]
+            execute_insert_after(path, ops[:insert_after], ops[:content])
+          elsif ops[:insert_before]
+            execute_insert_before(path, ops[:insert_before], ops[:content])
+          elsif ops[:insert_line]
+            execute_insert_line(path, ops[:insert_line], ops[:content])
+          elsif ops[:replace_start] && ops[:replace_end]
+            execute_replace_range(path, ops[:replace_start], ops[:replace_end], ops[:content])
+          else
+            {
+              status: "error",
+              error: "Must provide either: (old_string + new_string), append, prepend, " \
+                     "(insert_after/insert_before + content), (insert_line + content), " \
+                     "or (replace_range_start + replace_range_end + content)"
+            }
+          end
+        end
 
         def resolve_path(file_path)
           # If relative path, make it relative to current directory

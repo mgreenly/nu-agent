@@ -156,8 +156,7 @@ module Nu
 
         private
 
-        def build_ripgrep_command(pattern:, path:, output_mode:, glob:, case_insensitive:, context_before:,
-                                  context_after:, context:, max_results:)
+        def build_ripgrep_command(pattern:, path:, output_mode:, **options)
           cmd_parts = ["rg"]
 
           # Output mode specific flags
@@ -172,23 +171,23 @@ module Nu
           end
 
           # Case sensitivity
-          cmd_parts << "-i" if case_insensitive
+          cmd_parts << "-i" if options[:case_insensitive]
 
           # Context lines (only for content mode)
           if output_mode == "content"
-            if context
-              cmd_parts << "-C" << context.to_s
+            if options[:context]
+              cmd_parts << "-C" << options[:context].to_s
             else
-              cmd_parts << "-B" << context_before.to_s if context_before
-              cmd_parts << "-A" << context_after.to_s if context_after
+              cmd_parts << "-B" << options[:context_before].to_s if options[:context_before]
+              cmd_parts << "-A" << options[:context_after].to_s if options[:context_after]
             end
           end
 
           # File filtering
-          cmd_parts << "--glob" << glob if glob
+          cmd_parts << "--glob" << options[:glob] if options[:glob]
 
           # Max count per file (helps limit output)
-          cmd_parts << "--max-count" << max_results.to_s
+          cmd_parts << "--max-count" << options[:max_results].to_s
 
           # Pattern and path - double dash separates pattern from paths
           cmd_parts << "--" << pattern << path

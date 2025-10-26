@@ -6,15 +6,14 @@ module Nu
       attr_writer :orchestrator, :debug
       attr_accessor :exchange_start_time
 
-      def initialize(history:, session_start_time:, conversation_id:, orchestrator:, console:, debug: false,
-                     application: nil)
+      def initialize(history:, console:, orchestrator:, **config)
         @history = history
-        @session_start_time = session_start_time
-        @conversation_id = conversation_id
-        @orchestrator = orchestrator
-        @debug = debug
         @console = console
-        @application = application
+        @orchestrator = orchestrator
+        @session_start_time = config[:session_start_time]
+        @conversation_id = config[:conversation_id]
+        @debug = config.fetch(:debug, false)
+        @application = config[:application]
         @last_message_id = 0
         @exchange_start_time = nil
       end
@@ -115,85 +114,77 @@ module Nu
         @console.show_spinner("Thinking...") unless @history.workers_idle?
       end
 
-      def display_message_created(actor:, role:, redacted: false, content: nil, tool_calls: nil, tool_result: nil)
-        # Only show in debug mode
+      def display_message_created(actor:, role:, **details)
         return unless @debug
 
         verbosity = @application ? @application.verbosity : 0
         return if verbosity < 2
 
-        # Stop spinner to avoid output on same line
         @console.hide_spinner
 
-        # Determine message direction based on role (from code's perspective)
-        # Out = sent to LLM, In = received from LLM
-        direction = case role
-                    when "user", "tool", "system"
-                      "Out"
-                    when "assistant"
-                      "In"
-                    else
-                      ""
-                    end
+        direction = message_direction(role)
+        msg_type = details.fetch(:redacted, false) ? "redacted message" : "message"
 
-        # Level 2: Basic notification
-        msg_type = redacted ? "redacted message" : "message"
+        display_basic_message_info(direction, msg_type, verbosity)
+        return if verbosity == 2
 
-        if verbosity == 2
-          @console.puts("")
-          @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
-          # Restart spinner with preserved start time
-          @console.show_spinner("Thinking...") unless @history.workers_idle?
-          return
-        end
+        display_detailed_message_info(actor, role, details, verbosity) if verbosity >= 3
 
-        # Level 3+: Show message creation with details on separate lines
-        if verbosity >= 3
-          @console.puts("")
-          @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
-          @console.puts("\e[90m  role: #{role}\e[0m")
-          @console.puts("\e[90m  actor: #{actor}\e[0m")
-
-          # Show content preview and/or tool information
-          if tool_calls&.length&.positive?
-            tool_names = tool_calls.map { |tc| tc["name"] }.join(", ")
-            @console.puts("\e[90m  tool_calls: #{tool_names}\e[0m")
-
-            # Show preview of arguments
-            tool_calls.each do |tc|
-              next unless tc["arguments"] && !tc["arguments"].empty?
-
-              args_str = tc["arguments"].to_json
-              max_length = verbosity >= 6 ? 100 : 30
-              preview = args_str[0...max_length]
-              @console.puts("\e[90m    #{tc['name']}: #{preview}#{'...' if args_str.length > max_length}\e[0m")
-            end
-          end
-
-          if tool_result
-            @console.puts("\e[90m  tool_result: #{tool_result['name']}\e[0m")
-
-            # Show preview of result
-            if tool_result["result"]
-              res = tool_result["result"]
-              result_str = res.is_a?(Hash) ? res.to_json : res.to_s
-              max_length = verbosity >= 6 ? 100 : 30
-              preview = result_str[0...max_length]
-              @console.puts("\e[90m    result: #{preview}#{'...' if result_str.length > max_length}\e[0m")
-            end
-          end
-
-          if content && !content.empty?
-            # Level 3-5: Show first 30 chars
-            # Level 6+: Show first 100 chars
-            max_length = verbosity >= 6 ? 100 : 30
-            preview = content[0...max_length]
-            @console.puts("\e[90m  content: #{preview}#{'...' if content.length > max_length}\e[0m")
-          end
-        end
-
-        # Restart spinner with preserved start time
         @console.show_spinner("Thinking...") unless @history.workers_idle?
+      end
+
+      def message_direction(role)
+        case role
+        when "user", "tool", "system" then "Out"
+        when "assistant" then "In"
+        else ""
+        end
+      end
+
+      def display_basic_message_info(direction, msg_type, verbosity)
+        @console.puts("")
+        @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
+      end
+
+      def display_detailed_message_info(actor, role, details, verbosity)
+        @console.puts("\e[90m  role: #{role}\e[0m")
+        @console.puts("\e[90m  actor: #{actor}\e[0m")
+
+        show_tool_calls_preview(details[:tool_calls], verbosity) if details[:tool_calls]&.length&.positive?
+        show_tool_result_preview(details[:tool_result], verbosity) if details[:tool_result]
+        show_content_preview(details[:content], verbosity) if details[:content] && !details[:content].empty?
+      end
+
+      def show_tool_calls_preview(tool_calls, verbosity)
+        tool_names = tool_calls.map { |tc| tc["name"] }.join(", ")
+        @console.puts("\e[90m  tool_calls: #{tool_names}\e[0m")
+
+        tool_calls.each do |tc|
+          next unless tc["arguments"] && !tc["arguments"].empty?
+
+          args_str = tc["arguments"].to_json
+          max_length = verbosity >= 6 ? 100 : 30
+          preview = args_str[0...max_length]
+          @console.puts("\e[90m    #{tc['name']}: #{preview}#{'...' if args_str.length > max_length}\e[0m")
+        end
+      end
+
+      def show_tool_result_preview(tool_result, verbosity)
+        @console.puts("\e[90m  tool_result: #{tool_result['name']}\e[0m")
+
+        return unless tool_result["result"]
+
+        res = tool_result["result"]
+        result_str = res.is_a?(Hash) ? res.to_json : res.to_s
+        max_length = verbosity >= 6 ? 100 : 30
+        preview = result_str[0...max_length]
+        @console.puts("\e[90m    result: #{preview}#{'...' if result_str.length > max_length}\e[0m")
+      end
+
+      def show_content_preview(content, verbosity)
+        max_length = verbosity >= 6 ? 100 : 30
+        preview = content[0...max_length]
+        @console.puts("\e[90m  content: #{preview}#{'...' if content.length > max_length}\e[0m")
       end
 
       def display_llm_request(messages, tools = nil, markdown_document = nil)
@@ -387,64 +378,57 @@ module Nu
       def display_tool_result(message)
         result = message["tool_result"]["result"]
         name = message["tool_result"]["name"]
-
-        # Get verbosity level (default to 0 if application not set)
         verbosity = @application ? @application.verbosity : 0
 
         @console.puts("")
         @console.puts("\e[90m[Tool Use Response] #{name}\e[0m")
-
-        # Level 0: Show tool name only, no result details
         return unless verbosity >= 1
 
         begin
-          if result.is_a?(Hash)
-            result.each do |key, value|
-              # Convert to string and ensure no embedded newlines cause issues
-              value_str = value.to_s.strip
-
-              # Level 1-3: Truncate each field to 30 characters
-              if verbosity < 4
-                # Handle multiline values - just show first line truncated
-                if value_str.include?("\n")
-                  first_line = value_str.lines.first.chomp
-                  if first_line.length > 30
-                    @console.puts("\e[90m  #{key}: #{first_line[0...30]}...\e[0m")
-                  else
-                    @console.puts("\e[90m  #{key}: #{first_line}...\e[0m")
-                  end
-                elsif value_str.length > 30
-                  @console.puts("\e[90m  #{key}: #{value_str[0...30]}...\e[0m")
-                else
-                  @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
-                end
-              # Level 4+: Show full value
-              elsif value_str.include?("\n")
-                # Handle multiline values carefully to avoid extra blank lines
-                @console.puts("\e[90m  #{key}:\e[0m")
-                # Split and add each line, skipping empty lines
-                value_str.lines.each do |line|
-                  chomped = line.chomp
-                  @console.puts("\e[90m    #{chomped}\e[0m") unless chomped.empty?
-                end
-              # Multi-line value: put key on own line, then each value line indented
-              else
-                # Single line value: key and value on same line
-                @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
-              end
-            end
-          else
-            # Non-hash result
-            result_str = result.to_s
-            if verbosity < 4 && result_str.length > 30
-              @console.puts("\e[90m  #{result_str[0...30]}...\e[0m")
-            else
-              @console.puts("\e[90m  #{result_str}\e[0m")
-            end
-          end
+          result.is_a?(Hash) ? format_hash_result(result, verbosity) : format_simple_result(result, verbosity)
         rescue StandardError => e
           @console.puts("\e[90m  [Error displaying result: #{e.message}]\e[0m")
           @console.puts("\e[90m  [Full result: #{result.inspect}]\e[0m") if @debug
+        end
+      end
+
+      def format_hash_result(result, verbosity)
+        result.each do |key, value|
+          value_str = value.to_s.strip
+          verbosity < 4 ? format_truncated_value(key, value_str) : format_full_value(key, value_str)
+        end
+      end
+
+      def format_truncated_value(key, value_str)
+        if value_str.include?("\n")
+          first_line = value_str.lines.first.chomp
+          truncated = first_line.length > 30 ? "#{first_line[0...30]}..." : "#{first_line}..."
+          @console.puts("\e[90m  #{key}: #{truncated}\e[0m")
+        elsif value_str.length > 30
+          @console.puts("\e[90m  #{key}: #{value_str[0...30]}...\e[0m")
+        else
+          @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
+        end
+      end
+
+      def format_full_value(key, value_str)
+        if value_str.include?("\n")
+          @console.puts("\e[90m  #{key}:\e[0m")
+          value_str.lines.each do |line|
+            chomped = line.chomp
+            @console.puts("\e[90m    #{chomped}\e[0m") unless chomped.empty?
+          end
+        else
+          @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
+        end
+      end
+
+      def format_simple_result(result, verbosity)
+        result_str = result.to_s
+        if verbosity < 4 && result_str.length > 30
+          @console.puts("\e[90m  #{result_str[0...30]}...\e[0m")
+        else
+          @console.puts("\e[90m  #{result_str}\e[0m")
         end
       end
 

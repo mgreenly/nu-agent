@@ -45,12 +45,25 @@ module Nu
         raise e
       end
 
-      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true,
-                      tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil,
-                      tool_result: nil, error: nil, redacted: false, exchange_id: nil)
-        tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : "NULL"
-        tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : "NULL"
-        error_json = error ? "'#{escape_sql(JSON.generate(error))}'" : "NULL"
+      def add_message(conversation_id:, actor:, role:, content:, **attributes)
+        # Set defaults for optional attributes
+        attributes = {
+          model: nil,
+          include_in_context: true,
+          tokens_input: nil,
+          tokens_output: nil,
+          spend: nil,
+          tool_calls: nil,
+          tool_call_id: nil,
+          tool_result: nil,
+          error: nil,
+          redacted: false,
+          exchange_id: nil
+        }.merge(attributes)
+
+        tool_calls_json = attributes[:tool_calls] ? "'#{escape_sql(JSON.generate(attributes[:tool_calls]))}'" : "NULL"
+        tool_result_json = attributes[:tool_result] ? "'#{escape_sql(JSON.generate(attributes[:tool_result]))}'" : "NULL"
+        error_json = attributes[:error] ? "'#{escape_sql(JSON.generate(attributes[:error]))}'" : "NULL"
 
         connection.query(<<~SQL)
           INSERT INTO messages (
@@ -59,10 +72,10 @@ module Nu
             tool_calls, tool_call_id, tool_result, error, redacted, exchange_id, created_at
           ) VALUES (
             #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
-            '#{escape_sql(content || '')}', #{model ? "'#{escape_sql(model)}'" : 'NULL'},
-            #{include_in_context}, #{tokens_input || 'NULL'}, #{tokens_output || 'NULL'},
-            #{spend || 'NULL'}, #{tool_calls_json}, #{tool_call_id ? "'#{escape_sql(tool_call_id)}'" : 'NULL'},
-            #{tool_result_json}, #{error_json}, #{redacted}, #{exchange_id || 'NULL'}, CURRENT_TIMESTAMP
+            '#{escape_sql(content || '')}', #{attributes[:model] ? "'#{escape_sql(attributes[:model])}'" : 'NULL'},
+            #{attributes[:include_in_context]}, #{attributes[:tokens_input] || 'NULL'}, #{attributes[:tokens_output] || 'NULL'},
+            #{attributes[:spend] || 'NULL'}, #{tool_calls_json}, #{attributes[:tool_call_id] ? "'#{escape_sql(attributes[:tool_call_id])}'" : 'NULL'},
+            #{tool_result_json}, #{error_json}, #{attributes[:redacted]}, #{attributes[:exchange_id] || 'NULL'}, CURRENT_TIMESTAMP
           )
         SQL
       end

@@ -1,7 +1,8 @@
 # RuboCop Lint Fixes Progress
 
-**Current Status:** 175 total offenses (down from 289 initial)
-**Progress:** 114 offenses fixed (39% reduction)
+**Current Status:** 167 total offenses (down from 289 initial)
+**Progress:** 122 offenses fixed (42% reduction)
+**Phase 2 Status:** 10/14 completed (71%)
 
 ## Completed ✓
 
@@ -50,21 +51,34 @@
 
 ## Priority 2: Medium Complexity (Refactoring)
 
-### Remaining: 13 offenses
+### Completed: 10/14 (71%)  |  Remaining: 4 offenses
 
-- [ ] **Metrics/ParameterLists** (9) - Methods with >5 parameters
-  - Requires refactoring to use keyword arguments hash or extract objects
-  - Pattern: Create options/config objects
-  - Effort: Medium - requires design decisions
+- [x] **Lint/MissingSuper** (1 → 0) ✓
+  - Fixed `lib/nu/agent/clients/xai.rb:28` - now calls `super(api_key: api_key, model: model)`
 
-- [ ] **Metrics/ClassLength** (4) - Classes >250 lines
-  - `lib/nu/agent/application.rb` (1224 lines)
-  - Requires extracting classes/modules
-  - Effort: High - significant refactoring
+- [x] **Metrics/ParameterLists** (9 → 0) ✓
+  - Refactored using `**options` / `**context` / `**attributes` patterns
+  - Fixed methods:
+    - History#add_message (15 → 4 params) - used `**attributes` for optional params
+    - FileGrep#build_ripgrep_command (9 → 3 params) - used `**options`
+    - Application#tool_calling_loop (8 → 3 params) - used `**context`
+    - Application#chat_loop (6 → 3 params) - used `**context`
+    - Formatter#initialize (7 → 3 params) - used `**config`
+    - Formatter#display_message_created (6 → 2 params) - used `**details`
+    - Application#summarize_conversations (6 → 2 params) - used `**context`
+    - 2 Thread.new blocks (6 → 4 params each) - passed context hash
 
-- [ ] **Lint/MissingSuper** (1) - Missing super call in initialize
-  - Review inheritance and add super if needed
-  - Effort: Low-Medium
+- [ ] **Metrics/ClassLength** (4 → 4, partially improved)
+  - ⚠️ **Requires major architectural refactoring** - extracting entire classes/modules
+  - Status:
+    - `lib/nu/agent/application.rb` (1236/250 lines, 986 over) ❌ - Extract command handlers, summarizer, man indexer
+    - `lib/nu/agent/history.rb` (751/250 lines, 501 over) ❌ - Extract query builder, schema manager
+    - `lib/nu/agent/formatter.rb` (338/250 lines, 88 over) ⚠️ - Partially refactored, needs module extraction
+    - `lib/nu/agent/tools/file_edit.rb` (331/250 lines, 81 over) ⚠️ - Partially refactored (333→331)
+  - Attempted fixes:
+    - Formatter: Extracted 5 helper methods from `display_message_created` and `display_tool_result`
+    - FileEdit: Extracted 4 helper methods from `execute` (parse_operations, log_operation_mode, etc.)
+    - **Conclusion:** Method extraction insufficient - need class/module extraction for significant reduction
 
 ## Priority 3: High Complexity (Architecture)
 
@@ -113,18 +127,33 @@ These require significant refactoring and should be addressed through:
    - Reduced total from 200 → 175 (25 offenses fixed)
    - Actual time: ~1 hour
 
-2. **Phase 2 (Structural improvements):** Address Priority 2 items (13 offenses)
-   - Medium impact, medium effort
-   - Improves maintainability
-   - Estimated time: 4-6 hours
-   - Items: Metrics/ParameterLists (9), Metrics/ClassLength (4), Lint/MissingSuper (1)
+2. **Phase 2 (Structural improvements):** Address Priority 2 items - 71% COMPLETE
+   - **Completed:** 10/14 offenses fixed
+     - Lint/MissingSuper (1 fixed)
+     - Metrics/ParameterLists (9 fixed)
+   - **Remaining:** 4 Metrics/ClassLength violations
+     - Blocked: Requires architectural changes (class/module extraction)
+     - Should be combined with Phase 3 refactoring
+   - Actual time: ~2 hours
+   - Impact: Reduced from 175 → 167 offenses (8 fixed, 2 improved)
 
-3. **Phase 3 (Architecture):** Tackle Priority 3 items (162 offenses)
+3. **Phase 3 (Architecture):** Tackle Priority 3 items (164 offenses)
    - High impact, high effort
    - Requires careful planning and testing
    - Should be done incrementally
-   - Estimated time: Multiple days/weeks
-   - Items: Metrics/MethodLength (50), Metrics/AbcSize (44), Metrics/CyclomaticComplexity (27), Metrics/PerceivedComplexity (27), Metrics/BlockLength (9), Metrics/BlockNesting (4)
+   - **Estimated time:** Multiple days/weeks
+   - **Items:**
+     - Metrics/MethodLength (51) - Methods >25 lines
+     - Metrics/AbcSize (46) - Complex methods
+     - Metrics/CyclomaticComplexity (27) - Too many conditionals
+     - Metrics/PerceivedComplexity (27) - Complex nested logic
+     - Metrics/BlockLength (9) - Blocks >25 lines
+     - Metrics/BlockNesting (4) - Too deeply nested
+   - **Worst offenders:**
+     - Application#handle_command (312 lines, 4 violations)
+     - Application#index_man_pages (117 lines, 4 violations)
+     - Application#tool_calling_loop (111 lines, 4 violations)
+     - Application#summarize_conversations (107 lines, 4 violations)
 
 ## Notes
 

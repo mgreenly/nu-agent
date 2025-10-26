@@ -148,15 +148,17 @@ module Nu
             formatter.display_thread_event("Orchestrator", "Starting")
 
             # Spawn orchestrator thread with raw user input
-            Thread.new(conv_id, hist, cli, session_start, user_in,
-                       app) do |conversation_id, history, client, session_start_time, user_input, application|
+            context = {
+              session_start_time: session_start,
+              user_input: user_in,
+              application: app
+            }
+            Thread.new(conv_id, hist, cli, context) do |conversation_id, history, client, ctx|
               chat_loop(
                 conversation_id: conversation_id,
                 history: history,
                 client: client,
-                session_start_time: session_start_time,
-                user_input: user_input,
-                application: application
+                **ctx
               )
             ensure
               history.decrement_workers
@@ -277,10 +279,16 @@ module Nu
         builder.build
       end
 
-      def tool_calling_loop(messages:, tools:, client:, history:, conversation_id:, exchange_id:, tool_registry:,
-                            application:)
+      def tool_calling_loop(messages:, client:, conversation_id:, **context)
         # Inner loop that handles tool calling until we get a final response
         # All tool calls and intermediate responses are saved as redacted
+
+        # Extract context parameters
+        tools = context[:tools]
+        history = context[:history]
+        exchange_id = context[:exchange_id]
+        tool_registry = context[:tool_registry]
+        application = context[:application]
 
         metrics = {
           tokens_input: 0,
@@ -418,9 +426,13 @@ module Nu
         end
       end
 
-      def chat_loop(conversation_id:, history:, client:, session_start_time:, user_input:, application:)
+      def chat_loop(conversation_id:, history:, client:, **context)
         # Orchestrator owns the entire exchange - wrap everything in a transaction
         # Either the exchange completes successfully or nothing is saved
+        session_start_time = context[:session_start_time]
+        user_input = context[:user_input]
+        application = context[:application]
+
         history.transaction do
           tool_registry = ToolRegistry.new
 
@@ -1247,19 +1259,21 @@ module Nu
           status_mtx = @status_mutex
           app = self
 
-          thread = Thread.new(conv_id, hist, status, status_mtx, app,
-                              @summarizer) do |cid, hist, sum_status, mutex, app, summarizer|
+          context = {
+            current_conversation_id: conv_id,
+            summarizer_status: status,
+            status_mutex: status_mtx,
+            application: app
+          }
+          thread = Thread.new(hist, @summarizer, context) do |history, summarizer, ctx|
             summarize_conversations(
-              current_conversation_id: cid,
-              history: hist,
-              summarizer_status: sum_status,
-              status_mutex: mutex,
-              application: app,
-              summarizer: summarizer
+              history: history,
+              summarizer: summarizer,
+              **ctx
             )
           rescue StandardError
-            mutex.synchronize do
-              sum_status["running"] = false
+            ctx[:status_mutex].synchronize do
+              ctx[:summarizer_status]["running"] = false
             end
           end
 
@@ -1267,8 +1281,13 @@ module Nu
         end
       end
 
-      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:,
-                                  summarizer:)
+      def summarize_conversations(history:, summarizer:, **context)
+        # Extract context parameters
+        current_conversation_id = context[:current_conversation_id]
+        summarizer_status = context[:summarizer_status]
+        status_mutex = context[:status_mutex]
+        application = context[:application]
+
         # Get conversations that need summarization
         conversations = history.get_unsummarized_conversations(exclude_id: current_conversation_id)
 

@@ -26,8 +26,8 @@ module Nu
         }.freeze
 
         def initialize(api_key: nil, model: nil)
-          load_api_key(api_key)
-          @model = model || "grok-3"
+          super(api_key: api_key, model: model || "grok-3")
+          # Override client with XAI-specific endpoint
           @client = OpenAIGem::Client.new(
             access_token: @api_key.value,
             uri_base: "https://api.x.ai/v1"
