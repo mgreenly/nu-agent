@@ -216,7 +216,470 @@ Each phase is independently shippable. Stop when "good enough" is reached.
 - History persists across session (save to database)
 - Load history on startup
 
-**Deliverable**: Can recall and reuse previous commands
+**Deliverable**: ✅ Can recall and reuse previous commands (COMPLETE 2025-10-26)
+
+---
+
+### Phase 3.5: TUI Removal and ConsoleIO Integration ⚠️ CRITICAL
+**Goal**: Replace the old ncurses TUI system with the new ConsoleIO system throughout the application
+
+**Status**: Phases 1-3 built ConsoleIO in isolation with comprehensive tests, but the application still uses the old TUI system. This phase integrates ConsoleIO into the actual application and removes all legacy TUI code.
+
+#### Why This Phase Is Needed
+
+**Current Situation** (as of 2025-10-26):
+- ✅ ConsoleIO is fully implemented and tested (Phases 1-3 complete)
+- ✅ 70 RSpec tests passing for ConsoleIO
+- ❌ Application still uses old TUIManager/OutputManager/OutputBuffer
+- ❌ When you run `nu-agent`, it uses ncurses TUI, NOT ConsoleIO
+- ❌ All the new readline editing and history features are invisible to users
+
+**The Problem**:
+We followed TDD to build ConsoleIO perfectly, but never integrated it into the application. This is like building a new engine but never installing it in the car.
+
+#### Current Architecture (Legacy TUI System)
+
+```
+Application
+├── TUIManager (ncurses, 80/20 split screen)
+│   ├── Input pane (bottom 20%)
+│   └── Output pane (top 80%, custom scrollback)
+├── OutputManager (filters debug/verbosity, flushes buffers)
+└── OutputBuffer (collects lines with metadata)
+
+Workflow:
+1. Code calls buffer.add("text", type: :normal/:debug/:error)
+2. Buffer accumulates lines
+3. OutputManager.flush_buffer() filters and sends to TUI
+4. TUIManager.write_buffer() does atomic ncurses update
+```
+
+**Files in legacy system**:
+- `lib/nu/agent/tui_manager.rb` - Ncurses interface
+- `lib/nu/agent/output_manager.rb` - Buffering and filtering logic
+- `lib/nu/agent/output_buffer.rb` - Line accumulation with metadata
+
+**Usage pattern everywhere**:
+```ruby
+buffer = OutputBuffer.new
+buffer.add("Starting process...")
+buffer.debug("Debug info here")
+@output.flush_buffer(buffer)
+```
+
+**~15 files use this pattern**: application.rb, formatter.rb, plus numerous tools
+
+#### Target Architecture (New ConsoleIO System)
+
+```
+Application
+└── ConsoleIO (raw terminal mode, floating prompt/spinner)
+    ├── Thread-safe output queue
+    ├── Select-based I/O multiplexing
+    ├── Readline emulation (cursor, editing, history)
+    └── Database-backed history persistence
+
+Workflow:
+1. Code calls console.puts("text")  # Thread-safe, immediate
+2. ConsoleIO queues output
+3. Select loop handles display atomically
+4. No buffering needed - queue handles concurrency
+```
+
+**Single file**: `lib/nu/agent/console_io.rb`
+
+**New usage pattern**:
+```ruby
+# Direct output - no buffering needed
+@console.puts("Starting process...")
+@console.puts("\e[90mDebug info here\e[0m") if @debug  # ANSI colors
+
+# Spinner for long operations
+@console.show_spinner("Thinking...")
+# ... work happens, background threads can still @console.puts() ...
+@console.hide_spinner
+```
+
+#### Migration Strategy
+
+**Key Insight**: OutputBuffer was needed for TUI's atomic updates. ConsoleIO's queue eliminates this entirely. The migration is a **simplification**, not a complication.
+
+**Principle**: Direct output is simpler and better:
+- ❌ Old: `buffer = OutputBuffer.new; buffer.add(x); @output.flush_buffer(buffer)`
+- ✅ New: `@console.puts(x)`
+
+#### Detailed Migration Steps
+
+##### Step 1: Update Application.rb
+
+**Current code** (application.rb ~lines 48-61):
+```ruby
+@tui = nil
+if @options.tui
+  begin
+    @tui = TUIManager.new
+  rescue => e
+    $stderr.puts "Warning: Failed to initialize TUI: #{e.message}"
+    @tui = nil
+  end
+end
+
+@verbosity = @history.get_config('verbosity', default: '0').to_i
+@output = OutputManager.new(debug: @debug, tui: @tui, verbosity: @verbosity)
+```
+
+**New code**:
+```ruby
+# Initialize ConsoleIO (new unified console system)
+@console = ConsoleIO.new(db_history: @history, debug: @debug)
+```
+
+**Changes needed**:
+1. Remove `@tui` initialization
+2. Remove `@output` (OutputManager) initialization
+3. Create `@console = ConsoleIO.new(db_history: @history, debug: @debug)`
+4. Add `attr_reader :console` so Formatter can access it
+5. Update Formatter initialization to pass `console:` instead of `output:`
+
+**Current Formatter initialization** (~line 66):
+```ruby
+@formatter = Formatter.new(
+  history: @history,
+  session_start_time: @session_start_time,
+  conversation_id: @conversation_id,
+  orchestrator: @orchestrator,
+  debug: @debug,
+  output: @output,           # OutputManager has puts() method
+  output_manager: @output,   # For flush_buffer and other methods
+  application: self
+)
+```
+
+**New Formatter initialization**:
+```ruby
+@formatter = Formatter.new(
+  history: @history,
+  session_start_time: @session_start_time,
+  conversation_id: @conversation_id,
+  orchestrator: @orchestrator,
+  debug: @debug,
+  console: @console,         # ConsoleIO for all output
+  application: self
+)
+```
+
+**Update main loop** - Replace old TUI input with ConsoleIO:
+
+Current (~lines 130-150):
+```ruby
+loop do
+  # TUI handles input
+  input = @tui.get_input
+  # ... process input ...
+end
+```
+
+New:
+```ruby
+loop do
+  # ConsoleIO handles input with readline emulation
+  input = @console.readline("> ")
+  break if input.nil?  # Ctrl-D exits
+
+  # Show spinner while orchestrator processes
+  @console.show_spinner("Thinking...")
+
+  # ... process input ...
+
+  @console.hide_spinner
+end
+```
+
+##### Step 2: Update Formatter.rb
+
+**Current pattern** (used throughout formatter.rb):
+```ruby
+def some_method
+  buffer = OutputBuffer.new
+  buffer.add("Some output")
+  buffer.debug("Debug info") if @debug
+  @output_manager.flush_buffer(buffer)
+end
+```
+
+**New pattern**:
+```ruby
+def some_method
+  @console.puts("Some output")
+  @console.puts("\e[90mDebug info\e[0m") if @debug  # Gray text for debug
+end
+```
+
+**Changes needed in Formatter**:
+1. Remove `@output` and `@output_manager` instance variables
+2. Add `@console` instance variable (from initialize)
+3. Replace ALL `OutputBuffer.new` → remove buffering entirely
+4. Replace ALL `buffer.add(text)` → `@console.puts(text)`
+5. Replace ALL `buffer.debug(text)` → `@console.puts("\e[90m#{text}\e[0m") if @debug`
+6. Replace ALL `buffer.error(text)` → `@console.puts("\e[31m#{text}\e[0m")`  # Red
+7. Remove ALL `@output_manager.flush_buffer(buffer)` calls
+
+**ANSI color codes for output types**:
+- Normal: No color (plain text)
+- Debug: `\e[90m...\e[0m` (gray/dim)
+- Error: `\e[31m...\e[0m` (red)
+- Success: `\e[32m...\e[0m` (green)
+- Warning: `\e[33m...\e[0m` (yellow)
+
+**Verbosity filtering**:
+- Old: OutputManager filtered based on `@verbosity`
+- New: Formatter checks verbosity BEFORE calling `@console.puts()`
+
+Example:
+```ruby
+# Only output if verbosity level permits
+@console.puts("Verbose message") if @verbosity >= 1
+```
+
+**Example migration** (real code from formatter.rb):
+
+Before:
+```ruby
+def format_tool_result(result)
+  buffer = OutputBuffer.new
+  buffer.add("Tool result:")
+  buffer.add(JSON.pretty_generate(result))
+  buffer.debug("Raw result: #{result.inspect}") if @debug
+  @output_manager.flush_buffer(buffer)
+end
+```
+
+After:
+```ruby
+def format_tool_result(result)
+  @console.puts("Tool result:")
+  @console.puts(JSON.pretty_generate(result))
+  @console.puts("\e[90mRaw result: #{result.inspect}\e[0m") if @debug
+end
+```
+
+##### Step 3: Update All Tool Files
+
+**Files using OutputBuffer** (found via grep):
+- `lib/nu/agent/application.rb` - Main orchestrator logic
+- `lib/nu/agent/formatter.rb` - Output formatting
+- Plus any tool files that create buffers
+
+**Pattern to find**:
+```bash
+grep -r "OutputBuffer.new" lib/
+```
+
+**For each occurrence**:
+1. Remove `buffer = OutputBuffer.new`
+2. Replace `buffer.add(x)` with direct console access
+3. Remove `flush_buffer(buffer)`
+
+**Access to console from tools**:
+- Tools called from Application have access via `@application.console`
+- Pass console reference to tool constructors if needed
+
+##### Step 4: Update Options.rb
+
+**Remove the `--tui` flag entirely**:
+
+Current:
+```ruby
+opts.on("--tui", "Enable TUI mode") do
+  @tui = true
+end
+```
+
+**Action**: Delete this option completely. ConsoleIO is always on (no flag needed).
+
+**Also check for**:
+- Any `@tui` instance variable in Options
+- Any default value settings for `@tui`
+- Any documentation mentioning the flag
+
+##### Step 5: Remove Legacy Files
+
+**Delete these files completely**:
+```bash
+rm lib/nu/agent/tui_manager.rb
+rm lib/nu/agent/output_manager.rb
+rm lib/nu/agent/output_buffer.rb
+```
+
+**Also remove**:
+- Any `require` statements for these files in `lib/nu/agent.rb`
+- Any autoload statements
+- Any references in documentation
+
+##### Step 6: Update lib/nu/agent.rb
+
+**Current** (likely has requires):
+```ruby
+require_relative 'agent/tui_manager'
+require_relative 'agent/output_manager'
+require_relative 'agent/output_buffer'
+```
+
+**New**:
+```ruby
+# These are now deleted - ConsoleIO replaces them
+# (Already have: require_relative 'agent/console_io')
+```
+
+##### Step 7: Handle Edge Cases
+
+**Spinner usage**:
+- Old: No spinner (TUI didn't support it)
+- New: Use `@console.show_spinner()` / `@console.hide_spinner()`
+
+**When to show spinner**:
+```ruby
+# Before long operations (orchestrator, API calls)
+@console.show_spinner("Thinking...")
+result = orchestrator.process(input)
+@console.hide_spinner
+```
+
+**Background thread output** (e.g., man indexer, summarizer):
+- Old: Would interfere with TUI
+- New: Just works! Call `@application.console.puts()` from any thread
+
+**Debug output**:
+- Old: `buffer.debug(text)` filtered by OutputManager
+- New: Check `@debug` before calling puts, use ANSI gray color
+
+**Verbosity levels**:
+- Old: OutputManager filtered based on line metadata
+- New: Check `@verbosity` before calling puts
+
+**Signal handling**:
+- ConsoleIO already handles Ctrl-C (raises Interrupt)
+- ConsoleIO already handles Ctrl-D (returns nil)
+- Make sure Application catches these properly
+
+#### Testing Approach
+
+**After migration, test these scenarios**:
+
+1. **Basic functionality**:
+   ```bash
+   bundle exec nu-agent
+   # Should see "> " prompt, not ncurses split screen
+   # Type a message, press Enter
+   # Should see spinner, then response
+   ```
+
+2. **Readline editing** (Phase 2 features):
+   - Arrow keys move cursor
+   - Home/End jump to start/end
+   - Ctrl-A/E work
+   - Delete key works
+   - Ctrl-K/U/W kill text
+   - Ctrl-Y yanks
+
+3. **History navigation** (Phase 3 features):
+   - Up arrow recalls previous command
+   - Down arrow moves forward
+   - History persists after restart
+
+4. **Background output**:
+   - Enable man indexer or summarizer
+   - Verify output appears while typing (doesn't corrupt input line)
+   - Input line should redraw after background output
+
+5. **Spinner**:
+   - Submit query, spinner should appear
+   - Background output should interrupt spinner
+   - Spinner should redraw after output
+
+6. **Terminal features**:
+   - Native scrollback works (scroll up to see history)
+   - Native copy/paste works (select text with mouse)
+   - ANSI colors render correctly
+
+7. **Exit conditions**:
+   - Ctrl-D on empty line exits cleanly
+   - Ctrl-C during processing aborts and returns to prompt
+   - Terminal state restored on exit
+
+#### Files to Modify - Complete List
+
+**Primary changes**:
+1. `lib/nu/agent.rb` - Remove requires for deleted files
+2. `lib/nu/agent/application.rb` - Replace TUI/OutputManager with ConsoleIO
+3. `lib/nu/agent/formatter.rb` - Replace all buffering with direct console.puts()
+4. `lib/nu/agent/options.rb` - Remove --tui flag
+
+**Files to delete**:
+1. `lib/nu/agent/tui_manager.rb`
+2. `lib/nu/agent/output_manager.rb`
+3. `lib/nu/agent/output_buffer.rb`
+
+**Search and replace needed** (use grep to find all occurrences):
+```bash
+# Find all OutputBuffer usage
+grep -r "OutputBuffer" lib/ spec/
+
+# Find all output_manager/flush_buffer usage
+grep -r "flush_buffer" lib/
+
+# Find all @output references (some may be legitimate)
+grep -r "@output\." lib/
+```
+
+#### Deliverable
+
+**Working application that**:
+- ✅ Uses ConsoleIO for all I/O (no TUI/OutputManager)
+- ✅ Shows "> " prompt instead of ncurses split screen
+- ✅ All Phase 1-3 features work (editing, history, etc.)
+- ✅ Native scrollback and copy/paste work
+- ✅ Background threads can output safely
+- ✅ Spinner shows during processing
+- ✅ ANSI colors render correctly
+- ✅ No legacy TUI code remains
+
+#### Success Criteria
+
+1. ✅ Application starts and shows "> " prompt
+2. ✅ Can type and submit messages
+3. ✅ Readline editing works (cursor movement, kill/yank, etc.)
+4. ✅ History navigation works (up/down arrows)
+5. ✅ Spinner appears during processing
+6. ✅ Background output doesn't corrupt input line
+7. ✅ Native terminal scrollback works
+8. ✅ Ctrl-C and Ctrl-D work correctly
+9. ✅ All legacy TUI files deleted
+10. ✅ No references to TUI/OutputManager/OutputBuffer remain
+
+#### Notes for Future Implementation
+
+**Common pitfalls to avoid**:
+1. Don't forget to update Formatter's `initialize` signature
+2. Don't miss OutputBuffer usage in tool files
+3. Don't forget to pass console reference to tools that need it
+4. Remember to use ANSI codes for debug/error coloring
+5. Check verbosity BEFORE calling console.puts() (no automatic filtering)
+
+**Order of operations**:
+1. Update Application first (creates @console)
+2. Update Formatter second (uses @console)
+3. Update other files that reference @output
+4. Remove --tui flag from Options
+5. Delete legacy files LAST (after confirming nothing references them)
+6. Test thoroughly before committing
+
+**Rollback plan**:
+- Git tag before starting: `git tag before-tui-removal`
+- If migration fails, revert: `git reset --hard before-tui-removal`
+- Legacy TUI code preserved in git history
+
+**This is a critical phase** - the application is unusable without it. All the work in Phases 1-3 is invisible until this migration is complete.
 
 ---
 
