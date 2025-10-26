@@ -179,4 +179,72 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
       expect(mock_console).to respond_to(:readline)
     end
   end
+
+  describe "command handlers" do
+    let(:app) { described_class.new(options: options) }
+
+    describe "/debug command" do
+      it "displays usage when no argument provided" do
+        expect(mock_console).to receive(:puts).with("\e[90mUsage: /debug <on|off>\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mCurrent: debug=off\e[0m").ordered
+
+        result = app.send(:handle_command, "/debug")
+        expect(result).to eq(:continue)
+      end
+
+      it "enables debug mode when 'on' is specified" do
+        expect(mock_history).to receive(:set_config).with("debug", "true")
+        expect(mock_console).to receive(:puts).with("\e[90mdebug=on\e[0m")
+
+        result = app.send(:handle_command, "/debug on")
+        expect(result).to eq(:continue)
+        expect(app.instance_variable_get(:@debug)).to be true
+      end
+
+      it "disables debug mode when 'off' is specified" do
+        # First enable debug mode
+        app.instance_variable_set(:@debug, true)
+
+        expect(mock_history).to receive(:set_config).with("debug", "false")
+        expect(mock_console).to receive(:puts).with("\e[90mdebug=off\e[0m")
+
+        result = app.send(:handle_command, "/debug off")
+        expect(result).to eq(:continue)
+        expect(app.instance_variable_get(:@debug)).to be false
+      end
+
+      it "shows error for invalid option" do
+        expect(mock_console).to receive(:puts).with("\e[90mInvalid option. Use: /debug <on|off>\e[0m")
+
+        result = app.send(:handle_command, "/debug invalid")
+        expect(result).to eq(:continue)
+      end
+    end
+
+    describe "/verbosity command" do
+      it "displays usage when no argument provided" do
+        expect(mock_console).to receive(:puts).with("\e[90mUsage: /verbosity <number>\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mCurrent: verbosity=0\e[0m").ordered
+
+        result = app.send(:handle_command, "/verbosity")
+        expect(result).to eq(:continue)
+      end
+
+      it "sets verbosity when valid number is specified" do
+        expect(mock_history).to receive(:set_config).with("verbosity", "3")
+        expect(mock_console).to receive(:puts).with("\e[90mverbosity=3\e[0m")
+
+        result = app.send(:handle_command, "/verbosity 3")
+        expect(result).to eq(:continue)
+        expect(app.instance_variable_get(:@verbosity)).to eq(3)
+      end
+
+      it "shows error for invalid input" do
+        expect(mock_console).to receive(:puts).with("\e[90mInvalid option. Use: /verbosity <number>\e[0m")
+
+        result = app.send(:handle_command, "/verbosity abc")
+        expect(result).to eq(:continue)
+      end
+    end
+  end
 end

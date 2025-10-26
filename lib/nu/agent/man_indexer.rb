@@ -3,10 +3,10 @@
 module Nu
   module Agent
     class ManIndexer
-      def initialize(history:, embeddings_client:, output: nil)
+      def initialize(history:, embeddings_client:, application: nil)
         @history = history
         @embeddings = embeddings_client
-        @output = output
+        @application = application
       end
 
       # Discover all available man pages on the system
@@ -37,14 +37,14 @@ module Nu
         # Parse source: "grep.1" -> name="grep", section="1"
         name, section = source.split(".")
         unless name && section
-          @output&.debug("[Man Indexer] Skipping #{source}: invalid source format")
+          @application&.output_line("[Man Indexer] Skipping #{source}: invalid source format", type: :debug)
           return nil
         end
 
         # Get man page content
         output = `man #{section} #{name} 2>/dev/null`
         if output.nil? || output.empty?
-          @output&.debug("[Man Indexer] Skipping #{source}: man page not accessible")
+          @application&.output_line("[Man Indexer] Skipping #{source}: man page not accessible", type: :debug)
           return nil
         end
 
@@ -62,7 +62,10 @@ module Nu
 
         # Return nil if we didn't get any sections
         if doc_parts.empty?
-          @output&.debug("[Man Indexer] Skipping #{source}: no NAME/SYNOPSIS/DESCRIPTION sections found")
+          @application&.output_line(
+            "[Man Indexer] Skipping #{source}: no NAME/SYNOPSIS/DESCRIPTION sections found",
+            type: :debug
+          )
           return nil
         end
 
@@ -70,13 +73,17 @@ module Nu
 
         # Truncate if too long (8000 tokens ~ 32000 chars rough estimate)
         if document.length > 32_000
-          @output&.debug("[Man Indexer] Truncating #{source}: content too long (#{document.length} chars)")
+          @application&.output_line(
+            "[Man Indexer] Truncating #{source}: content too long (#{document.length} chars)",
+            type: :debug
+          )
           document = document[0, 32_000]
         end
 
         document
       rescue StandardError => e
-        @output&.debug("[Man Indexer] Error processing #{source}: #{e.class}: #{e.message}")
+        @application&.output_line("[Man Indexer] Error processing #{source}: #{e.class}: #{e.message}",
+                                  type: :debug)
         nil
       end
 

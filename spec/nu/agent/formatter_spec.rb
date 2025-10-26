@@ -436,4 +436,141 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
   end
+
+  describe "blank line spacing for readability" do
+    let(:formatter_debug) do
+      described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: nil
+      )
+    end
+
+    context "thread events" do
+      before do
+        allow(history).to receive(:workers_idle?).and_return(true)
+      end
+
+      it "adds blank line before thread event output" do
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Thread] Orchestrator Starting\e[0m").ordered
+
+        formatter_debug.display_thread_event("Orchestrator", "Starting")
+      end
+    end
+
+    context "spell checker messages" do
+      it "adds blank line before spell check request" do
+        message = {
+          "id" => 1,
+          "actor" => "spell_checker",
+          "role" => "user",
+          "content" => "Fix this text"
+        }
+
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Spell Check Request]\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mFix this text\e[0m").ordered
+
+        formatter_debug.display_message(message)
+      end
+
+      it "adds blank line before spell check result" do
+        message = {
+          "id" => 2,
+          "actor" => "spell_checker",
+          "role" => "assistant",
+          "content" => "corrected"
+        }
+
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Spell Check Result]\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mcorrected\e[0m").ordered
+
+        formatter_debug.display_message(message)
+      end
+    end
+
+    context "tool calls" do
+      it "adds blank line before tool call output" do
+        message = {
+          "id" => 3,
+          "actor" => "orchestrator",
+          "role" => "assistant",
+          "content" => nil,
+          "tool_calls" => [
+            {
+              "name" => "file_read",
+              "arguments" => { "path" => "/tmp/test.txt" }
+            }
+          ]
+        }
+
+        allow(history).to receive(:session_tokens).and_return({
+                                                                "input" => 10,
+                                                                "output" => 5,
+                                                                "total" => 15,
+                                                                "spend" => 0.000150
+                                                              })
+
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m").ordered
+
+        formatter_debug.display_message(message)
+      end
+    end
+
+    context "tool results" do
+      it "adds blank line before tool result output" do
+        message = {
+          "id" => 4,
+          "actor" => "orchestrator",
+          "role" => "user",
+          "tool_result" => {
+            "name" => "file_read",
+            "result" => { "content" => "file contents" }
+          }
+        }
+
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m").ordered
+
+        formatter_debug.display_message(message)
+      end
+    end
+
+    context "assistant messages" do
+      before do
+        allow(history).to receive(:session_tokens).and_return({
+                                                                "input" => 10,
+                                                                "output" => 5,
+                                                                "total" => 15,
+                                                                "spend" => 0.000150
+                                                              })
+      end
+
+      it "adds blank line before assistant content" do
+        message = {
+          "id" => 5,
+          "actor" => "orchestrator",
+          "role" => "assistant",
+          "content" => "The temperature is 48°F.",
+          "tokens_input" => 10,
+          "tokens_output" => 5
+        }
+
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("The temperature is 48°F.").ordered
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mSession spend: $0.000150\e[0m").ordered
+
+        formatter_debug.display_message(message)
+      end
+    end
+  end
 end

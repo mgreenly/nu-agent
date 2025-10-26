@@ -543,6 +543,9 @@ module Nu
 
       def repl
         loop do
+          # Add blank line before prompt for better readability
+          @console.puts("")
+
           begin
             input = @console.readline("> ")
           rescue Interrupt
@@ -866,31 +869,25 @@ module Nu
         if input.downcase.start_with?("/debug")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            buffer = OutputBuffer.new
-            buffer.add("Usage: /debug <on|off>")
-            buffer.add("Current: debug=#{@debug ? 'on' : 'off'}")
-            @output.flush_buffer(buffer)
+            @console.puts("\e[90mUsage: /debug <on|off>\e[0m")
+            @console.puts("\e[90mCurrent: debug=#{@debug ? 'on' : 'off'}\e[0m")
             return :continue
           end
 
           setting = parts[1].strip.downcase
-          buffer = OutputBuffer.new
           if setting == "on"
             @debug = true
             @formatter.debug = true
-            @output.debug = true
             history.set_config("debug", "true")
-            buffer.add("debug=on")
+            @console.puts("\e[90mdebug=on\e[0m")
           elsif setting == "off"
             @debug = false
             @formatter.debug = false
-            @output.debug = false
             history.set_config("debug", "false")
-            buffer.add("debug=off")
+            @console.puts("\e[90mdebug=off\e[0m")
           else
-            buffer.add("Invalid option. Use: /debug <on|off>")
+            @console.puts("\e[90mInvalid option. Use: /debug <on|off>\e[0m")
           end
-          @output.flush_buffer(buffer)
 
           return :continue
         end
@@ -898,24 +895,20 @@ module Nu
         # Handle /verbosity [NUM] command
         if input.downcase.start_with?("/verbosity")
           parts = input.split(" ", 2)
-          buffer = OutputBuffer.new
           if parts.length < 2 || parts[1].strip.empty?
-            buffer.add("Usage: /verbosity <number>")
-            buffer.add("Current: verbosity=#{@verbosity}")
-            @output.flush_buffer(buffer)
+            @console.puts("\e[90mUsage: /verbosity <number>\e[0m")
+            @console.puts("\e[90mCurrent: verbosity=#{@verbosity}\e[0m")
             return :continue
           end
 
           value = parts[1].strip
           if value =~ /^\d+$/
             @verbosity = value.to_i
-            @output.verbosity = @verbosity # Update OutputManager
             history.set_config("verbosity", value)
-            buffer.add("verbosity=#{@verbosity}")
+            @console.puts("\e[90mverbosity=#{@verbosity}\e[0m")
           else
-            buffer.add("Invalid option. Use: /verbosity <number>")
+            @console.puts("\e[90mInvalid option. Use: /verbosity <number>\e[0m")
           end
-          @output.flush_buffer(buffer)
 
           return :continue
         end
@@ -1398,14 +1391,12 @@ module Nu
               application: application
             )
           rescue StandardError => e
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.error("[Man Indexer] Worker thread error: #{e.class}: #{e.message}")
+            application.output_line("[Man Indexer] Worker thread error: #{e.class}: #{e.message}", type: :error)
             if application.instance_variable_get(:@debug)
               e.backtrace.first(10).each do |line|
-                buffer.debug("  #{line}")
+                application.output_line("  #{line}", type: :debug)
               end
             end
-            application.output.flush_buffer(buffer)
             status_mutex.synchronize do
               indexer_status["running"] = false
             end
@@ -1420,21 +1411,20 @@ module Nu
         begin
           embeddings_client = Clients::OpenAIEmbeddings.new
         rescue StandardError => e
-          buffer = Nu::Agent::OutputBuffer.new
-          buffer.error("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client")
-          buffer.error("  #{e.message}")
-          buffer.error("Man page indexing requires OpenAI embeddings API access.")
-          buffer.error("Please ensure your OpenAI API key has access to text-embedding-3-small.")
-          application.output.flush_buffer(buffer)
+          application.output_line("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client", type: :error)
+          application.output_line("  #{e.message}", type: :error)
+          application.output_line("Man page indexing requires OpenAI embeddings API access.", type: :error)
+          application.output_line("Please ensure your OpenAI API key has access to text-embedding-3-small.",
+                                  type: :error)
           status_mutex.synchronize { indexer_status["running"] = false }
           return
         end
 
-        # Create man indexer with output for debug messages
+        # Create man indexer with application for debug messages
         man_indexer = ManIndexer.new(
           history: history,
           embeddings_client: embeddings_client,
-          output: application.output
+          application: application
         )
 
         loop do
@@ -1518,19 +1508,20 @@ module Nu
                 error_code = error_body["error"]["code"]
 
                 # Check for model access issues
-                buffer = Nu::Agent::OutputBuffer.new
                 if error_code == "model_not_found" && error_msg.include?("text-embedding-3-small")
-                  buffer.error("[Man Indexer] ERROR: OpenAI API key does not have access to text-embedding-3-small")
-                  buffer.error("  Please enable embeddings API access in your OpenAI project settings")
-                  buffer.error("  Visit: https://platform.openai.com/settings")
-                  application.output.flush_buffer(buffer)
+                  application.output_line(
+                    "[Man Indexer] ERROR: OpenAI API key does not have access to text-embedding-3-small",
+                    type: :error
+                  )
+                  application.output_line("  Please enable embeddings API access in your OpenAI project settings",
+                                          type: :error)
+                  application.output_line("  Visit: https://platform.openai.com/settings", type: :error)
 
                   # Stop indexing - no point continuing
                   status_mutex.synchronize { indexer_status["running"] = false }
                   break
                 else
-                  buffer.debug("[Man Indexer] API Error: #{error_msg}")
-                  application.output.flush_buffer(buffer)
+                  application.output_line("[Man Indexer] API Error: #{error_msg}", type: :debug)
                 end
               end
 
@@ -1570,14 +1561,12 @@ module Nu
             end
 
             # Log error using thread-safe output
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[Man Indexer] Error processing batch: #{e.class}: #{e.message}")
+            application.output_line("[Man Indexer] Error processing batch: #{e.class}: #{e.message}", type: :debug)
             if application.instance_variable_get(:@debug)
               e.backtrace.first(5).each do |line|
-                buffer.debug("  #{line}")
+                application.output_line("  #{line}", type: :debug)
               end
             end
-            application.output.flush_buffer(buffer)
           end
 
           # Rate limiting: sleep to maintain 10 req/min (6 seconds between requests)

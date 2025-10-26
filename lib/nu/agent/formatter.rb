@@ -108,6 +108,7 @@ module Nu
         # Stop spinner to avoid output on same line
         @console.hide_spinner
 
+        @console.puts("")
         @console.puts("\e[90m[Thread] #{thread_name} #{status}\e[0m")
 
         # Restart spinner with preserved start time
@@ -251,6 +252,7 @@ module Nu
       def display_assistant_message(message)
         # Display any text content
         if message["content"] && !message["content"].strip.empty?
+          @console.puts("")
           @console.puts(message["content"])
         elsif !message["tool_calls"] && message["tokens_output"]&.positive?
           # LLM generated output but content is empty (unusual case - possibly API issue)
@@ -282,6 +284,7 @@ module Nu
         percentage = (tokens["total"].to_f / max_context * 100).round(1)
 
         if @debug
+          @console.puts("")
           @console.puts("\e[90mSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})\e[0m")
         end
         @console.puts("\e[90mSession spend: $#{'%.6f' % tokens['spend']}\e[0m") if @debug
@@ -319,6 +322,7 @@ module Nu
 
       def display_spell_checker_message(message)
         role_label = message["role"] == "user" ? "Spell Check Request" : "Spell Check Result"
+        @console.puts("")
         @console.puts("\e[90m[#{role_label}]\e[0m")
         return unless message["content"] && !message["content"].strip.empty?
 
@@ -331,6 +335,7 @@ module Nu
 
         # Show count indicator if multiple tool calls
         count_indicator = index && total && total > 1 ? " (#{index}/#{total})" : ""
+        @console.puts("")
         @console.puts("\e[90m[Tool Call Request] #{tool_call['name']}#{count_indicator}\e[0m")
 
         # Level 0: Show tool name only, no arguments
@@ -374,6 +379,7 @@ module Nu
         # Get verbosity level (default to 0 if application not set)
         verbosity = @application ? @application.verbosity : 0
 
+        @console.puts("")
         @console.puts("\e[90m[Tool Use Response] #{name}\e[0m")
 
         # Level 0: Show tool name only, no result details

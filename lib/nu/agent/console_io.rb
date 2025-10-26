@@ -606,7 +606,8 @@ module Nu
         @mutex.synchronize do
           @stdout.write("\e[2K\r")
           frame = @spinner_frames[@spinner_frame]
-          @stdout.write("#{frame} #{@spinner_message}")
+          # Soft blue color (256-color palette: 81)
+          @stdout.write("\e[38;5;81m#{frame} #{@spinner_message}\e[0m")
           @stdout.flush
         end
       end
