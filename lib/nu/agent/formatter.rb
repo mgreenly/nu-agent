@@ -236,12 +236,13 @@ module Nu
         # Show markdown document (context + tools + user query)
         return unless markdown_document
 
-        @console.puts("\e[90m--- Exchange Request ---\e[0m")
+        @console.puts("")
+        @console.puts("\e[90m--- Exchange Content ---\e[0m")
         # Show first 500 chars of markdown document
         preview = markdown_document[0...500]
         @console.puts("\e[90m#{preview}\e[0m")
         @console.puts("\e[90m... (#{markdown_document.length} chars total)\e[0m") if markdown_document.length > 500
-        @console.puts("\e[90m--- Exchange Request ---\e[0m")
+        @console.puts("\e[90m--- Exchange Content ---\e[0m")
       end
 
       private
