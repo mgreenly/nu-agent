@@ -802,8 +802,37 @@ grep -r "@output\." lib/
 
 ---
 
-### Phase 5: External Editor for Multiline Input (Recommended)
+### Phase 4.5: Pausable Background Tasks
+**Goal**: Infrastructure to pause/resume background workers cleanly
+
+**Why needed**: Prepare for external editor integration (Phase 5). When user opens editor, background tasks must pause to prevent output queueing and resource contention.
+
+**Implement these components**:
+- `PausableTask` base class with pause/resume/stop lifecycle
+- Cooperative pausing via `check_pause` checkpoints
+- Thread synchronization (Mutex + ConditionVariable)
+- Timeout safety (`wait_until_paused` with 5s timeout)
+- Application-level task registry and lifecycle management
+
+**Convert existing workers**:
+- ManIndexer → inherit from PausableTask
+- DatabaseSummarizer → inherit from PausableTask
+- Any other background workers
+
+**Add to Application**:
+- `@background_tasks` array to track all pausable workers
+- `pause_all_background_tasks` method
+- `resume_all_background_tasks` method
+- Integration with shutdown process
+
+**Deliverable**: All background tasks can pause/resume cleanly, ready for Phase 5
+
+---
+
+### Phase 5: External Editor for Multiline Input
 **Goal**: Allow composing complex multiline prompts without implementing complex inline editing
+
+**Prerequisites**: Phase 4.5 (Pausable Background Tasks) must be complete
 
 **Key insight**: Instead of building multiline editing into the terminal (complex cursor navigation, line joining, etc.), leverage the user's preferred text editor via **Ctrl-G**.
 
@@ -858,13 +887,11 @@ Checks `$VISUAL` first (traditional for visual editors), then `$EDITOR`, falls b
 
 **Deliverable**: External editor integration for multiline composition
 
-**IMPORTANT: Requires Pausable Background Tasks** (see new section below)
-
 ---
 
-## Pausable Background Tasks
+## Pausable Background Tasks (Phase 4.5 Implementation Details)
 
-**Why needed**: Nu-agent runs continuous background workers (man indexer, database summarizer, future semantic indexers, etc.) that are independent of the orchestrator's request/response cycle. When the user opens an external editor (Ctrl-G), these tasks must pause cleanly to prevent:
+**Why needed** (from Phase 4.5): Nu-agent runs continuous background workers (man indexer, database summarizer, future semantic indexers, etc.) that are independent of the orchestrator's request/response cycle. When the user opens an external editor (Ctrl-G), these tasks must pause cleanly to prevent:
 1. Output queueing during editing (could become large)
 2. Resource contention while user is composing
 3. Unexpected behavior when resuming
@@ -1664,15 +1691,15 @@ end
 ## Files to Modify
 
 ### New Files
-- `lib/nu/agent/console_io.rb` - New unified console handler
-- `lib/nu/agent/pausable_task.rb` - Base class for pausable background workers
+- `lib/nu/agent/console_io.rb` - New unified console handler (Phase 1-5)
+- `lib/nu/agent/pausable_task.rb` - Base class for pausable background workers (Phase 4.5)
 
 ### Modified Files
-- `lib/nu/agent/application.rb` - Replace TUIManager with ConsoleIO, add background task management
-- `lib/nu/agent/formatter.rb` - Update output calls to use `console.puts()`
-- `lib/nu/agent/options.rb` - Remove --tui flag (new system always on)
-- `lib/nu/agent/tools/man_indexer.rb` - Inherit from PausableTask
-- `lib/nu/agent/tools/agent_summarizer.rb` - Inherit from PausableTask (or similar)
+- `lib/nu/agent/application.rb` - Replace TUIManager with ConsoleIO (Phase 3.5), add background task management (Phase 4.5)
+- `lib/nu/agent/formatter.rb` - Update output calls to use `console.puts()` (Phase 3.5)
+- `lib/nu/agent/options.rb` - Remove --tui flag (Phase 3.5)
+- `lib/nu/agent/tools/man_indexer.rb` - Inherit from PausableTask (Phase 4.5)
+- `lib/nu/agent/tools/agent_summarizer.rb` - Inherit from PausableTask (Phase 4.5)
 
 ### Removed Files (after Phase 1 complete)
 - `lib/nu/agent/tui_manager.rb` - Delete
@@ -1744,18 +1771,28 @@ end
 26. Enter selects match
 27. Ctrl-G cancels search
 
+### Phase 4.5 Testing (Pausable Background Tasks)
+28. Background tasks can be paused via pause() method
+29. Background tasks resume cleanly via resume() method
+30. Multiple tasks can be paused/resumed together
+31. wait_until_paused() returns true when task reaches checkpoint
+32. Timeout behavior works if task doesn't pause within 5 seconds
+33. Tasks can be stopped via stop() method
+34. Application manages task lifecycle correctly
+35. Converted workers (ManIndexer, etc.) inherit from PausableTask properly
+
 ### Phase 5 Testing (External Editor)
-28. Ctrl-G opens $EDITOR with empty buffer
-29. Ctrl-G with partially typed input - verify pre-populated in editor
-30. Edit and save - verify content submitted and shown in history
-31. Edit and exit without saving (:q!) - verify return to prompt, no submission
-32. Background tasks pause during editing - verify no output while in editor
-33. Background output queued during editing - verify shown after editor exits
-34. Terminal scrollback preserved after editor - verify can scroll up to see history
-35. Try different editors (vi, vim, nano, emacs) - verify all work
-36. $EDITOR not set - verify falls back to vi
-37. Multiline content from editor - verify submits correctly
-38. Very large content from editor - verify handles without issues
+36. Ctrl-G opens $EDITOR with empty buffer
+37. Ctrl-G with partially typed input - verify pre-populated in editor
+38. Edit and save - verify content submitted and shown in history
+39. Edit and exit without saving (:q!) - verify return to prompt, no submission
+40. Background tasks pause during editing - verify no output while in editor
+41. Background output queued during editing - verify shown after editor exits
+42. Terminal scrollback preserved after editor - verify can scroll up to see history
+43. Try different editors (vi, vim, nano, emacs) - verify all work
+44. $EDITOR not set - verify falls back to vi
+45. Multiline content from editor - verify submits correctly
+46. Very large content from editor - verify handles without issues
 
 ## Success Criteria
 
@@ -1775,8 +1812,8 @@ end
 - ✅ Readline-style editing works (Phase 2+)
 - ✅ Command history works (Phase 3+)
 - ✅ History search works (Phase 4+)
+- ✅ Background tasks pause/resume cleanly (Phase 4.5)
 - ✅ External editor integration works (Phase 5)
-- ✅ Background tasks pause/resume cleanly for editor
 - ✅ Respects user's $EDITOR preference
 
 ## Rollback Plan
@@ -1892,7 +1929,7 @@ Each phase is independently testable and can be reverted if needed.
   - Simpler implementation - no complex cursor navigation across lines
   - More powerful - full Vi/Emacs capabilities instead of limited emulation
   - Familiar pattern - users know it from git, crontab, etc.
-  - Requires pausable background tasks to prevent output buffering issues
+  - Requires pausable background tasks (Phase 4.5) to prevent output buffering issues
   - Uses `system()` for synchronous blocking (not `popen()` which would confuse editors)
   - Terminal scrollback preserved via editor's alternate screen buffer
   - Respects user's `$EDITOR` preference, falls back to `vi`
@@ -1906,15 +1943,19 @@ Each phase is independently testable and can be reverted if needed.
 5. **Phase 3**: Add history if needed
 6. **Evaluate**: Is this good enough? Or continue to Phase 4?
 7. **Phase 4**: Add history search if needed
-8. **Evaluate**: Is this good enough? Or continue to Phase 5?
-9. **Phase 5**: Implement PausableTask base class and external editor integration
+8. **Evaluate**: Is this good enough? Or continue to Phase 4.5?
+9. **Phase 4.5**: Implement pausable background tasks infrastructure
+   - Implement PausableTask base class
    - Convert existing background workers (ManIndexer, etc.) to PausableTask
+   - Add pause/resume lifecycle management to Application
+10. **Evaluate**: Is this good enough? Or continue to Phase 5?
+11. **Phase 5**: Add external editor integration (requires Phase 4.5)
    - Add Ctrl-G handler for external editor
    - Much simpler than inline multiline editing
 
 Stop at any phase if it meets requirements. Don't over-engineer.
 
-**Note**: Phase 5 is now SIMPLER than originally planned - external editor is easier to implement and more powerful than inline multiline editing.
+**Note**: Phase 4.5 and 5 together provide a SIMPLER solution than originally planned - external editor is easier to implement and more powerful than inline multiline editing.
 
 ## Implementation Strategy (Updated 2025-10-26)
 

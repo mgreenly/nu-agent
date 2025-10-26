@@ -192,7 +192,7 @@ RSpec.describe Nu::Agent::Formatter do
     it "displays system messages with prefix" do
       message = { "id" => 3, "actor" => "system", "role" => "system", "content" => "Starting up" }
 
-      expect(mock_console).to receive(:puts).with("[System] Starting up")
+      expect(mock_console).to receive(:puts).with("\e[90m[System] Starting up\e[0m")
 
       formatter.display_message(message)
     end

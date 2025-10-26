@@ -322,8 +322,8 @@ module Nu
 
         return unless normalized.any?
 
-        @console.puts("[System] #{normalized.first}")
-        normalized[1..].each { |line| @console.puts(line) }
+        @console.puts("\e[90m[System] #{normalized.first}\e[0m")
+        normalized[1..].each { |line| @console.puts("\e[90m#{line}\e[0m") }
       end
 
       def display_spell_checker_message(message)

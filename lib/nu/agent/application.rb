@@ -614,22 +614,22 @@ module Nu
 
           # /model without arguments - show current models
           if parts.length == 1
-            output_line("Current Models:")
-            output_line("  Orchestrator:  #{@orchestrator.model}")
-            output_line("  Spellchecker:  #{@spellchecker.model}")
-            output_line("  Summarizer:    #{@summarizer.model}")
+            output_line("Current Models:", type: :debug)
+            output_line("  Orchestrator:  #{@orchestrator.model}", type: :debug)
+            output_line("  Spellchecker:  #{@spellchecker.model}", type: :debug)
+            output_line("  Summarizer:    #{@summarizer.model}", type: :debug)
             return :continue
           end
 
           # /model <subcommand> <name>
           if parts.length < 3
-            output_line("Usage:")
-            output_line("  /model                        Show current models")
-            output_line("  /model orchestrator <name>    Set orchestrator model")
-            output_line("  /model spellchecker <name>    Set spellchecker model")
-            output_line("  /model summarizer <name>      Set summarizer model")
-            output_line("Example: /model orchestrator gpt-5")
-            output_line("Run /models to see available models")
+            output_line("Usage:", type: :debug)
+            output_line("  /model                        Show current models", type: :debug)
+            output_line("  /model orchestrator <name>    Set orchestrator model", type: :debug)
+            output_line("  /model spellchecker <name>    Set spellchecker model", type: :debug)
+            output_line("  /model summarizer <name>      Set summarizer model", type: :debug)
+            output_line("Example: /model orchestrator gpt-5", type: :debug)
+            output_line("Run /models to see available models", type: :debug)
             return :continue
           end
 
@@ -647,7 +647,7 @@ module Nu
                 end
 
                 if still_running
-                  output_line("Waiting for current operation to complete...")
+                  output_line("Waiting for current operation to complete...", type: :debug)
                   active_threads.each(&:join)
                 end
               end
@@ -665,7 +665,7 @@ module Nu
               @formatter.orchestrator = new_client
               @history.set_config("model_orchestrator", new_model_name)
 
-              output_line("Switched orchestrator to: #{@orchestrator.name} (#{@orchestrator.model})")
+              output_line("Switched orchestrator to: #{@orchestrator.name} (#{@orchestrator.model})", type: :debug)
             end
 
           when "spellchecker"
@@ -674,7 +674,7 @@ module Nu
               new_client = ClientFactory.create(new_model_name)
               @spellchecker = new_client
               @history.set_config("model_spellchecker", new_model_name)
-              output_line("Switched spellchecker to: #{new_model_name}")
+              output_line("Switched spellchecker to: #{new_model_name}", type: :debug)
             rescue Error => e
               output_line("Error: #{e.message}", type: :error)
             end
@@ -685,15 +685,15 @@ module Nu
               new_client = ClientFactory.create(new_model_name)
               @summarizer = new_client
               @history.set_config("model_summarizer", new_model_name)
-              output_line("Switched summarizer to: #{new_model_name}")
-              output_line("Note: Change takes effect at the start of the next session (/reset)")
+              output_line("Switched summarizer to: #{new_model_name}", type: :debug)
+              output_line("Note: Change takes effect at the start of the next session (/reset)", type: :debug)
             rescue Error => e
               output_line("Error: #{e.message}", type: :error)
             end
 
           else
-            output_line("Unknown subcommand: #{subcommand}")
-            output_line("Valid subcommands: orchestrator, spellchecker, summarizer")
+            output_line("Unknown subcommand: #{subcommand}", type: :debug)
+            output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :debug)
           end
 
           return :continue
@@ -703,8 +703,8 @@ module Nu
         if input.downcase.start_with?("/redaction")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            output_line("Usage: /redaction <on|off>")
-            output_line("Current: redaction=#{@redact ? 'on' : 'off'}")
+            output_line("Usage: /redaction <on|off>", type: :debug)
+            output_line("Current: redaction=#{@redact ? 'on' : 'off'}", type: :debug)
             return :continue
           end
 
@@ -712,13 +712,13 @@ module Nu
           if setting == "on"
             @redact = true
             history.set_config("redaction", "true")
-            output_line("redaction=on")
+            output_line("redaction=on", type: :debug)
           elsif setting == "off"
             @redact = false
             history.set_config("redaction", "false")
-            output_line("redaction=off")
+            output_line("redaction=off", type: :debug)
           else
-            output_line("Invalid option. Use: /redaction <on|off>")
+            output_line("Invalid option. Use: /redaction <on|off>", type: :debug)
           end
 
           return :continue
@@ -728,8 +728,8 @@ module Nu
         if input.downcase.start_with?("/summarizer")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            output_line("Usage: /summarizer <on|off>")
-            output_line("Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}")
+            output_line("Usage: /summarizer <on|off>", type: :debug)
+            output_line("Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}", type: :debug)
             return :continue
           end
 
@@ -737,14 +737,14 @@ module Nu
           if setting == "on"
             @summarizer_enabled = true
             history.set_config("summarizer_enabled", "true")
-            output_line("summarizer=on")
-            output_line("Summarizer will start on next /reset")
+            output_line("summarizer=on", type: :debug)
+            output_line("Summarizer will start on next /reset", type: :debug)
           elsif setting == "off"
             @summarizer_enabled = false
             history.set_config("summarizer_enabled", "false")
-            output_line("summarizer=off")
+            output_line("summarizer=off", type: :debug)
           else
-            output_line("Invalid option. Use: /summarizer <on|off>")
+            output_line("Invalid option. Use: /summarizer <on|off>", type: :debug)
           end
 
           return :continue
@@ -754,8 +754,8 @@ module Nu
         if input.downcase.start_with?("/spellcheck")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            output_line("Usage: /spellcheck <on|off>")
-            output_line("Current: spellcheck=#{@spell_check_enabled ? 'on' : 'off'}")
+            output_line("Usage: /spellcheck <on|off>", type: :debug)
+            output_line("Current: spellcheck=#{@spell_check_enabled ? 'on' : 'off'}", type: :debug)
             return :continue
           end
 
@@ -763,13 +763,13 @@ module Nu
           if setting == "on"
             @spell_check_enabled = true
             history.set_config("spell_check_enabled", "true")
-            output_line("spellcheck=on")
+            output_line("spellcheck=on", type: :debug)
           elsif setting == "off"
             @spell_check_enabled = false
             history.set_config("spell_check_enabled", "false")
-            output_line("spellcheck=off")
+            output_line("spellcheck=off", type: :debug)
           else
-            output_line("Invalid option. Use: /spellcheck <on|off>")
+            output_line("Invalid option. Use: /spellcheck <on|off>", type: :debug)
           end
 
           return :continue
@@ -779,21 +779,21 @@ module Nu
         if input.downcase.start_with?("/index-man")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            output_line("Usage: /index-man <on|off|reset>")
+            output_line("Usage: /index-man <on|off|reset>", type: :debug)
             enabled = history.get_config("index_man_enabled") == "true"
-            output_line("Current: index-man=#{enabled ? 'on' : 'off'}")
+            output_line("Current: index-man=#{enabled ? 'on' : 'off'}", type: :debug)
 
             # Show status if available
             @status_mutex.synchronize do
               status = @man_indexer_status
               if status["running"]
-                output_line("Status: running (#{status['completed']}/#{status['total']} man pages)")
-                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
-                output_line("Session spend: $#{'%.6f' % status['session_spend']}")
+                output_line("Status: running (#{status['completed']}/#{status['total']} man pages)", type: :debug)
+                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
+                output_line("Session spend: $#{'%.6f' % status['session_spend']}", type: :debug)
               elsif status["total"].positive?
-                output_line("Status: completed (#{status['completed']}/#{status['total']} man pages)")
-                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
-                output_line("Session spend: $#{'%.6f' % status['session_spend']}")
+                output_line("Status: completed (#{status['completed']}/#{status['total']} man pages)", type: :debug)
+                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
+                output_line("Session spend: $#{'%.6f' % status['session_spend']}", type: :debug)
               end
             end
 
@@ -804,8 +804,8 @@ module Nu
           case setting
           when "on"
             history.set_config("index_man_enabled", "true")
-            output_line("index-man=on")
-            output_line("Starting man page indexer...")
+            output_line("index-man=on", type: :debug)
+            output_line("Starting man page indexer...", type: :debug)
 
             # Start the indexer worker
             start_man_indexer_worker
@@ -814,29 +814,29 @@ module Nu
             sleep(0.5) # Give it a moment to start
             @status_mutex.synchronize do
               status = @man_indexer_status
-              output_line("Indexing #{status['total']} man pages...")
-              output_line("This will take approximately #{(status['total'] / 10.0 / 60.0).ceil} minutes")
+              output_line("Indexing #{status['total']} man pages...", type: :debug)
+              output_line("This will take approximately #{(status['total'] / 10.0 / 60.0).ceil} minutes", type: :debug)
             end
 
           when "off"
             history.set_config("index_man_enabled", "false")
-            output_line("index-man=off")
-            output_line("Indexer will stop after current batch completes")
+            output_line("index-man=off", type: :debug)
+            output_line("Indexer will stop after current batch completes", type: :debug)
 
             # Show final status
             @status_mutex.synchronize do
               status = @man_indexer_status
               if status["completed"].positive?
-                output_line("Indexed: #{status['completed']}/#{status['total']} man pages")
-                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
-                output_line("Session spend: $#{'%.6f' % status['session_spend']}")
+                output_line("Indexed: #{status['completed']}/#{status['total']} man pages", type: :debug)
+                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
+                output_line("Session spend: $#{'%.6f' % status['session_spend']}", type: :debug)
               end
             end
           when "reset"
             # Stop indexing if running
             if history.get_config("index_man_enabled") == "true"
               history.set_config("index_man_enabled", "false")
-              output_line("Stopping indexer before reset...")
+              output_line("Stopping indexer before reset...", type: :debug)
               sleep(1) # Give worker time to stop
             end
 
@@ -857,9 +857,9 @@ module Nu
               @man_indexer_status["session_tokens"] = 0
             end
 
-            output_line("Reset complete: Cleared #{count} man page embeddings")
+            output_line("Reset complete: Cleared #{count} man page embeddings", type: :debug)
           else
-            output_line("Invalid option. Use: /index-man <on|off|reset>")
+            output_line("Invalid option. Use: /index-man <on|off|reset>", type: :debug)
           end
 
           return :continue
@@ -935,7 +935,7 @@ module Nu
           @conversation_id = history.create_conversation
           @session_start_time = Time.now
           formatter.reset_session(conversation_id: @conversation_id)
-          output_line("Conversation reset")
+          output_line("Conversation reset", type: :debug)
 
           # Start background summarization worker
           start_summarization_worker
@@ -957,7 +957,7 @@ module Nu
           print_help
           :continue
         else
-          output_line("Unknown command: #{input}")
+          output_line("Unknown command: #{input}", type: :debug)
           :continue
         end
       end
@@ -989,23 +989,24 @@ module Nu
           "  /reset                         - Start a new conversation",
           "  /spellcheck <on|off>           - Enable/disable automatic spell checking of user input",
           "  /summarizer <on|off>           - Enable/disable background conversation summarization",
-          "  /tools                         - List available tools"
+          "  /tools                         - List available tools",
+          type: :debug
         )
       end
 
       def run_fix
-        output_line("Scanning database for corruption...")
+        output_line("Scanning database for corruption...", type: :debug)
 
         corrupted = history.find_corrupted_messages
 
         if corrupted.empty?
-          output_line("✓ No corruption found")
+          output_line("✓ No corruption found", type: :debug)
           return
         end
 
-        output_line("Found #{corrupted.length} corrupted message(s):")
+        output_line("Found #{corrupted.length} corrupted message(s):", type: :debug)
         corrupted.each do |msg|
-          output_line("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})")
+          output_line("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})", type: :debug)
         end
 
         if @tui&.active
@@ -1018,15 +1019,15 @@ module Nu
         if response == "y"
           ids = corrupted.map { |m| m["id"] }
           count = history.fix_corrupted_messages(ids)
-          output_line("✓ Deleted #{count} corrupted message(s)")
+          output_line("✓ Deleted #{count} corrupted message(s)", type: :debug)
         else
-          output_line("Skipped")
+          output_line("Skipped", type: :debug)
         end
       end
 
       def run_migrate_exchanges
-        output_line("This will analyze all messages and group them into exchanges.")
-        output_line("Existing exchanges will NOT be affected.")
+        output_line("This will analyze all messages and group them into exchanges.", type: :debug)
+        output_line("Existing exchanges will NOT be affected.", type: :debug)
 
         if @tui&.active
           response = @tui.readline("Continue with migration? [y/N] ").chomp.downcase
@@ -1037,51 +1038,51 @@ module Nu
 
         return unless response == "y"
 
-        output_line("Migrating exchanges...")
+        output_line("Migrating exchanges...", type: :debug)
 
         start_time = Time.now
         stats = history.migrate_exchanges
         elapsed = Time.now - start_time
 
-        output_line("Migration complete!")
-        output_line("  Conversations processed: #{stats[:conversations]}")
-        output_line("  Exchanges created: #{stats[:exchanges_created]}")
-        output_line("  Messages updated: #{stats[:messages_updated]}")
-        output_line("  Time elapsed: #{'%.2f' % elapsed}s")
+        output_line("Migration complete!", type: :debug)
+        output_line("  Conversations processed: #{stats[:conversations]}", type: :debug)
+        output_line("  Exchanges created: #{stats[:exchanges_created]}", type: :debug)
+        output_line("  Messages updated: #{stats[:messages_updated]}", type: :debug)
+        output_line("  Time elapsed: #{'%.2f' % elapsed}s", type: :debug)
       end
 
       def print_info
-        output_line("Version:       #{Nu::Agent::VERSION}")
+        output_line("Version:       #{Nu::Agent::VERSION}", type: :debug)
 
         # Models section
-        output_line("Models:")
-        output_line("  Orchestrator:  #{@orchestrator.model}")
-        output_line("  Spellchecker:  #{@spellchecker.model}")
-        output_line("  Summarizer:    #{@summarizer.model}")
+        output_line("Models:", type: :debug)
+        output_line("  Orchestrator:  #{@orchestrator.model}", type: :debug)
+        output_line("  Spellchecker:  #{@spellchecker.model}", type: :debug)
+        output_line("  Summarizer:    #{@summarizer.model}", type: :debug)
 
-        output_line("Debug mode:    #{@debug}")
-        output_line("Verbosity:     #{@verbosity}")
-        output_line("Redaction:     #{@redact ? 'on' : 'off'}")
-        output_line("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}")
+        output_line("Debug mode:    #{@debug}", type: :debug)
+        output_line("Verbosity:     #{@verbosity}", type: :debug)
+        output_line("Redaction:     #{@redact ? 'on' : 'off'}", type: :debug)
+        output_line("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}", type: :debug)
 
         # Show summarizer status if enabled
         if @summarizer_enabled
           @status_mutex.synchronize do
             status = @summarizer_status
             if status["running"]
-              output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)")
-              output_line("  Spend:       $#{'%.6f' % status['spend']}") if status["spend"].positive?
+              output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)", type: :debug)
+              output_line("  Spend:       $#{'%.6f' % status['spend']}", type: :debug) if status["spend"].positive?
             elsif status["total"].positive?
-              output_line("  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)")
-              output_line("  Spend:       $#{'%.6f' % status['spend']}") if status["spend"].positive?
+              output_line("  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)", type: :debug)
+              output_line("  Spend:       $#{'%.6f' % status['spend']}", type: :debug) if status["spend"].positive?
             else
-              output_line("  Status:      idle")
+              output_line("  Status:      idle", type: :debug)
             end
           end
         end
 
-        output_line("Spellcheck:    #{@spell_check_enabled ? 'on' : 'off'}")
-        output_line("Database:      #{File.expand_path(history.db_path)}")
+        output_line("Spellcheck:    #{@spell_check_enabled ? 'on' : 'off'}", type: :debug)
+        output_line("Database:      #{File.expand_path(history.db_path)}", type: :debug)
       end
 
       def print_models
@@ -1099,17 +1100,17 @@ module Nu
         openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(", ")
         xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(", ")
 
-        output_line("Available Models (* = default):")
-        output_line("  Anthropic: #{anthropic_list}")
-        output_line("  Google:    #{google_list}")
-        output_line("  OpenAI:    #{openai_list}")
-        output_line("  X.AI:      #{xai_list}")
+        output_line("Available Models (* = default):", type: :debug)
+        output_line("  Anthropic: #{anthropic_list}", type: :debug)
+        output_line("  Google:    #{google_list}", type: :debug)
+        output_line("  OpenAI:    #{openai_list}", type: :debug)
+        output_line("  X.AI:      #{xai_list}", type: :debug)
       end
 
       def print_tools
         tool_registry = ToolRegistry.new
 
-        output_line("Available Tools:")
+        output_line("Available Tools:", type: :debug)
         tool_registry.all.each do |tool|
           # Get first sentence of description
           desc = tool.description.split(/\.\s+/).first || tool.description
@@ -1119,7 +1120,7 @@ module Nu
           # Check if tool has credentials (if applicable)
           desc += " (disabled)" if tool.respond_to?(:available?) && !tool.available?
 
-          output_line("  #{tool.name.ljust(25)} - #{desc}")
+          output_line("  #{tool.name.ljust(25)} - #{desc}", type: :debug)
         end
       end
 
@@ -1144,7 +1145,7 @@ module Nu
       end
 
       def print_goodbye
-        output_line("Goodbye!")
+        output_line("Goodbye!", type: :debug)
       end
 
       def format_id_ranges(ids)
