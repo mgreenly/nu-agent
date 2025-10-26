@@ -1,0 +1,45 @@
+# Rubocop configuration for nu-agent
+# Only applied to new and modified files during Console I/O refactoring
+
+AllCops:
+  TargetRubyVersion: 3.0
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'bin/**/*'
+    - 'db/**/*'
+
+# Style preferences
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+# Layout preferences
+Layout/LineLength:
+  Max: 120
+
+# Metrics - reasonable limits for new code
+Metrics/MethodLength:
+  Max: 25
+
+Metrics/ClassLength:
+  Max: 250
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+
+# Disable some overly strict cops
+Style/Documentation:
+  Enabled: false
+
+Metrics/AbcSize:
+  Max: 25
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
