@@ -58,8 +58,8 @@ module Nu
           # Debug output
           application = context["application"]
           if application&.debug
+            application.console.puts("")
             application.console.puts("\e[90m[search_internet] query: #{query}\e[0m")
-
             application.console.puts("\e[90m[search_internet] num_results: #{num_results}\e[0m")
           end
 
