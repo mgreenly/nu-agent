@@ -18,7 +18,7 @@ module Nu
           {} # No parameters needed
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(context:, **)
           # Get the Application instance from context
           application = context["application"]
 

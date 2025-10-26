@@ -19,10 +19,11 @@
 
 ### Remaining: 73 offenses
 
-- [ ] **Lint/UnusedMethodArgument** (34) - Prefix unused params with `_`
-  - Pattern: `def execute(arguments:, history:, context:)` → `def execute(arguments:, _history:, _context:)`
+- [ ] **Lint/UnusedMethodArgument** (34) - Remove unused params from signature
+  - Pattern: `def execute(arguments:, history:, context:)` → `def execute(arguments:)`
+  - Remove parameters that are not used in the method body
   - Files: Tools classes, various methods
-  - Effort: Low - mechanical find/replace
+  - Effort: Low-Medium - requires checking each method for actual usage
 
 - [ ] **Layout/LineLength** (15) - Finish remaining violations
   - 10 in tools files (parameter descriptions)

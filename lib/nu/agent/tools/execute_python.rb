@@ -36,7 +36,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           code = arguments[:code] || arguments["code"]
           timeout_seconds = arguments[:timeout] || arguments["timeout"] || 30
 

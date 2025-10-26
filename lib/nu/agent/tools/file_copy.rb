@@ -29,7 +29,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           source_path = arguments[:source] || arguments["source"]
           dest_path = arguments[:destination] || arguments["destination"]
 

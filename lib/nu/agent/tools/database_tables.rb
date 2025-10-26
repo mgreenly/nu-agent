@@ -19,7 +19,7 @@ module Nu
           {}
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(history:, context:, **)
           # Debug output
           context["application"]
 

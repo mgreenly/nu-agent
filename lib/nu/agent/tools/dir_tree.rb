@@ -39,7 +39,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           dir_path = arguments[:path] || arguments["path"] || "."
           max_depth = arguments[:max_depth] || arguments["max_depth"]
           show_hidden = arguments[:show_hidden] || arguments["show_hidden"] || false

@@ -44,7 +44,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           dir_path = arguments[:path] || arguments["path"] || "."
           show_hidden = arguments[:show_hidden] || arguments["show_hidden"] || false
           details = arguments[:details] || arguments["details"] || false

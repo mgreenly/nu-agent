@@ -40,7 +40,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           query = arguments[:query] || arguments["query"]
           num_results = arguments[:num_results] || arguments["num_results"] || 5
 

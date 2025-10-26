@@ -25,7 +25,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, context:, **)
           dir_path = arguments[:path] || arguments["path"]
 
           if dir_path.nil? || dir_path.empty?

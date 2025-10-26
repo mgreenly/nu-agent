@@ -23,7 +23,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           file_path = arguments[:file] || arguments["file"]
 
           if file_path.nil? || file_path.empty?

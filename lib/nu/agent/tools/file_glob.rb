@@ -47,7 +47,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           pattern = arguments[:pattern] || arguments["pattern"]
           base_path = arguments[:path] || arguments["path"] || "."
           limit = arguments[:limit] || arguments["limit"] || 100

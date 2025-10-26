@@ -29,7 +29,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           file_path = arguments[:file] || arguments["file"]
           content = arguments[:content] || arguments["content"]
 

@@ -29,7 +29,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           dir_path = arguments[:path] || arguments["path"]
           confirm = arguments[:confirm_delete] || arguments["confirm_delete"] || false
 

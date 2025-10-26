@@ -75,7 +75,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, **)
           pattern = arguments[:pattern] || arguments["pattern"]
           path = arguments[:path] || arguments["path"] || "."
           output_mode = arguments[:output_mode] || arguments["output_mode"] || "files_with_matches"

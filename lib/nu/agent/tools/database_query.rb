@@ -31,7 +31,7 @@ module Nu
           }
         end
 
-        def execute(arguments:, history:, context:)
+        def execute(arguments:, history:, **)
           sql = arguments[:sql] || arguments["sql"]
 
           if sql.nil? || sql.empty?
