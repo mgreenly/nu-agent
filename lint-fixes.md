@@ -1,7 +1,7 @@
 # RuboCop Lint Fixes Progress
 
-**Current Status:** 154 total offenses (down from 289 initial)
-**Progress:** 135 offenses fixed (47% reduction)
+**Current Status:** 151 total offenses (down from 289 initial)
+**Progress:** 138 offenses fixed (48% reduction)
 
 ## ✅ Completed Phases
 
@@ -16,10 +16,10 @@
   - History#add_message: 15→4 params | FileGrep: 9→3 | Application: 8→3, 6→3 | Formatter: 7→3, 6→2
 - ⚠️ **Metrics/ClassLength: 4 remaining** (requires architectural refactoring - see Next Steps)
 
-**Priority 3: High Complexity** - 149 remaining
-- Metrics/MethodLength: 46 | AbcSize: 40 | CyclomaticComplexity: 25 | PerceivedComplexity: 25
-- BlockLength: 8 | BlockNesting: 1
-- **Top offenders:** Application#handle_command (312 lines), tool_calling_loop (111), chat_loop (89)
+**Priority 3: High Complexity** - 146 remaining
+- Metrics/MethodLength: 44 | AbcSize: 38 | CyclomaticComplexity: 24 | PerceivedComplexity: 24
+- BlockLength: 7 | BlockNesting: 1
+- **Top offenders:** Application#handle_command (312 lines), chat_loop (89), print_info (37)
 
 **✅ Extraction #1 Complete: ManPageIndexer**
 - **Lines reduced:** Application: 1236 → 1113 (123 lines extracted)
@@ -32,6 +32,12 @@
 - **New class:** ConversationSummarizer (182 lines)
 - **Tests:** 7 new specs, all passing
 - **Impact:** Removed 8 offenses from application.rb, added 5 to new class (net -3)
+
+**✅ Extraction #3 Complete: ToolCallOrchestrator**
+- **Lines reduced:** Application: 991 → 896 (95 lines extracted)
+- **New class:** ToolCallOrchestrator (176 lines)
+- **Tests:** 6 new specs, all passing
+- **Impact:** Removed 7 offenses from application.rb, added 4 to new class (net -3)
 
 ## 🚀 Next Steps: Architectural Refactoring (Start Fresh)
 
