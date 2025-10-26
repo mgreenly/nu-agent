@@ -205,9 +205,10 @@ module Nu
 
         # Level 5: Show tools first
         if verbosity >= 5 && tools && !tools.empty?
+          @console.puts("")
           @console.puts("\e[90m--- Tools (#{tools.length} available) ---\e[0m")
           tools.each do |tool|
-            name = tool["name"] || tool[:name]
+            name = tool[:name] || tool["name"]
             @console.puts("\e[90m  - #{name}\e[0m")
           end
         end
