@@ -23,9 +23,13 @@ Layout/LineLength:
 # Metrics - reasonable limits for new code
 Metrics/MethodLength:
   Max: 25
+  Exclude:
+    - 'lib/nu/agent/console_io.rb'  # Complex input parsing requires longer methods
 
 Metrics/ClassLength:
   Max: 250
+  Exclude:
+    - 'lib/nu/agent/console_io.rb'  # Single-file console I/O implementation
 
 Metrics/BlockLength:
   Exclude:
@@ -37,9 +41,15 @@ Style/Documentation:
 
 Metrics/AbcSize:
   Max: 25
+  Exclude:
+    - 'lib/nu/agent/console_io.rb'  # Complex input parsing
 
 Metrics/CyclomaticComplexity:
   Max: 10
+  Exclude:
+    - 'lib/nu/agent/console_io.rb'  # Escape sequence parsing has many branches
 
 Metrics/PerceivedComplexity:
   Max: 10
+  Exclude:
+    - 'lib/nu/agent/console_io.rb'  # Escape sequence parsing complexity

@@ -299,4 +299,232 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(message).to eq("\e[32mGreen text\e[0m")
     end
   end
+
+  # Phase 2: Readline Editing Emulation
+  describe "#parse_input (Phase 2 - cursor movement)" do
+    context "with left arrow key (\\e[D)" do
+      it "moves cursor left when not at start" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.send(:parse_input, "\e[D")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(4)
+      end
+
+      it "does not move cursor left when at start" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.send(:parse_input, "\e[D")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+    end
+
+    context "with right arrow key (\\e[C)" do
+      it "moves cursor right when not at end" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.send(:parse_input, "\e[C")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(3)
+      end
+
+      it "does not move cursor right when at end" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.send(:parse_input, "\e[C")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+
+    context "with Home key (\\e[H)" do
+      it "moves cursor to start of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.send(:parse_input, "\e[H")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+    end
+
+    context "with Home key variant (\\e[1~)" do
+      it "moves cursor to start of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.send(:parse_input, "\e[1~")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+    end
+
+    context "with End key (\\e[F)" do
+      it "moves cursor to end of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.send(:parse_input, "\e[F")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+
+    context "with End key variant (\\e[4~)" do
+      it "moves cursor to end of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.send(:parse_input, "\e[4~")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+
+    context "with Ctrl-A" do
+      it "moves cursor to start of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.send(:parse_input, "\x01")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+    end
+
+    context "with Ctrl-E" do
+      it "moves cursor to end of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.send(:parse_input, "\x05")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+
+    context "with Delete key (\\e[3~)" do
+      it "deletes character at cursor position" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.send(:parse_input, "\e[3~")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("helo")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(2)
+      end
+
+      it "does nothing when cursor is at end" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.send(:parse_input, "\e[3~")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+  end
+
+  describe "#parse_input (Phase 2 - kill/yank)" do
+    context "with Ctrl-K (kill to end)" do
+      it "kills text from cursor to end of line" do
+        console.instance_variable_set(:@input_buffer, String.new("hello world"))
+        console.instance_variable_set(:@cursor_pos, 6)
+        console.send(:parse_input, "\x0B")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello ")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+        expect(console.instance_variable_get(:@kill_ring)).to eq("world")
+      end
+
+      it "does nothing when cursor is at end" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.send(:parse_input, "\x0B")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
+        expect(console.instance_variable_get(:@kill_ring)).to eq("")
+      end
+    end
+
+    context "with Ctrl-U (kill to start)" do
+      it "kills text from start of line to cursor" do
+        console.instance_variable_set(:@input_buffer, String.new("hello world"))
+        console.instance_variable_set(:@cursor_pos, 6)
+        console.send(:parse_input, "\x15")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("world")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+        expect(console.instance_variable_get(:@kill_ring)).to eq("hello ")
+      end
+
+      it "does nothing when cursor is at start" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.send(:parse_input, "\x15")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
+        expect(console.instance_variable_get(:@kill_ring)).to eq("")
+      end
+    end
+
+    context "with Ctrl-W (kill word backward)" do
+      it "kills word before cursor" do
+        console.instance_variable_set(:@input_buffer, String.new("hello world"))
+        console.instance_variable_set(:@cursor_pos, 11)
+        console.send(:parse_input, "\x17")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello ")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+        expect(console.instance_variable_get(:@kill_ring)).to eq("world")
+      end
+
+      it "kills to previous whitespace" do
+        console.instance_variable_set(:@input_buffer, String.new("one two three"))
+        console.instance_variable_set(:@cursor_pos, 7)
+        console.send(:parse_input, "\x17")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("one  three")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(4)
+        expect(console.instance_variable_get(:@kill_ring)).to eq("two")
+      end
+
+      it "does nothing when cursor is at start" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.send(:parse_input, "\x17")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
+        expect(console.instance_variable_get(:@kill_ring)).to eq("")
+      end
+    end
+
+    context "with Ctrl-Y (yank)" do
+      it "inserts killed text at cursor" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.instance_variable_set(:@kill_ring, " world")
+        console.send(:parse_input, "\x19")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello world")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(11)
+      end
+
+      it "does nothing when kill ring is empty" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.instance_variable_set(:@kill_ring, "")
+        console.send(:parse_input, "\x19")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+  end
+
+  describe "#parse_input (Phase 2 - clear screen)" do
+    context "with Ctrl-L" do
+      it "returns :clear_screen signal" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        result = console.send(:parse_input, "\x0C")
+        expect(result).to eq(:clear_screen)
+      end
+
+      it "preserves input buffer and cursor position" do
+        console.instance_variable_set(:@input_buffer, String.new("hello world"))
+        console.instance_variable_set(:@cursor_pos, 6)
+        console.send(:parse_input, "\x0C")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello world")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+      end
+    end
+  end
+
+  describe "#clear_screen" do
+    it "clears terminal and redraws input line" do
+      console.instance_variable_set(:@input_buffer, "test input")
+      console.instance_variable_set(:@cursor_pos, 5)
+      console.send(:clear_screen, "> ")
+
+      output = stdout.string
+      # Should include clear screen escape code
+      expect(output).to include("\e[2J\e[H")
+      # Should redraw the prompt and input
+      expect(output).to include("> test input")
+    end
+  end
 end

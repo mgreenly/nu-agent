@@ -136,6 +136,9 @@ module Nu
           submit_input(prompt)
         when :eof
           handle_eof
+        when :clear_screen
+          clear_screen(prompt)
+          nil
         else
           redraw_input_line(prompt)
           nil
@@ -200,7 +203,12 @@ module Nu
       end
 
       def parse_input(raw)
-        raw.each_char do |char|
+        chars = raw.chars
+        i = 0
+
+        while i < chars.length
+          char = chars[i]
+
           case char
           when "\r", "\n"
             # Enter pressed
@@ -215,10 +223,36 @@ module Nu
           when "\x7F", "\b" # Backspace
             delete_backward
 
+          when "\x01" # Ctrl-A
+            cursor_to_start
+
+          when "\x05" # Ctrl-E
+            cursor_to_end
+
+          when "\x0B" # Ctrl-K
+            kill_to_end
+
+          when "\x15" # Ctrl-U
+            kill_to_start
+
+          when "\x17" # Ctrl-W
+            kill_word_backward
+
+          when "\x19" # Ctrl-Y
+            yank
+
+          when "\x0C" # Ctrl-L
+            return :clear_screen
+
+          when "\e" # Escape - start of sequence
+            i = handle_escape_sequence(chars, i)
+
           else
             # Printable character
             insert_char(char) if char.ord.between?(32, 126)
           end
+
+          i += 1
         end
 
         nil # Continue reading
@@ -236,6 +270,132 @@ module Nu
         @cursor_pos -= 1
       end
 
+      def delete_forward
+        return if @cursor_pos >= @input_buffer.length
+
+        @input_buffer.slice!(@cursor_pos)
+      end
+
+      def handle_escape_sequence(chars, index)
+        # Check if we have enough characters for a sequence
+        return index if index + 1 >= chars.length
+
+        next_char = chars[index + 1]
+
+        # Check for CSI sequences (Control Sequence Introducer)
+        return handle_csi_sequence(chars, index + 2) if next_char == "["
+
+        index + 1
+      end
+
+      def handle_csi_sequence(chars, index)
+        return index - 1 if index >= chars.length
+
+        char = chars[index]
+
+        case char
+        when "C" # Right arrow
+          cursor_forward
+          index
+        when "D" # Left arrow
+          cursor_backward
+          index
+        when "H" # Home
+          cursor_to_start
+          index
+        when "F" # End
+          cursor_to_end
+          index
+        when "1" # Home variant (1~)
+          if index + 1 < chars.length && chars[index + 1] == "~"
+            cursor_to_start
+            index + 1
+          else
+            index
+          end
+        when "3" # Delete (3~)
+          if index + 1 < chars.length && chars[index + 1] == "~"
+            delete_forward
+            index + 1
+          else
+            index
+          end
+        when "4" # End variant (4~)
+          if index + 1 < chars.length && chars[index + 1] == "~"
+            cursor_to_end
+            index + 1
+          else
+            index
+          end
+        else
+          # Unknown sequence - ignore
+          index
+        end
+      end
+
+      def cursor_forward
+        return if @cursor_pos >= @input_buffer.length
+
+        @cursor_pos += 1
+      end
+
+      def cursor_backward
+        return if @cursor_pos.zero?
+
+        @cursor_pos -= 1
+      end
+
+      def cursor_to_start
+        @cursor_pos = 0
+      end
+
+      def cursor_to_end
+        @cursor_pos = @input_buffer.length
+      end
+
+      def kill_to_end
+        return if @cursor_pos >= @input_buffer.length
+
+        @kill_ring = @input_buffer[@cursor_pos..]
+        @input_buffer.slice!(@cursor_pos..)
+      end
+
+      def kill_to_start
+        return if @cursor_pos.zero?
+
+        @kill_ring = @input_buffer[0...@cursor_pos]
+        @input_buffer.slice!(0...@cursor_pos)
+        @cursor_pos = 0
+      end
+
+      def kill_word_backward
+        return if @cursor_pos.zero?
+
+        # Find start of word by scanning backward
+        pos = @cursor_pos - 1
+
+        # Skip trailing whitespace if cursor is after whitespace
+        pos -= 1 while pos >= 0 && @input_buffer[pos] =~ /\s/
+
+        # Find start of word (scan back to whitespace or start)
+        pos -= 1 while pos >= 0 && @input_buffer[pos] !~ /\s/
+
+        # pos is now at the whitespace before the word, or -1 if at start
+        start_pos = pos + 1
+
+        # Kill from start_pos to cursor
+        @kill_ring = @input_buffer[start_pos...@cursor_pos]
+        @input_buffer.slice!(start_pos...@cursor_pos)
+        @cursor_pos = start_pos
+      end
+
+      def yank
+        return if @kill_ring.empty?
+
+        @input_buffer.insert(@cursor_pos, @kill_ring)
+        @cursor_pos += @kill_ring.length
+      end
+
       def redraw_input_line(prompt)
         @mutex.synchronize do
           # Clear line
@@ -247,6 +407,23 @@ module Nu
 
           # Position cursor
           # Formula: prompt.length + @cursor_pos + 1 (1-indexed)
+          col = prompt.length + @cursor_pos + 1
+          @stdout.write("\e[#{col}G")
+
+          @stdout.flush
+        end
+      end
+
+      def clear_screen(prompt)
+        @mutex.synchronize do
+          # Clear screen and move cursor to home
+          @stdout.write("\e[2J\e[H")
+
+          # Redraw prompt and input buffer
+          @stdout.write(prompt)
+          @stdout.write(@input_buffer)
+
+          # Position cursor
           col = prompt.length + @cursor_pos + 1
           @stdout.write("\e[#{col}G")
 
