@@ -559,6 +559,33 @@ module Nu
         row ? row[0] : default
       end
 
+      # Add command to command history
+      def add_command_history(command)
+        return if command.nil? || command.strip.empty?
+
+        connection.query(<<~SQL)
+          INSERT INTO command_history (command, created_at)
+          VALUES ('#{escape_sql(command)}', CURRENT_TIMESTAMP)
+        SQL
+      end
+
+      # Get command history (most recent first)
+      def get_command_history(limit: 1000)
+        result = connection.query(<<~SQL)
+          SELECT command, created_at
+          FROM command_history
+          ORDER BY created_at DESC
+          LIMIT #{limit.to_i}
+        SQL
+
+        result.map do |row|
+          {
+            "command" => row[0],
+            "created_at" => row[1]
+          }
+        end.reverse # Reverse to get chronological order (oldest first)
+      end
+
       # Get all indexed sources for a given kind
       def get_indexed_sources(kind:)
         result = connection.query(<<~SQL)
@@ -872,6 +899,23 @@ module Nu
             value TEXT,
             updated_at TIMESTAMP
           )
+        SQL
+
+        # Command history table for console input history
+        connection.query(<<~SQL)
+          CREATE SEQUENCE IF NOT EXISTS command_history_id_seq START 1
+        SQL
+
+        connection.query(<<~SQL)
+          CREATE TABLE IF NOT EXISTS command_history (
+            id INTEGER PRIMARY KEY DEFAULT nextval('command_history_id_seq'),
+            command TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        SQL
+
+        connection.query(<<~SQL)
+          CREATE INDEX IF NOT EXISTS idx_command_history_created_at ON command_history(created_at DESC)
         SQL
 
         # Initialize active_workers if not set

@@ -527,4 +527,249 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(output).to include("> test input")
     end
   end
+
+  # Phase 3: Command History Emulation
+  describe "#parse_input (Phase 3 - history navigation)" do
+    context "with up arrow key (\\e[A)" do
+      it "navigates to previous history entry" do
+        console.instance_variable_set(:@history, %w[first second third])
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        console.send(:parse_input, "\e[A")
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("third")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+        expect(console.instance_variable_get(:@history_pos)).to eq(2)
+      end
+
+      it "saves current input when entering history" do
+        console.instance_variable_set(:@history, %w[first second])
+        console.instance_variable_set(:@input_buffer, String.new("partially typed"))
+        console.instance_variable_set(:@cursor_pos, 15)
+
+        console.send(:parse_input, "\e[A")
+
+        expect(console.instance_variable_get(:@saved_input)).to eq("partially typed")
+      end
+
+      it "navigates backwards through history on repeated up arrows" do
+        console.instance_variable_set(:@history, %w[first second third])
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("third")
+
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("second")
+
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("first")
+      end
+
+      it "stops at beginning of history" do
+        console.instance_variable_set(:@history, %w[first second])
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        # Navigate to beginning
+        console.send(:parse_input, "\e[A")
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("first")
+
+        # Try to go further - should stay at first
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("first")
+      end
+    end
+
+    context "with down arrow key (\\e[B)" do
+      it "navigates to next history entry" do
+        console.instance_variable_set(:@history, %w[first second third])
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        # Go back two entries
+        console.send(:parse_input, "\e[A")
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("second")
+
+        # Go forward one
+        console.send(:parse_input, "\e[B")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("third")
+      end
+
+      it "restores saved input when navigating past end of history" do
+        console.instance_variable_set(:@history, %w[first second])
+        console.instance_variable_set(:@input_buffer, String.new("my input"))
+        console.instance_variable_set(:@cursor_pos, 8)
+
+        # Enter history
+        console.send(:parse_input, "\e[A")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("second")
+
+        # Navigate back past end
+        console.send(:parse_input, "\e[B")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("my input")
+        expect(console.instance_variable_get(:@history_pos)).to be_nil
+      end
+
+      it "does nothing when not in history" do
+        console.instance_variable_set(:@history, %w[first second])
+        console.instance_variable_set(:@input_buffer, String.new("current"))
+        console.instance_variable_set(:@cursor_pos, 7)
+        console.instance_variable_set(:@history_pos, nil)
+
+        console.send(:parse_input, "\e[B")
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("current")
+        expect(console.instance_variable_get(:@history_pos)).to be_nil
+      end
+    end
+  end
+
+  describe "#history_prev" do
+    it "moves to last history entry when starting from nil" do
+      console.instance_variable_set(:@history, %w[first second third])
+      console.instance_variable_set(:@input_buffer, String.new("current"))
+      console.instance_variable_set(:@cursor_pos, 7)
+      console.instance_variable_set(:@history_pos, nil)
+
+      console.send(:history_prev)
+
+      expect(console.instance_variable_get(:@input_buffer)).to eq("third")
+      expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      expect(console.instance_variable_get(:@history_pos)).to eq(2)
+      expect(console.instance_variable_get(:@saved_input)).to eq("current")
+    end
+
+    it "moves backward in history" do
+      console.instance_variable_set(:@history, %w[first second third])
+      console.instance_variable_set(:@history_pos, 2)
+
+      console.send(:history_prev)
+
+      expect(console.instance_variable_get(:@input_buffer)).to eq("second")
+      expect(console.instance_variable_get(:@history_pos)).to eq(1)
+    end
+
+    it "stops at first entry" do
+      console.instance_variable_set(:@history, %w[first second])
+      console.instance_variable_set(:@history_pos, 0)
+
+      console.send(:history_prev)
+
+      expect(console.instance_variable_get(:@input_buffer)).to eq("first")
+      expect(console.instance_variable_get(:@history_pos)).to eq(0)
+    end
+  end
+
+  describe "#history_next" do
+    it "moves forward in history" do
+      console.instance_variable_set(:@history, %w[first second third])
+      console.instance_variable_set(:@history_pos, 0)
+
+      console.send(:history_next)
+
+      expect(console.instance_variable_get(:@input_buffer)).to eq("second")
+      expect(console.instance_variable_get(:@history_pos)).to eq(1)
+    end
+
+    it "restores saved input when reaching end" do
+      console.instance_variable_set(:@history, %w[first second])
+      console.instance_variable_set(:@history_pos, 1)
+      console.instance_variable_set(:@saved_input, "my input")
+
+      console.send(:history_next)
+
+      expect(console.instance_variable_get(:@input_buffer)).to eq("my input")
+      expect(console.instance_variable_get(:@history_pos)).to be_nil
+    end
+
+    it "does nothing when history_pos is nil" do
+      console.instance_variable_set(:@history, ["first"])
+      console.instance_variable_set(:@history_pos, nil)
+      console.instance_variable_set(:@input_buffer, String.new("current"))
+
+      console.send(:history_next)
+
+      expect(console.instance_variable_get(:@input_buffer)).to eq("current")
+      expect(console.instance_variable_get(:@history_pos)).to be_nil
+    end
+  end
+
+  describe "database persistence (Phase 3)" do
+    let(:mock_history) { instance_double(Nu::Agent::History) }
+
+    before do
+      console.instance_variable_set(:@db_history, mock_history)
+    end
+
+    describe "#save_history_to_db" do
+      it "saves a command to the database" do
+        expect(mock_history).to receive(:add_command_history).with("test command")
+        console.send(:save_history_to_db, "test command")
+      end
+
+      it "handles empty commands" do
+        # Should not call database for empty commands
+        expect(mock_history).not_to receive(:add_command_history)
+        console.send(:save_history_to_db, "")
+      end
+
+      it "handles whitespace-only commands" do
+        # Should not call database for whitespace-only commands
+        expect(mock_history).not_to receive(:add_command_history)
+        console.send(:save_history_to_db, "   ")
+      end
+    end
+
+    describe "#load_history_from_db" do
+      it "loads history from database" do
+        expect(mock_history).to receive(:get_command_history).with(limit: 1000).and_return(
+          [
+            { "command" => "first command" },
+            { "command" => "second command" },
+            { "command" => "third command" }
+          ]
+        )
+
+        console.send(:load_history_from_db)
+
+        history = console.instance_variable_get(:@history)
+        expect(history).to eq(["first command", "second command", "third command"])
+      end
+
+      it "handles empty history" do
+        expect(mock_history).to receive(:get_command_history).with(limit: 1000).and_return([])
+
+        console.send(:load_history_from_db)
+
+        history = console.instance_variable_get(:@history)
+        expect(history).to eq([])
+      end
+    end
+
+    describe "#add_to_history" do
+      it "adds to in-memory history and saves to database" do
+        expect(mock_history).to receive(:add_command_history).with("test command")
+
+        console.send(:add_to_history, "test command")
+
+        history = console.instance_variable_get(:@history)
+        expect(history).to include("test command")
+      end
+
+      it "does not save empty commands to database" do
+        expect(mock_history).not_to receive(:add_command_history)
+
+        console.send(:add_to_history, "")
+        console.send(:add_to_history, "   ")
+
+        history = console.instance_variable_get(:@history)
+        expect(history).to be_empty
+      end
+    end
+  end
 end

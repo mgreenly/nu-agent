@@ -7,9 +7,10 @@ module Nu
     # ConsoleIO - Unified console I/O system with raw terminal mode and IO.select
     # Replaces TUIManager, OutputManager, and OutputBuffer with a single class
     class ConsoleIO
-      def initialize
+      def initialize(db_history: nil, debug: false)
         @stdin = $stdin
         @stdout = $stdout
+        @debug = debug
 
         # Save original terminal state
         @original_stty = `stty -g`.chomp
@@ -29,6 +30,10 @@ module Nu
         @history = []
         @history_pos = nil
         @saved_input = ""
+
+        # Database history (optional)
+        @db_history = db_history
+        load_history_from_db if @db_history
 
         # Spinner state
         @spinner_running = false
@@ -294,6 +299,12 @@ module Nu
         char = chars[index]
 
         case char
+        when "A" # Up arrow - navigate history backward
+          history_prev
+          index
+        when "B" # Down arrow - navigate history forward
+          history_next
+          index
         when "C" # Right arrow
           cursor_forward
           index
@@ -459,6 +470,61 @@ module Nu
         return if !@history.empty? && @history.last == line
 
         @history << line
+        save_history_to_db(line)
+      end
+
+      def save_history_to_db(command)
+        return if command.nil? || command.strip.empty?
+        return unless @db_history
+
+        @db_history.add_command_history(command)
+      rescue StandardError => e
+        # Log error but don't fail - history is not critical
+        warn "Warning: Failed to save command history: #{e.message}" if @debug
+      end
+
+      def load_history_from_db
+        return unless @db_history
+
+        history_records = @db_history.get_command_history(limit: 1000)
+        @history = history_records.map { |record| record["command"] }
+      rescue StandardError => e
+        # Log error but don't fail - history is not critical
+        warn "Warning: Failed to load command history: #{e.message}" if @debug
+        @history = []
+      end
+
+      def history_prev
+        if @history_pos.nil?
+          # Starting from current input - save it and move to last history entry
+          return if @history.empty?
+
+          @saved_input = @input_buffer
+          @history_pos = @history.length - 1
+        elsif @history_pos.positive?
+          # Move backward in history
+          @history_pos -= 1
+        end
+
+        @input_buffer = @history[@history_pos] || ""
+        @cursor_pos = @input_buffer.length
+      end
+
+      def history_next
+        # Only move forward if we're in history
+        return unless @history_pos
+
+        @history_pos += 1
+
+        if @history_pos >= @history.length
+          # Reached end - restore saved input
+          @input_buffer = @saved_input
+          @cursor_pos = @input_buffer.length
+          @history_pos = nil
+        else
+          @input_buffer = @history[@history_pos]
+          @cursor_pos = @input_buffer.length
+        end
       end
 
       def flush_stdin
