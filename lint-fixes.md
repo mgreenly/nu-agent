@@ -1,7 +1,7 @@
 # RuboCop Lint Fixes Progress
 
-**Current Status:** 167 total offenses (down from 289 initial)
-**Progress:** 122 offenses fixed (42% reduction)
+**Current Status:** 157 total offenses (down from 289 initial)
+**Progress:** 132 offenses fixed (46% reduction)
 
 ## ✅ Completed Phases
 
@@ -16,10 +16,16 @@
   - History#add_message: 15→4 params | FileGrep: 9→3 | Application: 8→3, 6→3 | Formatter: 7→3, 6→2
 - ⚠️ **Metrics/ClassLength: 4 remaining** (requires architectural refactoring - see Next Steps)
 
-**Priority 3: High Complexity** - 162 remaining
-- Metrics/MethodLength: 51 | AbcSize: 46 | CyclomaticComplexity: 27 | PerceivedComplexity: 27
-- BlockLength: 9 | BlockNesting: 4
-- **Top offenders:** Application#handle_command (312 lines), index_man_pages (117), tool_calling_loop (111)
+**Priority 3: High Complexity** - 152 remaining
+- Metrics/MethodLength: 48 | AbcSize: 42 | CyclomaticComplexity: 26 | PerceivedComplexity: 26
+- BlockLength: 8 | BlockNesting: 1
+- **Top offenders:** Application#handle_command (312 lines), summarize_conversations (107), tool_calling_loop (111)
+
+**✅ Extraction #1 Complete: ManPageIndexer**
+- **Lines reduced:** Application: 1236 → 1113 (123 lines extracted)
+- **New class:** ManPageIndexer (202 lines, passes RuboCop)
+- **Tests:** 5 new specs, all passing
+- **Impact:** Removed 10 offenses from application.rb
 
 ## 🚀 Next Steps: Architectural Refactoring (Start Fresh)
 
