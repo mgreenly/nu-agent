@@ -174,8 +174,10 @@ module Nu
 
         def format_messages(messages, system_prompt:)
           # Convert from internal format to Gemini format
-          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool', 'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
-          # Gemini: { role: 'user'|'model'|'function', parts: { text: '...' } or { functionCall/functionResponse: {...} } }
+          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool',
+          #             'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
+          # Gemini: { role: 'user'|'model'|'function',
+          #           parts: { text: '...' } or { functionCall/functionResponse: {...} } }
 
           # Gemini doesn't have a separate system parameter, so we prepend the system prompt
           # as the first user message

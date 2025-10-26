@@ -175,7 +175,8 @@ module Nu
 
             # Show preview of result
             if tool_result["result"]
-              result_str = tool_result["result"].is_a?(Hash) ? tool_result["result"].to_json : tool_result["result"].to_s
+              res = tool_result["result"]
+              result_str = res.is_a?(Hash) ? res.to_json : res.to_s
               max_length = verbosity >= 6 ? 100 : 30
               preview = result_str[0...max_length]
               @console.puts("\e[90m    result: #{preview}#{'...' if result_str.length > max_length}\e[0m")
@@ -291,7 +292,10 @@ module Nu
 
         if @debug
           @console.puts("")
-          @console.puts("\e[90mSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})\e[0m")
+          inp = tokens["input"]
+          out = tokens["output"]
+          total = tokens["total"]
+          @console.puts("\e[90mSession tokens: #{inp} in / #{out} out / #{total} Total / (#{percentage}% of #{max_context})\e[0m")
         end
         @console.puts("\e[90mSession spend: $#{'%.6f' % tokens['spend']}\e[0m") if @debug
         return unless elapsed_time

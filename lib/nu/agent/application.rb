@@ -991,35 +991,35 @@ module Nu
 
       def print_help
         @console.puts("")
-        output_lines(
-          "Available commands:",
-          "  /clear                         - Clear the screen",
-          "  /debug <on|off>                - Enable/disable debug mode (show/hide tool calls and results)",
-          "  /exit                          - Exit the REPL",
-          "  /fix                           - Scan and fix database corruption issues",
-          "  /help                          - Show this help message",
-          "  /index-man <on|off|reset>      - Enable/disable background man page indexing, or reset database",
-          "  /info                          - Show current session information",
-          "  /migrate-exchanges             - Create exchanges from existing messages (one-time migration)",
-          "  /model orchestrator <name>     - Switch orchestrator model",
-          "  /model spellchecker <name>     - Switch spellchecker model",
-          "  /model summarizer <name>       - Switch summarizer model",
-          "  /models                        - List available models",
-          "  /redaction <on|off>            - Enable/disable redaction of tool results in context",
-          "  /verbosity <number>            - Set verbosity level for debug output (default: 0)",
-          "                                   - Level 0: Thread lifecycle events + tool names only",
-          "                                   - Level 1: Level 0 + truncated tool call/result params (30 chars)",
-          "                                   - Level 2: Level 1 + message creation notifications",
-          "                                   - Level 3: Level 2 + message role/actor + truncated content/params (30 chars)",
-          "                                   - Level 4: Level 3 + full tool params + messages sent to LLM",
-          "                                   - Level 5: Level 4 + tools array",
-          "                                   - Level 6: Level 5 + longer message content previews (100 chars)",
-          "  /reset                         - Start a new conversation",
-          "  /spellcheck <on|off>           - Enable/disable automatic spell checking of user input",
-          "  /summarizer <on|off>           - Enable/disable background conversation summarization",
-          "  /tools                         - List available tools",
-          type: :debug
-        )
+        help_text = <<~HELP
+          Available commands:
+            /clear                         - Clear the screen
+            /debug <on|off>                - Enable/disable debug mode (show/hide tool calls and results)
+            /exit                          - Exit the REPL
+            /fix                           - Scan and fix database corruption issues
+            /help                          - Show this help message
+            /index-man <on|off|reset>      - Enable/disable background man page indexing, or reset database
+            /info                          - Show current session information
+            /migrate-exchanges             - Create exchanges from existing messages (one-time migration)
+            /model orchestrator <name>     - Switch orchestrator model
+            /model spellchecker <name>     - Switch spellchecker model
+            /model summarizer <name>       - Switch summarizer model
+            /models                        - List available models
+            /redaction <on|off>            - Enable/disable redaction of tool results in context
+            /verbosity <number>            - Set verbosity level for debug output (default: 0)
+                                             - Level 0: Thread lifecycle events + tool names only
+                                             - Level 1: Level 0 + truncated tool call/result params (30 chars)
+                                             - Level 2: Level 1 + message creation notifications
+                                             - Level 3: Level 2 + message role/actor + truncated content/params (30 chars)
+                                             - Level 4: Level 3 + full tool params + messages sent to LLM
+                                             - Level 5: Level 4 + tools array
+                                             - Level 6: Level 5 + longer message content previews (100 chars)
+            /reset                         - Start a new conversation
+            /spellcheck <on|off>           - Enable/disable automatic spell checking of user input
+            /summarizer <on|off>           - Enable/disable background conversation summarization
+            /tools                         - List available tools
+        HELP
+        output_lines(*help_text.lines.map(&:chomp), type: :debug)
       end
 
       def run_fix
@@ -1106,9 +1106,11 @@ module Nu
                           type: :debug)
               output_line("  Spend:       $#{'%.6f' % status['spend']}", type: :debug) if status["spend"].positive?
             elsif status["total"].positive?
-              output_line(
-                "  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)", type: :debug
-              )
+              completed = status["completed"]
+              total = status["total"]
+              failed = status["failed"]
+              output_line("  Status:      completed (#{completed}/#{total} conversations, #{failed} failed)",
+                          type: :debug)
               output_line("  Spend:       $#{'%.6f' % status['spend']}", type: :debug) if status["spend"].positive?
             else
               output_line("  Status:      idle", type: :debug)
@@ -1242,18 +1244,18 @@ module Nu
           app = self
 
           thread = Thread.new(conv_id, hist, status, status_mtx, app,
-                              @summarizer) do |current_conversation_id, history, summarizer_status, status_mutex, application, summarizer|
+                              @summarizer) do |cid, hist, sum_status, mutex, app, summarizer|
             summarize_conversations(
-              current_conversation_id: current_conversation_id,
-              history: history,
-              summarizer_status: summarizer_status,
-              status_mutex: status_mutex,
-              application: application,
+              current_conversation_id: cid,
+              history: hist,
+              summarizer_status: sum_status,
+              status_mutex: mutex,
+              application: app,
               summarizer: summarizer
             )
           rescue StandardError
-            status_mutex.synchronize do
-              summarizer_status["running"] = false
+            mutex.synchronize do
+              sum_status["running"] = false
             end
           end
 

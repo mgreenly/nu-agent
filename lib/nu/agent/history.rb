@@ -46,7 +46,8 @@ module Nu
       end
 
       def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true,
-                      tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil, redacted: false, exchange_id: nil)
+                      tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil,
+                      tool_result: nil, error: nil, redacted: false, exchange_id: nil)
         tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : "NULL"
         tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : "NULL"
         error_json = error ? "'#{escape_sql(JSON.generate(error))}'" : "NULL"

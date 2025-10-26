@@ -11,8 +11,10 @@ module Nu
         def description
           "PREFERRED tool for querying conversation history. " \
             "Execute SQL queries against the agent's history database using a READ-ONLY connection. " \
-            "Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). Write operations (INSERT, UPDATE, DELETE) are blocked. " \
-            "IMPORTANT: Results are hard-capped at 500 rows maximum. Always use LIMIT 100 or less for efficient queries. " \
+            "Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). " \
+            "Write operations (INSERT, UPDATE, DELETE) are blocked. " \
+            "IMPORTANT: Results are hard-capped at 500 rows maximum. " \
+            "Always use LIMIT 100 or less for efficient queries. " \
             "Use database_tables to see available tables and database_schema to understand table structure first."
         end
 
@@ -20,7 +22,10 @@ module Nu
           {
             sql: {
               type: "string",
-              description: "The read-only SQL query to execute. Do not include a semicolon. MUST include LIMIT clause (100 or less recommended). Results capped at 500 rows maximum. Example: 'SELECT * FROM messages WHERE role = \"user\" ORDER BY created_at DESC LIMIT 50'",
+              description: "The read-only SQL query to execute. Do not include a semicolon. " \
+                           "MUST include LIMIT clause (100 or less recommended). " \
+                           "Results capped at 500 rows maximum. " \
+                           "Example: 'SELECT * FROM messages WHERE role = \"user\" ORDER BY created_at DESC LIMIT 50'",
               required: true
             }
           }

@@ -218,7 +218,8 @@ module Nu
 
         def format_messages(messages, system_prompt:)
           # Convert from internal format to OpenAI format
-          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool', 'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
+          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool',
+          #             'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
           # OpenAI: { role: 'system'|'user'|'assistant'|'tool', content: '...' }
           # Note: Our 'tool' role maps directly to OpenAI's 'tool' role
 

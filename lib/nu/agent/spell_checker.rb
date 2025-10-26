@@ -4,6 +4,9 @@ module Nu
   module Agent
     class SpellChecker
       ACTOR = "spell_checker"
+      SYSTEM_PROMPT = "You are a spell checker. Fix ONLY misspelled words. " \
+                      "Do NOT change capitalization, grammar, punctuation, or style. " \
+                      "Return only the corrected text."
 
       def initialize(history:, conversation_id:, client:)
         @history = history
@@ -13,11 +16,16 @@ module Nu
 
       def check_spelling(text)
         # Add spell check request to history
+        prompt = <<~PROMPT
+          Fix ONLY misspelled words in the following text. Do NOT change capitalization, grammar, or punctuation. Return ONLY the corrected text with no explanations:
+
+          #{text}
+        PROMPT
         @history.add_message(
           conversation_id: @conversation_id,
           actor: ACTOR,
           role: "user",
-          content: "Fix ONLY misspelled words in the following text. Do NOT change capitalization, grammar, or punctuation. Return ONLY the corrected text with no explanations:\n\n#{text}",
+          content: prompt,
           redacted: true
         )
 
@@ -33,7 +41,7 @@ module Nu
         # Call gemini-2.5-flash to fix spelling
         response = @client.send_message(
           messages: spell_check_messages,
-          system_prompt: "You are a spell checker. Fix ONLY misspelled words. Do NOT change capitalization, grammar, punctuation, or style. Return only the corrected text."
+          system_prompt: SYSTEM_PROMPT
         )
 
         corrected_text = response["content"].strip

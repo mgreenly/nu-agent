@@ -172,7 +172,8 @@ module Nu
 
         def format_messages(messages)
           # Convert from internal format to Anthropic format
-          # Internal: { "actor" => '...', "role" => 'user'|'assistant'|'tool', "content" => '...', "tool_calls" => [...], "tool_result" => {...} }
+          # Internal: { "actor" => '...', "role" => 'user'|'assistant'|'tool',
+          #             "content" => '...', "tool_calls" => [...], "tool_result" => {...} }
           # Anthropic: { role: 'user'|'assistant', content: '...' or [...] }
           messages.map do |msg|
             # Translate our domain model to Anthropic's format

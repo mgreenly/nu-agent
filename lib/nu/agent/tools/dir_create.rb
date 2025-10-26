@@ -9,7 +9,8 @@ module Nu
         end
 
         def description
-          "PREFERRED tool for creating directories. Automatically creates parent directories if needed (like mkdir -p). " \
+          "PREFERRED tool for creating directories. " \
+            "Automatically creates parent directories if needed (like mkdir -p). " \
             "Safe to call if directory already exists (no error). " \
             "Use this to organize files into new directory structures."
         end

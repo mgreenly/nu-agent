@@ -11,7 +11,8 @@ module Nu
         def description
           "PREFERRED tool for listing database tables. " \
             "Use this to discover what conversation data is available to query. " \
-            "Returns table names that can be used with database_schema to see structure or database_query to retrieve data."
+            "Returns table names that can be used with database_schema to see structure " \
+            "or database_query to retrieve data."
         end
 
         def parameters

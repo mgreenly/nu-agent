@@ -11,7 +11,8 @@ module Nu
         def description
           "PREFERRED tool for editing files. Use exact string replacement instead of rewriting entire files. " \
             "Safer and more efficient than execute_bash with sed/awk commands. " \
-            "Works perfectly with file_read: read to see line numbers, then edit using line-based or string-based operations.\n" \
+            "Works perfectly with file_read: read to see line numbers, " \
+            "then edit using line-based or string-based operations.\n" \
             "\nPrimary mode - Exact string replacement:\n" \
             "- Provide old_string and new_string for precise edits\n" \
             "- By default replaces first occurrence (safe)\n" \
@@ -38,7 +39,8 @@ module Nu
             },
             old_string: {
               type: "string",
-              description: "Exact text to find and replace (must match exactly including whitespace). Use with new_string.",
+              description: "Exact text to find and replace (must match exactly including whitespace). " \
+                           "Use with new_string.",
               required: false
             },
             new_string: {
@@ -78,17 +80,20 @@ module Nu
             },
             insert_line: {
               type: "integer",
-              description: "Line number to insert content at (1-indexed). Content will be inserted before this line. Use with content parameter.",
+              description: "Line number to insert content at (1-indexed). " \
+                           "Content will be inserted before this line. Use with content parameter.",
               required: false
             },
             replace_range_start: {
               type: "integer",
-              description: "Starting line number for range replacement (1-indexed, inclusive). Use with replace_range_end and content.",
+              description: "Starting line number for range replacement (1-indexed, inclusive). " \
+                           "Use with replace_range_end and content.",
               required: false
             },
             replace_range_end: {
               type: "integer",
-              description: "Ending line number for range replacement (1-indexed, inclusive). Use with replace_range_start and content.",
+              description: "Ending line number for range replacement (1-indexed, inclusive). " \
+                           "Use with replace_range_start and content.",
               required: false
             }
           }
@@ -162,7 +167,9 @@ module Nu
             else
               {
                 status: "error",
-                error: "Must provide either: (old_string + new_string), append, prepend, (insert_after/insert_before + content), (insert_line + content), or (replace_range_start + replace_range_end + content)"
+                error: "Must provide either: (old_string + new_string), append, prepend, " \
+                       "(insert_after/insert_before + content), (insert_line + content), " \
+                       "or (replace_range_start + replace_range_end + content)"
               }
             end
           rescue StandardError => e
@@ -341,9 +348,10 @@ module Nu
 
           # Validate line number (1-indexed)
           if line_number < 1 || line_number > total_lines + 1
+            max_line = total_lines + 1
             return {
               status: "error",
-              error: "Invalid line number: #{line_number} (file has #{total_lines} lines, valid range: 1-#{total_lines + 1})"
+              error: "Invalid line number: #{line_number} (file has #{total_lines} lines, valid range: 1-#{max_line})"
             }
           end
 

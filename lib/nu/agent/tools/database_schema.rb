@@ -11,7 +11,8 @@ module Nu
         def description
           "PREFERRED tool for viewing table schemas. " \
             "Shows column names, types, and constraints for a specific table in the agent's history database. " \
-            "Use database_tables first to see available tables, then use this tool to understand table structure before querying with database_query."
+            "Use database_tables first to see available tables, " \
+            "then use this tool to understand table structure before querying with database_query."
         end
 
         def parameters
