@@ -21,7 +21,11 @@ module Nu
         def execute(arguments:, history:, context:)
           # Debug output
           if application = context['application']
-            application.output.debug("[database_tables] listing tables")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[database_tables] listing tables")
+
+            application.output.flush_buffer(buffer)
           end
 
           tables = history.list_tables

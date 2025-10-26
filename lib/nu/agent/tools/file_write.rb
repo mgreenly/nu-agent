@@ -53,8 +53,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[file_write] file: #{resolved_path}")
-            application.output.debug("[file_write] size: #{content.bytesize} bytes")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[file_write] file: #{resolved_path}")
+
+            buffer.debug("[file_write] size: #{content.bytesize} bytes")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

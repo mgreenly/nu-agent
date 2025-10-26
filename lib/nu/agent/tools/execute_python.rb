@@ -47,9 +47,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[execute_python] code length: #{code.length} chars")
-            application.output.debug("[execute_python] timeout: #{timeout_seconds}s")
-            application.output.debug("[execute_python] cwd: #{Dir.pwd}")
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[execute_python] code length: #{code.length} chars")
+            buffer.debug("[execute_python] timeout: #{timeout_seconds}s")
+            buffer.debug("[execute_python] cwd: #{Dir.pwd}")
+            application.output.flush_buffer(buffer)
           end
 
           stdout = ""

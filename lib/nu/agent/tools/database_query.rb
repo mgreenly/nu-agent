@@ -37,7 +37,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[database_query] sql: #{sql.length > 100 ? sql[0..100] + '...' : sql}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[database_query] sql: #{sql.length > 100 ? sql[0..100] + '...' : sql}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

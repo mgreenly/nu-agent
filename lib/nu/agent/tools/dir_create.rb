@@ -40,7 +40,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[dir_create] path: #{resolved_path}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[dir_create] path: #{resolved_path}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

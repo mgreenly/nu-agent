@@ -57,8 +57,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[dir_list] path: #{resolved_path}")
-            application.output.debug("[dir_list] show_hidden: #{show_hidden}, details: #{details}, sort_by: #{sort_by}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[dir_list] path: #{resolved_path}")
+
+            buffer.debug("[dir_list] show_hidden: #{show_hidden}, details: #{details}, sort_by: #{sort_by}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

@@ -57,8 +57,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[search_internet] query: #{query}")
-            application.output.debug("[search_internet] num_results: #{num_results}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[search_internet] query: #{query}")
+
+            buffer.debug("[search_internet] num_results: #{num_results}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

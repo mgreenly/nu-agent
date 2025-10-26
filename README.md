@@ -1,12 +1,13 @@
 # Nu::Agent
 
-A toy AI Agent learning experiment.
+A toy AI Personal/Coding Agent.
 
 ## Features
 
 - **Learning Friendly** - Debug modes, model switching, configurable verbosity, and conversation reset.
 - **Multi-Model Orchestration** - Uses Claude, GPT, Gemini, and Grok models. Routes specific tasks to specialized models.
 - **Rich Tool Library** - File operations, shell execution, Python REPL, database queries, directory traversal, and semantic grep.
+- **Google Search API** - Faster internet searhces vs using curl.
 - **Persistent Memory** - Conversations stored in DuckDB with message/exchange/session hierarchy.
 - **Retrieval Augmented Generation (RAG)** - Vector embeddings for conversation history and document stores. (wip)
 - **Background Intelligence** - Automatic conversation summarization with configurable models. (wip)

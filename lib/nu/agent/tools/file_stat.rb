@@ -40,7 +40,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[file_stat] path: #{resolved_path}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[file_stat] path: #{resolved_path}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

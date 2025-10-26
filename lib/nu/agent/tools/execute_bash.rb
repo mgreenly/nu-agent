@@ -43,9 +43,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[execute_bash] command: #{command}")
-            application.output.debug("[execute_bash] timeout: #{timeout_seconds}s")
-            application.output.debug("[execute_bash] cwd: #{Dir.pwd}")
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[execute_bash] command: #{command}")
+            buffer.debug("[execute_bash] timeout: #{timeout_seconds}s")
+            buffer.debug("[execute_bash] cwd: #{Dir.pwd}")
+            application.output.flush_buffer(buffer)
           end
 
           stdout = ""

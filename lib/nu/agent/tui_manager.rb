@@ -14,6 +14,8 @@ module Nu
         @input_buffer = String.new  # Mutable string
         @cursor_pos = 0
         @active = false
+        @scroll_offset = 0  # How many lines scrolled back from bottom
+        @mouse_enabled = true  # Toggle for mouse mode
 
         begin
           # Check if we can use curses
@@ -23,10 +25,16 @@ module Nu
 
           # Initialize curses
           Curses.init_screen
+
+          # Mark as active immediately after init_screen to prevent any stdout output
+          @active = true
+
           Curses.start_color
           Curses.cbreak
           Curses.noecho
           Curses.curs_set(1) # Show cursor
+          # Mouse mode enabled by default (can be toggled with Ctrl+M)
+          enable_mouse_mode
 
           # Get screen dimensions
           @screen_height = Curses.lines
@@ -54,7 +62,7 @@ module Nu
           # Configure input window
           @input_win.scrollok(false)
           @input_win.keypad(true) # Enable arrow keys, etc.
-          @input_win.nodelay(false) # Wait for input (blocking mode)
+          # Note: Blocking mode is the default, no need to set nodelay
 
           # Initialize color pairs
           Curses.init_pair(1, Curses::COLOR_RED, Curses::COLOR_BLACK)     # Error
@@ -69,10 +77,9 @@ module Nu
           @separator_win.refresh
           @input_win.refresh
 
-          @active = true
-
         rescue => e
           # Clean up if initialization failed
+          @active = false
           Curses.close_screen rescue nil
           raise "Failed to initialize TUI: #{e.message}"
         end
@@ -85,11 +92,16 @@ module Nu
           # Strip ANSI color codes
           clean_text = text.to_s.gsub(/\e\[[0-9;]*m/, '')
 
-          # Split text into lines
-          lines = clean_text.split("\n")
+          # Don't strip - preserve formatting
+          # Split text into lines (even empty ones for blank lines)
+          lines = clean_text.split("\n", -1)  # -1 keeps trailing empty strings
+
+          # Remove only the last line if it's empty AND there's more than one line
+          # (from trailing \n in multi-line text, but preserve intentional single blank lines)
+          lines.pop if lines.length > 1 && lines.last == ""
 
           lines.each do |line|
-            # Store in buffer for scrollback
+            # Store in buffer for scrollback (even empty lines)
             @output_buffer << line
 
             # Trim buffer if too large (keep last 1000 lines)
@@ -129,6 +141,51 @@ module Nu
         write_output(clean_text, color: :error)
       end
 
+      def write_buffer(lines)
+        return unless @active
+        return if lines.empty?
+
+        @mutex.synchronize do
+          # Leading blank line for separation
+          @output_buffer << ""
+          @output_win.attron(Curses.color_pair(2)) do
+            write_line_to_output("")
+          end
+
+          # Write all buffered lines atomically
+          lines.each do |line|
+            # Strip ANSI color codes
+            clean_text = line[:text].to_s.gsub(/\e\[[0-9;]*m/, '')
+
+            # Store in buffer (even empty lines for accurate history)
+            @output_buffer << clean_text
+            @output_buffer.shift if @output_buffer.length > 1000
+
+            # Write to window with appropriate color
+            case line[:type]
+            when :error
+              @output_win.attron(Curses.color_pair(1)) do
+                write_line_to_output(clean_text)
+              end
+            when :debug
+              @output_win.attron(Curses::A_DIM) do
+                write_line_to_output(clean_text)
+              end
+            else
+              @output_win.attron(Curses.color_pair(2)) do
+                write_line_to_output(clean_text)
+              end
+            end
+          end
+
+          # Reset scroll to bottom when new content arrives
+          @scroll_offset = 0
+
+          # Single refresh at the end
+          @output_win.refresh
+        end
+      end
+
       def readline(prompt = "> ")
         return nil unless @active
 
@@ -152,6 +209,9 @@ module Nu
               line = @input_buffer.dup
               @input_buffer = String.new  # Mutable string
               @cursor_pos = 0
+              # Clear input pane immediately after Enter
+              @input_win.clear
+              @input_win.refresh
               return line
             elsif ch == "\u007F" || ch == "\b" # Backspace
               if @cursor_pos > 0
@@ -162,7 +222,12 @@ module Nu
             elsif ch == "\u0003" # Ctrl-C
               raise Interrupt
             elsif ch == "\u0004" # Ctrl-D
-              return nil if @input_buffer.empty?
+              if @input_buffer.empty?
+                # Clear input pane before returning
+                @input_win.clear
+                @input_win.refresh
+                return nil
+              end
             elsif ch.ord >= 32 && ch.ord <= 126 # Printable
               @input_buffer.insert(@cursor_pos, ch)
               @cursor_pos += 1
@@ -175,6 +240,9 @@ module Nu
               line = @input_buffer.dup
               @input_buffer = String.new  # Mutable string
               @cursor_pos = 0
+              # Clear input pane immediately after Enter
+              @input_win.clear
+              @input_win.refresh
               return line
 
             when 127, 8, Curses::KEY_BACKSPACE # Backspace (various codes)
@@ -210,7 +278,17 @@ module Nu
               raise Interrupt
 
             when 4 # Ctrl-D
-              return nil if @input_buffer.empty?
+              if @input_buffer.empty?
+                # Clear input pane before returning
+                @input_win.clear
+                @input_win.refresh
+                return nil
+              end
+
+            when 20 # Ctrl-T (toggle mouse mode for text selection)
+              toggle_mouse_mode
+              show_mouse_toggle_message
+              redraw_input(prompt)
 
             when 32..126 # Printable characters
               char = ch.chr
@@ -221,8 +299,42 @@ module Nu
             when Curses::KEY_RESIZE
               handle_resize
               redraw_input(prompt)
+
+            when Curses::KEY_PPAGE # Page Up
+              scroll_output(-(@output_height - 1))
+              redraw_input(prompt)
+
+            when Curses::KEY_NPAGE # Page Down
+              scroll_output(@output_height - 1)
+              redraw_input(prompt)
+
+            when Curses::KEY_UP # Arrow Up (when not editing)
+              if @input_buffer.empty?
+                scroll_output(-1)
+                redraw_input(prompt)
+              end
+
+            when Curses::KEY_DOWN # Arrow Down (when not editing)
+              if @input_buffer.empty?
+                scroll_output(1)
+                redraw_input(prompt)
+              end
+
+            when Curses::KEY_MOUSE
+              handle_mouse_event
+              redraw_input(prompt)
             end
           end
+        end
+      end
+
+      def clear_output
+        return unless @active
+
+        @mutex.synchronize do
+          @output_buffer.clear
+          @output_win.clear
+          @output_win.refresh
         end
       end
 
@@ -237,15 +349,132 @@ module Nu
 
       private
 
+      def enable_mouse_mode
+        @mouse_enabled = true
+        Curses.mousemask(Curses::ALL_MOUSE_EVENTS | Curses::REPORT_MOUSE_POSITION)
+      end
+
+      def disable_mouse_mode
+        @mouse_enabled = false
+        Curses.mousemask(0)
+      end
+
+      def toggle_mouse_mode
+        if @mouse_enabled
+          disable_mouse_mode
+        else
+          enable_mouse_mode
+        end
+      end
+
+      def show_mouse_toggle_message
+        @mutex.synchronize do
+          # Show a brief message at the top of the output window
+          @output_win.setpos(0, 0)
+          message = if @mouse_enabled
+            " Mouse scrolling ON (Ctrl+T to disable for text selection) "
+          else
+            " Mouse scrolling OFF - You can now select & copy text (Ctrl+T to re-enable) "
+          end
+
+          @output_win.attron(Curses::A_REVERSE) do
+            @output_win.addstr(message)
+          end
+          @output_win.refresh
+
+          # Message will be cleared on next output or scroll
+        end
+      end
+
+      def scroll_output(lines)
+        @mutex.synchronize do
+          # lines < 0 means scroll up (back in history)
+          # lines > 0 means scroll down (toward present)
+          @scroll_offset = [@scroll_offset - lines, 0].max
+
+          # Don't scroll past the beginning
+          max_scroll = [@output_buffer.length - @output_height + 1, 0].max
+          @scroll_offset = [@scroll_offset, max_scroll].min
+
+          redraw_output_at_scroll
+        end
+      end
+
+      def handle_mouse_event
+        return unless @mouse_enabled
+
+        mouse = Curses.getmouse
+        return unless mouse
+
+        # Check if mouse is in output window
+        if mouse.y < @output_height
+          # Try multiple button constants for compatibility
+          # Button 4 = scroll up, Button 5 = scroll down
+          button4 = defined?(Curses::BUTTON4_PRESSED) ? Curses::BUTTON4_PRESSED : 0x00080000
+          button5 = defined?(Curses::BUTTON5_PRESSED) ? Curses::BUTTON5_PRESSED : 0x00200000
+
+          if mouse.bstate & button4 != 0
+            # Scroll up
+            scroll_output(-3)
+          elsif mouse.bstate & button5 != 0
+            # Scroll down
+            scroll_output(3)
+          end
+        end
+      rescue => e
+        # Ignore mouse errors silently
+      end
+
+      def redraw_output_at_scroll
+        @output_win.clear
+
+        # Calculate which lines to show
+        total_lines = @output_buffer.length
+        visible_height = @output_height - 1
+
+        # Determine start position in buffer
+        if @scroll_offset == 0
+          # At bottom - show last N lines
+          start_idx = [total_lines - visible_height, 0].max
+          lines_to_show = @output_buffer[start_idx..-1] || []
+        else
+          # Scrolled up - show from calculated position
+          start_idx = [total_lines - visible_height - @scroll_offset, 0].max
+          end_idx = start_idx + visible_height - 1
+          lines_to_show = @output_buffer[start_idx..end_idx] || []
+        end
+
+        # Draw the lines
+        lines_to_show.each do |line|
+          write_line_to_output(line)
+        end
+
+        # Show scroll indicator if not at bottom
+        if @scroll_offset > 0
+          indicator_text = " ↑#{@scroll_offset} PgDn/↓ to scroll down "
+          indicator_x = [@screen_width - indicator_text.length, 0].max
+          @output_win.setpos(0, indicator_x)
+          @output_win.attron(Curses::A_REVERSE) do
+            @output_win.addstr(indicator_text)
+          end
+        end
+
+        @output_win.refresh
+      end
+
       def write_line_to_output(line)
         # Handle long lines by wrapping
         if line.length > @screen_width
           line.scan(/.{1,#{@screen_width}}/).each do |chunk|
-            @output_win.addstr(chunk + "\n")
+            @output_win.addstr(chunk)
+            @output_win.addstr("\n")
           end
         else
-          @output_win.addstr(line + "\n")
+          @output_win.addstr(line)
+          @output_win.addstr("\n")
         end
+        # Explicitly scroll the window if needed
+        @output_win.scroll if @output_win.cury >= @output_height - 1
       end
 
       def draw_separator
@@ -306,12 +535,8 @@ module Nu
       end
 
       def redraw_output_buffer
-        @output_win.clear
-        # Show last N lines that fit in window
-        visible_lines = @output_buffer.last(@output_height - 1)
-        visible_lines.each do |line|
-          write_line_to_output(line)
-        end
+        # Use scroll-aware redraw
+        redraw_output_at_scroll
       end
     end
   end

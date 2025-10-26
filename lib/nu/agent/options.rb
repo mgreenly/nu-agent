@@ -8,7 +8,7 @@ module Nu
       def initialize(args = ARGV)
         @reset_model = nil
         @debug = false
-        @tui = false
+        @tui = true  # TUI enabled by default
         parse(args)
       end
 
@@ -26,8 +26,8 @@ module Nu
             @debug = true
           end
 
-          opts.on("--tui", "Enable split-pane terminal UI") do
-            @tui = true
+          opts.on("--no-tui", "Disable split-pane terminal UI (TUI is on by default)") do
+            @tui = false
           end
 
           opts.on("-v", "--version", "Show version") do

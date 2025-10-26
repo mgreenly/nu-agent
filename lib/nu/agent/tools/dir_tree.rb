@@ -51,8 +51,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[dir_tree] path: #{resolved_path}")
-            application.output.debug("[dir_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[dir_tree] path: #{resolved_path}")
+
+            buffer.debug("[dir_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

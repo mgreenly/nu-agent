@@ -35,7 +35,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[database_schema] table: #{table_name}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[database_schema] table: #{table_name}")
+
+            application.output.flush_buffer(buffer)
           end
 
           columns = history.describe_table(table_name)

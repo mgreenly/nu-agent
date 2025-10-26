@@ -80,8 +80,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[file_read] file: #{resolved_path}")
-            application.output.debug("[file_read] range: start=#{start_line}, end=#{end_line}, offset=#{offset}, limit=#{limit}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[file_read] file: #{resolved_path}")
+
+            buffer.debug("[file_read] range: start=#{start_line}, end=#{end_line}, offset=#{offset}, limit=#{limit}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

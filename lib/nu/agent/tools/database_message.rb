@@ -37,7 +37,11 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[database_message] message_id: #{message_id}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[database_message] message_id: #{message_id}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

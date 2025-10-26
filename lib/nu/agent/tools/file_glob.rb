@@ -66,8 +66,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[file_glob] pattern: #{full_pattern}")
-            application.output.debug("[file_glob] sort_by: #{sort_by}, limit: #{limit}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[file_glob] pattern: #{full_pattern}")
+
+            buffer.debug("[file_glob] sort_by: #{sort_by}, limit: #{limit}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

@@ -56,8 +56,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[file_move] source: #{resolved_source}")
-            application.output.debug("[file_move] destination: #{resolved_dest}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[file_move] source: #{resolved_source}")
+
+            buffer.debug("[file_move] destination: #{resolved_dest}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin

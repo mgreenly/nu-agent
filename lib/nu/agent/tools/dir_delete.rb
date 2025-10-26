@@ -46,8 +46,13 @@ module Nu
 
           # Debug output
           if application = context['application']
-            application.output.debug("[dir_delete] path: #{resolved_path}")
-            application.output.debug("[dir_delete] confirm: #{confirm}")
+
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.debug("[dir_delete] path: #{resolved_path}")
+
+            buffer.debug("[dir_delete] confirm: #{confirm}")
+
+            application.output.flush_buffer(buffer)
           end
 
           begin
