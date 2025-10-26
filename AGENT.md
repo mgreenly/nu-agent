@@ -18,6 +18,55 @@ Never write implementation code before writing the test that validates it.
 - Fix all offenses in new/modified code
 - Use `bundle exec rubocop -a` for auto-correctable offenses
 - Do not introduce new lint violations
+- Line length limit: 120 characters (configured in `.rubocop.yml`)
+
+## Code Style Preferences
+
+**Line Length Management:**
+
+When fixing line length violations, follow this priority order:
+
+1. **Use heredocs for long multi-line text** - Especially for help messages, prompts, and descriptions
+   ```ruby
+   # Good
+   help_text = <<~HELP
+     This is a long help message that spans
+     multiple lines with proper formatting.
+   HELP
+
+   # Avoid
+   text = "This is a long help message " \
+          "that spans multiple lines"
+   ```
+
+2. **Shorten variable names in code (not user-facing text)** - Before breaking lines
+   ```ruby
+   # Good - user sees full message, code is concise
+   completed = status["completed"]
+   total = status["total"]
+   puts "Status: #{completed}/#{total}"
+
+   # Avoid - breaking user-visible text
+   puts "Status: compl/tot"
+   ```
+
+3. **Never shorten user-facing text** - Only shorten internal identifiers
+   - ✓ User messages, help text, error messages → keep full text
+   - ✓ Variable names, parameter names → can be shortened
+   - ✗ Don't sacrifice clarity for brevity
+
+4. **Break lines as last resort** - After trying other approaches
+   ```ruby
+   # Acceptable when other options exhausted
+   output_line("Very long message text",
+               type: :debug)
+   ```
+
+**Other Style Guidelines:**
+
+- Use double quotes for strings (enforced by RuboCop)
+- Use meaningful but concise variable names
+- Extract intermediate variables to improve readability and reduce line length
 
 ## Workflow
 
