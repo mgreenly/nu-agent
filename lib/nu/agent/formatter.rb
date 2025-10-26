@@ -206,9 +206,11 @@ module Nu
         # Level 5: Show tools first
         if verbosity >= 5 && tools && !tools.empty?
           @console.puts("")
+          # Debug: inspect the first tool
+          @console.puts("\e[90mDEBUG first tool: #{tools.first.inspect}\e[0m")
           @console.puts("\e[90m--- Tools (#{tools.length} available) ---\e[0m")
           tools.each do |tool|
-            name = tool[:name] || tool["name"]
+            name = tool[:name] || tool["name"] || "UNKNOWN"
             @console.puts("\e[90m  - #{name}\e[0m")
           end
         end
