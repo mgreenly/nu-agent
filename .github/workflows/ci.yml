@@ -38,6 +38,14 @@ jobs:
           bundle config build.duckdb --with-duckdb-dir=$HOME/duckdb
           bundle install
 
+      - name: Setup test API keys
+        run: |
+          mkdir -p $HOME/.secrets
+          echo "test-anthropic-key" > $HOME/.secrets/ANTHROPIC_API_KEY
+          echo "test-openai-key" > $HOME/.secrets/OPENAI_API_KEY
+          echo "test-gemini-key" > $HOME/.secrets/GEMINI_API_KEY
+          echo "test-xai-key" > $HOME/.secrets/XAI_API_KEY
+
       - name: Run tests
         run: bundle exec rspec
 
