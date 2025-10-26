@@ -614,6 +614,7 @@ module Nu
 
           # /model without arguments - show current models
           if parts.length == 1
+            @console.puts("")
             output_line("Current Models:", type: :debug)
             output_line("  Orchestrator:  #{@orchestrator.model}", type: :debug)
             output_line("  Spellchecker:  #{@spellchecker.model}", type: :debug)
@@ -623,6 +624,7 @@ module Nu
 
           # /model <subcommand> <name>
           if parts.length < 3
+            @console.puts("")
             output_line("Usage:", type: :debug)
             output_line("  /model                        Show current models", type: :debug)
             output_line("  /model orchestrator <name>    Set orchestrator model", type: :debug)
@@ -665,6 +667,7 @@ module Nu
               @formatter.orchestrator = new_client
               @history.set_config("model_orchestrator", new_model_name)
 
+              @console.puts("")
               output_line("Switched orchestrator to: #{@orchestrator.name} (#{@orchestrator.model})", type: :debug)
             end
 
@@ -674,8 +677,10 @@ module Nu
               new_client = ClientFactory.create(new_model_name)
               @spellchecker = new_client
               @history.set_config("model_spellchecker", new_model_name)
+              @console.puts("")
               output_line("Switched spellchecker to: #{new_model_name}", type: :debug)
             rescue Error => e
+              @console.puts("")
               output_line("Error: #{e.message}", type: :error)
             end
 
@@ -685,13 +690,16 @@ module Nu
               new_client = ClientFactory.create(new_model_name)
               @summarizer = new_client
               @history.set_config("model_summarizer", new_model_name)
+              @console.puts("")
               output_line("Switched summarizer to: #{new_model_name}", type: :debug)
               output_line("Note: Change takes effect at the start of the next session (/reset)", type: :debug)
             rescue Error => e
+              @console.puts("")
               output_line("Error: #{e.message}", type: :error)
             end
 
           else
+            @console.puts("")
             output_line("Unknown subcommand: #{subcommand}", type: :debug)
             output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :debug)
           end
@@ -703,6 +711,7 @@ module Nu
         if input.downcase.start_with?("/redaction")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
+            @console.puts("")
             output_line("Usage: /redaction <on|off>", type: :debug)
             output_line("Current: redaction=#{@redact ? 'on' : 'off'}", type: :debug)
             return :continue
@@ -712,12 +721,15 @@ module Nu
           if setting == "on"
             @redact = true
             history.set_config("redaction", "true")
+            @console.puts("")
             output_line("redaction=on", type: :debug)
           elsif setting == "off"
             @redact = false
             history.set_config("redaction", "false")
+            @console.puts("")
             output_line("redaction=off", type: :debug)
           else
+            @console.puts("")
             output_line("Invalid option. Use: /redaction <on|off>", type: :debug)
           end
 
@@ -728,6 +740,7 @@ module Nu
         if input.downcase.start_with?("/summarizer")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
+            @console.puts("")
             output_line("Usage: /summarizer <on|off>", type: :debug)
             output_line("Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}", type: :debug)
             return :continue
@@ -737,13 +750,16 @@ module Nu
           if setting == "on"
             @summarizer_enabled = true
             history.set_config("summarizer_enabled", "true")
+            @console.puts("")
             output_line("summarizer=on", type: :debug)
             output_line("Summarizer will start on next /reset", type: :debug)
           elsif setting == "off"
             @summarizer_enabled = false
             history.set_config("summarizer_enabled", "false")
+            @console.puts("")
             output_line("summarizer=off", type: :debug)
           else
+            @console.puts("")
             output_line("Invalid option. Use: /summarizer <on|off>", type: :debug)
           end
 
@@ -754,6 +770,7 @@ module Nu
         if input.downcase.start_with?("/spellcheck")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
+            @console.puts("")
             output_line("Usage: /spellcheck <on|off>", type: :debug)
             output_line("Current: spellcheck=#{@spell_check_enabled ? 'on' : 'off'}", type: :debug)
             return :continue
@@ -763,12 +780,15 @@ module Nu
           if setting == "on"
             @spell_check_enabled = true
             history.set_config("spell_check_enabled", "true")
+            @console.puts("")
             output_line("spellcheck=on", type: :debug)
           elsif setting == "off"
             @spell_check_enabled = false
             history.set_config("spell_check_enabled", "false")
+            @console.puts("")
             output_line("spellcheck=off", type: :debug)
           else
+            @console.puts("")
             output_line("Invalid option. Use: /spellcheck <on|off>", type: :debug)
           end
 
@@ -779,6 +799,7 @@ module Nu
         if input.downcase.start_with?("/index-man")
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
+            @console.puts("")
             output_line("Usage: /index-man <on|off|reset>", type: :debug)
             enabled = history.get_config("index_man_enabled") == "true"
             output_line("Current: index-man=#{enabled ? 'on' : 'off'}", type: :debug)
@@ -804,6 +825,7 @@ module Nu
           case setting
           when "on"
             history.set_config("index_man_enabled", "true")
+            @console.puts("")
             output_line("index-man=on", type: :debug)
             output_line("Starting man page indexer...", type: :debug)
 
@@ -820,6 +842,7 @@ module Nu
 
           when "off"
             history.set_config("index_man_enabled", "false")
+            @console.puts("")
             output_line("index-man=off", type: :debug)
             output_line("Indexer will stop after current batch completes", type: :debug)
 
@@ -836,6 +859,7 @@ module Nu
             # Stop indexing if running
             if history.get_config("index_man_enabled") == "true"
               history.set_config("index_man_enabled", "false")
+              @console.puts("")
               output_line("Stopping indexer before reset...", type: :debug)
               sleep(1) # Give worker time to stop
             end
@@ -859,6 +883,7 @@ module Nu
 
             output_line("Reset complete: Cleared #{count} man page embeddings", type: :debug)
           else
+            @console.puts("")
             output_line("Invalid option. Use: /index-man <on|off|reset>", type: :debug)
           end
 
@@ -935,6 +960,7 @@ module Nu
           @conversation_id = history.create_conversation
           @session_start_time = Time.now
           formatter.reset_session(conversation_id: @conversation_id)
+          @console.puts("")
           output_line("Conversation reset", type: :debug)
 
           # Start background summarization worker
@@ -957,12 +983,14 @@ module Nu
           print_help
           :continue
         else
+          @console.puts("")
           output_line("Unknown command: #{input}", type: :debug)
           :continue
         end
       end
 
       def print_help
+        @console.puts("")
         output_lines(
           "Available commands:",
           "  /clear                         - Clear the screen",
@@ -995,6 +1023,7 @@ module Nu
       end
 
       def run_fix
+        @console.puts("")
         output_line("Scanning database for corruption...", type: :debug)
 
         corrupted = history.find_corrupted_messages
@@ -1026,6 +1055,7 @@ module Nu
       end
 
       def run_migrate_exchanges
+        @console.puts("")
         output_line("This will analyze all messages and group them into exchanges.", type: :debug)
         output_line("Existing exchanges will NOT be affected.", type: :debug)
 
@@ -1052,6 +1082,7 @@ module Nu
       end
 
       def print_info
+        @console.puts("")
         output_line("Version:       #{Nu::Agent::VERSION}", type: :debug)
 
         # Models section
@@ -1086,6 +1117,7 @@ module Nu
       end
 
       def print_models
+        @console.puts("")
         models = ClientFactory.display_models
 
         # Get defaults from each client
@@ -1110,6 +1142,7 @@ module Nu
       def print_tools
         tool_registry = ToolRegistry.new
 
+        @console.puts("")
         output_line("Available Tools:", type: :debug)
         tool_registry.all.each do |tool|
           # Get first sentence of description
