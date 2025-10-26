@@ -64,14 +64,6 @@ module Nu
           # Build full glob pattern
           full_pattern = File.join(base_path, pattern)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[file_glob] pattern: #{full_pattern}\e[0m")
-
-            application.console.puts("\e[90m[file_glob] sort_by: #{sort_by}, limit: #{limit}\e[0m")
-          end
-
           begin
             # Find matching files (excluding directories)
             files = Dir.glob(full_pattern, File::FNM_PATHNAME).select { |f| File.file?(f) }

@@ -35,12 +35,6 @@ module Nu
             }
           end
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[database_query] sql: #{sql.length > 100 ? "#{sql[0..100]}..." : sql}\e[0m")
-          end
-
           begin
             rows = history.execute_query(sql)
 

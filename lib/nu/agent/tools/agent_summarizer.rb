@@ -18,10 +18,6 @@ module Nu
         end
 
         def execute(arguments:, history:, context:)
-          # Debug output
-          application = context["application"]
-          application.console.puts("\e[90m[agent_summarizer] checking status\e[0m") if application&.debug
-
           # Get the Application instance from context
           # The context includes the Application's summarizer_status and status_mutex
           application = context["application"]

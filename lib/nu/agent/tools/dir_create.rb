@@ -40,7 +40,6 @@ module Nu
 
           # Debug output
           application = context["application"]
-          application.console.puts("\e[90m[dir_create] path: #{resolved_path}\e[0m") if application&.debug
 
           begin
             # Check if it already exists

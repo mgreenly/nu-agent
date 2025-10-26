@@ -31,18 +31,10 @@ RSpec.describe Nu::Agent::Tools::AgentSummarizer do
   let(:context) { { "application" => mock_application } }
 
   describe "#execute" do
-    context "with debug mode enabled" do
-      it "outputs debug info via console.puts instead of OutputBuffer" do
-        expect(mock_console).to receive(:puts).with("\e[90m[agent_summarizer] checking status\e[0m")
-
-        tool.execute(arguments: {}, history: mock_history, context: context)
-      end
-
-      it "does not reference OutputBuffer class" do
-        # This test ensures OutputBuffer is not used in the tool code
-        tool_source = File.read("lib/nu/agent/tools/agent_summarizer.rb")
-        expect(tool_source).not_to include("OutputBuffer")
-      end
+    it "does not reference OutputBuffer class" do
+      # This test ensures OutputBuffer is not used in the tool code
+      tool_source = File.read("lib/nu/agent/tools/agent_summarizer.rb")
+      expect(tool_source).not_to include("OutputBuffer")
     end
 
     context "when application is not in context" do

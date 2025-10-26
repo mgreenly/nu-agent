@@ -19,10 +19,6 @@ module Nu
         end
 
         def execute(arguments:, history:, context:)
-          # Debug output
-          application = context["application"]
-          application.console.puts("\e[90m[man_indexer] checking status\e[0m") if application&.debug
-
           # Get the Application instance from context
           application = context["application"]
 

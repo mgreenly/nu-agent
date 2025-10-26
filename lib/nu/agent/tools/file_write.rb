@@ -51,14 +51,6 @@ module Nu
           resolved_path = resolve_path(file_path)
           validate_path(resolved_path)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[file_write] file: #{resolved_path}\e[0m")
-
-            application.console.puts("\e[90m[file_write] size: #{content.bytesize} bytes\e[0m")
-          end
-
           begin
             # Create parent directory if it doesn't exist
             dir = File.dirname(resolved_path)

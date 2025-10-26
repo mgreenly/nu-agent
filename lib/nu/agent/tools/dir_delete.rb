@@ -44,14 +44,6 @@ module Nu
           resolved_path = resolve_path(dir_path)
           validate_path(resolved_path)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[dir_delete] path: #{resolved_path}\e[0m")
-
-            application.console.puts("\e[90m[dir_delete] confirm: #{confirm}\e[0m")
-          end
-
           begin
             unless Dir.exist?(resolved_path)
               return {

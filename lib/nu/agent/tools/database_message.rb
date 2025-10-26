@@ -37,7 +37,6 @@ module Nu
 
           # Debug output
           application = context["application"]
-          application.console.puts("\e[90m[database_message] message_id: #{message_id}\e[0m") if application&.debug
 
           begin
             message = history.get_message_by_id(message_id, conversation_id: conversation_id)

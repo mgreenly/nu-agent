@@ -49,14 +49,6 @@ module Nu
           resolved_path = resolve_path(dir_path)
           validate_path(resolved_path)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[file_tree] path: #{resolved_path}\e[0m")
-
-            application.console.puts("\e[90m[file_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}\e[0m")
-          end
-
           begin
             unless File.exist?(resolved_path)
               return {

@@ -54,14 +54,6 @@ module Nu
           validate_path(resolved_source)
           validate_path(resolved_dest)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[file_copy] source: #{resolved_source}\e[0m")
-
-            application.console.puts("\e[90m[file_copy] destination: #{resolved_dest}\e[0m")
-          end
-
           begin
             unless File.exist?(resolved_source)
               return {

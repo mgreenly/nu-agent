@@ -45,16 +45,6 @@ module Nu
           # Clamp timeout to reasonable range
           timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[execute_python] code length: #{code.length} chars\e[0m")
-
-            application.console.puts("\e[90m[execute_python] timeout: #{timeout_seconds}s\e[0m")
-
-            application.console.puts("\e[90m[execute_python] cwd: #{Dir.pwd}\e[0m")
-          end
-
           stdout = ""
           stderr = ""
           exit_code = nil

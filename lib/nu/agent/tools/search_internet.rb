@@ -55,14 +55,6 @@ module Nu
           # Validate num_results range
           num_results = [[num_results.to_i, 1].max, 10].min
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("")
-            application.console.puts("\e[90m[search_internet] query: #{query}\e[0m")
-            application.console.puts("\e[90m[search_internet] num_results: #{num_results}\e[0m")
-          end
-
           begin
             # Read credentials from file
             credentials = load_credentials

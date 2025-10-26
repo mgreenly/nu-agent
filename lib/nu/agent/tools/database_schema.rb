@@ -35,7 +35,6 @@ module Nu
 
           # Debug output
           application = context["application"]
-          application.console.puts("\e[90m[database_schema] table: #{table_name}\e[0m") if application&.debug
 
           columns = history.describe_table(table_name)
 

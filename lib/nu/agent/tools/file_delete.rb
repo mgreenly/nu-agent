@@ -39,7 +39,6 @@ module Nu
 
           # Debug output
           application = context["application"]
-          application.console.puts("\e[90m[file_delete] file: #{resolved_path}\e[0m") if application&.debug
 
           begin
             unless File.exist?(resolved_path)

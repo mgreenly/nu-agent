@@ -55,14 +55,6 @@ module Nu
           resolved_path = resolve_path(dir_path)
           validate_path(resolved_path)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[dir_list] path: #{resolved_path}\e[0m")
-
-            application.console.puts("\e[90m[dir_list] show_hidden: #{show_hidden}, details: #{details}, sort_by: #{sort_by}\e[0m")
-          end
-
           begin
             unless File.exist?(resolved_path)
               return {

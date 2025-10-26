@@ -78,13 +78,6 @@ module Nu
           # Resolve file path
           resolved_path = resolve_path(file_path)
 
-          # Debug output
-          application = context["application"]
-          if application&.debug
-            application.console.puts("\e[90m[file_read] file: #{resolved_path}\e[0m")
-            application.console.puts("\e[90m[file_read] range: start=#{start_line}, end=#{end_line}, offset=#{offset}, limit=#{limit}\e[0m")
-          end
-
           begin
             # Check if file exists and is readable
             unless File.exist?(resolved_path)

@@ -21,7 +21,6 @@ module Nu
         def execute(arguments:, history:, context:)
           # Debug output
           application = context["application"]
-          application.console.puts("\e[90m[database_tables] listing tables\e[0m") if application&.debug
 
           tables = history.list_tables
 
