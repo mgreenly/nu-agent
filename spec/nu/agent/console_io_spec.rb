@@ -43,6 +43,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
   describe "#puts" do
     it "adds text to output queue" do
+      allow(pipe_write).to receive(:write)
       console.puts("Hello, world!")
       queue = console.instance_variable_get(:@output_queue)
       expect(queue.pop).to eq("Hello, world!")
@@ -54,6 +55,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
     end
 
     it "handles multiple concurrent puts calls safely" do
+      allow(pipe_write).to receive(:write)
       threads = 10.times.map do
         Thread.new { console.puts("Thread message") }
       end
@@ -68,15 +70,18 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
   describe "#drain_output_queue" do
     before do
-      allow(pipe_read).to receive(:read_nonblock).and_raise(IO::WaitReadable)
+      allow(pipe_write).to receive(:write)
     end
 
     it "returns empty array when queue is empty" do
+      # Stub read_nonblock to return empty to simulate no signals
+      allow(pipe_read).to receive(:read_nonblock).with(1024).and_return("")
       result = console.send(:drain_output_queue)
       expect(result).to eq([])
     end
 
     it "drains all queued messages" do
+      allow(pipe_read).to receive(:read_nonblock).with(1024).and_return("")
       queue = console.instance_variable_get(:@output_queue)
       queue.push("Line 1")
       queue.push("Line 2")
@@ -127,7 +132,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
     context "with Backspace" do
       it "deletes character before cursor" do
-        console.instance_variable_set(:@input_buffer, "hello")
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
         console.instance_variable_set(:@cursor_pos, 5)
         console.send(:parse_input, "\x7F")
         expect(console.instance_variable_get(:@input_buffer)).to eq("hell")
@@ -135,7 +140,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
 
       it "does nothing when cursor is at start" do
-        console.instance_variable_set(:@input_buffer, "hello")
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
         console.instance_variable_set(:@cursor_pos, 0)
         console.send(:parse_input, "\x7F")
         expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
@@ -145,7 +150,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
     context "with printable characters" do
       it "inserts character at end" do
-        console.instance_variable_set(:@input_buffer, "")
+        console.instance_variable_set(:@input_buffer, String.new(""))
         console.instance_variable_set(:@cursor_pos, 0)
         console.send(:parse_input, "a")
         expect(console.instance_variable_get(:@input_buffer)).to eq("a")
@@ -153,7 +158,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
 
       it "inserts multiple characters" do
-        console.instance_variable_set(:@input_buffer, "")
+        console.instance_variable_set(:@input_buffer, String.new(""))
         console.instance_variable_set(:@cursor_pos, 0)
         console.send(:parse_input, "hello")
         expect(console.instance_variable_get(:@input_buffer)).to eq("hello")
@@ -179,14 +184,15 @@ RSpec.describe Nu::Agent::ConsoleIO do
       console.send(:redraw_input_line, "> ")
 
       output = stdout.string
-      # Cursor should be at column 4 (prompt ">" + space = 2, cursor_pos = 2, total = 4)
-      expect(output).to match(/\e\[4G/)
+      # Cursor should be at column 5 (prompt "> " = 2 chars, cursor_pos = 2, col = 2 + 2 + 1 = 5)
+      expect(output).to match(/\e\[5G/)
     end
   end
 
   describe "#show_spinner" do
     it "switches to spinner mode" do
-      allow(stdin).to receive(:read_nonblock).and_raise(IO::WaitReadable)
+      allow(stdin).to receive(:wait_readable).and_return(nil)
+      allow(stdin).to receive(:read_nonblock).and_raise(Errno::EAGAIN)
       allow(IO).to receive(:select).and_return(nil)
 
       console.show_spinner("Thinking...")
@@ -201,8 +207,9 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
   describe "#hide_spinner" do
     it "stops spinner and clears line" do
+      allow(stdin).to receive(:wait_readable).and_return(nil)
       console.instance_variable_set(:@spinner_running, true)
-      console.instance_variable_set(:@spinner_thread, Thread.new { sleep })
+      console.instance_variable_set(:@spinner_thread, Thread.new { sleep 0.1 })
 
       console.hide_spinner
 
@@ -214,7 +221,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
   describe "#handle_output_for_input_mode" do
     before do
-      allow(pipe_read).to receive(:read_nonblock).and_raise(IO::WaitReadable)
+      allow(pipe_read).to receive(:read_nonblock).with(1024).and_return("")
+      allow(pipe_write).to receive(:write)
     end
 
     it "clears input line, writes output, and redraws input" do
@@ -260,7 +268,6 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "thread safety" do
     it "handles concurrent output calls safely" do
       allow(pipe_write).to receive(:write)
-      allow(pipe_read).to receive(:read_nonblock).and_raise(IO::WaitReadable)
 
       threads = 100.times.map do |i|
         Thread.new { console.puts("Message #{i}") }
