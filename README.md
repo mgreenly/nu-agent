@@ -3,7 +3,7 @@
 [![Tests](https://github.com/mgreenly/nu-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/ci.yml)
 [![Lint](https://github.com/mgreenly/nu-agent/actions/workflows/lint.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/lint.yml)
 
-A toy AI Personal/Coding Agent.
+A toy AI Agent!
 
 ## Features
 
