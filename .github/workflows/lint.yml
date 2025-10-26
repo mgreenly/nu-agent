@@ -22,7 +22,12 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Install Rubocop
+        run: |
+          gem install rubocop -v 1.81.6
+          gem install rubocop-ast -v 1.47.1
 
       - name: Run Rubocop
-        run: bundle exec rubocop
+        run: rubocop
