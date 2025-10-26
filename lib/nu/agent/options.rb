@@ -8,7 +8,7 @@ module Nu
       def initialize(args = ARGV)
         @reset_model = nil
         @debug = false
-        @tui = true  # TUI enabled by default
+        @tui = true # TUI enabled by default
         parse(args)
       end
 
@@ -53,10 +53,10 @@ module Nu
         xai_default = Nu::Agent::Clients::XAI::DEFAULT_MODEL
 
         # Mark defaults with asterisk
-        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(', ')
-        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(', ')
-        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(', ')
-        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(', ')
+        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(", ")
+        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(", ")
+        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(", ")
+        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(", ")
 
         puts "\nAvailable Models (* = default):"
         puts "  Anthropic: #{anthropic_list}"

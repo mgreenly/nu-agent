@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Spinner
-      FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'].freeze
+      FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"].freeze
       FRAME_INTERVAL = 0.1 # seconds
 
       def initialize(message = "")

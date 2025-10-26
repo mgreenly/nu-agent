@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'open3'
+require "open3"
 
 module Nu
   module Agent
@@ -12,9 +12,9 @@ module Nu
 
         def description
           "Execute bash commands directly on the host system. " \
-          "Perfect for: system operations, running CLI tools, file operations, data processing, testing commands. " \
-          "Commands run in the current working directory with full system access. " \
-          "File system permissions apply normally - operations will fail with errors if permissions are insufficient."
+            "Perfect for: system operations, running CLI tools, file operations, data processing, testing commands. " \
+            "Commands run in the current working directory with full system access. " \
+            "File system permissions apply normally - operations will fail with errors if permissions are insufficient."
         end
 
         def parameters
@@ -42,8 +42,8 @@ module Nu
           timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[execute_bash] command: #{command}\e[0m")
 
             application.console.puts("\e[90m[execute_bash] timeout: #{timeout_seconds}s\e[0m")
@@ -57,12 +57,11 @@ module Nu
 
           begin
             # Use timeout command with bash
-            cmd = ['timeout', "#{timeout_seconds}s", 'bash', '-c', command]
+            cmd = ["timeout", "#{timeout_seconds}s", "bash", "-c", command]
 
             # Execute command
             stdout, stderr, status = Open3.capture3(*cmd, chdir: Dir.pwd)
             exit_code = status.exitstatus
-
           rescue StandardError => e
             stderr = "Execution failed: #{e.message}"
             exit_code = 1
@@ -70,15 +69,13 @@ module Nu
 
           # Check if command timed out (exit code 124 from timeout command)
           timed_out = (exit_code == 124)
-          if timed_out
-            stderr = "Command timed out after #{timeout_seconds} seconds"
-          end
+          stderr = "Command timed out after #{timeout_seconds} seconds" if timed_out
 
           {
             stdout: stdout,
             stderr: stderr,
             exit_code: exit_code,
-            success: exit_code == 0,
+            success: exit_code.zero?,
             timed_out: timed_out
           }
         end

@@ -5,9 +5,9 @@ module Nu
     class History
       attr_reader :db_path
 
-      def initialize(db_path: ENV['NUAGENT_DATABASE'] || File.join(Dir.home, '.nuagent', 'memory.db'))
+      def initialize(db_path: ENV["NUAGENT_DATABASE"] || File.join(Dir.home, ".nuagent", "memory.db"))
         @db_path = db_path
-        @connection_mutex = Mutex.new  # Only for managing connection pool
+        @connection_mutex = Mutex.new # Only for managing connection pool
         ensure_db_directory(db_path)
         @db = DuckDB::Database.open(db_path)
         @connections = {}
@@ -36,15 +36,20 @@ module Nu
         result = block.call
         conn.query("COMMIT")
         result
-      rescue => e
-        conn.query("ROLLBACK") rescue nil
+      rescue StandardError => e
+        begin
+          conn.query("ROLLBACK")
+        rescue StandardError
+          nil
+        end
         raise e
       end
 
-      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true, tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil, redacted: false, exchange_id: nil)
-        tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : 'NULL'
-        tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : 'NULL'
-        error_json = error ? "'#{escape_sql(JSON.generate(error))}'" : 'NULL'
+      def add_message(conversation_id:, actor:, role:, content:, model: nil, include_in_context: true,
+                      tokens_input: nil, tokens_output: nil, spend: nil, tool_calls: nil, tool_call_id: nil, tool_result: nil, error: nil, redacted: false, exchange_id: nil)
+        tool_calls_json = tool_calls ? "'#{escape_sql(JSON.generate(tool_calls))}'" : "NULL"
+        tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : "NULL"
+        error_json = error ? "'#{escape_sql(JSON.generate(error))}'" : "NULL"
 
         connection.query(<<~SQL)
           INSERT INTO messages (
@@ -175,18 +180,18 @@ module Nu
 
         row = rows.first
         {
-          'id' => row[0],
-          'actor' => row[1],
-          'role' => row[2],
-          'content' => row[3],
-          'model' => row[4],
-          'tokens_input' => row[5],
-          'tokens_output' => row[6],
-          'tool_calls' => row[7] ? JSON.parse(row[7]) : nil,
-          'tool_call_id' => row[8],
-          'tool_result' => row[9] ? JSON.parse(row[9]) : nil,
-          'error' => row[10] ? JSON.parse(row[10]) : nil,
-          'created_at' => row[11]
+          "id" => row[0],
+          "actor" => row[1],
+          "role" => row[2],
+          "content" => row[3],
+          "model" => row[4],
+          "tokens_input" => row[5],
+          "tokens_output" => row[6],
+          "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
+          "tool_call_id" => row[8],
+          "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
+          "error" => row[10] ? JSON.parse(row[10]) : nil,
+          "created_at" => row[11]
         }
       end
 
@@ -235,15 +240,15 @@ module Nu
 
         updates.each do |key, value|
           case key.to_s
-          when 'status', 'summary', 'summary_model', 'error', 'assistant_message'
+          when "status", "summary", "summary_model", "error", "assistant_message"
             set_clauses << "#{key} = '#{escape_sql(value)}'"
-          when 'completed_at'
-            if value.is_a?(Time)
-              set_clauses << "#{key} = '#{value.strftime('%Y-%m-%d %H:%M:%S.%6N')}'"
-            else
-              set_clauses << "#{key} = CURRENT_TIMESTAMP"
-            end
-          when 'tokens_input', 'tokens_output', 'spend', 'message_count', 'tool_call_count'
+          when "completed_at"
+            set_clauses << if value.is_a?(Time)
+                             "#{key} = '#{value.strftime('%Y-%m-%d %H:%M:%S.%6N')}'"
+                           else
+                             "#{key} = CURRENT_TIMESTAMP"
+                           end
+          when "tokens_input", "tokens_output", "spend", "message_count", "tool_call_count"
             set_clauses << "#{key} = #{value || 'NULL'}"
           end
         end
@@ -260,18 +265,14 @@ module Nu
       def complete_exchange(exchange_id:, summary: nil, assistant_message: nil, metrics: {})
         set_clauses = ["status = 'completed'", "completed_at = CURRENT_TIMESTAMP"]
 
-        if summary
-          set_clauses << "summary = '#{escape_sql(summary)}'"
-        end
+        set_clauses << "summary = '#{escape_sql(summary)}'" if summary
 
-        if assistant_message
-          set_clauses << "assistant_message = '#{escape_sql(assistant_message)}'"
-        end
+        set_clauses << "assistant_message = '#{escape_sql(assistant_message)}'" if assistant_message
 
         # Add metrics
         metrics.each do |key, value|
           case key.to_s
-          when 'tokens_input', 'tokens_output', 'spend', 'message_count', 'tool_call_count'
+          when "tokens_input", "tokens_output", "spend", "message_count", "tool_call_count"
             set_clauses << "#{key} = #{value || 'NULL'}"
           end
         end
@@ -377,7 +378,7 @@ module Nu
         conversations = get_all_conversations
 
         conversations.each do |conv|
-          conv_id = conv['id']
+          conv_id = conv["id"]
 
           # Get all messages for this conversation (not just current session)
           result = connection.query(<<~SQL)
@@ -414,7 +415,7 @@ module Nu
 
           messages.each do |msg|
             # Start new exchange on user messages (excluding spell_checker)
-            if msg['role'] == 'user' && msg['actor'] != 'spell_checker'
+            if msg["role"] == "user" && msg["actor"] != "spell_checker"
               # Finalize previous exchange if exists
               if current_exchange_id && !exchange_messages.empty?
                 finalize_exchange(current_exchange_id, exchange_messages)
@@ -424,13 +425,13 @@ module Nu
               # Create new exchange
               current_exchange_id = create_exchange(
                 conversation_id: conv_id,
-                user_message: msg['content'] || ''
+                user_message: msg["content"] || ""
               )
               stats[:exchanges_created] += 1
               exchange_messages = [msg]
-            else
+            elsif current_exchange_id
               # Add to current exchange (if one exists)
-              exchange_messages << msg if current_exchange_id
+              exchange_messages << msg
             end
           end
 
@@ -450,19 +451,19 @@ module Nu
 
       def finalize_exchange(exchange_id, messages)
         # Calculate metrics from messages
-        tokens_input = messages.map { |m| m['tokens_input'] || 0 }.max || 0
-        tokens_output = messages.sum { |m| m['tokens_output'] || 0 }
-        spend = messages.sum { |m| m['spend'] || 0.0 }
-        tool_call_count = messages.count { |m| m['tool_calls'] && !m['tool_calls'].empty? }
+        tokens_input = messages.map { |m| m["tokens_input"] || 0 }.max || 0
+        tokens_output = messages.sum { |m| m["tokens_output"] || 0 }
+        spend = messages.sum { |m| m["spend"] || 0.0 }
+        tool_call_count = messages.count { |m| m["tool_calls"] && !m["tool_calls"].empty? }
 
         # Find final assistant message (last assistant message with content, no tool_calls)
         assistant_msg = messages.reverse.find do |m|
-          m['role'] == 'assistant' && m['content'] && !m['content'].empty? && !m['tool_calls']
+          m["role"] == "assistant" && m["content"] && !m["content"].empty? && !m["tool_calls"]
         end
 
         # Get timestamps from messages (they're already Time objects)
-        started_at = messages.first['created_at']
-        completed_at = messages.last['created_at']
+        started_at = messages.first["created_at"]
+        completed_at = messages.last["created_at"]
 
         # Convert to Time if they're strings
         started_at = Time.parse(started_at) if started_at.is_a?(String)
@@ -480,7 +481,7 @@ module Nu
           "tool_call_count = #{tool_call_count}"
         ]
 
-        if assistant_msg && assistant_msg['content']
+        if assistant_msg && assistant_msg["content"]
           set_clauses << "assistant_message = '#{escape_sql(assistant_msg['content'])}'"
         end
 
@@ -492,7 +493,7 @@ module Nu
 
         # Update all messages with this exchange_id
         messages.each do |msg|
-          update_message_exchange_id(message_id: msg['id'], exchange_id: exchange_id)
+          update_message_exchange_id(message_id: msg["id"], exchange_id: exchange_id)
         end
       end
 
@@ -538,8 +539,8 @@ module Nu
 
         result.map do |row|
           {
-            'id' => row[0],
-            'created_at' => row[1]
+            "id" => row[0],
+            "created_at" => row[1]
           }
         end
       end
@@ -624,7 +625,7 @@ module Nu
         SQL
 
         result.map do |row|
-          { 'kind' => row[0], 'count' => row[1] }
+          { "kind" => row[0], "count" => row[1] }
         end
       end
 
@@ -661,7 +662,7 @@ module Nu
         result = connection.query("SELECT value FROM appconfig WHERE key = 'active_workers'")
         row = result.to_a.first
         current = row ? row[0].to_i : 0
-        current == 0
+        current.zero?
       end
 
       def list_tables
@@ -673,23 +674,23 @@ module Nu
         result = connection.query("DESCRIBE #{escape_identifier(table_name)}")
         result.map do |row|
           {
-            'column_name' => row[0],
-            'column_type' => row[1],
-            'null' => row[2],
-            'key' => row[3],
-            'default' => row[4],
-            'extra' => row[5]
+            "column_name" => row[0],
+            "column_type" => row[1],
+            "null" => row[2],
+            "key" => row[3],
+            "default" => row[4],
+            "extra" => row[5]
           }
         end
       end
 
       def execute_query(sql)
         # Strip trailing semicolon if present
-        sql = sql.strip.chomp(';')
+        sql = sql.strip.chomp(";")
 
         # Validate it's a read-only query
         normalized_sql = sql.upcase.strip
-        readonly_commands = ['SELECT', 'SHOW', 'DESCRIBE', 'EXPLAIN', 'WITH']
+        readonly_commands = %w[SELECT SHOW DESCRIBE EXPLAIN WITH]
         is_readonly = readonly_commands.any? { |cmd| normalized_sql.start_with?(cmd) }
 
         unless is_readonly
@@ -710,7 +711,7 @@ module Nu
         # Try to get actual column names if available
         begin
           columns = result.columns.map(&:name) if result.respond_to?(:columns)
-        rescue
+        rescue StandardError
           # Use default column names if we can't get real ones
         end
 
@@ -743,15 +744,15 @@ module Nu
 
           tool_calls = JSON.parse(tool_calls_json)
           tool_calls.each do |tc|
-            if tc['arguments'] == { 'redacted' => true }
-              corrupted << {
-                'id' => id,
-                'conversation_id' => conv_id,
-                'role' => role,
-                'tool_name' => tc['name'],
-                'created_at' => created_at
-              }
-            end
+            next unless tc["arguments"] == { "redacted" => true }
+
+            corrupted << {
+              "id" => id,
+              "conversation_id" => conv_id,
+              "role" => role,
+              "tool_name" => tc["name"],
+              "created_at" => created_at
+            }
           end
         end
 
@@ -777,7 +778,7 @@ module Nu
 
       def ensure_db_directory(db_path)
         dir = File.dirname(db_path)
-        FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+        FileUtils.mkdir_p(dir)
       end
 
       def setup_schema
@@ -846,18 +847,18 @@ module Nu
         SQL
 
         # Add tool columns if they don't exist (for existing databases)
-        add_column_if_not_exists('messages', 'tool_calls', 'TEXT')
-        add_column_if_not_exists('messages', 'tool_call_id', 'TEXT')
-        add_column_if_not_exists('messages', 'tool_result', 'TEXT')
-        add_column_if_not_exists('messages', 'spend', 'FLOAT')
-        add_column_if_not_exists('messages', 'error', 'TEXT')
-        add_column_if_not_exists('messages', 'redacted', 'BOOLEAN DEFAULT FALSE')
-        add_column_if_not_exists('messages', 'exchange_id', 'INTEGER')
+        add_column_if_not_exists("messages", "tool_calls", "TEXT")
+        add_column_if_not_exists("messages", "tool_call_id", "TEXT")
+        add_column_if_not_exists("messages", "tool_result", "TEXT")
+        add_column_if_not_exists("messages", "spend", "FLOAT")
+        add_column_if_not_exists("messages", "error", "TEXT")
+        add_column_if_not_exists("messages", "redacted", "BOOLEAN DEFAULT FALSE")
+        add_column_if_not_exists("messages", "exchange_id", "INTEGER")
 
         # Add summary columns to conversations
-        add_column_if_not_exists('conversations', 'summary', 'TEXT')
-        add_column_if_not_exists('conversations', 'summary_model', 'TEXT')
-        add_column_if_not_exists('conversations', 'summary_cost', 'FLOAT')
+        add_column_if_not_exists("conversations", "summary", "TEXT")
+        add_column_if_not_exists("conversations", "summary_model", "TEXT")
+        add_column_if_not_exists("conversations", "summary_cost", "FLOAT")
 
         # Embeddings table for semantic search
         connection.query(<<~SQL)
@@ -889,7 +890,7 @@ module Nu
           connection.query(<<~SQL)
             CREATE INDEX IF NOT EXISTS idx_embedding_hnsw ON text_embedding_3_small USING HNSW(embedding)
           SQL
-        rescue => e
+        rescue StandardError
           # VSS extension might not be available or already loaded, that's OK
         end
 
@@ -919,9 +920,9 @@ module Nu
         SQL
 
         # Initialize active_workers if not set
-        unless get_config('active_workers')
-          set_config('active_workers', 0)
-        end
+        return if get_config("active_workers")
+
+        set_config("active_workers", 0)
       end
 
       def escape_sql(string)
@@ -930,7 +931,7 @@ module Nu
 
       def escape_identifier(identifier)
         # Remove any characters that aren't alphanumeric or underscore
-        identifier.to_s.gsub(/[^a-zA-Z0-9_]/, '')
+        identifier.to_s.gsub(/[^a-zA-Z0-9_]/, "")
       end
 
       def add_column_if_not_exists(table, column, type)
@@ -941,10 +942,8 @@ module Nu
         SQL
 
         count = result.to_a.first[0]
-        if count == 0
-          connection.query("ALTER TABLE #{table} ADD COLUMN #{column} #{type}")
-        end
-      rescue => e
+        connection.query("ALTER TABLE #{table} ADD COLUMN #{column} #{type}") if count.zero?
+      rescue StandardError
         # Column might already exist, ignore error
       end
     end

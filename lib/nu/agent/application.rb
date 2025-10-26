@@ -3,15 +3,15 @@
 module Nu
   module Agent
     class Application
-      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status
-      attr_reader :man_indexer_status, :status_mutex, :verbosity, :console, :debug
+      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status,
+                  :man_indexer_status, :status_mutex, :verbosity, :console, :debug
       attr_accessor :active_threads
 
       def initialize(options:)
         $stdout.sync = true
         @session_start_time = Time.now
         @options = options
-        @user_actor = ENV['USER'] || 'user'
+        @user_actor = ENV["USER"] || "user"
         @shutdown = false
         @critical_sections = 0
         @critical_mutex = Mutex.new
@@ -19,15 +19,15 @@ module Nu
         @history = History.new
 
         # Load or initialize model configurations
-        orchestrator_model = @history.get_config('model_orchestrator')
-        spellchecker_model = @history.get_config('model_spellchecker')
-        summarizer_model = @history.get_config('model_summarizer')
+        orchestrator_model = @history.get_config("model_orchestrator")
+        spellchecker_model = @history.get_config("model_spellchecker")
+        summarizer_model = @history.get_config("model_summarizer")
 
         # Handle --reset-model flag
         if @options.reset_model
-          @history.set_config('model_orchestrator', @options.reset_model)
-          @history.set_config('model_spellchecker', @options.reset_model)
-          @history.set_config('model_summarizer', @options.reset_model)
+          @history.set_config("model_orchestrator", @options.reset_model)
+          @history.set_config("model_spellchecker", @options.reset_model)
+          @history.set_config("model_summarizer", @options.reset_model)
           orchestrator_model = @options.reset_model
           spellchecker_model = @options.reset_model
           summarizer_model = @options.reset_model
@@ -42,19 +42,19 @@ module Nu
         @summarizer = ClientFactory.create(summarizer_model)
 
         # Load settings from database (default all to true, except debug which defaults to false)
-        @debug = @history.get_config('debug', default: 'false') == 'true'
-        @debug = true if @options.debug  # Command line option overrides database setting
+        @debug = @history.get_config("debug", default: "false") == "true"
+        @debug = true if @options.debug # Command line option overrides database setting
 
         # Initialize ConsoleIO (new unified console system)
         @console = ConsoleIO.new(db_history: @history, debug: @debug)
 
         # Load verbosity
-        @verbosity = @history.get_config('verbosity', default: '0').to_i
+        @verbosity = @history.get_config("verbosity", default: "0").to_i
 
         # Old TUI system removed - now using ConsoleIO exclusively
-        @redact = @history.get_config('redaction', default: 'true') == 'true'
-        @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
-        @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'true') == 'true'
+        @redact = @history.get_config("redaction", default: "true") == "true"
+        @summarizer_enabled = @history.get_config("summarizer_enabled", default: "true") == "true"
+        @spell_check_enabled = @history.get_config("spell_check_enabled", default: "true") == "true"
         @conversation_id = @history.create_conversation
         @formatter = Formatter.new(
           history: @history,
@@ -62,33 +62,33 @@ module Nu
           conversation_id: @conversation_id,
           orchestrator: @orchestrator,
           debug: @debug,
-          console: @console,         # ConsoleIO for all output
+          console: @console, # ConsoleIO for all output
           application: self
         )
         @active_threads = []
         @summarizer_status = {
-          'running' => false,
-          'total' => 0,
-          'completed' => 0,
-          'failed' => 0,
-          'current_conversation_id' => nil,
-          'last_summary' => nil,
-          'spend' => 0.0
+          "running" => false,
+          "total" => 0,
+          "completed" => 0,
+          "failed" => 0,
+          "current_conversation_id" => nil,
+          "last_summary" => nil,
+          "spend" => 0.0
         }
         @man_indexer_status = {
-          'running' => false,
-          'total' => 0,
-          'completed' => 0,
-          'failed' => 0,
-          'skipped' => 0,
-          'current_batch' => nil,
-          'session_spend' => 0.0,
-          'session_tokens' => 0
+          "running" => false,
+          "total" => 0,
+          "completed" => 0,
+          "failed" => 0,
+          "skipped" => 0,
+          "current_batch" => nil,
+          "session_spend" => 0.0,
+          "session_tokens" => 0
         }
         @status_mutex = Mutex.new
 
         # Initialize index_man_enabled to false on startup
-        @history.set_config('index_man_enabled', 'false')
+        @history.set_config("index_man_enabled", "false")
 
         # Start background summarization worker
         start_summarization_worker
@@ -109,20 +109,16 @@ module Nu
         # Wait for any critical sections (database writes) to complete
         timeout = 5.0
         start_time = Time.now
-        while in_critical_section? && (Time.now - start_time) < timeout
-          sleep 0.1
-        end
+        sleep 0.1 while in_critical_section? && (Time.now - start_time) < timeout
 
         # Wait for any active threads to complete (they should exit quickly)
         active_threads.each(&:join)
-        history.close if history
+        history&.close
       end
 
       def process_input(input)
         # Handle commands
-        if input.start_with?('/')
-          return handle_command(input)
-        end
+        return handle_command(input) if input.start_with?("/")
 
         # Capture exchange start time for elapsed time calculation
         @formatter.exchange_start_time = Time.now
@@ -145,26 +141,25 @@ module Nu
             cli = orchestrator
             session_start = session_start_time
             user_in = input
-            fmt = formatter
+            formatter
             app = self
 
             # Display thread start event
             formatter.display_thread_event("Orchestrator", "Starting")
 
             # Spawn orchestrator thread with raw user input
-            Thread.new(conv_id, hist, cli, session_start, user_in, app) do |conversation_id, history, client, session_start_time, user_input, application|
-              begin
-                chat_loop(
-                  conversation_id: conversation_id,
-                  history: history,
-                  client: client,
-                  session_start_time: session_start_time,
-                  user_input: user_input,
-                  application: application
-                )
-              ensure
-                history.decrement_workers
-              end
+            Thread.new(conv_id, hist, cli, session_start, user_in,
+                       app) do |conversation_id, history, client, session_start_time, user_input, application|
+              chat_loop(
+                conversation_id: conversation_id,
+                history: history,
+                client: client,
+                session_start_time: session_start_time,
+                user_input: user_input,
+                application: application
+              )
+            ensure
+              history.decrement_workers
             end
           end
 
@@ -188,7 +183,7 @@ module Nu
           active_threads.clear
 
           # Clean up worker count if needed
-          if thread && thread.alive?
+          if thread&.alive?
             history.decrement_workers
           elsif workers_incremented
             # Workers were incremented but thread wasn't created yet
@@ -220,7 +215,7 @@ module Nu
 
       def in_critical_section?
         @critical_mutex.synchronize do
-          @critical_sections > 0
+          @critical_sections.positive?
         end
       end
 
@@ -265,30 +260,27 @@ module Nu
           )
           corrected_query = spell_checker.check_spelling(user_query)
 
-          if corrected_query != user_query
-            rag_content << "The user said '#{user_query}' but means '#{corrected_query}'"
-          end
+          rag_content << "The user said '#{user_query}' but means '#{corrected_query}'" if corrected_query != user_query
         end
 
         # If no RAG content was generated, indicate that
-        if rag_content.empty?
-          rag_content << "No Augmented Information Generated"
-        end
+        rag_content << "No Augmented Information Generated" if rag_content.empty?
 
-        builder.add_section('Context', rag_content.join("\n\n"))
+        builder.add_section("Context", rag_content.join("\n\n"))
 
         # Available Tools section
-        tool_names = tool_registry.available.map { |tool| tool.name }
-        tools_list = tool_names.join(', ')
-        builder.add_section('Available Tools', tools_list)
+        tool_names = tool_registry.available.map(&:name)
+        tools_list = tool_names.join(", ")
+        builder.add_section("Available Tools", tools_list)
 
         # User Query section (final section - ends the document)
-        builder.add_section('User Query', user_query)
+        builder.add_section("User Query", user_query)
 
         builder.build
       end
 
-      def tool_calling_loop(messages:, tools:, client:, history:, conversation_id:, exchange_id:, tool_registry:, application:)
+      def tool_calling_loop(messages:, tools:, client:, history:, conversation_id:, exchange_id:, tool_registry:,
+                            application:)
         # Inner loop that handles tool calling until we get a final response
         # All tool calls and intermediate responses are saved as redacted
 
@@ -305,111 +297,111 @@ module Nu
           response = client.send_message(messages: messages, tools: tools)
 
           # Check for errors first
-          if response['error']
+          if response["error"]
             # Save error message (unredacted so user can see it)
             history.add_message(
               conversation_id: conversation_id,
               exchange_id: exchange_id,
-              actor: 'api_error',
-              role: 'assistant',
-              content: response['content'],
-              model: response['model'],
-              error: response['error'],
+              actor: "api_error",
+              role: "assistant",
+              content: response["content"],
+              model: response["model"],
+              error: response["error"],
               redacted: false
             )
-            @formatter.display_message_created(actor: 'api_error', role: 'assistant', content: response['content'])
+            @formatter.display_message_created(actor: "api_error", role: "assistant", content: response["content"])
             return { error: true, response: response, metrics: metrics }
           end
 
           # Update metrics (after error check, with nil protection)
-          metrics[:tokens_input] = [metrics[:tokens_input], response['tokens']['input'] || 0].max
-          metrics[:tokens_output] += response['tokens']['output'] || 0
-          metrics[:spend] += response['spend'] || 0.0
+          metrics[:tokens_input] = [metrics[:tokens_input], response["tokens"]["input"] || 0].max
+          metrics[:tokens_output] += response["tokens"]["output"] || 0
+          metrics[:spend] += response["spend"] || 0.0
           metrics[:message_count] += 1
 
           # Check for tool calls
-          if response['tool_calls']
+          if response["tool_calls"]
             # Save assistant message with tool calls (REDACTED)
             history.add_message(
               conversation_id: conversation_id,
               exchange_id: exchange_id,
-              actor: 'orchestrator',
-              role: 'assistant',
-              content: response['content'],
-              model: response['model'],
-              tokens_input: response['tokens']['input'] || 0,
-              tokens_output: response['tokens']['output'] || 0,
-              spend: response['spend'] || 0.0,
-              tool_calls: response['tool_calls'],
-              redacted: true  # Tool calls are redacted
+              actor: "orchestrator",
+              role: "assistant",
+              content: response["content"],
+              model: response["model"],
+              tokens_input: response["tokens"]["input"] || 0,
+              tokens_output: response["tokens"]["output"] || 0,
+              spend: response["spend"] || 0.0,
+              tool_calls: response["tool_calls"],
+              redacted: true # Tool calls are redacted
             )
             @formatter.display_message_created(
-              actor: 'orchestrator',
-              role: 'assistant',
-              content: response['content'],
-              tool_calls: response['tool_calls'],
+              actor: "orchestrator",
+              role: "assistant",
+              content: response["content"],
+              tool_calls: response["tool_calls"],
               redacted: true
             )
 
             # Display content as normal output if present (LLM explaining what it's doing)
-            if response['content'] && !response['content'].strip.empty?
+            if response["content"] && !response["content"].strip.empty?
               @console.hide_spinner
-              output_line(response['content'])
+              output_line(response["content"])
               @console.show_spinner("Thinking...")
             end
 
-            metrics[:tool_call_count] += response['tool_calls'].length
+            metrics[:tool_call_count] += response["tool_calls"].length
 
             # Add assistant message to in-memory messages
             messages << {
-              'role' => 'assistant',
-              'content' => response['content'],
-              'tool_calls' => response['tool_calls']
+              "role" => "assistant",
+              "content" => response["content"],
+              "tool_calls" => response["tool_calls"]
             }
 
             # Execute each tool call
-            response['tool_calls'].each do |tool_call|
+            response["tool_calls"].each do |tool_call|
               result = tool_registry.execute(
-                name: tool_call['name'],
-                arguments: tool_call['arguments'],
+                name: tool_call["name"],
+                arguments: tool_call["arguments"],
                 history: history,
                 context: {
-                  'conversation_id' => conversation_id,
-                  'model' => client.model,
-                  'application' => application
+                  "conversation_id" => conversation_id,
+                  "model" => client.model,
+                  "application" => application
                 }
               )
 
               # Save tool result (REDACTED)
               tool_result_data = {
-                'name' => tool_call['name'],
-                'result' => result
+                "name" => tool_call["name"],
+                "result" => result
               }
               history.add_message(
                 conversation_id: conversation_id,
                 exchange_id: exchange_id,
-                actor: 'orchestrator',
-                role: 'tool',
-                content: '',
-                tool_call_id: tool_call['id'],
+                actor: "orchestrator",
+                role: "tool",
+                content: "",
+                tool_call_id: tool_call["id"],
                 tool_result: tool_result_data,
-                redacted: true  # Tool results are redacted
+                redacted: true # Tool results are redacted
               )
               @formatter.display_message_created(
-                actor: 'orchestrator',
-                role: 'tool',
+                actor: "orchestrator",
+                role: "tool",
                 tool_result: tool_result_data,
                 redacted: true
               )
 
               # Add tool result to in-memory messages (must match format expected by clients)
               messages << {
-                'role' => 'tool',
-                'tool_call_id' => tool_call['id'],
-                'content' => result.is_a?(Hash) ? result.to_json : result.to_s,
-                'tool_result' => {
-                  'name' => tool_call['name'],
-                  'result' => result
+                "role" => "tool",
+                "tool_call_id" => tool_call["id"],
+                "content" => result.is_a?(Hash) ? result.to_json : result.to_s,
+                "tool_result" => {
+                  "name" => tool_call["name"],
+                  "result" => result
                 }
               }
             end
@@ -418,7 +410,7 @@ module Nu
           else
             # No tool calls - this is the final response
             # Check if content is empty (LLM sent empty response)
-            if response['content'].nil? || response['content'].strip.empty?
+            if response["content"].nil? || response["content"].strip.empty?
               # Log this as a warning but continue
               # The response will be saved and displayed (or not displayed if empty)
             end
@@ -444,10 +436,10 @@ module Nu
             conversation_id: conversation_id,
             exchange_id: exchange_id,
             actor: @user_actor,
-            role: 'user',
+            role: "user",
             content: user_input
           )
-          @formatter.display_message_created(actor: @user_actor, role: 'user', content: user_input)
+          @formatter.display_message_created(actor: @user_actor, role: "user", content: user_input)
 
           # Get conversation history (only unredacted messages from previous exchanges)
           all_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
@@ -455,12 +447,12 @@ module Nu
           # Get redacted message IDs and format as ranges
           redacted_message_ranges = nil
           if @redact
-            redacted_ids = all_messages.select { |m| m['redacted'] }.map { |m| m['id'] }.compact
+            redacted_ids = all_messages.select { |m| m["redacted"] }.map { |m| m["id"] }.compact
             redacted_message_ranges = format_id_ranges(redacted_ids.sort) if redacted_ids.any?
           end
 
           # Filter to only unredacted messages from PREVIOUS exchanges (exclude current exchange)
-          history_messages = all_messages.reject { |m| m['redacted'] || m['exchange_id'] == exchange_id }
+          history_messages = all_messages.reject { |m| m["redacted"] || m["exchange_id"] == exchange_id }
 
           # User query is the input we just received
           user_query = user_input
@@ -476,8 +468,8 @@ module Nu
           # Build initial messages array: history + markdown document
           messages = history_messages.dup
           messages << {
-            'role' => 'user',
-            'content' => markdown_document
+            "role" => "user",
+            "content" => markdown_document
           }
 
           # Get tools formatted for this client
@@ -504,8 +496,8 @@ module Nu
             history.update_exchange(
               exchange_id: exchange_id,
               updates: {
-                status: 'failed',
-                error: result[:response]['error'].to_json,
+                status: "failed",
+                error: result[:response]["error"].to_json,
                 completed_at: Time.now
               }.merge(result[:metrics])
             )
@@ -515,33 +507,33 @@ module Nu
             history.add_message(
               conversation_id: conversation_id,
               exchange_id: exchange_id,
-              actor: 'orchestrator',
-              role: 'assistant',
-              content: final_response['content'],
-              model: final_response['model'],
-              tokens_input: final_response['tokens']['input'] || 0,
-              tokens_output: final_response['tokens']['output'] || 0,
-              spend: final_response['spend'] || 0.0,
-              redacted: false  # Final response is unredacted
+              actor: "orchestrator",
+              role: "assistant",
+              content: final_response["content"],
+              model: final_response["model"],
+              tokens_input: final_response["tokens"]["input"] || 0,
+              tokens_output: final_response["tokens"]["output"] || 0,
+              spend: final_response["spend"] || 0.0,
+              redacted: false # Final response is unredacted
             )
             @formatter.display_message_created(
-              actor: 'orchestrator',
-              role: 'assistant',
-              content: final_response['content'],
+              actor: "orchestrator",
+              role: "assistant",
+              content: final_response["content"],
               redacted: false
             )
 
             # Update metrics to include final response (with nil protection)
             metrics = result[:metrics]
-            metrics[:tokens_input] = [metrics[:tokens_input], final_response['tokens']['input'] || 0].max
-            metrics[:tokens_output] += final_response['tokens']['output'] || 0
-            metrics[:spend] += final_response['spend'] || 0.0
+            metrics[:tokens_input] = [metrics[:tokens_input], final_response["tokens"]["input"] || 0].max
+            metrics[:tokens_output] += final_response["tokens"]["output"] || 0
+            metrics[:spend] += final_response["spend"] || 0.0
             metrics[:message_count] += 1
 
             # Complete the exchange
             history.complete_exchange(
               exchange_id: exchange_id,
-              assistant_message: final_response['content'],
+              assistant_message: final_response["content"],
               metrics: metrics
             )
           end
@@ -558,7 +550,7 @@ module Nu
             break
           end
 
-          break if input.nil?  # Ctrl+D
+          break if input.nil? # Ctrl+D
 
           input = input.strip
 
@@ -572,15 +564,16 @@ module Nu
 
       def setup_readline
         # Set up tab completion
-        commands = ['/clear', '/debug', '/exit', '/fix', '/help', '/index-man', '/info', '/migrate-exchanges', '/model', '/models', '/redaction', '/reset', '/spellcheck', '/summarizer', '/tools', '/verbosity']
+        commands = ["/clear", "/debug", "/exit", "/fix", "/help", "/index-man", "/info", "/migrate-exchanges",
+                    "/model", "/models", "/redaction", "/reset", "/spellcheck", "/summarizer", "/tools", "/verbosity"]
         all_models = ClientFactory.available_models.values.flatten
 
         Readline.completion_proc = proc do |str|
           # Check if we're completing after '/model '
           line = Readline.line_buffer
-          if line.start_with?('/model ')
+          if line.start_with?("/model ")
             # Complete model names
-            prefix_match = line.match(/^\/model\s+(.*)/)
+            prefix_match = line.match(%r{^/model\s+(.*)})
             if prefix_match
               partial = prefix_match[1]
               all_models.grep(/^#{Regexp.escape(partial)}/i)
@@ -594,27 +587,27 @@ module Nu
         end
 
         # Load history from file
-        history_file = File.join(Dir.home, '.nu_agent_history')
-        if File.exist?(history_file)
-          File.readlines(history_file).each do |line|
-            Readline::HISTORY.push(line.chomp)
-          end
+        history_file = File.join(Dir.home, ".nu_agent_history")
+        return unless File.exist?(history_file)
+
+        File.readlines(history_file).each do |line|
+          Readline::HISTORY.push(line.chomp)
         end
       end
 
       def save_history
-        history_file = File.join(Dir.home, '.nu_agent_history')
-        File.open(history_file, 'w') do |f|
+        history_file = File.join(Dir.home, ".nu_agent_history")
+        File.open(history_file, "w") do |f|
           Readline::HISTORY.to_a.last(1000).each { |line| f.puts(line) }
         end
-      rescue => e
+      rescue StandardError
         # Silently ignore history save errors
       end
 
       def handle_command(input)
         # Handle /model command with subcommands
-        parts = input.split(' ')
-        if parts.first&.downcase == '/model'
+        parts = input.split
+        if parts.first&.downcase == "/model"
 
           # /model without arguments - show current models
           if parts.length == 1
@@ -641,7 +634,7 @@ module Nu
           new_model_name = parts[2].strip
 
           case subcommand
-          when 'orchestrator'
+          when "orchestrator"
             # Switch model under mutex (blocks if thread is running)
             @operation_mutex.synchronize do
               # Wait for active threads to complete
@@ -667,28 +660,28 @@ module Nu
               # Switch both orchestrator and formatter
               @orchestrator = new_client
               @formatter.orchestrator = new_client
-              @history.set_config('model_orchestrator', new_model_name)
+              @history.set_config("model_orchestrator", new_model_name)
 
               output_line("Switched orchestrator to: #{@orchestrator.name} (#{@orchestrator.model})")
             end
 
-          when 'spellchecker'
+          when "spellchecker"
             begin
               # Create new client
               new_client = ClientFactory.create(new_model_name)
               @spellchecker = new_client
-              @history.set_config('model_spellchecker', new_model_name)
+              @history.set_config("model_spellchecker", new_model_name)
               output_line("Switched spellchecker to: #{new_model_name}")
             rescue Error => e
               output_line("Error: #{e.message}", type: :error)
             end
 
-          when 'summarizer'
+          when "summarizer"
             begin
               # Create new client
               new_client = ClientFactory.create(new_model_name)
               @summarizer = new_client
-              @history.set_config('model_summarizer', new_model_name)
+              @history.set_config("model_summarizer", new_model_name)
               output_line("Switched summarizer to: #{new_model_name}")
               output_line("Note: Change takes effect at the start of the next session (/reset)")
             rescue Error => e
@@ -704,8 +697,8 @@ module Nu
         end
 
         # Handle /redaction [on/off] command
-        if input.downcase.start_with?('/redaction')
-          parts = input.split(' ', 2)
+        if input.downcase.start_with?("/redaction")
+          parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
             output_line("Usage: /redaction <on|off>")
             output_line("Current: redaction=#{@redact ? 'on' : 'off'}")
@@ -713,13 +706,13 @@ module Nu
           end
 
           setting = parts[1].strip.downcase
-          if setting == 'on'
+          if setting == "on"
             @redact = true
-            history.set_config('redaction', 'true')
+            history.set_config("redaction", "true")
             output_line("redaction=on")
-          elsif setting == 'off'
+          elsif setting == "off"
             @redact = false
-            history.set_config('redaction', 'false')
+            history.set_config("redaction", "false")
             output_line("redaction=off")
           else
             output_line("Invalid option. Use: /redaction <on|off>")
@@ -729,8 +722,8 @@ module Nu
         end
 
         # Handle /summarizer [on/off] command
-        if input.downcase.start_with?('/summarizer')
-          parts = input.split(' ', 2)
+        if input.downcase.start_with?("/summarizer")
+          parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
             output_line("Usage: /summarizer <on|off>")
             output_line("Current: summarizer=#{@summarizer_enabled ? 'on' : 'off'}")
@@ -738,14 +731,14 @@ module Nu
           end
 
           setting = parts[1].strip.downcase
-          if setting == 'on'
+          if setting == "on"
             @summarizer_enabled = true
-            history.set_config('summarizer_enabled', 'true')
+            history.set_config("summarizer_enabled", "true")
             output_line("summarizer=on")
             output_line("Summarizer will start on next /reset")
-          elsif setting == 'off'
+          elsif setting == "off"
             @summarizer_enabled = false
-            history.set_config('summarizer_enabled', 'false')
+            history.set_config("summarizer_enabled", "false")
             output_line("summarizer=off")
           else
             output_line("Invalid option. Use: /summarizer <on|off>")
@@ -755,8 +748,8 @@ module Nu
         end
 
         # Handle /spellcheck [on/off] command
-        if input.downcase.start_with?('/spellcheck')
-          parts = input.split(' ', 2)
+        if input.downcase.start_with?("/spellcheck")
+          parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
             output_line("Usage: /spellcheck <on|off>")
             output_line("Current: spellcheck=#{@spell_check_enabled ? 'on' : 'off'}")
@@ -764,13 +757,13 @@ module Nu
           end
 
           setting = parts[1].strip.downcase
-          if setting == 'on'
+          if setting == "on"
             @spell_check_enabled = true
-            history.set_config('spell_check_enabled', 'true')
+            history.set_config("spell_check_enabled", "true")
             output_line("spellcheck=on")
-          elsif setting == 'off'
+          elsif setting == "off"
             @spell_check_enabled = false
-            history.set_config('spell_check_enabled', 'false')
+            history.set_config("spell_check_enabled", "false")
             output_line("spellcheck=off")
           else
             output_line("Invalid option. Use: /spellcheck <on|off>")
@@ -780,21 +773,21 @@ module Nu
         end
 
         # Handle /index-man [on|off|reset] command
-        if input.downcase.start_with?('/index-man')
-          parts = input.split(' ', 2)
+        if input.downcase.start_with?("/index-man")
+          parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
             output_line("Usage: /index-man <on|off|reset>")
-            enabled = history.get_config('index_man_enabled') == 'true'
+            enabled = history.get_config("index_man_enabled") == "true"
             output_line("Current: index-man=#{enabled ? 'on' : 'off'}")
 
             # Show status if available
             @status_mutex.synchronize do
               status = @man_indexer_status
-              if status['running']
+              if status["running"]
                 output_line("Status: running (#{status['completed']}/#{status['total']} man pages)")
                 output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
                 output_line("Session spend: $#{'%.6f' % status['session_spend']}")
-              elsif status['total'] > 0
+              elsif status["total"].positive?
                 output_line("Status: completed (#{status['completed']}/#{status['total']} man pages)")
                 output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
                 output_line("Session spend: $#{'%.6f' % status['session_spend']}")
@@ -805,8 +798,9 @@ module Nu
           end
 
           setting = parts[1].strip.downcase
-          if setting == 'on'
-            history.set_config('index_man_enabled', 'true')
+          case setting
+          when "on"
+            history.set_config("index_man_enabled", "true")
             output_line("index-man=on")
             output_line("Starting man page indexer...")
 
@@ -814,50 +808,50 @@ module Nu
             start_man_indexer_worker
 
             # Show initial status
-            sleep(0.5)  # Give it a moment to start
+            sleep(0.5) # Give it a moment to start
             @status_mutex.synchronize do
               status = @man_indexer_status
               output_line("Indexing #{status['total']} man pages...")
               output_line("This will take approximately #{(status['total'] / 10.0 / 60.0).ceil} minutes")
             end
 
-          elsif setting == 'off'
-            history.set_config('index_man_enabled', 'false')
+          when "off"
+            history.set_config("index_man_enabled", "false")
             output_line("index-man=off")
             output_line("Indexer will stop after current batch completes")
 
             # Show final status
             @status_mutex.synchronize do
               status = @man_indexer_status
-              if status['completed'] > 0
+              if status["completed"].positive?
                 output_line("Indexed: #{status['completed']}/#{status['total']} man pages")
                 output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}")
                 output_line("Session spend: $#{'%.6f' % status['session_spend']}")
               end
             end
-          elsif setting == 'reset'
+          when "reset"
             # Stop indexing if running
-            if history.get_config('index_man_enabled') == 'true'
-              history.set_config('index_man_enabled', 'false')
+            if history.get_config("index_man_enabled") == "true"
+              history.set_config("index_man_enabled", "false")
               output_line("Stopping indexer before reset...")
-              sleep(1)  # Give worker time to stop
+              sleep(1) # Give worker time to stop
             end
 
             # Get count before clearing
-            stats = history.embedding_stats(kind: 'man_page')
-            count = stats.find { |s| s['kind'] == 'man_page' }&.fetch('count', 0) || 0
+            stats = history.embedding_stats(kind: "man_page")
+            count = stats.find { |s| s["kind"] == "man_page" }&.fetch("count", 0) || 0
 
             # Clear all man_page embeddings
-            history.clear_embeddings(kind: 'man_page')
+            history.clear_embeddings(kind: "man_page")
 
             # Reset status counters
             @status_mutex.synchronize do
-              @man_indexer_status['total'] = 0
-              @man_indexer_status['completed'] = 0
-              @man_indexer_status['failed'] = 0
-              @man_indexer_status['skipped'] = 0
-              @man_indexer_status['session_spend'] = 0.0
-              @man_indexer_status['session_tokens'] = 0
+              @man_indexer_status["total"] = 0
+              @man_indexer_status["completed"] = 0
+              @man_indexer_status["failed"] = 0
+              @man_indexer_status["skipped"] = 0
+              @man_indexer_status["session_spend"] = 0.0
+              @man_indexer_status["session_tokens"] = 0
             end
 
             output_line("Reset complete: Cleared #{count} man page embeddings")
@@ -869,8 +863,8 @@ module Nu
         end
 
         # Handle /debug [on/off] command
-        if input.downcase.start_with?('/debug')
-          parts = input.split(' ', 2)
+        if input.downcase.start_with?("/debug")
+          parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
             buffer = OutputBuffer.new
             buffer.add("Usage: /debug <on|off>")
@@ -881,17 +875,17 @@ module Nu
 
           setting = parts[1].strip.downcase
           buffer = OutputBuffer.new
-          if setting == 'on'
+          if setting == "on"
             @debug = true
             @formatter.debug = true
             @output.debug = true
-            history.set_config('debug', 'true')
+            history.set_config("debug", "true")
             buffer.add("debug=on")
-          elsif setting == 'off'
+          elsif setting == "off"
             @debug = false
             @formatter.debug = false
             @output.debug = false
-            history.set_config('debug', 'false')
+            history.set_config("debug", "false")
             buffer.add("debug=off")
           else
             buffer.add("Invalid option. Use: /debug <on|off>")
@@ -902,8 +896,8 @@ module Nu
         end
 
         # Handle /verbosity [NUM] command
-        if input.downcase.start_with?('/verbosity')
-          parts = input.split(' ', 2)
+        if input.downcase.start_with?("/verbosity")
+          parts = input.split(" ", 2)
           buffer = OutputBuffer.new
           if parts.length < 2 || parts[1].strip.empty?
             buffer.add("Usage: /verbosity <number>")
@@ -915,8 +909,8 @@ module Nu
           value = parts[1].strip
           if value =~ /^\d+$/
             @verbosity = value.to_i
-            @output.verbosity = @verbosity  # Update OutputManager
-            history.set_config('verbosity', value)
+            @output.verbosity = @verbosity # Update OutputManager
+            history.set_config("verbosity", value)
             buffer.add("verbosity=#{@verbosity}")
           else
             buffer.add("Invalid option. Use: /verbosity <number>")
@@ -927,23 +921,23 @@ module Nu
         end
 
         case input.downcase
-        when '/exit'
+        when "/exit"
           :exit
-        when '/clear'
-          if @tui && @tui.active
+        when "/clear"
+          if @tui&.active
             @tui.clear_output
           else
-            system('clear')
+            system("clear")
           end
           :continue
-        when '/tools'
+        when "/tools"
           print_tools
           :continue
-        when '/reset'
-          if @tui && @tui.active
+        when "/reset"
+          if @tui&.active
             @tui.clear_output
           else
-            system('clear')
+            system("clear")
           end
           @conversation_id = history.create_conversation
           @session_start_time = Time.now
@@ -954,19 +948,19 @@ module Nu
           start_summarization_worker
 
           :continue
-        when '/fix'
+        when "/fix"
           run_fix
           :continue
-        when '/migrate-exchanges'
+        when "/migrate-exchanges"
           run_migrate_exchanges
           :continue
-        when '/info'
+        when "/info"
           print_info
           :continue
-        when '/models'
+        when "/models"
           print_models
           :continue
-        when '/help'
+        when "/help"
           print_help
           :continue
         else
@@ -1021,15 +1015,15 @@ module Nu
           output_line("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})")
         end
 
-        if @tui && @tui.active
+        if @tui&.active
           response = @tui.readline("Delete these messages? [y/N] ").chomp.downcase
         else
           print "\nDelete these messages? [y/N] "
           response = gets.chomp.downcase
         end
 
-        if response == 'y'
-          ids = corrupted.map { |m| m['id'] }
+        if response == "y"
+          ids = corrupted.map { |m| m["id"] }
           count = history.fix_corrupted_messages(ids)
           output_line("✓ Deleted #{count} corrupted message(s)")
         else
@@ -1041,14 +1035,14 @@ module Nu
         output_line("This will analyze all messages and group them into exchanges.")
         output_line("Existing exchanges will NOT be affected.")
 
-        if @tui && @tui.active
+        if @tui&.active
           response = @tui.readline("Continue with migration? [y/N] ").chomp.downcase
         else
           print "Continue with migration? [y/N] "
           response = gets.chomp.downcase
         end
 
-        return unless response == 'y'
+        return unless response == "y"
 
         output_line("Migrating exchanges...")
 
@@ -1081,12 +1075,12 @@ module Nu
         if @summarizer_enabled
           @status_mutex.synchronize do
             status = @summarizer_status
-            if status['running']
+            if status["running"]
               output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)")
-              output_line("  Spend:       $#{'%.6f' % status['spend']}") if status['spend'] > 0
-            elsif status['total'] > 0
+              output_line("  Spend:       $#{'%.6f' % status['spend']}") if status["spend"].positive?
+            elsif status["total"].positive?
               output_line("  Status:      completed (#{status['completed']}/#{status['total']} conversations, #{status['failed']} failed)")
-              output_line("  Spend:       $#{'%.6f' % status['spend']}") if status['spend'] > 0
+              output_line("  Spend:       $#{'%.6f' % status['spend']}") if status["spend"].positive?
             else
               output_line("  Status:      idle")
             end
@@ -1107,10 +1101,10 @@ module Nu
         xai_default = Nu::Agent::Clients::XAI::DEFAULT_MODEL
 
         # Mark defaults with asterisk
-        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(', ')
-        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(', ')
-        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(', ')
-        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(', ')
+        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(", ")
+        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(", ")
+        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(", ")
+        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(", ")
 
         output_line("Available Models (* = default):")
         output_line("  Anthropic: #{anthropic_list}")
@@ -1130,9 +1124,7 @@ module Nu
           desc += "." unless desc.end_with?(".")
 
           # Check if tool has credentials (if applicable)
-          if tool.respond_to?(:available?) && !tool.available?
-            desc += " (disabled)"
-          end
+          desc += " (disabled)" if tool.respond_to?(:available?) && !tool.available?
 
           output_line("  #{tool.name.ljust(25)} - #{desc}")
         end
@@ -1148,7 +1140,7 @@ module Nu
       end
 
       def print_welcome
-        print "\033[2J\033[H" unless @tui && @tui.active
+        print "\033[2J\033[H" unless @tui&.active
         output_lines(
           "Nu Agent REPL",
           "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.",
@@ -1173,14 +1165,14 @@ module Nu
           if nxt == current + 1
             range_end = nxt
           else
-            ranges << (range_start == range_end ? "#{range_start}" : "#{range_start}-#{range_end}")
+            ranges << (range_start == range_end ? range_start.to_s : "#{range_start}-#{range_end}")
             range_start = nxt
             range_end = nxt
           end
         end
 
         # Add final range
-        ranges << (range_start == range_end ? "#{range_start}" : "#{range_start}-#{range_end}")
+        ranges << (range_start == range_end ? range_start.to_s : "#{range_start}-#{range_end}")
 
         ranges.join(", ")
       end
@@ -1195,13 +1187,13 @@ module Nu
           if seconds < 60
             "#{seconds}s ago"
           elsif seconds < 3600
-            "#{(seconds / 60)}m ago"
-          elsif seconds < 86400
-            "#{(seconds / 3600)}h ago"
+            "#{seconds / 60}m ago"
+          elsif seconds < 86_400
+            "#{seconds / 3600}h ago"
           else
-            "#{(seconds / 86400)}d ago"
+            "#{seconds / 86_400}d ago"
           end
-        rescue
+        rescue StandardError
           "unknown"
         end
       end
@@ -1218,20 +1210,19 @@ module Nu
           status_mtx = @status_mutex
           app = self
 
-          thread = Thread.new(conv_id, hist, status, status_mtx, app, @summarizer) do |current_conversation_id, history, summarizer_status, status_mutex, application, summarizer|
-            begin
-              summarize_conversations(
-                current_conversation_id: current_conversation_id,
-                history: history,
-                summarizer_status: summarizer_status,
-                status_mutex: status_mutex,
-                application: application,
-                summarizer: summarizer
-              )
-            rescue => e
-              status_mutex.synchronize do
-                summarizer_status['running'] = false
-              end
+          thread = Thread.new(conv_id, hist, status, status_mtx, app,
+                              @summarizer) do |current_conversation_id, history, summarizer_status, status_mutex, application, summarizer|
+            summarize_conversations(
+              current_conversation_id: current_conversation_id,
+              history: history,
+              summarizer_status: summarizer_status,
+              status_mutex: status_mutex,
+              application: application,
+              summarizer: summarizer
+            )
+          rescue StandardError
+            status_mutex.synchronize do
+              summarizer_status["running"] = false
             end
           end
 
@@ -1239,31 +1230,30 @@ module Nu
         end
       end
 
-      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:, summarizer:)
+      def summarize_conversations(current_conversation_id:, history:, summarizer_status:, status_mutex:, application:,
+                                  summarizer:)
         # Get conversations that need summarization
         conversations = history.get_unsummarized_conversations(exclude_id: current_conversation_id)
 
-        if conversations.empty?
-          return
-        end
+        return if conversations.empty?
 
         # Update status
         status_mutex.synchronize do
-          summarizer_status['running'] = true
-          summarizer_status['total'] = conversations.length
-          summarizer_status['completed'] = 0
-          summarizer_status['failed'] = 0
+          summarizer_status["running"] = true
+          summarizer_status["total"] = conversations.length
+          summarizer_status["completed"] = 0
+          summarizer_status["failed"] = 0
         end
 
         conversations.each do |conv|
           # Check for shutdown signal before processing each conversation
           break if application.instance_variable_get(:@shutdown)
 
-          conv_id = conv['id']
+          conv_id = conv["id"]
 
           # Update current conversation being processed
           status_mutex.synchronize do
-            summarizer_status['current_conversation_id'] = conv_id
+            summarizer_status["current_conversation_id"] = conv_id
           end
 
           begin
@@ -1285,20 +1275,20 @@ module Nu
               end
 
               status_mutex.synchronize do
-                summarizer_status['completed'] += 1
-                summarizer_status['last_summary'] = "empty conversation"
+                summarizer_status["completed"] += 1
+                summarizer_status["last_summary"] = "empty conversation"
               end
 
               next
             end
 
             # Filter to only unredacted messages (same as we do for context)
-            unredacted_messages = messages.reject { |m| m['redacted'] }
+            unredacted_messages = messages.reject { |m| m["redacted"] }
 
             # Build prompt for summarization
             context = unredacted_messages.map do |msg|
-              role = msg['role'] == 'tool' ? 'assistant' : msg['role']
-              content = msg['content'] || ''
+              role = msg["role"] == "tool" ? "assistant" : msg["role"]
+              content = msg["content"] || ""
               "#{role}: #{content}"
             end.join("\n\n")
 
@@ -1318,7 +1308,7 @@ module Nu
             # Make LLM call in a separate thread so we can check shutdown while waiting
             llm_thread = Thread.new do
               summarizer.send_message(
-                messages: [{ 'role' => 'user', 'content' => summary_prompt }],
+                messages: [{ "role" => "user", "content" => summary_prompt }],
                 tools: nil
               )
             end
@@ -1326,7 +1316,7 @@ module Nu
             # Poll the thread, checking for shutdown every 100ms
             response = nil
             loop do
-              if llm_thread.join(0.1)  # Try to join with 100ms timeout
+              if llm_thread.join(0.1) # Try to join with 100ms timeout
                 response = llm_thread.value
                 break
               end
@@ -1341,15 +1331,15 @@ module Nu
             # Skip if response is nil (shouldn't happen, but be safe)
             next if response.nil?
 
-            if response['error']
+            if response["error"]
               status_mutex.synchronize do
-                summarizer_status['failed'] += 1
+                summarizer_status["failed"] += 1
               end
               next
             end
 
-            summary = response['content']&.strip
-            cost = response['spend'] || 0.0
+            summary = response["content"]&.strip
+            cost = response["spend"] || 0.0
 
             if summary && !summary.empty?
               # Enter critical section for database write
@@ -1369,27 +1359,26 @@ module Nu
 
               # Update status and accumulate spend
               status_mutex.synchronize do
-                summarizer_status['completed'] += 1
-                summarizer_status['last_summary'] = summary
-                summarizer_status['spend'] += cost
+                summarizer_status["completed"] += 1
+                summarizer_status["last_summary"] = summary
+                summarizer_status["spend"] += cost
               end
             else
               status_mutex.synchronize do
-                summarizer_status['failed'] += 1
+                summarizer_status["failed"] += 1
               end
             end
-
-          rescue => e
+          rescue StandardError
             status_mutex.synchronize do
-              summarizer_status['failed'] += 1
+              summarizer_status["failed"] += 1
             end
           end
         end
 
         # Mark as complete
         status_mutex.synchronize do
-          summarizer_status['running'] = false
-          summarizer_status['current_conversation_id'] = nil
+          summarizer_status["running"] = false
+          summarizer_status["current_conversation_id"] = nil
         end
       end
 
@@ -1402,25 +1391,23 @@ module Nu
           app = self
 
           thread = Thread.new(hist, status, status_mtx, app) do |history, indexer_status, status_mutex, application|
-            begin
-              index_man_pages(
-                history: history,
-                indexer_status: indexer_status,
-                status_mutex: status_mutex,
-                application: application
-              )
-            rescue => e
-              buffer = Nu::Agent::OutputBuffer.new
-              buffer.error("[Man Indexer] Worker thread error: #{e.class}: #{e.message}")
-              if application.instance_variable_get(:@debug)
-                e.backtrace.first(10).each do |line|
-                  buffer.debug("  #{line}")
-                end
+            index_man_pages(
+              history: history,
+              indexer_status: indexer_status,
+              status_mutex: status_mutex,
+              application: application
+            )
+          rescue StandardError => e
+            buffer = Nu::Agent::OutputBuffer.new
+            buffer.error("[Man Indexer] Worker thread error: #{e.class}: #{e.message}")
+            if application.instance_variable_get(:@debug)
+              e.backtrace.first(10).each do |line|
+                buffer.debug("  #{line}")
               end
-              application.output.flush_buffer(buffer)
-              status_mutex.synchronize do
-                indexer_status['running'] = false
-              end
+            end
+            application.output.flush_buffer(buffer)
+            status_mutex.synchronize do
+              indexer_status["running"] = false
             end
           end
 
@@ -1432,14 +1419,14 @@ module Nu
         # Create OpenAI Embeddings client
         begin
           embeddings_client = Clients::OpenAIEmbeddings.new
-        rescue => e
+        rescue StandardError => e
           buffer = Nu::Agent::OutputBuffer.new
           buffer.error("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client")
           buffer.error("  #{e.message}")
           buffer.error("Man page indexing requires OpenAI embeddings API access.")
           buffer.error("Please ensure your OpenAI API key has access to text-embedding-3-small.")
           application.output.flush_buffer(buffer)
-          status_mutex.synchronize { indexer_status['running'] = false }
+          status_mutex.synchronize { indexer_status["running"] = false }
           return
         end
 
@@ -1453,28 +1440,28 @@ module Nu
         loop do
           # Check for shutdown or disabled
           break if application.instance_variable_get(:@shutdown)
-          break unless history.get_config('index_man_enabled') == 'true'
+          break unless history.get_config("index_man_enabled") == "true"
 
           # Get all man pages from system
           all_man_pages = man_indexer.get_all_man_pages
 
           # Get already indexed man pages from DB
-          indexed = history.get_indexed_sources(kind: 'man_page')
+          indexed = history.get_indexed_sources(kind: "man_page")
 
           # Calculate exclusive set (not yet indexed)
           to_index = all_man_pages - indexed
 
           # Update total count
           status_mutex.synchronize do
-            indexer_status['running'] = true
-            indexer_status['total'] = all_man_pages.length
-            indexer_status['completed'] = indexed.length
+            indexer_status["running"] = true
+            indexer_status["total"] = all_man_pages.length
+            indexer_status["completed"] = indexed.length
           end
 
           # Break if nothing left to index
           if to_index.empty?
             status_mutex.synchronize do
-              indexer_status['running'] = false
+              indexer_status["running"] = false
             end
             break
           end
@@ -1484,7 +1471,7 @@ module Nu
 
           # Update current batch
           status_mutex.synchronize do
-            indexer_status['current_batch'] = batch
+            indexer_status["current_batch"] = batch
           end
 
           # Extract DESCRIPTION sections
@@ -1498,7 +1485,7 @@ module Nu
             if description.nil? || description.empty?
               # Skip this man page
               status_mutex.synchronize do
-                indexer_status['skipped'] += 1
+                indexer_status["skipped"] += 1
               end
               next
             end
@@ -1524,39 +1511,38 @@ module Nu
             response = embeddings_client.generate_embedding(contents)
 
             # Check for errors
-            if response['error']
-              error_body = response['error']['body']
-              if error_body && error_body['error']
-                error_msg = error_body['error']['message']
-                error_code = error_body['error']['code']
+            if response["error"]
+              error_body = response["error"]["body"]
+              if error_body && error_body["error"]
+                error_msg = error_body["error"]["message"]
+                error_code = error_body["error"]["code"]
 
                 # Check for model access issues
-                if error_code == 'model_not_found' && error_msg.include?('text-embedding-3-small')
-                  buffer = Nu::Agent::OutputBuffer.new
+                buffer = Nu::Agent::OutputBuffer.new
+                if error_code == "model_not_found" && error_msg.include?("text-embedding-3-small")
                   buffer.error("[Man Indexer] ERROR: OpenAI API key does not have access to text-embedding-3-small")
                   buffer.error("  Please enable embeddings API access in your OpenAI project settings")
                   buffer.error("  Visit: https://platform.openai.com/settings")
                   application.output.flush_buffer(buffer)
 
                   # Stop indexing - no point continuing
-                  status_mutex.synchronize { indexer_status['running'] = false }
+                  status_mutex.synchronize { indexer_status["running"] = false }
                   break
                 else
-                  buffer = Nu::Agent::OutputBuffer.new
                   buffer.debug("[Man Indexer] API Error: #{error_msg}")
                   application.output.flush_buffer(buffer)
                 end
               end
 
               status_mutex.synchronize do
-                indexer_status['failed'] += records.length
+                indexer_status["failed"] += records.length
               end
-              sleep(6)  # Rate limiting
+              sleep(6) # Rate limiting
               next
             end
 
             # Get embeddings
-            embeddings = response['embeddings']
+            embeddings = response["embeddings"]
 
             # Add embeddings to records
             records.each_with_index do |record, i|
@@ -1566,22 +1552,21 @@ module Nu
             # Store in database
             application.send(:enter_critical_section)
             begin
-              history.store_embeddings(kind: 'man_page', records: records)
+              history.store_embeddings(kind: "man_page", records: records)
             ensure
               application.send(:exit_critical_section)
             end
 
             # Update status
             status_mutex.synchronize do
-              indexer_status['completed'] += records.length
-              indexer_status['session_spend'] += response['spend'] || 0.0
-              indexer_status['session_tokens'] += response['tokens'] || 0
+              indexer_status["completed"] += records.length
+              indexer_status["session_spend"] += response["spend"] || 0.0
+              indexer_status["session_tokens"] += response["tokens"] || 0
             end
-
-          rescue => e
+          rescue StandardError => e
             # On error, mark batch as failed and log the error
             status_mutex.synchronize do
-              indexer_status['failed'] += records.length
+              indexer_status["failed"] += records.length
             end
 
             # Log error using thread-safe output
@@ -1601,11 +1586,10 @@ module Nu
 
         # Mark as complete
         status_mutex.synchronize do
-          indexer_status['running'] = false
-          indexer_status['current_batch'] = nil
+          indexer_status["running"] = false
+          indexer_status["current_batch"] = nil
         end
       end
-
     end
   end
 end

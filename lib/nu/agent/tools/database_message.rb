@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for retrieving specific messages by ID from conversation history. " \
-          "Use this when you need full details from earlier messages that were redacted to save context space. " \
-          "Returns complete message content including role, timestamp, content, tool calls, and results."
+            "Use this when you need full details from earlier messages that were redacted to save context space. " \
+            "Returns complete message content including role, timestamp, content, tool calls, and results."
         end
 
         def parameters
@@ -33,13 +33,11 @@ module Nu
             }
           end
 
-          conversation_id = context['conversation_id']
+          conversation_id = context["conversation_id"]
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[database_message] message_id: #{message_id}\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[database_message] message_id: #{message_id}\e[0m") if application&.debug
 
           begin
             message = history.get_message_by_id(message_id, conversation_id: conversation_id)
@@ -52,7 +50,7 @@ module Nu
                 message_id: message_id
               }
             end
-          rescue => e
+          rescue StandardError => e
             {
               error: "Failed to retrieve message: #{e.message}",
               message_id: message_id
@@ -65,36 +63,32 @@ module Nu
         def format_message(msg)
           # Format message in a clear, readable way for the LLM
           result = {
-            'message_id' => msg['id'],
-            'role' => msg['role'],
-            'timestamp' => msg['created_at']
+            "message_id" => msg["id"],
+            "role" => msg["role"],
+            "timestamp" => msg["created_at"]
           }
 
           # Include content if present
-          if msg['content'] && !msg['content'].empty?
-            result['message_content'] = msg['content']
-          end
+          result["message_content"] = msg["content"] if msg["content"] && !msg["content"].empty?
 
           # Format tool calls in a clear way
-          if msg['tool_calls']
-            result['tool_calls'] = msg['tool_calls'].map do |tc|
+          if msg["tool_calls"]
+            result["tool_calls"] = msg["tool_calls"].map do |tc|
               {
-                'tool_name' => tc['name'],
-                'arguments' => tc['arguments']
+                "tool_name" => tc["name"],
+                "arguments" => tc["arguments"]
               }
             end
           end
 
           # Format tool results clearly
-          if msg['tool_result']
-            result['tool_name'] = msg['tool_result']['name']
-            result['tool_output'] = msg['tool_result']['result']
+          if msg["tool_result"]
+            result["tool_name"] = msg["tool_result"]["name"]
+            result["tool_output"] = msg["tool_result"]["result"]
           end
 
           # Include errors if present
-          if msg['error']
-            result['error_details'] = msg['error']
-          end
+          result["error_details"] = msg["error"] if msg["error"]
 
           result
         end

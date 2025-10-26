@@ -10,8 +10,8 @@ module Nu
 
         def description
           "Check the status of background man page indexing. " \
-          "Returns progress information including how many man pages have been indexed, " \
-          "how many failed or were skipped, current batch being processed, and costs."
+            "Returns progress information including how many man pages have been indexed, " \
+            "how many failed or were skipped, current batch being processed, and costs."
         end
 
         def parameters
@@ -20,22 +20,20 @@ module Nu
 
         def execute(arguments:, history:, context:)
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[man_indexer] checking status\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[man_indexer] checking status\e[0m") if application&.debug
 
           # Get the Application instance from context
-          application = context['application']
+          application = context["application"]
 
           if application.nil?
             return {
-              'error' => 'Application context not available'
+              "error" => "Application context not available"
             }
           end
 
           # Get enabled status
-          enabled = history.get_config('index_man_enabled') == 'true'
+          enabled = history.get_config("index_man_enabled") == "true"
 
           # Read status under mutex
           status = nil
@@ -45,47 +43,47 @@ module Nu
 
           # Format the response
           result = {
-            'enabled' => enabled
+            "enabled" => enabled
           }
 
-          if status['running']
+          if status["running"]
             result.merge!({
-              'running' => true,
-              'progress' => {
-                'total' => status['total'],
-                'completed' => status['completed'],
-                'failed' => status['failed'],
-                'skipped' => status['skipped'],
-                'remaining' => status['total'] - status['completed']
-              },
-              'session' => {
-                'spend' => status['session_spend'],
-                'tokens' => status['session_tokens']
-              },
-              'current_batch' => status['current_batch']
-            })
-          elsif status['total'] > 0
+                            "running" => true,
+                            "progress" => {
+                              "total" => status["total"],
+                              "completed" => status["completed"],
+                              "failed" => status["failed"],
+                              "skipped" => status["skipped"],
+                              "remaining" => status["total"] - status["completed"]
+                            },
+                            "session" => {
+                              "spend" => status["session_spend"],
+                              "tokens" => status["session_tokens"]
+                            },
+                            "current_batch" => status["current_batch"]
+                          })
+          elsif status["total"].positive?
             # Has run or is idle
             result.merge!({
-              'running' => false,
-              'progress' => {
-                'total' => status['total'],
-                'completed' => status['completed'],
-                'failed' => status['failed'],
-                'skipped' => status['skipped'],
-                'remaining' => status['total'] - status['completed']
-              },
-              'session' => {
-                'spend' => status['session_spend'],
-                'tokens' => status['session_tokens']
-              }
-            })
+                            "running" => false,
+                            "progress" => {
+                              "total" => status["total"],
+                              "completed" => status["completed"],
+                              "failed" => status["failed"],
+                              "skipped" => status["skipped"],
+                              "remaining" => status["total"] - status["completed"]
+                            },
+                            "session" => {
+                              "spend" => status["session_spend"],
+                              "tokens" => status["session_tokens"]
+                            }
+                          })
           else
             # Never started
             result.merge!({
-              'running' => false,
-              'message' => 'Man page indexing not yet started'
-            })
+                            "running" => false,
+                            "message" => "Man page indexing not yet started"
+                          })
           end
 
           result

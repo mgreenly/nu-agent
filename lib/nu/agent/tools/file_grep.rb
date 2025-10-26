@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'json'
+require "json"
 
 module Nu
   module Agent
@@ -12,17 +12,17 @@ module Nu
 
         def description
           "PREFERRED tool for searching code patterns. Use this instead of execute_bash with grep/rg commands. " \
-          "Returns structured JSON (no parsing needed) with file paths and line numbers for easy code references. " \
-          "Supports regex patterns, file filtering (glob), case-insensitive search, and context lines. " \
-          "\n\nThree output modes:\n" \
-          "- 'files_with_matches' (default): Quick discovery - which files contain this pattern? " \
-          "Example: Find all files importing a module.\n" \
-          "- 'content': Detailed view - show actual matching lines with line numbers. " \
-          "Example: Find function definitions with 'def execute'.\n" \
-          "- 'count': Statistics - how many matches per file? " \
-          "Example: Count TODO comments across the codebase.\n" \
-          "\nCommon use cases: Find function/class definitions, search for TODO/FIXME comments, " \
-          "locate error handling code, find imports/requires, search API usage patterns."
+            "Returns structured JSON (no parsing needed) with file paths and line numbers for easy code references. " \
+            "Supports regex patterns, file filtering (glob), case-insensitive search, and context lines. " \
+            "\n\nThree output modes:\n" \
+            "- 'files_with_matches' (default): Quick discovery - which files contain this pattern? " \
+            "Example: Find all files importing a module.\n" \
+            "- 'content': Detailed view - show actual matching lines with line numbers. " \
+            "Example: Find function definitions with 'def execute'.\n" \
+            "- 'count': Statistics - how many matches per file? " \
+            "Example: Count TODO comments across the codebase.\n" \
+            "\nCommon use cases: Find function/class definitions, search for TODO/FIXME comments, " \
+            "locate error handling code, find imports/requires, search API usage patterns."
         end
 
         def parameters
@@ -95,7 +95,7 @@ module Nu
           end
 
           # Validate output_mode
-          unless ["files_with_matches", "content", "count"].include?(output_mode)
+          unless %w[files_with_matches content count].include?(output_mode)
             return {
               error: "output_mode must be 'files_with_matches', 'content', or 'count'",
               matches: []
@@ -116,9 +116,9 @@ module Nu
           )
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            
+          application = context["application"]
+          if application&.debug
+
             application.output.debug("[file_grep] command: #{cmd.join(' ')}")
             application.output.debug("[file_grep] output_mode: #{output_mode}")
           end
@@ -136,16 +136,14 @@ module Nu
             end
 
             # Parse output based on mode
-            result = case output_mode
+            case output_mode
             when "files_with_matches"
               parse_files_with_matches(stdout, max_results)
             when "count"
               parse_count(stdout, max_results)
             when "content"
               parse_content(stdout, max_results)
-          end
-
-            result
+            end
           rescue StandardError => e
             {
               error: "Search failed: #{e.message}",
@@ -156,7 +154,8 @@ module Nu
 
         private
 
-        def build_ripgrep_command(pattern:, path:, output_mode:, glob:, case_insensitive:, context_before:, context_after:, context:, max_results:)
+        def build_ripgrep_command(pattern:, path:, output_mode:, glob:, case_insensitive:, context_before:,
+                                  context_after:, context:, max_results:)
           cmd_parts = ["rg"]
 
           # Output mode specific flags
@@ -208,12 +207,12 @@ module Nu
           results = []
           stdout.split("\n").take(max_results).each do |line|
             # Format: "path/to/file:count"
-            if line =~ /^(.+):(\d+)$/
-              results << {
-                file: $1,
-                count: $2.to_i
-              }
-            end
+            next unless line =~ /^(.+):(\d+)$/
+
+            results << {
+              file: ::Regexp.last_match(1),
+              count: ::Regexp.last_match(2).to_i
+            }
           end
 
           {
@@ -225,32 +224,29 @@ module Nu
 
         def parse_content(stdout, max_results)
           matches = []
-          current_match = nil
 
           stdout.each_line do |line|
-            begin
-              data = JSON.parse(line)
+            data = JSON.parse(line)
 
-              case data["type"]
-              when "match"
-                match_data = data["data"]
+            case data["type"]
+            when "match"
+              match_data = data["data"]
 
-                matches << {
-                  file: match_data["path"]["text"],
-                  line_number: match_data["line_number"],
-                  line: match_data["lines"]["text"].chomp,
-                  match_text: match_data["submatches"]&.first&.dig("match", "text")
-                }
+              matches << {
+                file: match_data["path"]["text"],
+                line_number: match_data["line_number"],
+                line: match_data["lines"]["text"].chomp,
+                match_text: match_data["submatches"]&.first&.dig("match", "text")
+              }
 
-                break if matches.length >= max_results
+              break if matches.length >= max_results
 
-              when "context"
-                # Context lines could be added to the previous match if needed
-                # For now, we'll skip them as ripgrep --json provides them separately
-              end
-            rescue JSON::ParserError
-              # Skip non-JSON lines
+            when "context"
+              # Context lines could be added to the previous match if needed
+              # For now, we'll skip them as ripgrep --json provides them separately
             end
+          rescue JSON::ParserError
+            # Skip non-JSON lines
           end
 
           {

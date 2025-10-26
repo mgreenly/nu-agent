@@ -17,15 +17,15 @@ module Nu
         man_pages = []
         output.each_line do |line|
           # Parse: "grep (1) - print lines matching a pattern"
-          if line =~ /^(\S+)\s+\((\d+)\)\s+-\s+(.*)$/
-            name = $1
-            section = $2
-            description = $3.strip
+          next unless line =~ /^(\S+)\s+\((\d+)\)\s+-\s+(.*)$/
 
-            # Source format: "name.section"
-            source = "#{name}.#{section}"
-            man_pages << source
-          end
+          name = ::Regexp.last_match(1)
+          section = ::Regexp.last_match(2)
+          ::Regexp.last_match(3).strip
+
+          # Source format: "name.section"
+          source = "#{name}.#{section}"
+          man_pages << source
         end
 
         man_pages.uniq.sort
@@ -35,7 +35,7 @@ module Nu
       # Returns a formatted document combining these sections
       def extract_description(source)
         # Parse source: "grep.1" -> name="grep", section="1"
-        name, section = source.split('.')
+        name, section = source.split(".")
         unless name && section
           @output&.debug("[Man Indexer] Skipping #{source}: invalid source format")
           return nil
@@ -49,22 +49,16 @@ module Nu
         end
 
         # Extract sections using all-caps headers
-        sections = extract_sections(output, ['NAME', 'SYNOPSIS', 'DESCRIPTION'])
+        sections = extract_sections(output, %w[NAME SYNOPSIS DESCRIPTION])
 
         # Build combined document
         doc_parts = []
 
-        if sections['NAME']
-          doc_parts << "NAME\n#{sections['NAME']}"
-        end
+        doc_parts << "NAME\n#{sections['NAME']}" if sections["NAME"]
 
-        if sections['SYNOPSIS']
-          doc_parts << "SYNOPSIS\n#{sections['SYNOPSIS']}"
-        end
+        doc_parts << "SYNOPSIS\n#{sections['SYNOPSIS']}" if sections["SYNOPSIS"]
 
-        if sections['DESCRIPTION']
-          doc_parts << "DESCRIPTION\n#{sections['DESCRIPTION']}"
-        end
+        doc_parts << "DESCRIPTION\n#{sections['DESCRIPTION']}" if sections["DESCRIPTION"]
 
         # Return nil if we didn't get any sections
         if doc_parts.empty?
@@ -75,13 +69,13 @@ module Nu
         document = doc_parts.join("\n\n")
 
         # Truncate if too long (8000 tokens ~ 32000 chars rough estimate)
-        if document.length > 32000
+        if document.length > 32_000
           @output&.debug("[Man Indexer] Truncating #{source}: content too long (#{document.length} chars)")
-          document = document[0, 32000]
+          document = document[0, 32_000]
         end
 
         document
-      rescue => e
+      rescue StandardError => e
         @output&.debug("[Man Indexer] Error processing #{source}: #{e.class}: #{e.message}")
         nil
       end
@@ -125,7 +119,7 @@ module Nu
 
       # Check if a man page exists and is accessible
       def man_page_exists?(source)
-        name, section = source.split('.')
+        name, section = source.split(".")
         return false unless name && section
 
         system("man #{section} #{name} > /dev/null 2>&1")

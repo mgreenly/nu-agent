@@ -4,10 +4,10 @@ module Nu
   module Agent
     class ClientFactory
       # Supported models by provider
-      ANTHROPIC_MODELS = ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-1'].freeze
-      GOOGLE_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'].freeze
-      OPENAI_MODELS = ['gpt-5-nano-2025-08-07', 'gpt-5-mini', 'gpt-5'].freeze
-      XAI_MODELS = ['grok-3', 'grok-code-fast-1'].freeze
+      ANTHROPIC_MODELS = ["claude-haiku-4-5", "claude-sonnet-4-5", "claude-opus-4-1"].freeze
+      GOOGLE_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"].freeze
+      OPENAI_MODELS = ["gpt-5-nano-2025-08-07", "gpt-5-mini", "gpt-5"].freeze
+      XAI_MODELS = %w[grok-3 grok-code-fast-1].freeze
 
       class << self
         def create(model_name)

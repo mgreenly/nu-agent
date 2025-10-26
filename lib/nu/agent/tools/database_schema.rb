@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for viewing table schemas. " \
-          "Shows column names, types, and constraints for a specific table in the agent's history database. " \
-          "Use database_tables first to see available tables, then use this tool to understand table structure before querying with database_query."
+            "Shows column names, types, and constraints for a specific table in the agent's history database. " \
+            "Use database_tables first to see available tables, then use this tool to understand table structure before querying with database_query."
         end
 
         def parameters
@@ -34,10 +34,8 @@ module Nu
           end
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[database_schema] table: #{table_name}\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[database_schema] table: #{table_name}\e[0m") if application&.debug
 
           columns = history.describe_table(table_name)
 
@@ -46,7 +44,7 @@ module Nu
             columns: columns,
             column_count: columns.length
           }
-        rescue => e
+        rescue StandardError => e
           {
             error: e.message,
             table_name: table_name

@@ -60,7 +60,7 @@ module Nu
       def for_openai
         available.map do |tool|
           {
-            type: 'function',
+            type: "function",
             function: {
               name: tool.name,
               description: tool.description,

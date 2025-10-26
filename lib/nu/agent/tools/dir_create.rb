@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for creating directories. Automatically creates parent directories if needed (like mkdir -p). " \
-          "Safe to call if directory already exists (no error). " \
-          "Use this to organize files into new directory structures."
+            "Safe to call if directory already exists (no error). " \
+            "Use this to organize files into new directory structures."
         end
 
         def parameters
@@ -39,10 +39,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[dir_create] path: #{resolved_path}\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[dir_create] path: #{resolved_path}\e[0m") if application&.debug
 
           begin
             # Check if it already exists
@@ -64,7 +62,7 @@ module Nu
               message: "Directory created successfully",
               created: true
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to create directory: #{e.message}"
@@ -75,7 +73,7 @@ module Nu
         private
 
         def resolve_path(dir_path)
-          if dir_path.start_with?('/')
+          if dir_path.start_with?("/")
             File.expand_path(dir_path)
           else
             File.expand_path(dir_path, Dir.pwd)
@@ -89,9 +87,9 @@ module Nu
             raise ArgumentError, "Access denied: Directory must be within project directory (#{project_root})"
           end
 
-          if dir_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless dir_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
       end
     end

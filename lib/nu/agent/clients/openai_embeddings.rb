@@ -10,7 +10,7 @@ module Nu
         Error = ::Nu::Agent::Error
 
         # Only support text-embedding-3-small
-        MODEL = 'text-embedding-3-small'
+        MODEL = "text-embedding-3-small"
         PRICING_PER_MILLION_TOKENS = 0.020
 
         def initialize(api_key: nil)
@@ -40,26 +40,26 @@ module Nu
           end
 
           # Extract embeddings
-          embeddings = response['data'].map { |d| d['embedding'] }
+          embeddings = response["data"].map { |d| d["embedding"] }
 
           # Get usage information
-          total_tokens = response.dig('usage', 'total_tokens') || 0
+          total_tokens = response.dig("usage", "total_tokens") || 0
 
           # Calculate cost
           cost = (total_tokens / 1_000_000.0) * PRICING_PER_MILLION_TOKENS
 
           {
-            'embeddings' => text.is_a?(Array) ? embeddings : embeddings.first,
-            'model' => MODEL,
-            'tokens' => total_tokens,
-            'spend' => cost
+            "embeddings" => text.is_a?(Array) ? embeddings : embeddings.first,
+            "model" => MODEL,
+            "tokens" => total_tokens,
+            "spend" => cost
           }
         end
 
         private
 
         def format_error_response(error)
-          status = error.response&.dig(:status) || 'unknown'
+          status = error.response&.dig(:status) || "unknown"
           headers = error.response&.dig(:headers) || {}
 
           # Try multiple ways to get the body
@@ -69,14 +69,14 @@ module Nu
                  error.message
 
           {
-            'error' => {
-              'status' => status,
-              'headers' => headers.to_h,
-              'body' => body,
-              'raw_error' => error.inspect
+            "error" => {
+              "status" => status,
+              "headers" => headers.to_h,
+              "body" => body,
+              "raw_error" => error.inspect
             },
-            'embeddings' => nil,
-            'model' => MODEL
+            "embeddings" => nil,
+            "model" => MODEL
           }
         end
 
@@ -85,16 +85,15 @@ module Nu
             @api_key = ApiKey.new(provided_key)
           else
             # Use the same API key as the regular OpenAI client
-            api_key_path = File.join(Dir.home, '.secrets', 'OPENAI_API_KEY')
+            api_key_path = File.join(Dir.home, ".secrets", "OPENAI_API_KEY")
 
-            if File.exist?(api_key_path)
-              key_content = File.read(api_key_path).strip
-              @api_key = ApiKey.new(key_content)
-            else
-              raise Error, "API key not found at #{api_key_path}"
-            end
+            raise Error, "API key not found at #{api_key_path}" unless File.exist?(api_key_path)
+
+            key_content = File.read(api_key_path).strip
+            @api_key = ApiKey.new(key_content)
+
           end
-        rescue => e
+        rescue StandardError => e
           raise Error, "Error loading API key: #{e.message}"
         end
       end

@@ -10,23 +10,23 @@ module Nu
 
         def description
           "PREFERRED tool for editing files. Use exact string replacement instead of rewriting entire files. " \
-          "Safer and more efficient than execute_bash with sed/awk commands. " \
-          "Works perfectly with file_read: read to see line numbers, then edit using line-based or string-based operations.\n" \
-          "\nPrimary mode - Exact string replacement:\n" \
-          "- Provide old_string and new_string for precise edits\n" \
-          "- By default replaces first occurrence (safe)\n" \
-          "- Use replace_all: true to replace all occurrences\n" \
-          "- Returns error if old_string not found (read file first to verify)\n" \
-          "\nLine-based editing (works with file_read line numbers):\n" \
-          "- insert_line: Insert content at specific line number (1-indexed)\n" \
-          "- replace_range_start + replace_range_end: Replace a range of lines (inclusive)\n" \
-          "\nPattern-based insertion:\n" \
-          "- insert_after: Insert content after first match of pattern\n" \
-          "- insert_before: Insert content before first match of pattern\n" \
-          "\nSimple operations:\n" \
-          "- append: Add content to end of file\n" \
-          "- prepend: Add content to beginning of file\n" \
-          "\nAlways prefer targeted edits over file rewrites. This tool encourages best practices."
+            "Safer and more efficient than execute_bash with sed/awk commands. " \
+            "Works perfectly with file_read: read to see line numbers, then edit using line-based or string-based operations.\n" \
+            "\nPrimary mode - Exact string replacement:\n" \
+            "- Provide old_string and new_string for precise edits\n" \
+            "- By default replaces first occurrence (safe)\n" \
+            "- Use replace_all: true to replace all occurrences\n" \
+            "- Returns error if old_string not found (read file first to verify)\n" \
+            "\nLine-based editing (works with file_read line numbers):\n" \
+            "- insert_line: Insert content at specific line number (1-indexed)\n" \
+            "- replace_range_start + replace_range_end: Replace a range of lines (inclusive)\n" \
+            "\nPattern-based insertion:\n" \
+            "- insert_after: Insert content after first match of pattern\n" \
+            "- insert_before: Insert content before first match of pattern\n" \
+            "\nSimple operations:\n" \
+            "- append: Add content to end of file\n" \
+            "- prepend: Add content to beginning of file\n" \
+            "\nAlways prefer targeted edits over file rewrites. This tool encourages best practices."
         end
 
         def parameters
@@ -122,9 +122,9 @@ module Nu
           replace_end = arguments[:replace_range_end] || arguments["replace_range_end"]
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            
+          application = context["application"]
+          if application&.debug
+
             application.output.debug("[file_edit] file: #{resolved_path}")
             if old_string
               application.output.debug("[file_edit] mode: replace (replace_all: #{replace_all})")
@@ -140,7 +140,7 @@ module Nu
               application.output.debug("[file_edit] mode: insert_line (#{insert_line_num})")
             elsif replace_start && replace_end
               application.output.debug("[file_edit] mode: replace_range (#{replace_start}-#{replace_end})")
-          end
+            end
           end
 
           begin
@@ -165,7 +165,7 @@ module Nu
                 error: "Must provide either: (old_string + new_string), append, prepend, (insert_after/insert_before + content), (insert_line + content), or (replace_range_start + replace_range_end + content)"
               }
             end
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: e.message
@@ -177,7 +177,7 @@ module Nu
 
         def resolve_path(file_path)
           # If relative path, make it relative to current directory
-          if file_path.start_with?('/')
+          if file_path.start_with?("/")
             File.expand_path(file_path)
           else
             File.expand_path(file_path, Dir.pwd)
@@ -194,15 +194,13 @@ module Nu
           end
 
           # Prevent directory traversal attacks
-          if file_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless file_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
 
         def execute_replace(file_path, old_string, new_string, replace_all)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
           # Read the file
           content = File.read(file_path)
@@ -210,7 +208,7 @@ module Nu
           # Count occurrences
           occurrences = content.scan(old_string).length
 
-          if occurrences == 0
+          if occurrences.zero?
             return {
               status: "error",
               error: "old_string not found in file. Read the file first to verify the exact text to replace.",
@@ -220,10 +218,10 @@ module Nu
 
           # Perform replacement
           new_content = if replace_all
-            content.gsub(old_string, new_string)
-          else
-            content.sub(old_string, new_string)  # Only replace first occurrence
-          end
+                          content.gsub(old_string, new_string)
+                        else
+                          content.sub(old_string, new_string) # Only replace first occurrence
+                        end
 
           # Write back
           File.write(file_path, new_content)
@@ -238,12 +236,10 @@ module Nu
         end
 
         def execute_append(file_path, content)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
           # Append to file
-          File.open(file_path, 'a') do |file|
+          File.open(file_path, "a") do |file|
             file.write(content)
           end
 
@@ -256,9 +252,7 @@ module Nu
         end
 
         def execute_prepend(file_path, content)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
           # Read current content
           existing_content = File.read(file_path)
@@ -275,13 +269,9 @@ module Nu
         end
 
         def execute_insert_after(file_path, pattern, content)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
-          if content.nil? || content.empty?
-            raise ArgumentError, "content is required for insert_after operation"
-          end
+          raise ArgumentError, "content is required for insert_after operation" if content.nil? || content.empty?
 
           # Read file
           file_content = File.read(file_path)
@@ -310,13 +300,9 @@ module Nu
         end
 
         def execute_insert_before(file_path, pattern, content)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
-          if content.nil? || content.empty?
-            raise ArgumentError, "content is required for insert_before operation"
-          end
+          raise ArgumentError, "content is required for insert_before operation" if content.nil? || content.empty?
 
           # Read file
           file_content = File.read(file_path)
@@ -345,13 +331,9 @@ module Nu
         end
 
         def execute_insert_line(file_path, line_number, content)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
-          if content.nil? || content.empty?
-            raise ArgumentError, "content is required for insert_line operation"
-          end
+          raise ArgumentError, "content is required for insert_line operation" if content.nil? || content.empty?
 
           # Read file lines
           lines = File.readlines(file_path)
@@ -367,7 +349,7 @@ module Nu
 
           # Insert content at specified line (before the line number)
           # Ensure content ends with newline if it doesn't already
-          content_to_insert = content.end_with?("\n") ? content : content + "\n"
+          content_to_insert = content.end_with?("\n") ? content : "#{content}\n"
 
           # Insert at index (line_number - 1) to insert before that line
           lines.insert(line_number - 1, content_to_insert)
@@ -385,9 +367,7 @@ module Nu
         end
 
         def execute_replace_range(file_path, start_line, end_line, content)
-          unless File.exist?(file_path)
-            raise ArgumentError, "File not found: #{file_path}"
-          end
+          raise ArgumentError, "File not found: #{file_path}" unless File.exist?(file_path)
 
           if content.nil?
             content = "" # Allow empty replacement (deletion)
@@ -421,10 +401,10 @@ module Nu
 
           # Ensure content ends with newline if it's not empty
           content_to_insert = if content.empty?
-            ""
-          else
-            content.end_with?("\n") ? content : content + "\n"
-          end
+                                ""
+                              else
+                                content.end_with?("\n") ? content : "#{content}\n"
+                              end
 
           # Calculate how many lines we're removing
           lines_removed = end_line - start_line + 1
@@ -434,9 +414,7 @@ module Nu
           lines.slice!(start_line - 1, lines_removed)
 
           # Insert new content at start_line-1
-          if !content_to_insert.empty?
-            lines.insert(start_line - 1, content_to_insert)
-          end
+          lines.insert(start_line - 1, content_to_insert) unless content_to_insert.empty?
 
           # Write back
           File.write(file_path, lines.join)

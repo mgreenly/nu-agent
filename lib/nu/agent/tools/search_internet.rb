@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'json'
-require 'uri'
+require "net/http"
+require "json"
+require "uri"
 
 module Nu
   module Agent
@@ -19,10 +19,10 @@ module Nu
 
         def description
           "PREFERRED tool for searching the internet using Google Custom Search API. " \
-          "Returns web search results including titles, URLs, and snippets. " \
-          "Useful for finding current information, researching topics, looking up documentation, " \
-          "or gathering data from the web. " \
-          "Results include the most relevant pages matching the search query."
+            "Returns web search results including titles, URLs, and snippets. " \
+            "Useful for finding current information, researching topics, looking up documentation, " \
+            "or gathering data from the web. " \
+            "Results include the most relevant pages matching the search query."
         end
 
         def parameters
@@ -56,8 +56,8 @@ module Nu
           num_results = [[num_results.to_i, 1].max, 10].min
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[search_internet] query: #{query}\e[0m")
 
             application.console.puts("\e[90m[search_internet] num_results: #{num_results}\e[0m")
@@ -96,7 +96,7 @@ module Nu
               # Try to parse error details from response body
               begin
                 error_body = JSON.parse(response.body)
-                if error_body['error'] && error_body['error']['message']
+                if error_body["error"] && error_body["error"]["message"]
                   error_message += " - #{error_body['error']['message']}"
                 end
               rescue JSON::ParserError
@@ -113,17 +113,17 @@ module Nu
             data = JSON.parse(response.body)
 
             # Extract search results
-            items = data['items'] || []
+            items = data["items"] || []
             results = items.map do |item|
               {
-                title: item['title'],
-                url: item['link'],
-                snippet: item['snippet']
+                title: item["title"],
+                url: item["link"],
+                snippet: item["snippet"]
               }
             end
 
             # Extract total results estimate
-            total_results = data.dig('searchInformation', 'formattedTotalResults')
+            total_results = data.dig("searchInformation", "formattedTotalResults")
 
             {
               query: query,
@@ -131,7 +131,6 @@ module Nu
               results: results,
               count: results.length
             }
-
           rescue JSON::ParserError => e
             {
               error: "Failed to parse API response: #{e.message}",
@@ -148,8 +147,8 @@ module Nu
         private
 
         def credentials_path
-          File.join(Dir.home, '.secrets', 'GOOGLE_SEARCH_API')
-          end
+          File.join(Dir.home, ".secrets", "GOOGLE_SEARCH_API")
+        end
 
         def load_credentials
           return nil unless File.exist?(credentials_path)

@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for deleting directories. REQUIRES TWO-STEP CONFIRMATION: First call shows preview, second call with confirm_delete=true deletes. " \
-          "WARNING: Cannot be undone, all files and subdirectories are permanently removed. " \
-          "Use with extreme caution."
+            "WARNING: Cannot be undone, all files and subdirectories are permanently removed. " \
+            "Use with extreme caution."
         end
 
         def parameters
@@ -45,8 +45,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[dir_delete] path: #{resolved_path}\e[0m")
 
             application.console.puts("\e[90m[dir_delete] confirm: #{confirm}\e[0m")
@@ -90,7 +90,7 @@ module Nu
               directories_deleted: dir_count,
               confirmed: true
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to delete directory: #{e.message}"
@@ -101,7 +101,7 @@ module Nu
         private
 
         def resolve_path(dir_path)
-          if dir_path.start_with?('/')
+          if dir_path.start_with?("/")
             File.expand_path(dir_path)
           else
             File.expand_path(dir_path, Dir.pwd)
@@ -115,19 +115,17 @@ module Nu
             raise ArgumentError, "Access denied: Directory must be within project directory (#{project_root})"
           end
 
-          if dir_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          raise ArgumentError, "Access denied: Path cannot contain '..'" if dir_path.include?("..")
 
           # Extra safety: prevent deleting project root
-          if dir_path == project_root
-            raise ArgumentError, "Access denied: Cannot delete project root directory"
-          end
+          return unless dir_path == project_root
+
+          raise ArgumentError, "Access denied: Cannot delete project root directory"
         end
 
         def count_files(dir_path)
           count = 0
-          Dir.glob(File.join(dir_path, '**', '*')).each do |path|
+          Dir.glob(File.join(dir_path, "**", "*")).each do |path|
             count += 1 if File.file?(path)
           end
           count
@@ -135,7 +133,7 @@ module Nu
 
         def count_directories(dir_path)
           count = 0
-          Dir.glob(File.join(dir_path, '**', '*')).each do |path|
+          Dir.glob(File.join(dir_path, "**", "*")).each do |path|
             count += 1 if File.directory?(path)
           end
           count
@@ -143,7 +141,7 @@ module Nu
 
         def calculate_size(dir_path)
           total = 0
-          Dir.glob(File.join(dir_path, '**', '*')).each do |path|
+          Dir.glob(File.join(dir_path, "**", "*")).each do |path|
             total += File.size(path) if File.file?(path)
           end
           total

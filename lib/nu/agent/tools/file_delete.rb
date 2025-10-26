@@ -10,7 +10,7 @@ module Nu
 
         def description
           "PREFERRED tool for deleting files. WARNING: Cannot be undone, file is permanently removed. " \
-          "Only use when you're certain the file should be deleted."
+            "Only use when you're certain the file should be deleted."
         end
 
         def parameters
@@ -38,10 +38,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[file_delete] file: #{resolved_path}\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[file_delete] file: #{resolved_path}\e[0m") if application&.debug
 
           begin
             unless File.exist?(resolved_path)
@@ -66,7 +64,7 @@ module Nu
               file: file_path,
               message: "File deleted successfully"
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to delete file: #{e.message}"
@@ -77,7 +75,7 @@ module Nu
         private
 
         def resolve_path(file_path)
-          if file_path.start_with?('/')
+          if file_path.start_with?("/")
             File.expand_path(file_path)
           else
             File.expand_path(file_path, Dir.pwd)
@@ -91,9 +89,9 @@ module Nu
             raise ArgumentError, "Access denied: File must be within project directory (#{project_root})"
           end
 
-          if file_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless file_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
       end
     end

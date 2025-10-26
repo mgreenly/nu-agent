@@ -10,7 +10,7 @@ module Nu
 
         def description
           "PREFERRED tool for checking background summarization status. " \
-          "Returns progress information including how many conversations have been summarized, how many failed, and what is currently being processed."
+            "Returns progress information including how many conversations have been summarized, how many failed, and what is currently being processed."
         end
 
         def parameters
@@ -19,18 +19,16 @@ module Nu
 
         def execute(arguments:, history:, context:)
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[agent_summarizer] checking status\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[agent_summarizer] checking status\e[0m") if application&.debug
 
           # Get the Application instance from context
           # The context includes the Application's summarizer_status and status_mutex
-          application = context['application']
+          application = context["application"]
 
           if application.nil?
             return {
-              'error' => 'Application context not available'
+              "error" => "Application context not available"
             }
           end
 
@@ -41,36 +39,34 @@ module Nu
           end
 
           # Format the response
-          if status['running']
+          if status["running"]
             {
-              'status' => 'running',
-              'progress' => "#{status['completed']}/#{status['total']} conversations",
-              'total' => status['total'],
-              'completed' => status['completed'],
-              'failed' => status['failed'],
-              'current_conversation_id' => status['current_conversation_id'],
-              'last_summary' => status['last_summary'] ? truncate_summary(status['last_summary']) : nil,
-              'spend' => status['spend']
+              "status" => "running",
+              "progress" => "#{status['completed']}/#{status['total']} conversations",
+              "total" => status["total"],
+              "completed" => status["completed"],
+              "failed" => status["failed"],
+              "current_conversation_id" => status["current_conversation_id"],
+              "last_summary" => status["last_summary"] ? truncate_summary(status["last_summary"]) : nil,
+              "spend" => status["spend"]
+            }
+          elsif status["total"].positive?
+            # Finished
+            {
+              "status" => "completed",
+              "total" => status["total"],
+              "completed" => status["completed"],
+              "failed" => status["failed"],
+              "last_summary" => status["last_summary"] ? truncate_summary(status["last_summary"]) : nil,
+              "spend" => status["spend"]
             }
           else
-            if status['total'] > 0
-              # Finished
-              {
-                'status' => 'completed',
-                'total' => status['total'],
-                'completed' => status['completed'],
-                'failed' => status['failed'],
-                'last_summary' => status['last_summary'] ? truncate_summary(status['last_summary']) : nil,
-                'spend' => status['spend']
-              }
-            else
-              # Not started or no conversations to summarize
-              {
-                'status' => 'idle',
-                'message' => 'No conversations to summarize',
-                'spend' => 0.0
-              }
-            end
+            # Not started or no conversations to summarize
+            {
+              "status" => "idle",
+              "message" => "No conversations to summarize",
+              "spend" => 0.0
+            }
           end
         end
 

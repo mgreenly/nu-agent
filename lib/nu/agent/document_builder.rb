@@ -12,15 +12,13 @@ module Nu
       end
 
       def build
-        return '' if @sections.empty?
+        return "" if @sections.empty?
 
         @sections.map.with_index do |section, index|
           section_text = "# #{section[:title]}\n"
 
           # Add content if present
-          if section[:content] && !section[:content].to_s.empty?
-            section_text += "#{section[:content]}"
-          end
+          section_text += section[:content].to_s if section[:content] && !section[:content].to_s.empty?
 
           # Add blank line after section (except for the last one)
           section_text += "\n" unless index == @sections.length - 1

@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for creating new files or completely overwriting existing files. " \
-          "WARNING: Replaces entire file contents, use file_edit for targeted changes. " \
-          "Automatically creates parent directories if needed."
+            "WARNING: Replaces entire file contents, use file_edit for targeted changes. " \
+            "Automatically creates parent directories if needed."
         end
 
         def parameters
@@ -52,8 +52,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[file_write] file: #{resolved_path}\e[0m")
 
             application.console.puts("\e[90m[file_write] size: #{content.bytesize} bytes\e[0m")
@@ -62,7 +62,7 @@ module Nu
           begin
             # Create parent directory if it doesn't exist
             dir = File.dirname(resolved_path)
-            FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+            FileUtils.mkdir_p(dir)
 
             # Write the file
             File.write(resolved_path, content)
@@ -73,7 +73,7 @@ module Nu
               bytes_written: content.bytesize,
               lines_written: content.lines.length
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to write file: #{e.message}"
@@ -84,7 +84,7 @@ module Nu
         private
 
         def resolve_path(file_path)
-          if file_path.start_with?('/')
+          if file_path.start_with?("/")
             File.expand_path(file_path)
           else
             File.expand_path(file_path, Dir.pwd)
@@ -98,9 +98,9 @@ module Nu
             raise ArgumentError, "Access denied: File must be within project directory (#{project_root})"
           end
 
-          if file_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless file_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
       end
     end

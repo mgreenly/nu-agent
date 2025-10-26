@@ -168,7 +168,7 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
   end
 
   describe "REPL integration" do
-    # Note: Full REPL testing is complex due to the loop and dependencies.
+    # NOTE: Full REPL testing is complex due to the loop and dependencies.
     # We're testing that ConsoleIO.readline is called correctly.
 
     it "has a repl method that will use console.readline" do

@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for listing directory contents. Returns structured list of files and directories with optional details. " \
-          "Use this instead of execute_bash with ls commands. " \
-          "Supports sorting by name/mtime/size, filtering hidden files, and detailed file information."
+            "Use this instead of execute_bash with ls commands. " \
+            "Supports sorting by name/mtime/size, filtering hidden files, and detailed file information."
         end
 
         def parameters
@@ -56,8 +56,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[dir_list] path: #{resolved_path}\e[0m")
 
             application.console.puts("\e[90m[dir_list] show_hidden: #{show_hidden}, details: #{details}, sort_by: #{sort_by}\e[0m")
@@ -82,12 +82,10 @@ module Nu
             entries = Dir.entries(resolved_path)
 
             # Filter out . and ..
-            entries.reject! { |e| e == "." || e == ".." }
+            entries.reject! { |e| [".", ".."].include?(e) }
 
             # Filter hidden files if requested
-            unless show_hidden
-              entries.reject! { |e| e.start_with?(".") }
-            end
+            entries.reject! { |e| e.start_with?(".") } unless show_hidden
 
             # Build entry list with optional details
             entry_list = entries.map do |entry|
@@ -114,7 +112,7 @@ module Nu
               total_entries: entries.length,
               truncated: entries.length > limit
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to list directory: #{e.message}"
@@ -125,7 +123,7 @@ module Nu
         private
 
         def resolve_path(dir_path)
-          if dir_path.start_with?('/')
+          if dir_path.start_with?("/")
             File.expand_path(dir_path)
           else
             File.expand_path(dir_path, Dir.pwd)
@@ -139,23 +137,23 @@ module Nu
             raise ArgumentError, "Access denied: Directory must be within project directory (#{project_root})"
           end
 
-          if dir_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless dir_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
 
         def build_detailed_entry(name, full_path)
           stat = File.stat(full_path)
 
           type = if File.directory?(full_path)
-            "directory"
-          elsif File.symlink?(full_path)
-            "symlink"
-          elsif File.file?(full_path)
-            "file"
-          else
-            "other"
-          end
+                   "directory"
+                 elsif File.symlink?(full_path)
+                   "symlink"
+                 elsif File.file?(full_path)
+                   "file"
+                 else
+                   "other"
+                 end
 
           {
             name: name,
@@ -163,7 +161,7 @@ module Nu
             size: stat.size,
             modified_at: stat.mtime.iso8601
           }
-        rescue
+        rescue StandardError
           # If we can't stat (e.g., broken symlink), return basic info
           {
             name: name,

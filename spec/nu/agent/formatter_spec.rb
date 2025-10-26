@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
 
 RSpec.describe Nu::Agent::Formatter do
   let(:history) { instance_double(Nu::Agent::History) }
-  let(:orchestrator) { instance_double('Orchestrator', max_context: 200_000) }
+  let(:orchestrator) { instance_double("Orchestrator", max_context: 200_000) }
   let(:mock_console) do
     instance_double(
       Nu::Agent::ConsoleIO,
@@ -27,25 +27,25 @@ RSpec.describe Nu::Agent::Formatter do
     )
   end
 
-  describe '#display_new_messages' do
-    context 'when there are new messages' do
+  describe "#display_new_messages" do
+    context "when there are new messages" do
       let(:messages) do
         [
           {
-            'id' => 1,
-            'actor' => 'user',
-            'role' => 'user',
-            'content' => 'Hello',
-            'tokens_input' => nil,
-            'tokens_output' => nil
+            "id" => 1,
+            "actor" => "user",
+            "role" => "user",
+            "content" => "Hello",
+            "tokens_input" => nil,
+            "tokens_output" => nil
           },
           {
-            'id' => 2,
-            'actor' => 'orchestrator',
-            'role' => 'assistant',
-            'content' => 'Hi there!',
-            'tokens_input' => 10,
-            'tokens_output' => 5
+            "id" => 2,
+            "actor" => "orchestrator",
+            "role" => "assistant",
+            "content" => "Hi there!",
+            "tokens_input" => 10,
+            "tokens_output" => 5
           }
         ]
       end
@@ -54,38 +54,38 @@ RSpec.describe Nu::Agent::Formatter do
         allow(history).to receive(:messages_since).and_return(messages)
         allow(history).to receive(:workers_idle?).and_return(true)
         allow(history).to receive(:session_tokens).and_return({
-          'input' => 10,
-          'output' => 5,
-          'total' => 15,
-          'spend' => 0.000150
-        })
+                                                                "input" => 10,
+                                                                "output" => 5,
+                                                                "total" => 15,
+                                                                "spend" => 0.000150
+                                                              })
       end
 
-      it 'displays assistant messages' do
-        expect(mock_console).to receive(:puts).with('Hi there!')
+      it "displays assistant messages" do
+        expect(mock_console).to receive(:puts).with("Hi there!")
 
         formatter.display_new_messages(conversation_id: conversation_id)
       end
 
-      it 'displays token counts for assistant messages in debug mode' do
+      it "displays token counts for assistant messages in debug mode" do
         allow(history).to receive(:session_tokens).and_return({
-          'input' => 10,
-          'output' => 5,
-          'total' => 15,
-          'spend' => 0.000150
-        })
+                                                                "input" => 10,
+                                                                "output" => 5,
+                                                                "total" => 15,
+                                                                "spend" => 0.000150
+                                                              })
 
         # Enable debug mode to show token stats
         formatter.debug = true
 
-        expect(mock_console).to receive(:puts).with('Hi there!')
+        expect(mock_console).to receive(:puts).with("Hi there!")
         expect(mock_console).to receive(:puts).with("\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90mSession spend: $0.000150\e[0m")
 
         formatter.display_new_messages(conversation_id: conversation_id)
       end
 
-      it 'updates last_message_id' do
+      it "updates last_message_id" do
         formatter.display_new_messages(conversation_id: conversation_id)
 
         # Call again - should use updated last_message_id
@@ -98,12 +98,12 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    context 'when there are no new messages' do
+    context "when there are no new messages" do
       before do
         allow(history).to receive(:messages_since).and_return([])
       end
 
-      it 'does not output anything' do
+      it "does not output anything" do
         expect(mock_console).not_to receive(:puts)
 
         formatter.display_new_messages(conversation_id: conversation_id)
@@ -111,13 +111,13 @@ RSpec.describe Nu::Agent::Formatter do
     end
   end
 
-  describe '#wait_for_completion' do
-    it 'polls until workers are idle' do
+  describe "#wait_for_completion" do
+    it "polls until workers are idle" do
       call_count = 0
       allow(history).to receive(:messages_since).and_return([])
       allow(history).to receive(:workers_idle?) do
         call_count += 1
-        call_count >= 3  # Become idle after 3 calls
+        call_count >= 3 # Become idle after 3 calls
       end
 
       formatter.wait_for_completion(conversation_id: conversation_id, poll_interval: 0.01)
@@ -125,15 +125,15 @@ RSpec.describe Nu::Agent::Formatter do
       expect(call_count).to eq(3)
     end
 
-    it 'displays messages during polling' do
+    it "displays messages during polling" do
       messages = [
         {
-          'id' => 1,
-          'actor' => 'orchestrator',
-          'role' => 'assistant',
-          'content' => 'Processing...',
-          'tokens_input' => 5,
-          'tokens_output' => 3
+          "id" => 1,
+          "actor" => "orchestrator",
+          "role" => "assistant",
+          "content" => "Processing...",
+          "tokens_input" => 5,
+          "tokens_output" => 3
         }
       ]
 
@@ -144,87 +144,87 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       allow(history).to receive(:session_tokens).and_return({
-        'input' => 5,
-        'output' => 3,
-        'total' => 8,
-        'spend' => 0.000080
-      })
+                                                              "input" => 5,
+                                                              "output" => 3,
+                                                              "total" => 8,
+                                                              "spend" => 0.000080
+                                                            })
 
       allow(history).to receive(:workers_idle?).and_return(false, true)
 
-      expect(mock_console).to receive(:puts).with('Processing...')
+      expect(mock_console).to receive(:puts).with("Processing...")
 
       formatter.wait_for_completion(conversation_id: conversation_id, poll_interval: 0.01)
     end
   end
 
-  describe '#display_message' do
-    it 'displays user messages (as no-op)' do
-      message = { 'id' => 1, 'actor' => 'user', 'role' => 'user', 'content' => 'Hello' }
+  describe "#display_message" do
+    it "displays user messages (as no-op)" do
+      message = { "id" => 1, "actor" => "user", "role" => "user", "content" => "Hello" }
 
       expect(mock_console).not_to receive(:puts)
 
       formatter.display_message(message)
     end
 
-    it 'displays assistant messages with content and tokens' do
+    it "displays assistant messages with content and tokens" do
       allow(history).to receive(:session_tokens).and_return({
-        'input' => 8,
-        'output' => 4,
-        'total' => 12,
-        'spend' => 0.000120
-      })
+                                                              "input" => 8,
+                                                              "output" => 4,
+                                                              "total" => 12,
+                                                              "spend" => 0.000120
+                                                            })
 
       message = {
-        'id' => 2,
-        'actor' => 'orchestrator',
-        'role' => 'assistant',
-        'content' => 'Hello back!',
-        'tokens_input' => 8,
-        'tokens_output' => 4
+        "id" => 2,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "Hello back!",
+        "tokens_input" => 8,
+        "tokens_output" => 4
       }
 
-      expect(mock_console).to receive(:puts).with('Hello back!')
+      expect(mock_console).to receive(:puts).with("Hello back!")
 
       formatter.display_message(message)
     end
 
-    it 'displays system messages with prefix' do
-      message = { 'id' => 3, 'actor' => 'system', 'role' => 'system', 'content' => 'Starting up' }
+    it "displays system messages with prefix" do
+      message = { "id" => 3, "actor" => "system", "role" => "system", "content" => "Starting up" }
 
-      expect(mock_console).to receive(:puts).with('[System] Starting up')
+      expect(mock_console).to receive(:puts).with("[System] Starting up")
 
       formatter.display_message(message)
     end
 
-    it 'queries session tokens from database for cumulative totals' do
+    it "queries session tokens from database for cumulative totals" do
       message1 = {
-        'id' => 1,
-        'actor' => 'orchestrator',
-        'role' => 'assistant',
-        'content' => 'First message',
-        'tokens_input' => 10,
-        'tokens_output' => 5
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "First message",
+        "tokens_input" => 10,
+        "tokens_output" => 5
       }
 
       message2 = {
-        'id' => 2,
-        'actor' => 'orchestrator',
-        'role' => 'assistant',
-        'content' => 'Second message',
-        'tokens_input' => 20,
-        'tokens_output' => 8
+        "id" => 2,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "Second message",
+        "tokens_input" => 20,
+        "tokens_output" => 8
       }
 
       # First call returns just first message tokens
       # Second call returns cumulative total
       allow(history).to receive(:session_tokens).and_return(
-        { 'input' => 10, 'output' => 5, 'total' => 15, 'spend' => 0.000150 },
-        { 'input' => 30, 'output' => 13, 'total' => 43, 'spend' => 0.000430 }
+        { "input" => 10, "output" => 5, "total" => 15, "spend" => 0.000150 },
+        { "input" => 30, "output" => 13, "total" => 43, "spend" => 0.000430 }
       )
 
-      expect(mock_console).to receive(:puts).with('First message')
-      expect(mock_console).to receive(:puts).with('Second message')
+      expect(mock_console).to receive(:puts).with("First message")
+      expect(mock_console).to receive(:puts).with("Second message")
 
       formatter.display_message(message1)
       formatter.display_message(message2)
@@ -237,13 +237,13 @@ RSpec.describe Nu::Agent::Formatter do
     end
   end
 
-  describe '#display_token_summary' do
+  describe "#display_token_summary" do
     let(:messages) do
       [
-        { 'id' => 1, 'role' => 'user', 'content' => 'Hi', 'tokens_input' => nil, 'tokens_output' => nil },
-        { 'id' => 2, 'role' => 'assistant', 'content' => 'Hello', 'tokens_input' => 10, 'tokens_output' => 5 },
-        { 'id' => 3, 'role' => 'user', 'content' => 'How are you?', 'tokens_input' => nil, 'tokens_output' => nil },
-        { 'id' => 4, 'role' => 'assistant', 'content' => 'Good!', 'tokens_input' => 15, 'tokens_output' => 3 }
+        { "id" => 1, "role" => "user", "content" => "Hi", "tokens_input" => nil, "tokens_output" => nil },
+        { "id" => 2, "role" => "assistant", "content" => "Hello", "tokens_input" => 10, "tokens_output" => 5 },
+        { "id" => 3, "role" => "user", "content" => "How are you?", "tokens_input" => nil, "tokens_output" => nil },
+        { "id" => 4, "role" => "assistant", "content" => "Good!", "tokens_input" => 15, "tokens_output" => 3 }
       ]
     end
 
@@ -251,19 +251,19 @@ RSpec.describe Nu::Agent::Formatter do
       allow(history).to receive(:messages).and_return(messages)
     end
 
-    it 'displays total token counts via console.puts' do
-      expect(mock_console).to receive(:puts).with('Tokens: 25 in / 8 out / 33 total')
+    it "displays total token counts via console.puts" do
+      expect(mock_console).to receive(:puts).with("Tokens: 25 in / 8 out / 33 total")
 
       formatter.display_token_summary(conversation_id: conversation_id)
     end
 
-    it 'handles messages with nil token counts' do
+    it "handles messages with nil token counts" do
       expect { formatter.display_token_summary(conversation_id: conversation_id) }.not_to raise_error
     end
   end
 
-  describe 'verbosity levels' do
-    let(:application) { instance_double('Application') }
+  describe "verbosity levels" do
+    let(:application) { instance_double("Application") }
     let(:formatter_with_app) do
       described_class.new(
         history: history,
@@ -278,18 +278,18 @@ RSpec.describe Nu::Agent::Formatter do
 
     let(:tool_call_message) do
       {
-        'id' => 5,
-        'actor' => 'orchestrator',
-        'role' => 'assistant',
-        'content' => nil,
-        'tokens_input' => 20,
-        'tokens_output' => 10,
-        'tool_calls' => [
+        "id" => 5,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => nil,
+        "tokens_input" => 20,
+        "tokens_output" => 10,
+        "tool_calls" => [
           {
-            'name' => 'file_read',
-            'arguments' => {
-              'path' => '/very/long/path/to/some/file/that/is/longer/than/thirty/characters.txt',
-              'encoding' => 'utf-8'
+            "name" => "file_read",
+            "arguments" => {
+              "path" => "/very/long/path/to/some/file/that/is/longer/than/thirty/characters.txt",
+              "encoding" => "utf-8"
             }
           }
         ]
@@ -298,14 +298,14 @@ RSpec.describe Nu::Agent::Formatter do
 
     let(:tool_result_message) do
       {
-        'id' => 6,
-        'actor' => 'orchestrator',
-        'role' => 'user',
-        'tool_result' => {
-          'name' => 'file_read',
-          'result' => {
-            'content' => 'This is a very long file content that should be truncated when verbosity is 1 and shown in full when verbosity is 2 or higher',
-            'size' => 1024
+        "id" => 6,
+        "actor" => "orchestrator",
+        "role" => "user",
+        "tool_result" => {
+          "name" => "file_read",
+          "result" => {
+            "content" => "This is a very long file content that should be truncated when verbosity is 1 and shown in full when verbosity is 2 or higher",
+            "size" => 1024
           }
         }
       }
@@ -313,38 +313,38 @@ RSpec.describe Nu::Agent::Formatter do
 
     before do
       allow(history).to receive(:session_tokens).and_return({
-        'input' => 20,
-        'output' => 10,
-        'total' => 30,
-        'spend' => 0.000300
-      })
+                                                              "input" => 20,
+                                                              "output" => 10,
+                                                              "total" => 30,
+                                                              "spend" => 0.000300
+                                                            })
       allow(history).to receive(:workers_idle?).and_return(true)
     end
 
-    describe 'level 0: tool name only' do
+    describe "level 0: tool name only" do
       before do
         allow(application).to receive(:verbosity).and_return(0)
       end
 
-      it 'displays tool call name without arguments' do
+      it "displays tool call name without arguments" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
 
         formatter_with_app.display_message(tool_call_message)
       end
 
-      it 'displays tool result name without result details' do
+      it "displays tool result name without result details" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
 
         formatter_with_app.display_message(tool_result_message)
       end
     end
 
-    describe 'level 1: tool name + first 30 chars of params + thread notifications' do
+    describe "level 1: tool name + first 30 chars of params + thread notifications" do
       before do
         allow(application).to receive(:verbosity).and_return(1)
       end
 
-      it 'displays tool call arguments truncated to 30 characters' do
+      it "displays tool call arguments truncated to 30 characters" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
@@ -352,7 +352,7 @@ RSpec.describe Nu::Agent::Formatter do
         formatter_with_app.display_message(tool_call_message)
       end
 
-      it 'displays tool result fields truncated to 30 characters' do
+      it "displays tool result fields truncated to 30 characters" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  content: This is a very long file conte...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  size: 1024\e[0m")
@@ -360,16 +360,16 @@ RSpec.describe Nu::Agent::Formatter do
         formatter_with_app.display_message(tool_result_message)
       end
 
-      it 'does not truncate short values' do
+      it "does not truncate short values" do
         short_message = {
-          'id' => 7,
-          'actor' => 'orchestrator',
-          'role' => 'user',
-          'tool_result' => {
-            'name' => 'test_tool',
-            'result' => {
-              'status' => 'ok',
-              'value' => 'short'
+          "id" => 7,
+          "actor" => "orchestrator",
+          "role" => "user",
+          "tool_result" => {
+            "name" => "test_tool",
+            "result" => {
+              "status" => "ok",
+              "value" => "short"
             }
           }
         }
@@ -382,12 +382,12 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe 'level 2: truncated params (same as level 1)' do
+    describe "level 2: truncated params (same as level 1)" do
       before do
         allow(application).to receive(:verbosity).and_return(2)
       end
 
-      it 'displays tool call arguments truncated to 30 chars' do
+      it "displays tool call arguments truncated to 30 chars" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
@@ -395,7 +395,7 @@ RSpec.describe Nu::Agent::Formatter do
         formatter_with_app.display_message(tool_call_message)
       end
 
-      it 'displays tool result fields truncated to 30 chars' do
+      it "displays tool result fields truncated to 30 chars" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  content: This is a very long file conte...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  size: 1024\e[0m")
@@ -404,12 +404,12 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe 'level 3: truncated params (same as levels 1-2)' do
+    describe "level 3: truncated params (same as levels 1-2)" do
       before do
         allow(application).to receive(:verbosity).and_return(3)
       end
 
-      it 'displays tool call arguments truncated to 30 chars' do
+      it "displays tool call arguments truncated to 30 chars" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
@@ -417,7 +417,7 @@ RSpec.describe Nu::Agent::Formatter do
         formatter_with_app.display_message(tool_call_message)
       end
 
-      it 'displays tool result fields truncated to 30 chars' do
+      it "displays tool result fields truncated to 30 chars" do
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  content: This is a very long file conte...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  size: 1024\e[0m")
@@ -426,10 +426,10 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe 'level 4 and 5: documented in application specs' do
+    describe "level 4 and 5: documented in application specs" do
       # Levels 3 and 4 involve showing the request/context sent to the LLM
       # These are tested in application_spec.rb since they require chat_loop context
-      it 'is a placeholder for application-level tests' do
+      it "is a placeholder for application-level tests" do
         # Level 3: Show messages sent to LLM
         # Level 4: Show messages + conversation history
         # See application_spec.rb for these tests

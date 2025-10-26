@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'open3'
+require "open3"
 
 module Nu
   module Agent
@@ -11,14 +11,14 @@ module Nu
         end
 
         def available?
-          system('which python3 > /dev/null 2>&1')
-          end
+          system("which python3 > /dev/null 2>&1")
+        end
 
         def description
           "Execute Python code directly on the host system. " \
-          "Perfect for: data analysis, scripting, calculations, file processing, API calls. " \
-          "Code runs in the current working directory with full system access. " \
-          "File system permissions apply normally - operations will fail with errors if permissions are insufficient."
+            "Perfect for: data analysis, scripting, calculations, file processing, API calls. " \
+            "Code runs in the current working directory with full system access. " \
+            "File system permissions apply normally - operations will fail with errors if permissions are insufficient."
         end
 
         def parameters
@@ -46,8 +46,8 @@ module Nu
           timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[execute_python] code length: #{code.length} chars\e[0m")
 
             application.console.puts("\e[90m[execute_python] timeout: #{timeout_seconds}s\e[0m")
@@ -61,12 +61,11 @@ module Nu
 
           begin
             # Use timeout command with python3
-            cmd = ['timeout', "#{timeout_seconds}s", 'python3', '-c', code]
+            cmd = ["timeout", "#{timeout_seconds}s", "python3", "-c", code]
 
             # Execute code
             stdout, stderr, status = Open3.capture3(*cmd, chdir: Dir.pwd)
             exit_code = status.exitstatus
-
           rescue StandardError => e
             stderr = "Execution failed: #{e.message}"
             exit_code = 1
@@ -74,15 +73,13 @@ module Nu
 
           # Check if command timed out (exit code 124 from timeout command)
           timed_out = (exit_code == 124)
-          if timed_out
-            stderr = "Code timed out after #{timeout_seconds} seconds"
-          end
+          stderr = "Code timed out after #{timeout_seconds} seconds" if timed_out
 
           {
             stdout: stdout,
             stderr: stderr,
             exit_code: exit_code,
-            success: exit_code == 0,
+            success: exit_code.zero?,
             timed_out: timed_out
           }
         end

@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for getting file or directory metadata and statistics. " \
-          "Returns detailed information including size, modification time, permissions, and file type. " \
-          "Use this instead of execute_bash with stat/ls -l commands."
+            "Returns detailed information including size, modification time, permissions, and file type. " \
+            "Use this instead of execute_bash with stat/ls -l commands."
         end
 
         def parameters
@@ -39,10 +39,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[file_stat] path: #{resolved_path}\e[0m")
-          end
+          application = context["application"]
+          application.console.puts("\e[90m[file_stat] path: #{resolved_path}\e[0m") if application&.debug
 
           begin
             unless File.exist?(resolved_path)
@@ -56,17 +54,17 @@ module Nu
 
             # Determine file type
             file_type = if File.directory?(resolved_path)
-              "directory"
-            elsif File.file?(resolved_path)
-              "file"
-            elsif File.symlink?(resolved_path)
-              "symlink"
-            else
-              "other"
-            end
+                          "directory"
+                        elsif File.file?(resolved_path)
+                          "file"
+                        elsif File.symlink?(resolved_path)
+                          "symlink"
+                        else
+                          "other"
+                        end
 
             # Format permissions as octal string (e.g., "0755")
-            permissions = sprintf("%o", stat.mode & 0777)
+            permissions = format("%o", stat.mode & 0o777)
 
             # Build result
             result = {
@@ -93,12 +91,10 @@ module Nu
             end
 
             # For symlinks, include target
-            if File.symlink?(resolved_path)
-              result[:symlink_target] = File.readlink(resolved_path)
-          end
+            result[:symlink_target] = File.readlink(resolved_path) if File.symlink?(resolved_path)
 
             result
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to get file stats: #{e.message}"
@@ -109,7 +105,7 @@ module Nu
         private
 
         def resolve_path(file_path)
-          if file_path.start_with?('/')
+          if file_path.start_with?("/")
             File.expand_path(file_path)
           else
             File.expand_path(file_path, Dir.pwd)
@@ -123,20 +119,20 @@ module Nu
             raise ArgumentError, "Access denied: Path must be within project directory (#{project_root})"
           end
 
-          if file_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless file_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
 
         def human_readable_size(bytes)
-          units = ['B', 'KB', 'MB', 'GB', 'TB']
-          return "0 B" if bytes == 0
+          units = %w[B KB MB GB TB]
+          return "0 B" if bytes.zero?
 
           exp = (Math.log(bytes) / Math.log(1024)).to_i
           exp = [exp, units.length - 1].min
 
-          size = bytes / (1024.0 ** exp)
-          "%.2f %s" % [size, units[exp]]
+          size = bytes / (1024.0**exp)
+          format("%.2f %s", size, units[exp])
         end
       end
     end

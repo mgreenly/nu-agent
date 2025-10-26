@@ -10,16 +10,16 @@ module Nu
 
         def description
           "PREFERRED tool for finding files by name/pattern. Use this instead of execute_bash with find/ls commands. " \
-          "Returns structured JSON array of file paths, sorted by modification time (most recent first) by default. " \
-          "Perfect for navigating unfamiliar codebases and discovering files.\n" \
-          "\nPattern examples:\n" \
-          "- '**/*.rb' - All Ruby files recursively\n" \
-          "- '*.json' - JSON files in current directory\n" \
-          "- 'lib/**/*.{rb,rake}' - Ruby and Rake files in lib/\n" \
-          "- '**/test_*.rb' - All test files\n" \
-          "\nCommon use cases: Find test files, locate config files, discover all files of a type, " \
-          "find recently modified files (sorted by mtime), explore project structure. " \
-          "Use file_grep instead if you need to search file CONTENTS."
+            "Returns structured JSON array of file paths, sorted by modification time (most recent first) by default. " \
+            "Perfect for navigating unfamiliar codebases and discovering files.\n" \
+            "\nPattern examples:\n" \
+            "- '**/*.rb' - All Ruby files recursively\n" \
+            "- '*.json' - JSON files in current directory\n" \
+            "- 'lib/**/*.{rb,rake}' - Ruby and Rake files in lib/\n" \
+            "- '**/test_*.rb' - All test files\n" \
+            "\nCommon use cases: Find test files, locate config files, discover all files of a type, " \
+            "find recently modified files (sorted by mtime), explore project structure. " \
+            "Use file_grep instead if you need to search file CONTENTS."
         end
 
         def parameters
@@ -65,8 +65,8 @@ module Nu
           full_pattern = File.join(base_path, pattern)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[file_glob] pattern: #{full_pattern}\e[0m")
 
             application.console.puts("\e[90m[file_glob] sort_by: #{sort_by}, limit: #{limit}\e[0m")
@@ -78,16 +78,16 @@ module Nu
 
             # Sort results
             sorted_files = case sort_by
-            when "mtime"
-              files.sort_by { |f| -File.mtime(f).to_i }  # Negative for descending order
-            when "name"
-              files.sort
-            when "none"
-              files
-            else
-              # Default to mtime if invalid sort_by
-              files.sort_by { |f| -File.mtime(f).to_i }
-            end
+                           when "mtime"
+                             files.sort_by { |f| -File.mtime(f).to_i } # Negative for descending order
+                           when "name"
+                             files.sort
+                           when "none"
+                             files
+                           else
+                             # Default to mtime if invalid sort_by
+                             files.sort_by { |f| -File.mtime(f).to_i }
+                           end
 
             # Limit results
             limited_files = sorted_files.take(limit)
@@ -99,8 +99,7 @@ module Nu
               total_matches: files.length,
               truncated: files.length > limit
             }
-
-          rescue Errno::ENOENT => e
+          rescue Errno::ENOENT
             {
               error: "Path not found: #{base_path}",
               files: []

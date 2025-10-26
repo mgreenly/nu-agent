@@ -10,10 +10,10 @@ module Nu
 
         def description
           "PREFERRED tool for querying conversation history. " \
-          "Execute SQL queries against the agent's history database using a READ-ONLY connection. " \
-          "Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). Write operations (INSERT, UPDATE, DELETE) are blocked. " \
-          "IMPORTANT: Results are hard-capped at 500 rows maximum. Always use LIMIT 100 or less for efficient queries. " \
-          "Use database_tables to see available tables and database_schema to understand table structure first."
+            "Execute SQL queries against the agent's history database using a READ-ONLY connection. " \
+            "Only read operations are allowed: SELECT, SHOW, DESCRIBE, EXPLAIN, WITH (CTEs). Write operations (INSERT, UPDATE, DELETE) are blocked. " \
+            "IMPORTANT: Results are hard-capped at 500 rows maximum. Always use LIMIT 100 or less for efficient queries. " \
+            "Use database_tables to see available tables and database_schema to understand table structure first."
         end
 
         def parameters
@@ -36,9 +36,9 @@ module Nu
           end
 
           # Debug output
-          application = context['application']
-          if application && application.debug
-            application.console.puts("\e[90m[database_query] sql: #{sql.length > 100 ? sql[0..100] + '...' : sql}\e[0m")
+          application = context["application"]
+          if application&.debug
+            application.console.puts("\e[90m[database_query] sql: #{sql.length > 100 ? "#{sql[0..100]}..." : sql}\e[0m")
           end
 
           begin
@@ -54,7 +54,7 @@ module Nu
               error: e.message,
               query: sql
             }
-          rescue => e
+          rescue StandardError => e
             {
               error: "Query execution failed: #{e.message}",
               query: sql

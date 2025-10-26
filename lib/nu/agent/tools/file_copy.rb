@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for copying files. Creates duplicate at destination, original remains unchanged. " \
-          "Automatically creates destination parent directories if needed. " \
-          "WARNING: Overwrites destination if it already exists."
+            "Automatically creates destination parent directories if needed. " \
+            "WARNING: Overwrites destination if it already exists."
         end
 
         def parameters
@@ -55,8 +55,8 @@ module Nu
           validate_path(resolved_dest)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[file_copy] source: #{resolved_source}\e[0m")
 
             application.console.puts("\e[90m[file_copy] destination: #{resolved_dest}\e[0m")
@@ -79,7 +79,7 @@ module Nu
 
             # Create destination directory if needed
             dest_dir = File.dirname(resolved_dest)
-            FileUtils.mkdir_p(dest_dir) unless Dir.exist?(dest_dir)
+            FileUtils.mkdir_p(dest_dir)
 
             # Copy the file
             FileUtils.cp(resolved_source, resolved_dest)
@@ -91,7 +91,7 @@ module Nu
               bytes_copied: File.size(resolved_dest),
               message: "File copied successfully"
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to copy file: #{e.message}"
@@ -102,7 +102,7 @@ module Nu
         private
 
         def resolve_path(file_path)
-          if file_path.start_with?('/')
+          if file_path.start_with?("/")
             File.expand_path(file_path)
           else
             File.expand_path(file_path, Dir.pwd)
@@ -116,9 +116,9 @@ module Nu
             raise ArgumentError, "Access denied: File must be within project directory (#{project_root})"
           end
 
-          if file_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless file_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
       end
     end

@@ -10,8 +10,8 @@ module Nu
 
         def description
           "PREFERRED tool for discovering directory structure. Returns flat list of all subdirectories below a path. " \
-          "Use this instead of execute_bash with find commands for directory discovery. " \
-          "Results are limited to prevent overwhelming output in large projects."
+            "Use this instead of execute_bash with find commands for directory discovery. " \
+            "Results are limited to prevent overwhelming output in large projects."
         end
 
         def parameters
@@ -50,8 +50,8 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          application = context['application']
-          if application && application.debug
+          application = context["application"]
+          if application&.debug
             application.console.puts("\e[90m[dir_tree] path: #{resolved_path}\e[0m")
 
             application.console.puts("\e[90m[dir_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}\e[0m")
@@ -87,10 +87,10 @@ module Nu
 
             # Parse output - make paths relative to starting directory
             all_directories = stdout.split("\n")
-                                    .map { |path| path.strip }
-                                    .reject { |path| path.empty? }
+                                    .map(&:strip)
+                                    .reject(&:empty?)
                                     .map { |path| make_relative(path, resolved_path) }
-                                    .reject { |path| path == "." }  # Exclude the starting directory itself
+                                    .reject { |path| path == "." } # Exclude the starting directory itself
                                     .sort
 
             total_directories = all_directories.length
@@ -104,7 +104,7 @@ module Nu
               total_directories: total_directories,
               truncated: total_directories > limit
             }
-          rescue => e
+          rescue StandardError => e
             {
               status: "error",
               error: "Failed to list directories: #{e.message}"
@@ -115,7 +115,7 @@ module Nu
         private
 
         def resolve_path(dir_path)
-          if dir_path.start_with?('/')
+          if dir_path.start_with?("/")
             File.expand_path(dir_path)
           else
             File.expand_path(dir_path, Dir.pwd)
@@ -129,9 +129,9 @@ module Nu
             raise ArgumentError, "Access denied: Directory must be within project directory (#{project_root})"
           end
 
-          if dir_path.include?('..')
-            raise ArgumentError, "Access denied: Path cannot contain '..'"
-          end
+          return unless dir_path.include?("..")
+
+          raise ArgumentError, "Access denied: Path cannot contain '..'"
         end
 
         def build_find_command(path, max_depth, show_hidden)
@@ -149,8 +149,8 @@ module Nu
         def make_relative(absolute_path, base_path)
           # Remove base_path prefix to make it relative
           if absolute_path.start_with?(base_path)
-            relative = absolute_path[base_path.length..-1]
-            relative = relative[1..-1] if relative.start_with?('/')  # Remove leading slash
+            relative = absolute_path[base_path.length..]
+            relative = relative[1..] if relative.start_with?("/") # Remove leading slash
             relative.empty? ? "." : relative
           else
             absolute_path

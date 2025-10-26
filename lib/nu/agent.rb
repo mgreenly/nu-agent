@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require 'duckdb'
-require 'fileutils'
-require 'forwardable'
-require 'json'
-require 'open3'
-require 'optparse'
-require 'readline'
-require 'securerandom'
+require "duckdb"
+require "fileutils"
+require "forwardable"
+require "json"
+require "open3"
+require "optparse"
+require "readline"
+require "securerandom"
 
-require 'anthropic'
-require 'gemini-ai'
-require 'openai'
+require "anthropic"
+require "gemini-ai"
+require "openai"
 
 module Nu
   module Agent
