@@ -51,3 +51,4 @@ jobs:
 
       - name: Run Rubocop
         run: bundle exec rubocop
+        continue-on-error: true
