@@ -73,15 +73,13 @@ module Nu
 
             # Sort results
             sorted_files = case sort_by
-                           when "mtime"
-                             files.sort_by { |f| -File.mtime(f).to_i } # Negative for descending order
                            when "name"
                              files.sort
                            when "none"
                              files
                            else
-                             # Default to mtime if invalid sort_by
-                             files.sort_by { |f| -File.mtime(f).to_i }
+                             # Default to mtime if invalid sort_by (or when sort_by == "mtime")
+                             files.sort_by { |f| -File.mtime(f).to_i } # Negative for descending order
                            end
 
             # Limit results

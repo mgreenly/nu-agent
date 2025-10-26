@@ -169,12 +169,6 @@ module Nu
 
         def sort_entries(entries, sort_by, base_path, details_mode)
           case sort_by
-          when "name"
-            if details_mode
-              entries.sort_by { |e| e[:name] }
-            else
-              entries.sort
-            end
           when "mtime"
             if details_mode
               entries.sort_by { |e| e[:modified_at] || "" }.reverse
@@ -196,7 +190,7 @@ module Nu
           when "none"
             entries
           else
-            # Default to name if invalid sort_by
+            # Default to name if invalid sort_by (or when sort_by == "name")
             if details_mode
               entries.sort_by { |e| e[:name] }
             else

@@ -344,7 +344,7 @@ module Nu
         end
       end
 
-      def get_all_conversations
+      def all_conversations
         result = connection.query(<<~SQL)
           SELECT id, created_at, title, status
           FROM conversations
@@ -376,7 +376,7 @@ module Nu
           messages_updated: 0
         }
 
-        conversations = get_all_conversations
+        conversations = all_conversations
 
         conversations.each do |conv|
           conv_id = conv["id"]

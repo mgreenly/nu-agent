@@ -10,7 +10,7 @@ module Nu
       end
 
       # Discover all available man pages on the system
-      def get_all_man_pages
+      def all_man_pages
         output = `man -k . 2>/dev/null`
         return [] if output.nil? || output.empty?
 

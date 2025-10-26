@@ -53,7 +53,7 @@ module Nu
           end
 
           # Validate num_results range
-          num_results = [[num_results.to_i, 1].max, 10].min
+          num_results = num_results.to_i.clamp(1, 10)
 
           begin
             # Read credentials from file

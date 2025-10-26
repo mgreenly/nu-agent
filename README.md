@@ -5,6 +5,12 @@
 
 A toy AI Agent!
 
+## Development Status
+
+> **Note**: This project uses trunk-based development. The `master` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/releases).
+
+**Roadmap & Planning**: See [GitHub Issues](https://github.com/mgreenly/nu-agent/issues) for planned features, enhancements, and ongoing work.
+
 ## Features
 
 - **Learning Friendly** - Debug modes, model switching, configurable verbosity, and conversation reset.
@@ -12,10 +18,6 @@ A toy AI Agent!
 - **Rich Tool Library** - File operations, shell execution, Python REPL, database queries, directory traversal, and semantic grep.
 - **Google Search API** - Faster internet searhces vs using curl.
 - **Persistent Memory** - Conversations stored in DuckDB with message/exchange/session hierarchy.
-- **Retrieval Augmented Generation (RAG)** - Vector embeddings for conversation history and document stores. (wip)
-- **Background Intelligence** - Automatic conversation summarization with configurable models. (wip)
-- **Model Context Protocol (MCP)** - Support for external tool providers. (coming)
-- **Language Server Protocol (LSP)** - Direct integration with language servers for enhanced code generation context. (coming)
 
 ## Setup
 

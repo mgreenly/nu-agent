@@ -131,7 +131,7 @@ module Nu
           exp = [exp, units.length - 1].min
 
           size = bytes / (1024.0**exp)
-          format("%.2f %s", size, units[exp])
+          format("%<size>.2f %<unit>s", size: size, unit: units[exp])
         end
       end
     end

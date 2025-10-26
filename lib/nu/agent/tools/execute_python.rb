@@ -43,7 +43,7 @@ module Nu
           raise ArgumentError, "code is required" if code.nil? || code.empty?
 
           # Clamp timeout to reasonable range
-          timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
+          timeout_seconds = timeout_seconds.to_i.clamp(1, 300)
 
           stdout = ""
           stderr = ""

@@ -299,10 +299,10 @@ module Nu
           max = max_context
           @console.puts("\e[90mSession tokens: #{inp} in / #{out} out / #{total} Total / (#{pct}% of #{max})\e[0m")
         end
-        @console.puts("\e[90mSession spend: $#{'%.6f' % tokens['spend']}\e[0m") if @debug
+        @console.puts("\e[90mSession spend: $#{format('%.6f', tokens['spend'])}\e[0m") if @debug
         return unless elapsed_time
 
-        @console.puts("\e[90mElapsed time: #{'%.2f' % elapsed_time}s\e[0m") if @debug
+        @console.puts("\e[90mElapsed time: #{format('%.2f', elapsed_time)}s\e[0m") if @debug
       end
 
       def display_system_message(message)

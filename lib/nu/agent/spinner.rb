@@ -74,7 +74,7 @@ module Nu
       def format_elapsed_time(seconds)
         if seconds < 60
           # Less than a minute: show seconds with 1 decimal
-          "#{'%.1f' % seconds}s"
+          "#{format('%.1f', seconds)}s"
         elsif seconds < 3600
           # Less than an hour: show minutes and seconds
           mins = (seconds / 60).to_i

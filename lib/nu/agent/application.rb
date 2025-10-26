@@ -183,10 +183,8 @@ module Nu
           active_threads.clear
 
           # Clean up worker count if needed
-          if thread&.alive?
-            history.decrement_workers
-          elsif workers_incremented
-            # Workers were incremented but thread wasn't created yet
+          if thread&.alive? || workers_incremented
+            # Decrement if thread is alive or workers were incremented but thread wasn't created yet
             history.decrement_workers
           end
         ensure
@@ -1079,7 +1077,7 @@ module Nu
         output_line("  Conversations processed: #{stats[:conversations]}", type: :debug)
         output_line("  Exchanges created: #{stats[:exchanges_created]}", type: :debug)
         output_line("  Messages updated: #{stats[:messages_updated]}", type: :debug)
-        output_line("  Time elapsed: #{'%.2f' % elapsed}s", type: :debug)
+        output_line("  Time elapsed: #{format('%.2f', elapsed)}s", type: :debug)
       end
 
       def print_info
@@ -1104,16 +1102,20 @@ module Nu
             if status["running"]
               output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)",
                           type: :debug)
-              output_line("  Spend:       $#{format('%.6f', status['spend'])}", 
-type: :debug) if status["spend"].positive?
+              if status["spend"].positive?
+                output_line("  Spend:       $#{format('%.6f', status['spend'])}",
+                            type: :debug)
+              end
             elsif status["total"].positive?
               completed = status["completed"]
               total = status["total"]
               failed = status["failed"]
               output_line("  Status:      completed (#{completed}/#{total} conversations, #{failed} failed)",
                           type: :debug)
-              output_line("  Spend:       $#{format('%.6f', status['spend'])}", 
-type: :debug) if status["spend"].positive?
+              if status["spend"].positive?
+                output_line("  Spend:       $#{format('%.6f', status['spend'])}",
+                            type: :debug)
+              end
             else
               output_line("  Status:      idle", type: :debug)
             end
@@ -1475,7 +1477,7 @@ type: :debug) if status["spend"].positive?
           break unless history.get_config("index_man_enabled") == "true"
 
           # Get all man pages from system
-          all_man_pages = man_indexer.get_all_man_pages
+          all_man_pages = man_indexer.all_man_pages
 
           # Get already indexed man pages from DB
           indexed = history.get_indexed_sources(kind: "man_page")

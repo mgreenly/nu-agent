@@ -109,8 +109,8 @@ module Nu
             selected_lines = if start_line && end_line
                                # Range: start_line to end_line (1-indexed, inclusive)
                                # Clamp to valid range instead of erroring
-                               start_idx = [[start_line - 1, 0].max, total_lines - 1].min
-                               end_idx = [[end_line - 1, 0].max, total_lines - 1].min
+                               start_idx = (start_line - 1).clamp(0, total_lines - 1)
+                               end_idx = (end_line - 1).clamp(0, total_lines - 1)
 
                                # Return empty if start is beyond file
                                if start_line - 1 >= total_lines
@@ -146,7 +146,7 @@ module Nu
               formatted_lines = selected_lines.each_with_index.map do |line, idx|
                 line_num = first_line_num + idx
                 # Right-align line numbers to 6 characters, then tab, then content
-                format("%6d\t%s", line_num, line)
+                format("%<num>6d\t%<line>s", num: line_num, line: line)
               end
 
               content = formatted_lines.join

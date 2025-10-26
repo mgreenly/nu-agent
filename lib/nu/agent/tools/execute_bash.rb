@@ -39,7 +39,7 @@ module Nu
           raise ArgumentError, "command is required" if command.nil? || command.empty?
 
           # Clamp timeout to reasonable range
-          timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
+          timeout_seconds = timeout_seconds.to_i.clamp(1, 300)
 
           stdout = ""
           stderr = ""
