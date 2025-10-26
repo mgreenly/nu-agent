@@ -56,14 +56,11 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[dir_list] path: #{resolved_path}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[dir_list] path: #{resolved_path}")
-
-            buffer.debug("[dir_list] show_hidden: #{show_hidden}, details: #{details}, sort_by: #{sort_by}")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[dir_list] show_hidden: #{show_hidden}, details: #{details}, sort_by: #{sort_by}\e[0m")
           end
 
           begin

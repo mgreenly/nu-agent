@@ -20,12 +20,9 @@ module Nu
 
         def execute(arguments:, history:, context:)
           # Debug output
-          if application = context['application']
-
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[database_tables] listing tables")
-
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[database_tables] listing tables\e[0m")
           end
 
           tables = history.list_tables

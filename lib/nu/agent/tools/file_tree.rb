@@ -50,14 +50,11 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_tree] path: #{resolved_path}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_tree] path: #{resolved_path}")
-
-            buffer.debug("[file_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[file_tree] max_depth: #{max_depth}, show_hidden: #{show_hidden}, limit: #{limit}\e[0m")
           end
 
           begin

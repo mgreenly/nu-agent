@@ -52,14 +52,11 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_write] file: #{resolved_path}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_write] file: #{resolved_path}")
-
-            buffer.debug("[file_write] size: #{content.bytesize} bytes")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[file_write] size: #{content.bytesize} bytes\e[0m")
           end
 
           begin

@@ -79,14 +79,10 @@ module Nu
           resolved_path = resolve_path(file_path)
 
           # Debug output
-          if application = context['application']
-
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_read] file: #{resolved_path}")
-
-            buffer.debug("[file_read] range: start=#{start_line}, end=#{end_line}, offset=#{offset}, limit=#{limit}")
-
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_read] file: #{resolved_path}\e[0m")
+            application.console.puts("\e[90m[file_read] range: start=#{start_line}, end=#{end_line}, offset=#{offset}, limit=#{limit}\e[0m")
           end
 
           begin
@@ -140,7 +136,7 @@ module Nu
             else
               # Just limit (from beginning)
               lines.take(limit)
-            end
+          end
 
             # Format with line numbers if requested
             if show_line_numbers
@@ -158,7 +154,7 @@ module Nu
                 line_num = first_line_num + idx
                 # Right-align line numbers to 6 characters, then tab, then content
                 sprintf("%6d\t%s", line_num, line)
-              end
+          end
 
               content = formatted_lines.join
             else

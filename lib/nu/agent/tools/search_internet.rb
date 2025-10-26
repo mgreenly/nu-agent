@@ -56,14 +56,11 @@ module Nu
           num_results = [[num_results.to_i, 1].max, 10].min
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[search_internet] query: #{query}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[search_internet] query: #{query}")
-
-            buffer.debug("[search_internet] num_results: #{num_results}")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[search_internet] num_results: #{num_results}\e[0m")
           end
 
           begin
@@ -152,7 +149,7 @@ module Nu
 
         def credentials_path
           File.join(Dir.home, '.secrets', 'GOOGLE_SEARCH_API')
-        end
+          end
 
         def load_credentials
           return nil unless File.exist?(credentials_path)

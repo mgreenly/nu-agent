@@ -6,14 +6,13 @@ module Nu
       attr_writer :orchestrator, :debug
       attr_accessor :exchange_start_time
 
-      def initialize(history:, session_start_time:, conversation_id:, orchestrator:, debug: false, output: $stdout, output_manager: nil, application: nil)
+      def initialize(history:, session_start_time:, conversation_id:, orchestrator:, debug: false, console:, application: nil)
         @history = history
         @session_start_time = session_start_time
         @conversation_id = conversation_id
         @orchestrator = orchestrator
         @debug = debug
-        @output = output
-        @output_manager = output_manager
+        @console = console
         @application = application
         @last_message_id = 0
         @exchange_start_time = nil
@@ -32,7 +31,7 @@ module Nu
         )
 
         # Stop spinner before displaying any messages
-        @output_manager&.stop_waiting if messages.any?
+        @console.hide_spinner if messages.any?
 
         messages.each do |msg|
           display_message(msg)
@@ -40,12 +39,12 @@ module Nu
         end
 
         # Restart spinner after displaying messages (if still waiting)
-        @output_manager&.start_waiting if messages.any? && !@history.workers_idle?
+        @console.show_spinner("Thinking...") if messages.any? && !@history.workers_idle?
       end
 
       def wait_for_completion(conversation_id:, poll_interval: 0.1)
         # Start spinner if output_manager is available
-        @output_manager&.start_waiting
+        @console.show_spinner("Thinking...")
 
         loop do
           display_new_messages(conversation_id: conversation_id)
@@ -59,7 +58,7 @@ module Nu
         display_new_messages(conversation_id: conversation_id)
 
         # Stop spinner when done
-        @output_manager&.stop_waiting
+        @console.hide_spinner
       end
 
       def display_message(message)
@@ -98,9 +97,7 @@ module Nu
         total_output = messages.sum { |m| m['tokens_output'] || 0 }
         total = total_input + total_output
 
-        buffer = OutputBuffer.new
-        buffer.add("Tokens: #{total_input} in / #{total_output} out / #{total} total")
-        @output_manager&.flush_buffer(buffer)
+        @console.puts("Tokens: #{total_input} in / #{total_output} out / #{total} total")
       end
 
       def display_thread_event(thread_name, status)
@@ -108,14 +105,12 @@ module Nu
         return unless @debug
 
         # Stop spinner to avoid output on same line
-        @output_manager&.stop_waiting
+        @console.hide_spinner
 
-        buffer = OutputBuffer.new
-        buffer.debug("[Thread] #{thread_name} #{status}")
-        @output_manager&.flush_buffer(buffer)
+        @console.puts("\e[90m[Thread] #{thread_name} #{status}\e[0m")
 
         # Restart spinner with preserved start time
-        @output_manager&.start_waiting("Thinking...", start_time: @exchange_start_time) unless @history.workers_idle?
+        @console.show_spinner("Thinking...") unless @history.workers_idle?
       end
 
       def display_message_created(actor:, role:, redacted: false, content: nil, tool_calls: nil, tool_result: nil)
@@ -126,10 +121,7 @@ module Nu
         return if verbosity < 2
 
         # Stop spinner to avoid output on same line
-        @output_manager&.stop_waiting
-
-        # Create buffer for atomic output
-        buffer = OutputBuffer.new
+        @console.hide_spinner
 
         # Determine message direction based on role (from code's perspective)
         # Out = sent to LLM, In = received from LLM
@@ -146,23 +138,22 @@ module Nu
         msg_type = redacted ? "redacted message" : "message"
 
         if verbosity == 2
-          buffer.debug("[Message #{direction}] Created #{msg_type}")
-          @output_manager&.flush_buffer(buffer)
+          @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
           # Restart spinner with preserved start time
-          @output_manager&.start_waiting("Thinking...", start_time: @exchange_start_time) unless @history.workers_idle?
+          @console.show_spinner("Thinking...") unless @history.workers_idle?
           return
         end
 
         # Level 3+: Show message creation with details on separate lines
         if verbosity >= 3
-          buffer.debug("[Message #{direction}] Created #{msg_type}")
-          buffer.debug("  role: #{role}")
-          buffer.debug("  actor: #{actor}")
+          @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
+          @console.puts("\e[90m  role: #{role}\e[0m")
+          @console.puts("\e[90m  actor: #{actor}\e[0m")
 
           # Show content preview and/or tool information
           if tool_calls && tool_calls.length > 0
             tool_names = tool_calls.map { |tc| tc['name'] }.join(', ')
-            buffer.debug("  tool_calls: #{tool_names}")
+            @console.puts("\e[90m  tool_calls: #{tool_names}\e[0m")
 
             # Show preview of arguments
             tool_calls.each do |tc|
@@ -170,20 +161,20 @@ module Nu
                 args_str = tc['arguments'].to_json
                 max_length = verbosity >= 6 ? 100 : 30
                 preview = args_str[0...max_length]
-                buffer.debug("    #{tc['name']}: #{preview}#{args_str.length > max_length ? '...' : ''}")
+                @console.puts("\e[90m    #{tc['name']}: #{preview}#{args_str.length > max_length ? '...' : ''}\e[0m")
               end
             end
           end
 
           if tool_result
-            buffer.debug("  tool_result: #{tool_result['name']}")
+            @console.puts("\e[90m  tool_result: #{tool_result['name']}\e[0m")
 
             # Show preview of result
             if tool_result['result']
               result_str = tool_result['result'].is_a?(Hash) ? tool_result['result'].to_json : tool_result['result'].to_s
               max_length = verbosity >= 6 ? 100 : 30
               preview = result_str[0...max_length]
-              buffer.debug("    result: #{preview}#{result_str.length > max_length ? '...' : ''}")
+              @console.puts("\e[90m    result: #{preview}#{result_str.length > max_length ? '...' : ''}\e[0m")
             end
           end
 
@@ -192,15 +183,12 @@ module Nu
             # Level 6+: Show first 100 chars
             max_length = verbosity >= 6 ? 100 : 30
             preview = content[0...max_length]
-            buffer.debug("  content: #{preview}#{content.length > max_length ? '...' : ''}")
+            @console.puts("\e[90m  content: #{preview}#{content.length > max_length ? '...' : ''}\e[0m")
           end
         end
 
-        # Flush all lines atomically
-        @output_manager&.flush_buffer(buffer)
-
         # Restart spinner with preserved start time
-        @output_manager&.start_waiting("Thinking...", start_time: @exchange_start_time) unless @history.workers_idle?
+        @console.show_spinner("Thinking...") unless @history.workers_idle?
       end
 
       def display_llm_request(messages, tools = nil, markdown_document = nil)
@@ -211,14 +199,12 @@ module Nu
         verbosity = @application ? @application.verbosity : 0
         return if verbosity < 4
 
-        buffer = OutputBuffer.new
-
         # Level 5: Show tools first
         if verbosity >= 5 && tools && !tools.empty?
-          buffer.debug("--- Tools (#{tools.length} available) ---")
+          @console.puts("\e[90m--- Tools (#{tools.length} available) ---\e[0m")
           tools.each do |tool|
             name = tool['name'] || tool[:name]
-            buffer.debug("  - #{name}")
+            @console.puts("\e[90m  - #{name}\e[0m")
           end
         end
 
@@ -228,34 +214,32 @@ module Nu
 
         # Show conversation history (unredacted messages)
         if !history_messages.empty?
-          buffer.debug("--- Conversation History (#{history_messages.length} unredacted message(s)) ---")
+          @console.puts("\e[90m--- Conversation History (#{history_messages.length} unredacted message(s)) ---\e[0m")
           history_messages.each_with_index do |msg, i|
-            buffer.debug("  Message #{i + 1} (role: #{msg['role']})")
+            @console.puts("\e[90m  Message #{i + 1} (role: #{msg['role']})\e[0m")
             if msg['content']
               content_preview = msg['content'].to_s[0...200]
-              buffer.debug("  #{content_preview}")
-              buffer.debug("  ... (#{msg['content'].to_s.length} chars total)") if msg['content'].to_s.length > 200
+              @console.puts("\e[90m  #{content_preview}\e[0m")
+              @console.puts("\e[90m  ... (#{msg['content'].to_s.length} chars total)\e[0m") if msg['content'].to_s.length > 200
             end
             if msg['tool_calls']
-              buffer.debug("  [Contains #{msg['tool_calls'].length} tool call(s)]")
+              @console.puts("\e[90m  [Contains #{msg['tool_calls'].length} tool call(s)]\e[0m")
             end
             if msg['tool_result']
-              buffer.debug("  [Tool result for: #{msg['tool_result']['name']}]")
+              @console.puts("\e[90m  [Tool result for: #{msg['tool_result']['name']}]\e[0m")
             end
           end
         end
 
         # Show markdown document (context + tools + user query)
         if markdown_document
-          buffer.debug("--- Exchange Request ---")
+          @console.puts("\e[90m--- Exchange Request ---\e[0m")
           # Show first 500 chars of markdown document
           preview = markdown_document[0...500]
-          buffer.debug(preview)
-          buffer.debug("... (#{markdown_document.length} chars total)") if markdown_document.length > 500
-          buffer.debug("--- Exchange Request ---")
+          @console.puts("\e[90m#{preview}\e[0m")
+          @console.puts("\e[90m... (#{markdown_document.length} chars total)\e[0m") if markdown_document.length > 500
+          @console.puts("\e[90m--- Exchange Request ---\e[0m")
         end
-
-        @output_manager&.flush_buffer(buffer)
       end
 
       private
@@ -266,17 +250,12 @@ module Nu
       end
 
       def display_assistant_message(message)
-        # Display any text content (buffer adds leading newline)
+        # Display any text content
         if message['content'] && !message['content'].strip.empty?
-          buffer = OutputBuffer.new
-          # Buffer.add() now handles normalization automatically
-          buffer.add(message['content'])
-          @output_manager&.flush_buffer(buffer)
+          @console.puts(message['content'])
         elsif !message['tool_calls'] && message['tokens_output'] && message['tokens_output'] > 0
           # LLM generated output but content is empty (unusual case - possibly API issue)
-          buffer = OutputBuffer.new
-          buffer.debug("(LLM returned empty response - this may be an API/model issue)")
-          @output_manager&.flush_buffer(buffer)
+          @console.puts("\e[90m(LLM returned empty response - this may be an API/model issue)\e[0m") if @debug
         end
 
         # Display tool calls if present (only in debug mode)
@@ -304,18 +283,15 @@ module Nu
           max_context = @orchestrator.max_context
           percentage = (tokens['total'].to_f / max_context * 100).round(1)
 
-          buffer = OutputBuffer.new
-          buffer.debug("Session tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})")
-          buffer.debug("Session spend: $#{'%.6f' % tokens['spend']}")
+          @console.puts("\e[90mSession tokens: #{tokens['input']} in / #{tokens['output']} out / #{tokens['total']} Total / (#{percentage}% of #{max_context})\e[0m") if @debug
+          @console.puts("\e[90mSession spend: $#{'%.6f' % tokens['spend']}\e[0m") if @debug
           if elapsed_time
-            buffer.debug("Elapsed time: #{'%.2f' % elapsed_time}s")
+            @console.puts("\e[90mElapsed time: #{'%.2f' % elapsed_time}s\e[0m") if @debug
           end
-          @output_manager&.flush_buffer(buffer)
         end
       end
 
       def display_system_message(message)
-        buffer = OutputBuffer.new
         content = message['content'].to_s
         return if content.strip.empty?
 
@@ -337,33 +313,26 @@ module Nu
         end
 
         if normalized.any?
-          buffer.add("[System] #{normalized.first}")
-          normalized[1..-1].each { |line| buffer.add(line) }
+          @console.puts("[System] #{normalized.first}")
+          normalized[1..-1].each { |line| @console.puts(line) }
         end
-        @output_manager&.flush_buffer(buffer)
       end
 
       def display_spell_checker_message(message)
-        buffer = OutputBuffer.new
         role_label = message['role'] == 'user' ? 'Spell Check Request' : 'Spell Check Result'
-        buffer.debug("[#{role_label}]")
+        @console.puts("\e[90m[#{role_label}]\e[0m")
         if message['content'] && !message['content'].strip.empty?
-          # Buffer.add() handles normalization automatically
-          buffer.debug(message['content'])
+          @console.puts("\e[90m#{message['content']}\e[0m")
         end
-        @output_manager&.flush_buffer(buffer)
       end
 
       def display_tool_call(tool_call, index: nil, total: nil)
         # Get verbosity level (default to 0 if application not set)
         verbosity = @application ? @application.verbosity : 0
 
-        # Create buffer for atomic output
-        buffer = OutputBuffer.new
-
         # Show count indicator if multiple tool calls
         count_indicator = (index && total && total > 1) ? " (#{index}/#{total})" : ""
-        buffer.debug("[Tool Call Request] #{tool_call['name']}#{count_indicator}")
+        @console.puts("\e[90m[Tool Call Request] #{tool_call['name']}#{count_indicator}\e[0m")
 
         # Level 0: Show tool name only, no arguments
         if verbosity >= 1
@@ -376,32 +345,29 @@ module Nu
                 # Level 1-3: Truncate each param to 30 characters
                 if verbosity < 4
                   if value_str.length > 30
-                    buffer.debug("  #{key}: #{value_str[0...30]}...")
+                    @console.puts("\e[90m  #{key}: #{value_str[0...30]}...\e[0m")
                   else
-                    buffer.debug("  #{key}: #{value_str}")
+                    @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
                   end
                 # Level 4+: Show full value
                 else
                   # Handle multiline values to avoid extra blank lines
                   if value_str.include?("\n")
-                    buffer.debug("  #{key}:")
+                    @console.puts("\e[90m  #{key}:\e[0m")
                     value_str.lines.each do |line|
                       chomped = line.chomp
-                      buffer.debug("    #{chomped}") unless chomped.empty?
+                      @console.puts("\e[90m    #{chomped}\e[0m") unless chomped.empty?
                     end
                   else
-                    buffer.debug("  #{key}: #{value_str}")
+                    @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
                   end
                 end
               end
             end
           rescue => e
-            buffer.debug("  [Error displaying arguments: #{e.message}]")
+            @console.puts("\e[90m  [Error displaying arguments: #{e.message}]\e[0m")
           end
         end
-
-        # Flush all lines atomically
-        @output_manager&.flush_buffer(buffer)
       end
 
       def display_tool_result(message)
@@ -411,9 +377,7 @@ module Nu
         # Get verbosity level (default to 0 if application not set)
         verbosity = @application ? @application.verbosity : 0
 
-        # Create buffer for atomic output
-        buffer = OutputBuffer.new
-        buffer.debug("[Tool Use Response] #{name}")
+        @console.puts("\e[90m[Tool Use Response] #{name}\e[0m")
 
         # Level 0: Show tool name only, no result details
         if verbosity >= 1
@@ -429,29 +393,29 @@ module Nu
                   if value_str.include?("\n")
                     first_line = value_str.lines.first.chomp
                     if first_line.length > 30
-                      buffer.debug("  #{key}: #{first_line[0...30]}...")
+                      @console.puts("\e[90m  #{key}: #{first_line[0...30]}...\e[0m")
                     else
-                      buffer.debug("  #{key}: #{first_line}...")
+                      @console.puts("\e[90m  #{key}: #{first_line}...\e[0m")
                     end
                   elsif value_str.length > 30
-                    buffer.debug("  #{key}: #{value_str[0...30]}...")
+                    @console.puts("\e[90m  #{key}: #{value_str[0...30]}...\e[0m")
                   else
-                    buffer.debug("  #{key}: #{value_str}")
+                    @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
                   end
                 # Level 4+: Show full value
                 else
                   # Handle multiline values carefully to avoid extra blank lines
                   if value_str.include?("\n")
                     # Multi-line value: put key on own line, then each value line indented
-                    buffer.debug("  #{key}:")
+                    @console.puts("\e[90m  #{key}:\e[0m")
                     # Split and add each line, skipping empty lines
                     value_str.lines.each do |line|
                       chomped = line.chomp
-                      buffer.debug("    #{chomped}") unless chomped.empty?
+                      @console.puts("\e[90m    #{chomped}\e[0m") unless chomped.empty?
                     end
                   else
                     # Single line value: key and value on same line
-                    buffer.debug("  #{key}: #{value_str}")
+                    @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
                   end
                 end
               end
@@ -459,55 +423,49 @@ module Nu
               # Non-hash result
               result_str = result.to_s
               if verbosity < 4 && result_str.length > 30
-                buffer.debug("  #{result_str[0...30]}...")
+                @console.puts("\e[90m  #{result_str[0...30]}...\e[0m")
               else
-                buffer.debug("  #{result_str}")
+                @console.puts("\e[90m  #{result_str}\e[0m")
               end
             end
           rescue => e
-            buffer.debug("  [Error displaying result: #{e.message}]")
-            buffer.debug("  [Full result: #{result.inspect}]") if @debug
+            @console.puts("\e[90m  [Error displaying result: #{e.message}]\e[0m")
+            @console.puts("\e[90m  [Full result: #{result.inspect}]\e[0m") if @debug
           end
         end
-
-        # Flush all lines atomically
-        @output_manager&.flush_buffer(buffer)
       end
 
       def display_error(message)
         error = message['error']
 
-        buffer = OutputBuffer.new
-        buffer.error(message['content'])
-        buffer.error("Status: #{error['status']}")
+        @console.puts("\e[31m#{message['content']}\e[0m")
+        @console.puts("\e[31mStatus: #{error['status']}\e[0m")
 
-        buffer.error("Headers:")
+        @console.puts("\e[31mHeaders:\e[0m")
         error['headers'].each do |key, value|
-          buffer.error("  #{key}: #{value}")
+          @console.puts("\e[31m  #{key}: #{value}\e[0m")
         end
 
-        buffer.error("Body:")
+        @console.puts("\e[31mBody:\e[0m")
         # Try to parse and pretty print JSON body
         begin
           if error['body'].is_a?(String) && !error['body'].empty?
             parsed = JSON.parse(error['body'])
-            buffer.error(JSON.pretty_generate(parsed))
+            @console.puts("\e[31m#{JSON.pretty_generate(parsed)}\e[0m")
           elsif error['body']
-            buffer.error(error['body'].to_s)
+            @console.puts("\e[31m#{error['body']}\e[0m")
           else
-            buffer.error("(empty)")
+            @console.puts("\e[31m(empty)\e[0m")
           end
         rescue JSON::ParserError
-          buffer.error(error['body'].to_s)
+          @console.puts("\e[31m#{error['body']}\e[0m")
         end
 
         # Show raw error for debugging if body is empty
         if error['raw_error'] && (error['body'].nil? || error['body'].empty?)
-          buffer.error("Raw Error (for debugging):")
-          buffer.error(error['raw_error'].to_s)
+          @console.puts("\e[31mRaw Error (for debugging):\e[0m")
+          @console.puts("\e[31m#{error['raw_error']}\e[0m")
         end
-
-        @output_manager&.flush_buffer(buffer)
       end
     end
   end

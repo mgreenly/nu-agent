@@ -122,7 +122,9 @@ module Nu
           replace_end = arguments[:replace_range_end] || arguments["replace_range_end"]
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            
             application.output.debug("[file_edit] file: #{resolved_path}")
             if old_string
               application.output.debug("[file_edit] mode: replace (replace_all: #{replace_all})")
@@ -138,7 +140,7 @@ module Nu
               application.output.debug("[file_edit] mode: insert_line (#{insert_line_num})")
             elsif replace_start && replace_end
               application.output.debug("[file_edit] mode: replace_range (#{replace_start}-#{replace_end})")
-            end
+          end
           end
 
           begin

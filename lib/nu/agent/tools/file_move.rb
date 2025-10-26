@@ -55,14 +55,11 @@ module Nu
           validate_path(resolved_dest)
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_move] source: #{resolved_source}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_move] source: #{resolved_source}")
-
-            buffer.debug("[file_move] destination: #{resolved_dest}")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[file_move] destination: #{resolved_dest}\e[0m")
           end
 
           begin

@@ -3,7 +3,8 @@
 module Nu
   module Agent
     class Application
-      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status, :man_indexer_status, :status_mutex, :output, :verbosity
+      attr_reader :orchestrator, :history, :formatter, :conversation_id, :session_start_time, :summarizer_status
+      attr_reader :man_indexer_status, :status_mutex, :verbosity, :console, :debug
       attr_accessor :active_threads
 
       def initialize(options:)
@@ -44,21 +45,13 @@ module Nu
         @debug = @history.get_config('debug', default: 'false') == 'true'
         @debug = true if @options.debug  # Command line option overrides database setting
 
-        # Initialize TUI if requested
-        @tui = nil
-        if @options.tui
-          begin
-            @tui = TUIManager.new
-          rescue => e
-            $stderr.puts "Warning: Failed to initialize TUI: #{e.message}"
-            $stderr.puts "Falling back to standard mode"
-            @tui = nil
-          end
-        end
+        # Initialize ConsoleIO (new unified console system)
+        @console = ConsoleIO.new(db_history: @history, debug: @debug)
 
-        # Load verbosity before creating OutputManager
+        # Load verbosity
         @verbosity = @history.get_config('verbosity', default: '0').to_i
-        @output = OutputManager.new(debug: @debug, tui: @tui, verbosity: @verbosity)
+
+        # Old TUI system removed - now using ConsoleIO exclusively
         @redact = @history.get_config('redaction', default: 'true') == 'true'
         @summarizer_enabled = @history.get_config('summarizer_enabled', default: 'true') == 'true'
         @spell_check_enabled = @history.get_config('spell_check_enabled', default: 'true') == 'true'
@@ -69,8 +62,7 @@ module Nu
           conversation_id: @conversation_id,
           orchestrator: @orchestrator,
           debug: @debug,
-          output: @output,           # OutputManager has puts() method
-          output_manager: @output,   # For flush_buffer and other methods
+          console: @console,         # ConsoleIO for all output
           application: self
         )
         @active_threads = []
@@ -135,8 +127,8 @@ module Nu
         # Capture exchange start time for elapsed time calculation
         @formatter.exchange_start_time = Time.now
 
-        # Start spinner (with elapsed time tracking)
-        @output.start_waiting("Thinking...", start_time: @formatter.exchange_start_time)
+        # Start spinner
+        @console.show_spinner("Thinking...")
 
         thread = nil
         workers_incremented = false
@@ -186,7 +178,7 @@ module Nu
         rescue Interrupt
           # Ctrl-C pressed - kill thread and return to prompt
           # Transaction will rollback automatically - no exchange will be saved
-          @output.stop_waiting
+          @console.hide_spinner
           output_line("(Ctrl-C) Operation aborted by user.", type: :debug)
 
           # Kill all active threads (orchestrator, summarizer, etc.)
@@ -203,8 +195,8 @@ module Nu
             history.decrement_workers
           end
         ensure
-          # Always stop the waiting spinner
-          @output.stop_waiting
+          # Always stop the spinner
+          @console.hide_spinner
           # Remove completed thread
           active_threads.delete(thread) if thread
         end
@@ -232,35 +224,24 @@ module Nu
         end
       end
 
-      # Helper to output text via buffer (handles multiline content)
+      # Helper to output text via ConsoleIO
       def output_line(text, type: :normal)
-        buffer = OutputBuffer.new
-        # Buffer.add() handles normalization automatically
         case type
         when :debug
-          buffer.debug(text)
+          # Only output debug messages when debug mode is enabled
+          @console.puts("\e[90m#{text}\e[0m") if @debug
         when :error
-          buffer.error(text)
+          @console.puts("\e[31m#{text}\e[0m")
         else
-          buffer.add(text)
+          @console.puts(text)
         end
-        @output.flush_buffer(buffer)
       end
 
-      # Helper to output multiple lines via single buffer
+      # Helper to output multiple lines via ConsoleIO
       def output_lines(*lines, type: :normal)
-        buffer = OutputBuffer.new
         lines.each do |line|
-          case type
-          when :debug
-            buffer.debug(line)
-          when :error
-            buffer.error(line)
-          else
-            buffer.add(line)
-          end
+          output_line(line, type: type)
         end
-        @output.flush_buffer(buffer)
       end
 
       def build_context_document(user_query:, tool_registry:, redacted_message_ranges: nil, conversation_id: nil)
@@ -372,9 +353,9 @@ module Nu
 
             # Display content as normal output if present (LLM explaining what it's doing)
             if response['content'] && !response['content'].strip.empty?
-              @output.stop_waiting
+              @console.hide_spinner
               output_line(response['content'])
-              @output.start_waiting("Thinking...", start_time: @formatter.exchange_start_time)
+              @console.show_spinner("Thinking...")
             end
 
             metrics[:tool_call_count] += response['tool_calls'].length
@@ -569,17 +550,9 @@ module Nu
       end
 
       def repl
-        setup_readline unless @tui
-
         loop do
-          print "\n" unless @tui
-
           begin
-            if @tui && @tui.active
-              input = @tui.readline("> ")
-            else
-              input = Readline.readline("> ", true)  # true = add to history
-            end
+            input = @console.readline("> ")
           rescue Interrupt
             # Ctrl-C while waiting for input - exit program
             break
@@ -589,24 +562,12 @@ module Nu
 
           input = input.strip
 
-          # Remove from history if empty (only for Readline mode)
-          if input.empty?
-            Readline::HISTORY.pop unless @tui
-            next
-          end
-
-          # Echo user input to output pane in TUI mode
-          if @tui && @tui.active
-            buffer = OutputBuffer.new
-            buffer.add("> #{input}")
-            @output.flush_buffer(buffer)
-          end
+          # Skip empty input
+          next if input.empty?
 
           result = process_input(input)
           break if result == :exit
         end
-      ensure
-        save_history unless @tui
       end
 
       def setup_readline

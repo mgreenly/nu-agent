@@ -65,14 +65,11 @@ module Nu
           full_pattern = File.join(base_path, pattern)
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_glob] pattern: #{full_pattern}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_glob] pattern: #{full_pattern}")
-
-            buffer.debug("[file_glob] sort_by: #{sort_by}, limit: #{limit}")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[file_glob] sort_by: #{sort_by}, limit: #{limit}\e[0m")
           end
 
           begin

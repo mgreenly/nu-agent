@@ -12,7 +12,7 @@ module Nu
 
         def available?
           system('which python3 > /dev/null 2>&1')
-        end
+          end
 
         def description
           "Execute Python code directly on the host system. " \
@@ -46,12 +46,13 @@ module Nu
           timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
 
           # Debug output
-          if application = context['application']
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[execute_python] code length: #{code.length} chars")
-            buffer.debug("[execute_python] timeout: #{timeout_seconds}s")
-            buffer.debug("[execute_python] cwd: #{Dir.pwd}")
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[execute_python] code length: #{code.length} chars\e[0m")
+
+            application.console.puts("\e[90m[execute_python] timeout: #{timeout_seconds}s\e[0m")
+
+            application.console.puts("\e[90m[execute_python] cwd: #{Dir.pwd}\e[0m")
           end
 
           stdout = ""

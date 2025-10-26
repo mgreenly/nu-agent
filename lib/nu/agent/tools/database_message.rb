@@ -36,12 +36,9 @@ module Nu
           conversation_id = context['conversation_id']
 
           # Debug output
-          if application = context['application']
-
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[database_message] message_id: #{message_id}")
-
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[database_message] message_id: #{message_id}\e[0m")
           end
 
           begin

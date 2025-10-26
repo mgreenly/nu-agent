@@ -24,12 +24,12 @@ module Nu
         @mutex = Mutex.new
 
         # Input state
-        @input_buffer = ""
+        @input_buffer = String.new("")
         @cursor_pos = 0
-        @kill_ring = ""
+        @kill_ring = String.new("")
         @history = []
         @history_pos = nil
-        @saved_input = ""
+        @saved_input = String.new("")
 
         # Database history (optional)
         @db_history = db_history
@@ -40,7 +40,7 @@ module Nu
         @spinner_thread = nil
         @spinner_frame = 0
         @spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        @spinner_message = ""
+        @spinner_message = String.new("")
 
         # Mode tracking
         @mode = :input # :input or :spinner
@@ -92,10 +92,10 @@ module Nu
       # Blocking read with interruption support
       def readline(prompt)
         @mode = :input
-        @input_buffer = ""
+        @input_buffer = String.new("")
         @cursor_pos = 0
         @history_pos = nil
-        @saved_input = ""
+        @saved_input = String.new("")
 
         redraw_input_line(prompt)
 
@@ -156,7 +156,7 @@ module Nu
         @mutex.synchronize do
           @stdout.write("\e[2K\r")
           @stdout.write(prompt)
-          @stdout.puts(line)
+          @stdout.write("#{line}\r\n") # In raw mode, need explicit \r\n
         end
 
         add_to_history(line)
@@ -450,8 +450,12 @@ module Nu
           # Clear current input line
           @stdout.write("\e[2K\r")
 
-          # Write all output (with ANSI colors preserved)
-          lines.each { |line| @stdout.puts(line) }
+          # Write all output (in raw mode, need explicit \r\n for all newlines)
+          lines.each do |line|
+            # Replace any bare \n with \r\n for proper line breaks in raw mode
+            formatted = line.gsub("\n", "\r\n")
+            @stdout.write("#{formatted}\r\n")
+          end
 
           # Redraw input line at new bottom
           @stdout.write(prompt)
@@ -499,14 +503,14 @@ module Nu
           # Starting from current input - save it and move to last history entry
           return if @history.empty?
 
-          @saved_input = @input_buffer
+          @saved_input = @input_buffer.dup
           @history_pos = @history.length - 1
         elsif @history_pos.positive?
           # Move backward in history
           @history_pos -= 1
         end
 
-        @input_buffer = @history[@history_pos] || ""
+        @input_buffer = (@history[@history_pos] || "").dup
         @cursor_pos = @input_buffer.length
       end
 
@@ -518,11 +522,11 @@ module Nu
 
         if @history_pos >= @history.length
           # Reached end - restore saved input
-          @input_buffer = @saved_input
+          @input_buffer = @saved_input.dup
           @cursor_pos = @input_buffer.length
           @history_pos = nil
         else
-          @input_buffer = @history[@history_pos]
+          @input_buffer = @history[@history_pos].dup
           @cursor_pos = @input_buffer.length
         end
       end
@@ -578,8 +582,12 @@ module Nu
           # Clear spinner line
           @stdout.write("\e[2K\r")
 
-          # Write all output
-          lines.each { |line| @stdout.puts(line) }
+          # Write all output (in raw mode, need explicit \r\n for all newlines)
+          lines.each do |line|
+            # Replace any bare \n with \r\n for proper line breaks in raw mode
+            formatted = line.gsub("\n", "\r\n")
+            @stdout.write("#{formatted}\r\n")
+          end
 
           # Redraw spinner at new bottom
           frame = @spinner_frames[@spinner_frame]

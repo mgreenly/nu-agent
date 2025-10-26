@@ -20,12 +20,9 @@ module Nu
 
         def execute(arguments:, history:, context:)
           # Debug output
-          if application = context['application']
-
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[man_indexer] checking status")
-
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[man_indexer] checking status\e[0m")
           end
 
           # Get the Application instance from context

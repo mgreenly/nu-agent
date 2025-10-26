@@ -223,19 +223,123 @@ Each phase is independently shippable. Stop when "good enough" is reached.
 ### Phase 3.5: TUI Removal and ConsoleIO Integration ⚠️ CRITICAL
 **Goal**: Replace the old ncurses TUI system with the new ConsoleIO system throughout the application
 
-**Status**: Phases 1-3 built ConsoleIO in isolation with comprehensive tests, but the application still uses the old TUI system. This phase integrates ConsoleIO into the actual application and removes all legacy TUI code.
+**Status**: ⚙️ IN PROGRESS (as of 2025-10-26)
+
+**PROGRESS UPDATE (2025-10-26 - End of Session)**:
+
+✅ **Completed Work**:
+1. **Application.rb Integration** (COMPLETE)
+   - ✅ ConsoleIO initialization added (`@console = ConsoleIO.new(db_history: @history, debug: @debug)`)
+   - ✅ Added `attr_reader :console` for access by Formatter and other components
+   - ✅ Updated `output_line()` helper to use `@console.puts()` with ANSI colors
+   - ✅ Updated `output_lines()` helper to call `output_line()` for each line
+   - ✅ All spinner calls updated: `@output.start_waiting` → `@console.show_spinner("Thinking...")`
+   - ✅ All spinner calls updated: `@output.stop_waiting` → `@console.hide_spinner`
+   - ✅ REPL loop completely simplified - now uses `@console.readline("> ")`
+   - ✅ Removed TUI-specific logic from REPL (no more `@tui.readline` or `Readline.readline`)
+   - ✅ Comprehensive integration tests written and passing (11 examples, 0 failures)
+   - ✅ Test file: `spec/nu/agent/application_console_integration_spec.rb`
+   - ⚠️ Note: `@output` (OutputManager) still initialized for now (backwards compatibility during migration)
+
+2. **Formatter.rb Integration** (PARTIALLY COMPLETE - ~40% done)
+   - ✅ Initialize signature updated: `console:` parameter replaces `output:` and `output_manager:`
+   - ✅ All spinner calls updated throughout file:
+     - `@output_manager&.stop_waiting` → `@console.hide_spinner`
+     - `@output_manager&.start_waiting(...)` → `@console.show_spinner("Thinking...")`
+   - ✅ `display_assistant_message()` updated to use `@console.puts()`
+   - ✅ Token stats output updated with ANSI color codes
+   - ❌ **REMAINING**: ~25 methods still use OutputBuffer pattern (see below)
+
+❌ **Remaining Work**:
+
+1. **Formatter.rb - Complete OutputBuffer Migration** (HIGHEST PRIORITY)
+   - Files affected: `lib/nu/agent/formatter.rb`
+   - Pattern to replace in remaining ~25 methods:
+     ```ruby
+     # OLD PATTERN:
+     buffer = OutputBuffer.new
+     buffer.add("text")           # or buffer.debug() or buffer.error()
+     @output_manager&.flush_buffer(buffer)
+
+     # NEW PATTERN:
+     @console.puts("text")                              # normal
+     @console.puts("\e[90mtext\e[0m") if @debug        # debug (gray)
+     @console.puts("\e[31mtext\e[0m")                  # error (red)
+     ```
+
+   - Methods still needing conversion:
+     - `display_token_summary()` - Lines 94-104
+     - `display_thread_event()` - Lines 105-119
+     - `display_message_created()` - Lines 120-204
+     - `display_llm_request()` - Lines 206-259
+     - `display_system_message()` - Lines 309-344
+     - `display_spell_checker_message()` - Lines 346-355
+     - `display_tool_call()` - Lines 357-405
+     - `display_tool_result()` - Lines 407-475
+     - `display_error()` - Lines 477-511
+
+   - **Approach**: Each method needs individual attention for proper ANSI color handling
+   - **Challenge**: Many methods use multi-line buffers and complex formatting
+   - **Testing**: Run existing ConsoleIO tests after each method conversion
+
+2. **Application.rb - Remove Legacy Code**
+   - Remove `setup_readline()` method (lines 575-642) - no longer used
+   - Remove `save_history()` method (lines 607-651) - no longer used
+   - Remove `@output` initialization once Formatter is complete
+   - Remove `@tui` initialization (already set to nil, but clean up)
+
+3. **Update Options.rb**
+   - Remove `--tui` flag entirely (already always false)
+   - File: `lib/nu/agent/options.rb`
+
+4. **Update lib/nu/agent.rb**
+   - Remove requires for deleted files:
+     - `require_relative 'agent/tui_manager'`
+     - `require_relative 'agent/output_manager'`
+     - `require_relative 'agent/output_buffer'`
+
+5. **Delete Legacy Files** (ONLY AFTER ABOVE STEPS COMPLETE)
+   - `lib/nu/agent/tui_manager.rb`
+   - `lib/nu/agent/output_manager.rb`
+   - `lib/nu/agent/output_buffer.rb`
+
+6. **Final Testing & Cleanup**
+   - Run full test suite: `bundle exec rspec`
+   - Run rubocop on modified files and fix issues
+   - Manual testing: `bundle exec nu-agent` - verify all features work
+   - Test slash commands still work (/help, /debug, /clear, etc.)
+   - Test background output doesn't corrupt input line
+   - Test spinner shows during processing
+   - Test Ctrl-C during processing returns to prompt cleanly
+
+**Next Session Starting Point**:
+- Start with completing Formatter.rb OutputBuffer migration
+- Use systematic approach: one method at a time, test after each
+- Reference test file for validation: `spec/nu/agent/application_console_integration_spec.rb`
+- Can reuse patterns from already-updated methods like `display_assistant_message()`
 
 #### Why This Phase Is Needed
 
-**Current Situation** (as of 2025-10-26):
+**Original Situation** (before Phase 3.5):
 - ✅ ConsoleIO is fully implemented and tested (Phases 1-3 complete)
 - ✅ 70 RSpec tests passing for ConsoleIO
 - ❌ Application still uses old TUIManager/OutputManager/OutputBuffer
 - ❌ When you run `nu-agent`, it uses ncurses TUI, NOT ConsoleIO
 - ❌ All the new readline editing and history features are invisible to users
 
-**The Problem**:
+**Current Situation** (after partial Phase 3.5 work):
+- ✅ ConsoleIO fully integrated into Application.rb (REPL, output helpers, spinner)
+- ✅ 81 total RSpec tests passing (70 ConsoleIO + 11 Application integration)
+- ⚙️ Formatter.rb partially migrated (~40% complete)
+- ⚠️ Application still initializes OutputManager for backwards compatibility
+- ⚠️ When you run `nu-agent`, it will likely crash due to incomplete Formatter migration
+- 🎯 Once Formatter is complete, all features will work with ConsoleIO
+
+**The Problem** (original):
 We followed TDD to build ConsoleIO perfectly, but never integrated it into the application. This is like building a new engine but never installing it in the car.
+
+**The Solution** (in progress):
+We're systematically replacing OutputBuffer/OutputManager with ConsoleIO throughout the application. Application.rb is complete, Formatter.rb is next.
 
 #### Current Architecture (Legacy TUI System)
 

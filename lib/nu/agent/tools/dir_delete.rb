@@ -45,14 +45,11 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[dir_delete] path: #{resolved_path}\e[0m")
 
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[dir_delete] path: #{resolved_path}")
-
-            buffer.debug("[dir_delete] confirm: #{confirm}")
-
-            application.output.flush_buffer(buffer)
+            application.console.puts("\e[90m[dir_delete] confirm: #{confirm}\e[0m")
           end
 
           begin

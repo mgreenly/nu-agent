@@ -38,12 +38,9 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          if application = context['application']
-
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_delete] file: #{resolved_path}")
-
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_delete] file: #{resolved_path}\e[0m")
           end
 
           begin

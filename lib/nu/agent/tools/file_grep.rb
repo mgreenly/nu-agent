@@ -116,7 +116,9 @@ module Nu
           )
 
           # Debug output
-          if application = context['application']
+          application = context['application']
+          if application && application.debug
+            
             application.output.debug("[file_grep] command: #{cmd.join(' ')}")
             application.output.debug("[file_grep] output_mode: #{output_mode}")
           end
@@ -141,7 +143,7 @@ module Nu
               parse_count(stdout, max_results)
             when "content"
               parse_content(stdout, max_results)
-            end
+          end
 
             result
           rescue StandardError => e

@@ -42,12 +42,13 @@ module Nu
           timeout_seconds = [[timeout_seconds.to_i, 1].max, 300].min
 
           # Debug output
-          if application = context['application']
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[execute_bash] command: #{command}")
-            buffer.debug("[execute_bash] timeout: #{timeout_seconds}s")
-            buffer.debug("[execute_bash] cwd: #{Dir.pwd}")
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[execute_bash] command: #{command}\e[0m")
+
+            application.console.puts("\e[90m[execute_bash] timeout: #{timeout_seconds}s\e[0m")
+
+            application.console.puts("\e[90m[execute_bash] cwd: #{Dir.pwd}\e[0m")
           end
 
           stdout = ""

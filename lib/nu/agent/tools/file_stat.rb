@@ -39,12 +39,9 @@ module Nu
           validate_path(resolved_path)
 
           # Debug output
-          if application = context['application']
-
-            buffer = Nu::Agent::OutputBuffer.new
-            buffer.debug("[file_stat] path: #{resolved_path}")
-
-            application.output.flush_buffer(buffer)
+          application = context['application']
+          if application && application.debug
+            application.console.puts("\e[90m[file_stat] path: #{resolved_path}\e[0m")
           end
 
           begin
@@ -98,7 +95,7 @@ module Nu
             # For symlinks, include target
             if File.symlink?(resolved_path)
               result[:symlink_target] = File.readlink(resolved_path)
-            end
+          end
 
             result
           rescue => e
