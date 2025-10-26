@@ -1253,190 +1253,21 @@ module Nu
 
         # Capture values for thread
         @operation_mutex.synchronize do
-          conv_id = conversation_id
-          hist = history
-          status = @summarizer_status
-          status_mtx = @status_mutex
-          app = self
+          # Create summarizer worker and start thread
+          summarizer_worker = ConversationSummarizer.new(
+            history: history,
+            summarizer: @summarizer,
+            application: self,
+            status: @summarizer_status,
+            status_mutex: @status_mutex,
+            current_conversation_id: conversation_id
+          )
 
-          context = {
-            current_conversation_id: conv_id,
-            summarizer_status: status,
-            status_mutex: status_mtx,
-            application: app
-          }
-          thread = Thread.new(hist, @summarizer, context) do |history, summarizer, ctx|
-            summarize_conversations(
-              history: history,
-              summarizer: summarizer,
-              **ctx
-            )
-          rescue StandardError
-            ctx[:status_mutex].synchronize do
-              ctx[:summarizer_status]["running"] = false
-            end
-          end
-
+          thread = summarizer_worker.start_worker
           active_threads << thread
         end
       end
 
-      def summarize_conversations(history:, summarizer:, **context)
-        # Extract context parameters
-        current_conversation_id = context[:current_conversation_id]
-        summarizer_status = context[:summarizer_status]
-        status_mutex = context[:status_mutex]
-        application = context[:application]
-
-        # Get conversations that need summarization
-        conversations = history.get_unsummarized_conversations(exclude_id: current_conversation_id)
-
-        return if conversations.empty?
-
-        # Update status
-        status_mutex.synchronize do
-          summarizer_status["running"] = true
-          summarizer_status["total"] = conversations.length
-          summarizer_status["completed"] = 0
-          summarizer_status["failed"] = 0
-        end
-
-        conversations.each do |conv|
-          # Check for shutdown signal before processing each conversation
-          break if application.instance_variable_get(:@shutdown)
-
-          conv_id = conv["id"]
-
-          # Update current conversation being processed
-          status_mutex.synchronize do
-            summarizer_status["current_conversation_id"] = conv_id
-          end
-
-          begin
-            # Get all messages for this conversation
-            messages = history.messages(conversation_id: conv_id, include_in_context_only: false)
-
-            # Handle empty conversations
-            if messages.empty?
-              application.send(:enter_critical_section)
-              begin
-                history.update_conversation_summary(
-                  conversation_id: conv_id,
-                  summary: "empty conversation",
-                  model: summarizer.model,
-                  cost: 0.0
-                )
-              ensure
-                application.send(:exit_critical_section)
-              end
-
-              status_mutex.synchronize do
-                summarizer_status["completed"] += 1
-                summarizer_status["last_summary"] = "empty conversation"
-              end
-
-              next
-            end
-
-            # Filter to only unredacted messages (same as we do for context)
-            unredacted_messages = messages.reject { |m| m["redacted"] }
-
-            # Build prompt for summarization
-            context = unredacted_messages.map do |msg|
-              role = msg["role"] == "tool" ? "assistant" : msg["role"]
-              content = msg["content"] || ""
-              "#{role}: #{content}"
-            end.join("\n\n")
-
-            summary_prompt = <<~PROMPT
-              Summarize this conversation concisely in 2-3 sentences.
-              Focus on: what the user wanted, key decisions made, and outcomes.
-
-              Conversation:
-              #{context}
-
-              Summary:
-            PROMPT
-
-            # Check for shutdown before making expensive LLM call
-            break if application.instance_variable_get(:@shutdown)
-
-            # Make LLM call in a separate thread so we can check shutdown while waiting
-            llm_thread = Thread.new do
-              summarizer.send_message(
-                messages: [{ "role" => "user", "content" => summary_prompt }],
-                tools: nil
-              )
-            end
-
-            # Poll the thread, checking for shutdown every 100ms
-            response = nil
-            loop do
-              if llm_thread.join(0.1) # Try to join with 100ms timeout
-                response = llm_thread.value
-                break
-              end
-
-              # If shutdown requested while waiting, abandon this conversation
-              break if application.instance_variable_get(:@shutdown)
-            end
-
-            # Skip saving if shutdown was requested
-            break if application.instance_variable_get(:@shutdown)
-
-            # Skip if response is nil (shouldn't happen, but be safe)
-            next if response.nil?
-
-            if response["error"]
-              status_mutex.synchronize do
-                summarizer_status["failed"] += 1
-              end
-              next
-            end
-
-            summary = response["content"]&.strip
-            cost = response["spend"] || 0.0
-
-            if summary && !summary.empty?
-              # Enter critical section for database write
-              application.send(:enter_critical_section)
-              begin
-                # Update conversation with summary
-                history.update_conversation_summary(
-                  conversation_id: conv_id,
-                  summary: summary,
-                  model: summarizer.model,
-                  cost: cost
-                )
-              ensure
-                # Exit critical section
-                application.send(:exit_critical_section)
-              end
-
-              # Update status and accumulate spend
-              status_mutex.synchronize do
-                summarizer_status["completed"] += 1
-                summarizer_status["last_summary"] = summary
-                summarizer_status["spend"] += cost
-              end
-            else
-              status_mutex.synchronize do
-                summarizer_status["failed"] += 1
-              end
-            end
-          rescue StandardError
-            status_mutex.synchronize do
-              summarizer_status["failed"] += 1
-            end
-          end
-        end
-
-        # Mark as complete
-        status_mutex.synchronize do
-          summarizer_status["running"] = false
-          summarizer_status["current_conversation_id"] = nil
-        end
-      end
 
       def start_man_indexer_worker
         # Capture values for thread
