@@ -26,11 +26,14 @@ jobs:
 
       - name: Install DuckDB
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libduckdb-dev
+          wget https://github.com/duckdb/duckdb/releases/download/v1.4.1/libduckdb-linux-amd64.zip
+          unzip libduckdb-linux-amd64.zip -d $HOME/duckdb
+          echo "DUCKDB_DIR=$HOME/duckdb" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: bundle install
+        run: |
+          bundle config build.duckdb --with-duckdb-dir=$HOME/duckdb
+          bundle install
 
       - name: Run tests
         run: bundle exec rspec
