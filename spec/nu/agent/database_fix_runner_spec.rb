@@ -26,7 +26,7 @@ RSpec.describe Nu::Agent::DatabaseFixRunner do
         described_class.run(application)
 
         expect(application).to have_received(:output_line).with("Scanning database for corruption...",
-type: :debug)
+                                                                type: :debug)
         expect(application).to have_received(:output_line).with("✓ No corruption found", type: :debug)
       end
     end
@@ -55,7 +55,7 @@ type: :debug)
 
           expect(history).to have_received(:fix_corrupted_messages).with([1, 2])
           expect(application).to have_received(:output_line).with("✓ Deleted 2 corrupted message(s)",
-                                                                   type: :debug)
+                                                                  type: :debug)
         end
       end
 

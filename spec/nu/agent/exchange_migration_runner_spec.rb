@@ -54,7 +54,7 @@ RSpec.describe Nu::Agent::ExchangeMigrationRunner do
         expect { described_class.run(application) }.to output.to_stdout
 
         expect(application).to have_received(:output_line).with(a_string_matching(/Time elapsed: \d+\.\d+s/),
-                                                                 type: :debug)
+                                                                type: :debug)
       end
     end
 
