@@ -1,10 +1,19 @@
 # frozen_string_literal: true
 
+require_relative "formatters/tool_call_formatter"
+require_relative "formatters/tool_result_formatter"
+require_relative "formatters/llm_request_formatter"
+
 module Nu
   module Agent
     class Formatter
-      attr_writer :orchestrator, :debug
+      attr_writer :orchestrator
       attr_accessor :exchange_start_time
+
+      def debug=(value)
+        @debug = value
+        @llm_request_formatter.debug = value if @llm_request_formatter
+      end
 
       def initialize(history:, console:, orchestrator:, **config)
         @history = history
@@ -16,6 +25,13 @@ module Nu
         @application = config[:application]
         @last_message_id = 0
         @exchange_start_time = nil
+        @tool_call_formatter = Formatters::ToolCallFormatter.new(console: console, application: @application)
+        @tool_result_formatter = Formatters::ToolResultFormatter.new(console: console, application: @application)
+        @llm_request_formatter = Formatters::LlmRequestFormatter.new(
+          console: console,
+          application: @application,
+          debug: @debug
+        )
       end
 
       def reset_session(conversation_id:)
@@ -188,56 +204,7 @@ module Nu
       end
 
       def display_llm_request(messages, tools = nil, markdown_document = nil)
-        # Only show in debug mode
-        return unless @debug
-
-        # Only show LLM request at verbosity level 4+
-        verbosity = @application ? @application.verbosity : 0
-        return if verbosity < 4
-
-        # Level 5: Show tools first
-        if verbosity >= 5 && tools && !tools.empty?
-          @console.puts("")
-          @console.puts("\e[90m--- #{tools.length} Tools Offered ---\e[0m")
-          tools.each do |tool|
-            # Handle different tool formats (Anthropic, Google, OpenAI)
-            name = tool[:name] || tool["name"] || # Anthropic/Google format
-                   tool.dig(:function, :name) || tool.dig("function", "name") # OpenAI format
-            @console.puts("\e[90m  - #{name}\e[0m")
-          end
-        end
-
-        # Separate history from markdown document
-        # The markdown document is always the last message (if present)
-        history_messages = markdown_document ? messages[0...-1] : messages
-
-        # Show conversation history (unredacted messages)
-        unless history_messages.empty?
-          @console.puts("\e[90m--- Conversation History (#{history_messages.length} unredacted message(s)) ---\e[0m")
-          history_messages.each_with_index do |msg, i|
-            @console.puts("\e[90m  Message #{i + 1} (role: #{msg['role']})\e[0m")
-            if msg["content"]
-              content_preview = msg["content"].to_s[0...200]
-              @console.puts("\e[90m  #{content_preview}\e[0m")
-              if msg["content"].to_s.length > 200
-                @console.puts("\e[90m  ... (#{msg['content'].to_s.length} chars total)\e[0m")
-              end
-            end
-            @console.puts("\e[90m  [Contains #{msg['tool_calls'].length} tool call(s)]\e[0m") if msg["tool_calls"]
-            @console.puts("\e[90m  [Tool result for: #{msg['tool_result']['name']}]\e[0m") if msg["tool_result"]
-          end
-        end
-
-        # Show markdown document (context + tools + user query)
-        return unless markdown_document
-
-        @console.puts("")
-        @console.puts("\e[90m--- Exchange Content ---\e[0m")
-        # Show first 500 chars of markdown document
-        preview = markdown_document[0...500]
-        @console.puts("\e[90m#{preview}\e[0m")
-        @console.puts("\e[90m... (#{markdown_document.length} chars total)\e[0m") if markdown_document.length > 500
-        @console.puts("\e[90m--- Exchange Content ---\e[0m")
+        @llm_request_formatter.display(messages, tools, markdown_document)
       end
 
       private
@@ -333,103 +300,11 @@ module Nu
       end
 
       def display_tool_call(tool_call, index: nil, total: nil)
-        # Get verbosity level (default to 0 if application not set)
-        verbosity = @application ? @application.verbosity : 0
-
-        # Show count indicator if multiple tool calls
-        count_indicator = index && total && total > 1 ? " (#{index}/#{total})" : ""
-        @console.puts("")
-        @console.puts("\e[90m[Tool Call Request] #{tool_call['name']}#{count_indicator}\e[0m")
-
-        # Level 0: Show tool name only, no arguments
-        return unless verbosity >= 1
-
-        begin
-          if tool_call["arguments"] && !tool_call["arguments"].empty?
-            tool_call["arguments"].each do |key, value|
-              # Strip to avoid trailing whitespace causing blank lines
-              value_str = value.to_s.strip
-
-              # Level 1-3: Truncate each param to 30 characters
-              if verbosity < 4
-                if value_str.length > 30
-                  @console.puts("\e[90m  #{key}: #{value_str[0...30]}...\e[0m")
-                else
-                  @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
-                end
-              # Level 4+: Show full value
-              elsif value_str.include?("\n")
-                # Handle multiline values to avoid extra blank lines
-                @console.puts("\e[90m  #{key}:\e[0m")
-                value_str.lines.each do |line|
-                  chomped = line.chomp
-                  @console.puts("\e[90m    #{chomped}\e[0m") unless chomped.empty?
-                end
-              else
-                @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
-              end
-            end
-          end
-        rescue StandardError => e
-          @console.puts("\e[90m  [Error displaying arguments: #{e.message}]\e[0m")
-        end
+        @tool_call_formatter.display(tool_call, index: index, total: total)
       end
 
       def display_tool_result(message)
-        result = message["tool_result"]["result"]
-        name = message["tool_result"]["name"]
-        verbosity = @application ? @application.verbosity : 0
-
-        @console.puts("")
-        @console.puts("\e[90m[Tool Use Response] #{name}\e[0m")
-        return unless verbosity >= 1
-
-        begin
-          result.is_a?(Hash) ? format_hash_result(result, verbosity) : format_simple_result(result, verbosity)
-        rescue StandardError => e
-          @console.puts("\e[90m  [Error displaying result: #{e.message}]\e[0m")
-          @console.puts("\e[90m  [Full result: #{result.inspect}]\e[0m") if @debug
-        end
-      end
-
-      def format_hash_result(result, verbosity)
-        result.each do |key, value|
-          value_str = value.to_s.strip
-          verbosity < 4 ? format_truncated_value(key, value_str) : format_full_value(key, value_str)
-        end
-      end
-
-      def format_truncated_value(key, value_str)
-        if value_str.include?("\n")
-          first_line = value_str.lines.first.chomp
-          truncated = first_line.length > 30 ? "#{first_line[0...30]}..." : "#{first_line}..."
-          @console.puts("\e[90m  #{key}: #{truncated}\e[0m")
-        elsif value_str.length > 30
-          @console.puts("\e[90m  #{key}: #{value_str[0...30]}...\e[0m")
-        else
-          @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
-        end
-      end
-
-      def format_full_value(key, value_str)
-        if value_str.include?("\n")
-          @console.puts("\e[90m  #{key}:\e[0m")
-          value_str.lines.each do |line|
-            chomped = line.chomp
-            @console.puts("\e[90m    #{chomped}\e[0m") unless chomped.empty?
-          end
-        else
-          @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
-        end
-      end
-
-      def format_simple_result(result, verbosity)
-        result_str = result.to_s
-        if verbosity < 4 && result_str.length > 30
-          @console.puts("\e[90m  #{result_str[0...30]}...\e[0m")
-        else
-          @console.puts("\e[90m  #{result_str}\e[0m")
-        end
+        @tool_result_formatter.display(message)
       end
 
       def display_error(message)
