@@ -80,7 +80,20 @@ module Nu
       end
 
       def handle_tool_calls(response, messages, metrics)
-        # Save assistant message with tool calls (REDACTED)
+        save_tool_call_message(response)
+        display_tool_call_message(response)
+        display_content_if_present(response["content"])
+
+        metrics[:tool_call_count] += response["tool_calls"].length
+        add_assistant_message_to_list(messages, response)
+
+        # Execute each tool call
+        response["tool_calls"].each do |tool_call|
+          execute_tool_call(tool_call, messages)
+        end
+      end
+
+      def save_tool_call_message(response)
         @history.add_message(
           conversation_id: @conversation_id,
           exchange_id: @exchange_id,
@@ -94,6 +107,9 @@ module Nu
           tool_calls: response["tool_calls"],
           redacted: true
         )
+      end
+
+      def display_tool_call_message(response)
         @formatter.display_message_created(
           actor: "orchestrator",
           role: "assistant",
@@ -101,31 +117,35 @@ module Nu
           tool_calls: response["tool_calls"],
           redacted: true
         )
+      end
 
-        # Display content as normal output if present (LLM explaining what it's doing)
-        if response["content"] && !response["content"].strip.empty?
-          @console.hide_spinner
-          @application.send(:output_line, response["content"])
-          @console.show_spinner("Thinking...")
-        end
+      def display_content_if_present(content)
+        return unless content && !content.strip.empty?
 
-        metrics[:tool_call_count] += response["tool_calls"].length
+        @console.hide_spinner
+        @application.send(:output_line, content)
+        @console.show_spinner("Thinking...")
+      end
 
-        # Add assistant message to in-memory messages
+      def add_assistant_message_to_list(messages, response)
         messages << {
           "role" => "assistant",
           "content" => response["content"],
           "tool_calls" => response["tool_calls"]
         }
-
-        # Execute each tool call
-        response["tool_calls"].each do |tool_call|
-          execute_tool_call(tool_call, messages)
-        end
       end
 
       def execute_tool_call(tool_call, messages)
-        result = @tool_registry.execute(
+        result = execute_tool(tool_call)
+        tool_result_data = build_tool_result_data(tool_call, result)
+
+        save_tool_result_message(tool_call, tool_result_data)
+        display_tool_result_message(tool_result_data)
+        add_tool_result_to_messages(messages, tool_call, result)
+      end
+
+      def execute_tool(tool_call)
+        @tool_registry.execute(
           name: tool_call["name"],
           arguments: tool_call["arguments"],
           history: @history,
@@ -135,12 +155,16 @@ module Nu
             "application" => @application
           }
         )
+      end
 
-        # Save tool result (REDACTED)
-        tool_result_data = {
+      def build_tool_result_data(tool_call, result)
+        {
           "name" => tool_call["name"],
           "result" => result
         }
+      end
+
+      def save_tool_result_message(tool_call, tool_result_data)
         @history.add_message(
           conversation_id: @conversation_id,
           exchange_id: @exchange_id,
@@ -151,14 +175,18 @@ module Nu
           tool_result: tool_result_data,
           redacted: true
         )
+      end
+
+      def display_tool_result_message(tool_result_data)
         @formatter.display_message_created(
           actor: "orchestrator",
           role: "tool",
           tool_result: tool_result_data,
           redacted: true
         )
+      end
 
-        # Add tool result to in-memory messages (must match format expected by clients)
+      def add_tool_result_to_messages(messages, tool_call, result)
         messages << {
           "role" => "tool",
           "tool_call_id" => tool_call["id"],
