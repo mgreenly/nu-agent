@@ -24,54 +24,47 @@ module Nu
         end
 
         def execute(arguments:, **)
-          file_path = arguments[:file] || arguments["file"]
+          file_path = extract_argument(arguments, :file)
 
-          if file_path.nil? || file_path.empty?
-            return {
-              status: "error",
-              error: "file path is required"
-            }
-          end
+          return validation_error("file path is required") if file_path.nil? || file_path.empty?
 
-          # Resolve and validate file path
           resolved_path = resolve_path(file_path)
           validate_path(resolved_path)
 
-          # Debug output
-          context["application"]
+          error = validate_file_exists(resolved_path, file_path)
+          return error if error
 
-          begin
-            unless File.exist?(resolved_path)
-              return {
-                status: "error",
-                error: "File not found: #{file_path}"
-              }
-            end
-
-            unless File.file?(resolved_path)
-              return {
-                status: "error",
-                error: "Not a file (may be a directory): #{file_path}"
-              }
-            end
-
-            # Delete the file
-            File.delete(resolved_path)
-
-            {
-              status: "success",
-              file: file_path,
-              message: "File deleted successfully"
-            }
-          rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to delete file: #{e.message}"
-            }
-          end
+          perform_delete(file_path, resolved_path)
         end
 
         private
+
+        def extract_argument(arguments, key)
+          arguments[key] || arguments[key.to_s]
+        end
+
+        def validation_error(message)
+          { status: "error", error: message }
+        end
+
+        def validate_file_exists(resolved_path, file_path)
+          return validation_error("File not found: #{file_path}") unless File.exist?(resolved_path)
+          return validation_error("Not a file (may be a directory): #{file_path}") unless File.file?(resolved_path)
+
+          nil
+        end
+
+        def perform_delete(file_path, resolved_path)
+          File.delete(resolved_path)
+
+          {
+            status: "success",
+            file: file_path,
+            message: "File deleted successfully"
+          }
+        rescue StandardError => e
+          validation_error("Failed to delete file: #{e.message}")
+        end
 
         def resolve_path(file_path)
           if file_path.start_with?("/")
