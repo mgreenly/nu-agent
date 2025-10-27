@@ -11,9 +11,13 @@ module Nu
         ensure_db_directory(db_path)
         @db = DuckDB::Database.open(db_path)
         @connections = {}
+        @schema_manager = SchemaManager.new(connection)
+        @embedding_store = EmbeddingStore.new(connection)
+        @config_store = ConfigStore.new(connection)
+        @worker_counter = WorkerCounter.new(@config_store)
 
         # Setup schema using main thread's connection
-        setup_schema
+        @schema_manager.setup_schema
       end
 
       # Get connection for current thread
@@ -560,142 +564,61 @@ module Nu
       end
 
       def set_config(key, value)
-        connection.query(<<~SQL)
-          INSERT OR REPLACE INTO appconfig (key, value, updated_at)
-          VALUES ('#{escape_sql(key)}', '#{escape_sql(value.to_s)}', CURRENT_TIMESTAMP)
-        SQL
+        @config_store.set_config(key, value)
       end
 
       def get_config(key, default: nil)
-        result = connection.query(<<~SQL)
-          SELECT value FROM appconfig WHERE key = '#{escape_sql(key)}'
-        SQL
-        row = result.to_a.first
-        row ? row[0] : default
+        @config_store.get_config(key, default: default)
       end
 
       # Add command to command history
       def add_command_history(command)
-        return if command.nil? || command.strip.empty?
-
-        connection.query(<<~SQL)
-          INSERT INTO command_history (command, created_at)
-          VALUES ('#{escape_sql(command)}', CURRENT_TIMESTAMP)
-        SQL
+        @config_store.add_command_history(command)
       end
 
       # Get command history (most recent first)
       def get_command_history(limit: 1000)
-        result = connection.query(<<~SQL)
-          SELECT command, created_at
-          FROM command_history
-          ORDER BY created_at DESC
-          LIMIT #{limit.to_i}
-        SQL
-
-        result.map do |row|
-          {
-            "command" => row[0],
-            "created_at" => row[1]
-          }
-        end.reverse # Reverse to get chronological order (oldest first)
+        @config_store.get_command_history(limit: limit)
       end
 
       # Get all indexed sources for a given kind
       def get_indexed_sources(kind:)
-        result = connection.query(<<~SQL)
-          SELECT source FROM text_embedding_3_small WHERE kind = '#{escape_sql(kind)}'
-        SQL
-        result.map { |row| row[0] }
+        @embedding_store.get_indexed_sources(kind: kind)
       end
 
       # Store embeddings in the database
       def store_embeddings(kind:, records:)
-        records.each do |record|
-          source = record[:source]
-          content = record[:content]
-          embedding = record[:embedding]
-
-          # Convert embedding array to DuckDB array format
-          embedding_str = "[#{embedding.join(', ')}]"
-
-          connection.query(<<~SQL)
-            INSERT INTO text_embedding_3_small (kind, source, content, embedding)
-            VALUES ('#{escape_sql(kind)}', '#{escape_sql(source)}', '#{escape_sql(content)}', #{embedding_str})
-            ON CONFLICT (kind, source) DO NOTHING
-          SQL
-        end
+        @embedding_store.store_embeddings(kind: kind, records: records)
       end
 
       # Get embedding statistics
       def embedding_stats(kind: nil)
-        where_clause = kind ? "WHERE kind = '#{escape_sql(kind)}'" : ""
-
-        result = connection.query(<<~SQL)
-          SELECT kind, COUNT(*) as count
-          FROM text_embedding_3_small
-          #{where_clause}
-          GROUP BY kind
-        SQL
-
-        result.map do |row|
-          { "kind" => row[0], "count" => row[1] }
-        end
+        @embedding_store.embedding_stats(kind: kind)
       end
 
       # Clear all embeddings for a given kind
       def clear_embeddings(kind:)
-        connection.query(<<~SQL)
-          DELETE FROM text_embedding_3_small WHERE kind = '#{escape_sql(kind)}'
-        SQL
+        @embedding_store.clear_embeddings(kind: kind)
       end
 
       def increment_workers
-        result = connection.query("SELECT value FROM appconfig WHERE key = 'active_workers'")
-        row = result.to_a.first
-        current = row ? row[0].to_i : 0
-        new_value = current + 1
-        connection.query(<<~SQL)
-          INSERT OR REPLACE INTO appconfig (key, value, updated_at)
-          VALUES ('active_workers', '#{new_value}', CURRENT_TIMESTAMP)
-        SQL
+        @worker_counter.increment_workers
       end
 
       def decrement_workers
-        result = connection.query("SELECT value FROM appconfig WHERE key = 'active_workers'")
-        row = result.to_a.first
-        current = row ? row[0].to_i : 0
-        new_value = [current - 1, 0].max
-        connection.query(<<~SQL)
-          INSERT OR REPLACE INTO appconfig (key, value, updated_at)
-          VALUES ('active_workers', '#{new_value}', CURRENT_TIMESTAMP)
-        SQL
+        @worker_counter.decrement_workers
       end
 
       def workers_idle?
-        result = connection.query("SELECT value FROM appconfig WHERE key = 'active_workers'")
-        row = result.to_a.first
-        current = row ? row[0].to_i : 0
-        current.zero?
+        @worker_counter.workers_idle?
       end
 
       def list_tables
-        result = connection.query("SHOW TABLES")
-        result.map { |row| row[0] }
+        @schema_manager.list_tables
       end
 
       def describe_table(table_name)
-        result = connection.query("DESCRIBE #{escape_identifier(table_name)}")
-        result.map do |row|
-          {
-            "column_name" => row[0],
-            "column_type" => row[1],
-            "null" => row[2],
-            "key" => row[3],
-            "default" => row[4],
-            "extra" => row[5]
-          }
-        end
+        @schema_manager.describe_table(table_name)
       end
 
       def execute_query(sql)
@@ -795,170 +718,8 @@ module Nu
         FileUtils.mkdir_p(dir)
       end
 
-      def setup_schema
-        connection.query(<<~SQL)
-          CREATE SEQUENCE IF NOT EXISTS conversations_id_seq START 1
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE SEQUENCE IF NOT EXISTS messages_id_seq START 1
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE SEQUENCE IF NOT EXISTS exchanges_id_seq START 1
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE TABLE IF NOT EXISTS conversations (
-            id INTEGER PRIMARY KEY DEFAULT nextval('conversations_id_seq'),
-            created_at TIMESTAMP,
-            title TEXT,
-            status TEXT,
-            summary TEXT,
-            summary_model TEXT,
-            summary_cost FLOAT
-          )
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE TABLE IF NOT EXISTS exchanges (
-            id INTEGER PRIMARY KEY DEFAULT nextval('exchanges_id_seq'),
-            conversation_id INTEGER NOT NULL,
-            exchange_number INTEGER NOT NULL,
-            started_at TIMESTAMP NOT NULL,
-            completed_at TIMESTAMP,
-            summary TEXT,
-            summary_model TEXT,
-            status TEXT,
-            error TEXT,
-            user_message TEXT,
-            assistant_message TEXT,
-            tokens_input INTEGER,
-            tokens_output INTEGER,
-            spend FLOAT,
-            message_count INTEGER,
-            tool_call_count INTEGER
-          )
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY DEFAULT nextval('messages_id_seq'),
-            conversation_id INTEGER,
-            actor TEXT,
-            role TEXT,
-            content TEXT,
-            model TEXT,
-            include_in_context BOOLEAN DEFAULT true,
-            tokens_input INTEGER,
-            tokens_output INTEGER,
-            spend FLOAT,
-            tool_calls TEXT,
-            tool_call_id TEXT,
-            tool_result TEXT,
-            created_at TIMESTAMP
-          )
-        SQL
-
-        # Add tool columns if they don't exist (for existing databases)
-        add_column_if_not_exists("messages", "tool_calls", "TEXT")
-        add_column_if_not_exists("messages", "tool_call_id", "TEXT")
-        add_column_if_not_exists("messages", "tool_result", "TEXT")
-        add_column_if_not_exists("messages", "spend", "FLOAT")
-        add_column_if_not_exists("messages", "error", "TEXT")
-        add_column_if_not_exists("messages", "redacted", "BOOLEAN DEFAULT FALSE")
-        add_column_if_not_exists("messages", "exchange_id", "INTEGER")
-
-        # Add summary columns to conversations
-        add_column_if_not_exists("conversations", "summary", "TEXT")
-        add_column_if_not_exists("conversations", "summary_model", "TEXT")
-        add_column_if_not_exists("conversations", "summary_cost", "FLOAT")
-
-        # Embeddings table for semantic search
-        connection.query(<<~SQL)
-          CREATE SEQUENCE IF NOT EXISTS text_embedding_3_small_id_seq START 1
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE TABLE IF NOT EXISTS text_embedding_3_small (
-            id INTEGER PRIMARY KEY DEFAULT nextval('text_embedding_3_small_id_seq'),
-            kind TEXT NOT NULL,
-            source TEXT NOT NULL,
-            content TEXT NOT NULL,
-            embedding FLOAT[1536],
-            indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(kind, source)
-          )
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE INDEX IF NOT EXISTS idx_kind ON text_embedding_3_small(kind)
-        SQL
-
-        # Install and load VSS extension for vector similarity search
-        begin
-          connection.query("INSTALL vss")
-          connection.query("LOAD vss")
-
-          # Create HNSW index for vector similarity search
-          connection.query(<<~SQL)
-            CREATE INDEX IF NOT EXISTS idx_embedding_hnsw ON text_embedding_3_small USING HNSW(embedding)
-          SQL
-        rescue StandardError
-          # VSS extension might not be available or already loaded, that's OK
-        end
-
-        connection.query(<<~SQL)
-          CREATE TABLE IF NOT EXISTS appconfig (
-            key TEXT PRIMARY KEY,
-            value TEXT,
-            updated_at TIMESTAMP
-          )
-        SQL
-
-        # Command history table for console input history
-        connection.query(<<~SQL)
-          CREATE SEQUENCE IF NOT EXISTS command_history_id_seq START 1
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE TABLE IF NOT EXISTS command_history (
-            id INTEGER PRIMARY KEY DEFAULT nextval('command_history_id_seq'),
-            command TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        SQL
-
-        connection.query(<<~SQL)
-          CREATE INDEX IF NOT EXISTS idx_command_history_created_at ON command_history(created_at DESC)
-        SQL
-
-        # Initialize active_workers if not set
-        return if get_config("active_workers")
-
-        set_config("active_workers", 0)
-      end
-
       def escape_sql(string)
         string.to_s.gsub("'", "''")
-      end
-
-      def escape_identifier(identifier)
-        # Remove any characters that aren't alphanumeric or underscore
-        identifier.to_s.gsub(/[^a-zA-Z0-9_]/, "")
-      end
-
-      def add_column_if_not_exists(table, column, type)
-        result = connection.query(<<~SQL)
-          SELECT COUNT(*) as count
-          FROM information_schema.columns
-          WHERE table_name = '#{table}' AND column_name = '#{column}'
-        SQL
-
-        count = result.to_a.first[0]
-        connection.query("ALTER TABLE #{table} ADD COLUMN #{column} #{type}") if count.zero?
-      rescue StandardError
-        # Column might already exist, ignore error
       end
     end
   end
