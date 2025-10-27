@@ -30,50 +30,41 @@ module Nu
         end
 
         def execute(arguments:, **)
-          file_path = arguments[:file] || arguments["file"]
-          content = arguments[:content] || arguments["content"]
+          file_path = extract_argument(arguments, :file)
+          content = extract_argument(arguments, :content)
 
-          if file_path.nil? || file_path.empty?
-            return {
-              status: "error",
-              error: "file path is required"
-            }
-          end
+          return validation_error("file path is required") if file_path.nil? || file_path.empty?
+          return validation_error("content is required") if content.nil?
 
-          if content.nil?
-            return {
-              status: "error",
-              error: "content is required"
-            }
-          end
-
-          # Resolve and validate file path
           resolved_path = resolve_path(file_path)
           validate_path(resolved_path)
 
-          begin
-            # Create parent directory if it doesn't exist
-            dir = File.dirname(resolved_path)
-            FileUtils.mkdir_p(dir)
-
-            # Write the file
-            File.write(resolved_path, content)
-
-            {
-              status: "success",
-              file: file_path,
-              bytes_written: content.bytesize,
-              lines_written: content.lines.length
-            }
-          rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to write file: #{e.message}"
-            }
-          end
+          write_file_to_disk(file_path, content, resolved_path)
         end
 
         private
+
+        def extract_argument(arguments, key)
+          arguments[key] || arguments[key.to_s]
+        end
+
+        def validation_error(message)
+          { status: "error", error: message }
+        end
+
+        def write_file_to_disk(file_path, content, resolved_path)
+          FileUtils.mkdir_p(File.dirname(resolved_path))
+          File.write(resolved_path, content)
+
+          {
+            status: "success",
+            file: file_path,
+            bytes_written: content.bytesize,
+            lines_written: content.lines.length
+          }
+        rescue StandardError => e
+          { status: "error", error: "Failed to write file: #{e.message}" }
+        end
 
         def resolve_path(file_path)
           if file_path.start_with?("/")
