@@ -19,70 +19,79 @@ module Nu
         end
 
         def execute(context:, **)
-          # Get the Application instance from context
           application = context["application"]
+          return error_response if application.nil?
 
-          if application.nil?
-            return {
-              "error" => "Application context not available"
-            }
-          end
-
-          # Get enabled status
+          history = context["history"]
           enabled = history.get_config("index_man_enabled") == "true"
+          status = read_status(application)
 
-          # Read status under mutex
-          status = nil
+          format_response(enabled, status)
+        end
+
+        private
+
+        def error_response
+          { "error" => "Application context not available" }
+        end
+
+        def read_status(application)
           application.status_mutex.synchronize do
-            status = application.man_indexer_status.dup
+            application.man_indexer_status.dup
           end
+        end
 
-          # Format the response
-          result = {
-            "enabled" => enabled
-          }
+        def format_response(enabled, status)
+          result = { "enabled" => enabled }
 
           if status["running"]
-            result.merge!({
-                            "running" => true,
-                            "progress" => {
-                              "total" => status["total"],
-                              "completed" => status["completed"],
-                              "failed" => status["failed"],
-                              "skipped" => status["skipped"],
-                              "remaining" => status["total"] - status["completed"]
-                            },
-                            "session" => {
-                              "spend" => status["session_spend"],
-                              "tokens" => status["session_tokens"]
-                            },
-                            "current_batch" => status["current_batch"]
-                          })
+            result.merge(format_running_status(status))
           elsif status["total"].positive?
-            # Has run or is idle
-            result.merge!({
-                            "running" => false,
-                            "progress" => {
-                              "total" => status["total"],
-                              "completed" => status["completed"],
-                              "failed" => status["failed"],
-                              "skipped" => status["skipped"],
-                              "remaining" => status["total"] - status["completed"]
-                            },
-                            "session" => {
-                              "spend" => status["session_spend"],
-                              "tokens" => status["session_tokens"]
-                            }
-                          })
+            result.merge(format_completed_status(status))
           else
-            # Never started
-            result.merge!({
-                            "running" => false,
-                            "message" => "Man page indexing not yet started"
-                          })
+            result.merge(format_idle_status)
           end
+        end
 
-          result
+        def format_running_status(status)
+          {
+            "running" => true,
+            "progress" => build_progress_hash(status),
+            "session" => build_session_hash(status),
+            "current_batch" => status["current_batch"]
+          }
+        end
+
+        def format_completed_status(status)
+          {
+            "running" => false,
+            "progress" => build_progress_hash(status),
+            "session" => build_session_hash(status)
+          }
+        end
+
+        def format_idle_status
+          {
+            "running" => false,
+            "message" => "Man page indexing not yet started"
+          }
+        end
+
+        def build_progress_hash(status)
+          {
+            "total" => status["total"],
+            "completed" => status["completed"],
+            "failed" => status["failed"],
+            "skipped" => status["skipped"],
+            "remaining" => status["total"] - status["completed"]
+          }
+        end
+
+        def build_session_hash(status)
+          {
+            "spend" => status["session_spend"],
+            "tokens" => status["session_tokens"]
+          }
         end
       end
     end
