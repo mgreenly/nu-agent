@@ -269,11 +269,23 @@ module Nu
         content = message["content"].to_s
         return if content.strip.empty?
 
-        # Split and normalize, then prefix first line with [System]
-        lines = content.lines.map(&:chomp)
-        lines = lines.drop_while(&:empty?).reverse.drop_while(&:empty?).reverse
+        normalized = normalize_message_lines(content)
+        return unless normalized.any?
 
-        # Collapse consecutive blanks
+        print_system_message(normalized)
+      end
+
+      def normalize_message_lines(content)
+        lines = content.lines.map(&:chomp)
+        lines = trim_empty_lines(lines)
+        collapse_consecutive_blanks(lines)
+      end
+
+      def trim_empty_lines(lines)
+        lines.drop_while(&:empty?).reverse.drop_while(&:empty?).reverse
+      end
+
+      def collapse_consecutive_blanks(lines)
         normalized = []
         prev_empty = false
         lines.each do |line|
@@ -285,9 +297,10 @@ module Nu
             prev_empty = false
           end
         end
+        normalized
+      end
 
-        return unless normalized.any?
-
+      def print_system_message(normalized)
         @console.puts("\e[90m[System] #{normalized.first}\e[0m")
         normalized[1..].each { |line| @console.puts("\e[90m#{line}\e[0m") }
       end
@@ -312,30 +325,45 @@ module Nu
       def display_error(message)
         error = message["error"]
 
+        display_error_header(message, error)
+        display_error_headers(error)
+        display_error_body(error)
+        display_raw_error_if_needed(error)
+      end
+
+      def display_error_header(message, error)
         @console.puts("\e[31m#{message['content']}\e[0m")
         @console.puts("\e[31mStatus: #{error['status']}\e[0m")
+      end
 
+      def display_error_headers(error)
         @console.puts("\e[31mHeaders:\e[0m")
         error["headers"].each do |key, value|
           @console.puts("\e[31m  #{key}: #{value}\e[0m")
         end
+      end
 
+      def display_error_body(error)
         @console.puts("\e[31mBody:\e[0m")
-        # Try to parse and pretty print JSON body
         begin
-          if error["body"].is_a?(String) && !error["body"].empty?
-            parsed = JSON.parse(error["body"])
-            @console.puts("\e[31m#{JSON.pretty_generate(parsed)}\e[0m")
-          elsif error["body"]
-            @console.puts("\e[31m#{error['body']}\e[0m")
-          else
-            @console.puts("\e[31m(empty)\e[0m")
-          end
+          print_error_body_content(error["body"])
         rescue JSON::ParserError
           @console.puts("\e[31m#{error['body']}\e[0m")
         end
+      end
 
-        # Show raw error for debugging if body is empty
+      def print_error_body_content(body)
+        if body.is_a?(String) && !body.empty?
+          parsed = JSON.parse(body)
+          @console.puts("\e[31m#{JSON.pretty_generate(parsed)}\e[0m")
+        elsif body
+          @console.puts("\e[31m#{body}\e[0m")
+        else
+          @console.puts("\e[31m(empty)\e[0m")
+        end
+      end
+
+      def display_raw_error_if_needed(error)
         return unless error["raw_error"] && (error["body"].nil? || error["body"].empty?)
 
         @console.puts("\e[31mRaw Error (for debugging):\e[0m")
