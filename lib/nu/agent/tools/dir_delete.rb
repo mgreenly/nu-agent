@@ -33,67 +33,75 @@ module Nu
         end
 
         def execute(arguments:, **)
-          dir_path = arguments[:path] || arguments["path"]
-          confirm = arguments[:confirm_delete] || arguments["confirm_delete"] || false
+          dir_path = extract_argument(arguments, :path)
+          confirm = extract_argument(arguments, :confirm_delete) || false
 
-          if dir_path.nil? || dir_path.empty?
-            return {
-              status: "error",
-              error: "path is required"
-            }
-          end
+          return validation_error("path is required") if dir_path.nil? || dir_path.empty?
 
-          # Resolve and validate path
           resolved_path = resolve_path(dir_path)
           validate_path(resolved_path)
 
-          begin
-            unless Dir.exist?(resolved_path)
-              return {
-                status: "error",
-                error: "Directory not found: #{dir_path}"
-              }
-            end
+          error = validate_directory_exists(resolved_path, dir_path)
+          return error if error
 
-            # Count what would be deleted
-            file_count = count_files(resolved_path)
-            dir_count = count_directories(resolved_path)
-            total_size = calculate_size(resolved_path)
+          stats = calculate_deletion_stats(resolved_path)
 
-            # If not confirmed, return preview
-            unless confirm
-              return {
-                status: "confirmation_required",
-                path: dir_path,
-                warning: "DESTRUCTIVE OPERATION - This will permanently delete:",
-                files_to_delete: file_count,
-                directories_to_delete: dir_count,
-                total_size_bytes: total_size,
-                message: "To proceed with deletion, call this tool again with confirm_delete: true",
-                confirmed: false
-              }
-            end
+          return preview_deletion(dir_path, stats) unless confirm
 
-            # Confirmed - proceed with deletion
-            FileUtils.rm_rf(resolved_path)
-
-            {
-              status: "success",
-              path: dir_path,
-              message: "Directory deleted successfully",
-              files_deleted: file_count,
-              directories_deleted: dir_count,
-              confirmed: true
-            }
-          rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to delete directory: #{e.message}"
-            }
-          end
+          perform_deletion(dir_path, resolved_path, stats)
         end
 
         private
+
+        def extract_argument(arguments, key)
+          arguments[key] || arguments[key.to_s]
+        end
+
+        def validation_error(message)
+          { status: "error", error: message }
+        end
+
+        def validate_directory_exists(resolved_path, dir_path)
+          return validation_error("Directory not found: #{dir_path}") unless Dir.exist?(resolved_path)
+
+          nil
+        end
+
+        def calculate_deletion_stats(resolved_path)
+          {
+            file_count: count_files(resolved_path),
+            dir_count: count_directories(resolved_path),
+            total_size: calculate_size(resolved_path)
+          }
+        end
+
+        def preview_deletion(dir_path, stats)
+          {
+            status: "confirmation_required",
+            path: dir_path,
+            warning: "DESTRUCTIVE OPERATION - This will permanently delete:",
+            files_to_delete: stats[:file_count],
+            directories_to_delete: stats[:dir_count],
+            total_size_bytes: stats[:total_size],
+            message: "To proceed with deletion, call this tool again with confirm_delete: true",
+            confirmed: false
+          }
+        end
+
+        def perform_deletion(dir_path, resolved_path, stats)
+          FileUtils.rm_rf(resolved_path)
+
+          {
+            status: "success",
+            path: dir_path,
+            message: "Directory deleted successfully",
+            files_deleted: stats[:file_count],
+            directories_deleted: stats[:dir_count],
+            confirmed: true
+          }
+        rescue StandardError => e
+          validation_error("Failed to delete directory: #{e.message}")
+        end
 
         def resolve_path(dir_path)
           if dir_path.start_with?("/")
