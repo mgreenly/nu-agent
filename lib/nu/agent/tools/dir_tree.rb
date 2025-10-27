@@ -41,71 +41,73 @@ module Nu
         end
 
         def execute(arguments:, **)
-          dir_path = arguments[:path] || arguments["path"] || "."
-          max_depth = arguments[:max_depth] || arguments["max_depth"]
-          show_hidden = arguments[:show_hidden] || arguments["show_hidden"] || false
-          limit = arguments[:limit] || arguments["limit"] || 1000
-
-          # Resolve and validate path
-          resolved_path = resolve_path(dir_path)
+          args = parse_arguments(arguments)
+          resolved_path = resolve_path(args[:dir_path])
           validate_path(resolved_path)
 
           begin
-            unless File.exist?(resolved_path)
-              return {
-                status: "error",
-                error: "Directory not found: #{dir_path}"
-              }
-            end
+            error = validate_directory(resolved_path, args[:dir_path])
+            return error if error
 
-            unless File.directory?(resolved_path)
-              return {
-                status: "error",
-                error: "Not a directory: #{dir_path}"
-              }
-            end
+            all_directories = execute_find_and_parse(resolved_path, args)
+            directories = all_directories.take(args[:limit])
 
-            # Build find command
-            cmd = build_find_command(resolved_path, max_depth, show_hidden)
-
-            # Execute find
-            stdout, stderr, status = Open3.capture3(*cmd)
-
-            unless status.success?
-              return {
-                status: "error",
-                error: "Failed to list directories: #{stderr}"
-              }
-            end
-
-            # Parse output - make paths relative to starting directory
-            all_directories = stdout.split("\n")
-                                    .map(&:strip)
-                                    .reject(&:empty?)
-                                    .map { |path| make_relative(path, resolved_path) }
-                                    .reject { |path| path == "." } # Exclude the starting directory itself
-                                    .sort
-
-            total_directories = all_directories.length
-            directories = all_directories.take(limit)
-
-            {
-              status: "success",
-              path: dir_path,
-              directories: directories,
-              count: directories.length,
-              total_directories: total_directories,
-              truncated: total_directories > limit
-            }
+            build_success_response(args[:dir_path], directories, all_directories.length, args[:limit])
           rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to list directories: #{e.message}"
-            }
+            error_response("Failed to list directories: #{e.message}")
           end
         end
 
         private
+
+        def parse_arguments(arguments)
+          {
+            dir_path: arguments[:path] || arguments["path"] || ".",
+            max_depth: arguments[:max_depth] || arguments["max_depth"],
+            show_hidden: arguments[:show_hidden] || arguments["show_hidden"] || false,
+            limit: arguments[:limit] || arguments["limit"] || 1000
+          }
+        end
+
+        def error_response(message)
+          { status: "error", error: message }
+        end
+
+        def validate_directory(resolved_path, dir_path)
+          return error_response("Directory not found: #{dir_path}") unless File.exist?(resolved_path)
+          return error_response("Not a directory: #{dir_path}") unless File.directory?(resolved_path)
+
+          nil
+        end
+
+        def execute_find_and_parse(resolved_path, args)
+          cmd = build_find_command(resolved_path, args[:max_depth], args[:show_hidden])
+          stdout, stderr, status = Open3.capture3(*cmd)
+
+          raise StandardError, "find command failed: #{stderr}" unless status.success?
+
+          parse_find_output(stdout, resolved_path)
+        end
+
+        def parse_find_output(stdout, resolved_path)
+          stdout.split("\n")
+                .map(&:strip)
+                .reject(&:empty?)
+                .map { |path| make_relative(path, resolved_path) }
+                .reject { |path| path == "." }
+                .sort
+        end
+
+        def build_success_response(dir_path, directories, total_directories, limit)
+          {
+            status: "success",
+            path: dir_path,
+            directories: directories,
+            count: directories.length,
+            total_directories: total_directories,
+            truncated: total_directories > limit
+          }
+        end
 
         def resolve_path(dir_path)
           if dir_path.start_with?("/")

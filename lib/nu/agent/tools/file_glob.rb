@@ -51,58 +51,59 @@ module Nu
         end
 
         def execute(arguments:, **)
-          pattern = arguments[:pattern] || arguments["pattern"]
-          base_path = arguments[:path] || arguments["path"] || "."
-          limit = arguments[:limit] || arguments["limit"] || 100
-          sort_by = arguments[:sort_by] || arguments["sort_by"] || "mtime"
+          args = parse_arguments(arguments)
 
-          # Validate required parameters
-          if pattern.nil? || pattern.empty?
-            return {
-              error: "pattern is required",
-              files: []
-            }
-          end
-
-          # Build full glob pattern
-          full_pattern = File.join(base_path, pattern)
+          return error_response("pattern is required") if args[:pattern].nil? || args[:pattern].empty?
 
           begin
-            # Find matching files (excluding directories)
-            files = Dir.glob(full_pattern, File::FNM_PATHNAME).select { |f| File.file?(f) }
+            files = find_matching_files(args[:pattern], args[:base_path])
+            sorted_files = sort_files(files, args[:sort_by])
+            limited_files = sorted_files.take(args[:limit])
 
-            # Sort results
-            sorted_files = case sort_by
-                           when "name"
-                             files.sort
-                           when "none"
-                             files
-                           else
-                             # Default to mtime if invalid sort_by (or when sort_by == "mtime")
-                             files.sort_by { |f| -File.mtime(f).to_i } # Negative for descending order
-                           end
-
-            # Limit results
-            limited_files = sorted_files.take(limit)
-
-            # Build result with metadata
-            {
-              files: limited_files,
-              count: limited_files.length,
-              total_matches: files.length,
-              truncated: files.length > limit
-            }
+            build_success_response(limited_files, files.length, args[:limit])
           rescue Errno::ENOENT
-            {
-              error: "Path not found: #{base_path}",
-              files: []
-            }
+            error_response("Path not found: #{args[:base_path]}")
           rescue StandardError => e
-            {
-              error: "Glob failed: #{e.message}",
-              files: []
-            }
+            error_response("Glob failed: #{e.message}")
           end
+        end
+
+        private
+
+        def parse_arguments(arguments)
+          {
+            pattern: arguments[:pattern] || arguments["pattern"],
+            base_path: arguments[:path] || arguments["path"] || ".",
+            limit: arguments[:limit] || arguments["limit"] || 100,
+            sort_by: arguments[:sort_by] || arguments["sort_by"] || "mtime"
+          }
+        end
+
+        def error_response(message)
+          { error: message, files: [] }
+        end
+
+        def find_matching_files(pattern, base_path)
+          full_pattern = File.join(base_path, pattern)
+          Dir.glob(full_pattern, File::FNM_PATHNAME).select { |f| File.file?(f) }
+        end
+
+        def sort_files(files, sort_by)
+          case sort_by
+          when "name" then files.sort
+          when "none" then files
+          else
+            files.sort_by { |f| -File.mtime(f).to_i }
+          end
+        end
+
+        def build_success_response(limited_files, total_matches, limit)
+          {
+            files: limited_files,
+            count: limited_files.length,
+            total_matches: total_matches,
+            truncated: total_matches > limit
+          }
         end
       end
     end
