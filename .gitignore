@@ -12,4 +12,6 @@
 
 # DuckDB databases
 /db/
+/db.bak/
 *.db
+*.db.wal
