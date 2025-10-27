@@ -41,70 +41,72 @@ module Nu
         end
 
         def execute(arguments:, **)
-          dir_path = arguments[:path] || arguments["path"] || "."
-          max_depth = arguments[:max_depth] || arguments["max_depth"]
-          show_hidden = arguments[:show_hidden] || arguments["show_hidden"] || false
-          limit = arguments[:limit] || arguments["limit"] || 1000
-
-          # Resolve and validate path
-          resolved_path = resolve_path(dir_path)
+          args = parse_arguments(arguments)
+          resolved_path = resolve_path(args[:dir_path])
           validate_path(resolved_path)
 
           begin
-            unless File.exist?(resolved_path)
-              return {
-                status: "error",
-                error: "Directory not found: #{dir_path}"
-              }
-            end
+            error = validate_directory(resolved_path, args[:dir_path])
+            return error if error
 
-            unless File.directory?(resolved_path)
-              return {
-                status: "error",
-                error: "Not a directory: #{dir_path}"
-              }
-            end
+            all_files = execute_find_and_parse(resolved_path, args)
+            files = all_files.take(args[:limit])
 
-            # Build find command
-            cmd = build_find_command(resolved_path, max_depth, show_hidden)
-
-            # Execute find
-            stdout, stderr, status = Open3.capture3(*cmd)
-
-            unless status.success?
-              return {
-                status: "error",
-                error: "Failed to list files: #{stderr}"
-              }
-            end
-
-            # Parse output - make paths relative to starting directory
-            all_files = stdout.split("\n")
-                              .map(&:strip)
-                              .reject(&:empty?)
-                              .map { |path| make_relative(path, resolved_path) }
-                              .sort
-
-            total_files = all_files.length
-            files = all_files.take(limit)
-
-            {
-              status: "success",
-              path: dir_path,
-              files: files,
-              count: files.length,
-              total_files: total_files,
-              truncated: total_files > limit
-            }
+            build_success_response(args[:dir_path], files, all_files.length, args[:limit])
           rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to list files: #{e.message}"
-            }
+            error_response("Failed to list files: #{e.message}")
           end
         end
 
         private
+
+        def parse_arguments(arguments)
+          {
+            dir_path: arguments[:path] || arguments["path"] || ".",
+            max_depth: arguments[:max_depth] || arguments["max_depth"],
+            show_hidden: arguments[:show_hidden] || arguments["show_hidden"] || false,
+            limit: arguments[:limit] || arguments["limit"] || 1000
+          }
+        end
+
+        def error_response(message)
+          { status: "error", error: message }
+        end
+
+        def validate_directory(resolved_path, dir_path)
+          return error_response("Directory not found: #{dir_path}") unless File.exist?(resolved_path)
+          return error_response("Not a directory: #{dir_path}") unless File.directory?(resolved_path)
+
+          nil
+        end
+
+        def execute_find_and_parse(resolved_path, args)
+          cmd = build_find_command(resolved_path, args[:max_depth], args[:show_hidden])
+          stdout, stderr, status = Open3.capture3(*cmd)
+
+          raise StandardError, "find command failed: #{stderr}" unless status.success?
+
+          parse_find_output(stdout, resolved_path)
+        end
+
+        def parse_find_output(stdout, resolved_path)
+          stdout.split("\n")
+                .map(&:strip)
+                .reject(&:empty?)
+                .map { |path| make_relative(path, resolved_path) }
+                .sort
+        end
+
+        def build_success_response(dir_path, files, total_files, limit)
+          {
+            status: "success",
+            path: dir_path,
+            files: files,
+            count: files.length,
+            total_files: total_files,
+            truncated: total_files > limit
+          }
+        end
 
         def resolve_path(dir_path)
           if dir_path.start_with?("/")
