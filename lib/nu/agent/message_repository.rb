@@ -9,8 +9,20 @@ module Nu
       end
 
       def add_message(conversation_id:, actor:, role:, content:, **attributes)
-        # Set defaults for optional attributes
-        attributes = {
+        attrs = attribute_defaults_for(attributes)
+        values = build_insert_values(conversation_id, actor, role, content, attrs)
+
+        @connection.query(<<~SQL)
+          INSERT INTO messages (
+            conversation_id, actor, role, content, model,
+            include_in_context, tokens_input, tokens_output, spend,
+            tool_calls, tool_call_id, tool_result, error, redacted, exchange_id, created_at
+          ) VALUES (#{values})
+        SQL
+      end
+
+      def attribute_defaults_for(attributes)
+        {
           model: nil,
           include_in_context: true,
           tokens_input: nil,
@@ -23,25 +35,35 @@ module Nu
           redacted: false,
           exchange_id: nil
         }.merge(attributes)
+      end
 
-        tool_calls_json = attributes[:tool_calls] ? "'#{escape_sql(JSON.generate(attributes[:tool_calls]))}'" : "NULL"
-        tool_result = attributes[:tool_result]
-        tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : "NULL"
-        error_json = attributes[:error] ? "'#{escape_sql(JSON.generate(attributes[:error]))}'" : "NULL"
+      def build_insert_values(conversation_id, actor, role, content, attrs)
+        [
+          conversation_id,
+          "'#{escape_sql(actor)}'",
+          "'#{escape_sql(role)}'",
+          "'#{escape_sql(content || '')}'",
+          string_or_null(attrs[:model]),
+          attrs[:include_in_context],
+          attrs[:tokens_input] || "NULL",
+          attrs[:tokens_output] || "NULL",
+          attrs[:spend] || "NULL",
+          json_value(attrs[:tool_calls]),
+          string_or_null(attrs[:tool_call_id]),
+          json_value(attrs[:tool_result]),
+          json_value(attrs[:error]),
+          attrs[:redacted],
+          attrs[:exchange_id] || "NULL",
+          "CURRENT_TIMESTAMP"
+        ].join(", ")
+      end
 
-        @connection.query(<<~SQL)
-          INSERT INTO messages (
-            conversation_id, actor, role, content, model,
-            include_in_context, tokens_input, tokens_output, spend,
-            tool_calls, tool_call_id, tool_result, error, redacted, exchange_id, created_at
-          ) VALUES (
-            #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
-            '#{escape_sql(content || '')}', #{attributes[:model] ? "'#{escape_sql(attributes[:model])}'" : 'NULL'},
-            #{attributes[:include_in_context]}, #{attributes[:tokens_input] || 'NULL'}, #{attributes[:tokens_output] || 'NULL'},
-            #{attributes[:spend] || 'NULL'}, #{tool_calls_json}, #{attributes[:tool_call_id] ? "'#{escape_sql(attributes[:tool_call_id])}'" : 'NULL'},
-            #{tool_result_json}, #{error_json}, #{attributes[:redacted]}, #{attributes[:exchange_id] || 'NULL'}, CURRENT_TIMESTAMP
-          )
-        SQL
+      def json_value(value)
+        value ? "'#{escape_sql(JSON.generate(value))}'" : "NULL"
+      end
+
+      def string_or_null(value)
+        value ? "'#{escape_sql(value)}'" : "NULL"
       end
 
       def messages(conversation_id:, include_in_context_only: true, since: nil)

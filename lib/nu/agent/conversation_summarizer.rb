@@ -57,36 +57,44 @@ module Nu
 
       def process_conversation(conv)
         conv_id = conv["id"]
+        update_status_current_conversation(conv_id)
 
-        # Update current conversation being processed
-        @status_mutex.synchronize do
-          @status["current_conversation_id"] = conv_id
-        end
-
-        # Get all messages for this conversation
         messages = @history.messages(conversation_id: conv_id, include_in_context_only: false)
+        return handle_empty_conversation(conv_id) if messages.empty?
 
-        # Handle empty conversations
-        if messages.empty?
-          save_summary(conv_id, "empty conversation", 0.0)
-          @status_mutex.synchronize do
-            @status["completed"] += 1
-            @status["last_summary"] = "empty conversation"
-          end
-          return
+        summary_prompt = build_summary_prompt(messages)
+        return if shutdown_requested?
+
+        response = make_llm_call_with_shutdown_check(summary_prompt)
+        return if shutdown_requested? || response.nil?
+
+        handle_summarization_response(conv_id, response)
+      rescue StandardError
+        increment_failed_count
+      end
+
+      def update_status_current_conversation(conv_id)
+        @status_mutex.synchronize { @status["current_conversation_id"] = conv_id }
+      end
+
+      def handle_empty_conversation(conv_id)
+        save_summary(conv_id, "empty conversation", 0.0)
+        @status_mutex.synchronize do
+          @status["completed"] += 1
+          @status["last_summary"] = "empty conversation"
         end
+      end
 
-        # Filter to only unredacted messages (same as we do for context)
+      def build_summary_prompt(messages)
         unredacted_messages = messages.reject { |m| m["redacted"] }
 
-        # Build prompt for summarization
         context = unredacted_messages.map do |msg|
           role = msg["role"] == "tool" ? "assistant" : msg["role"]
           content = msg["content"] || ""
           "#{role}: #{content}"
         end.join("\n\n")
 
-        summary_prompt = <<~PROMPT
+        <<~PROMPT
           Summarize this conversation concisely in 2-3 sentences.
           Focus on: what the user wanted, key decisions made, and outcomes.
 
@@ -95,46 +103,36 @@ module Nu
 
           Summary:
         PROMPT
+      end
 
-        # Check for shutdown before making expensive LLM call
-        return if @application.instance_variable_get(:@shutdown)
+      def shutdown_requested?
+        @application.instance_variable_get(:@shutdown)
+      end
 
-        # Make LLM call with shutdown awareness
-        response = make_llm_call_with_shutdown_check(summary_prompt)
-
-        # Skip saving if shutdown was requested or response is nil
-        return if @application.instance_variable_get(:@shutdown)
-        return if response.nil?
-
-        # Handle response
-        if response["error"]
-          @status_mutex.synchronize do
-            @status["failed"] += 1
-          end
-          return
-        end
+      def handle_summarization_response(conv_id, response)
+        return increment_failed_count if response["error"]
 
         summary = response["content"]&.strip
         cost = response["spend"] || 0.0
 
         if summary && !summary.empty?
           save_summary(conv_id, summary, cost)
-
-          # Update status and accumulate spend
-          @status_mutex.synchronize do
-            @status["completed"] += 1
-            @status["last_summary"] = summary
-            @status["spend"] += cost
-          end
+          update_status_success(summary, cost)
         else
-          @status_mutex.synchronize do
-            @status["failed"] += 1
-          end
+          increment_failed_count
         end
-      rescue StandardError
+      end
+
+      def update_status_success(summary, cost)
         @status_mutex.synchronize do
-          @status["failed"] += 1
+          @status["completed"] += 1
+          @status["last_summary"] = summary
+          @status["spend"] += cost
         end
+      end
+
+      def increment_failed_count
+        @status_mutex.synchronize { @status["failed"] += 1 }
       end
 
       def make_llm_call_with_shutdown_check(prompt)
