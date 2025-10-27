@@ -20,6 +20,11 @@ Never write implementation code before writing the test that validates it.
 - Do not introduce new lint violations
 - Line length limit: 120 characters (configured in `.rubocop.yml`)
 
+## CODE SMELLS TO AVOID!!!
+
+- Using @ sigils on instance variables when attr_accesor, attr_reader or attr_writer exists.
+- Using instance_variable_get to access instance variables outside from outside the instance.
+
 ## Code Style Preferences
 
 **Line Length Management:**

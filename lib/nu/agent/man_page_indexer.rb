@@ -31,139 +31,159 @@ module Nu
 
       # Main indexing loop - processes man pages in batches
       def index_pages
-        # Create man indexer with application for debug messages
-        man_indexer = ManIndexer.new(
+        man_indexer = create_man_indexer
+
+        loop do
+          break if should_stop_indexing?
+
+          pages_info = get_pages_to_index(man_indexer)
+          update_initial_status(pages_info)
+
+          break if indexing_complete?(pages_info[:to_index])
+
+          batch = pages_info[:to_index].take(10)
+          update_batch_status(batch)
+
+          records = extract_batch_descriptions(batch, man_indexer)
+
+          next if skip_empty_batch?(records)
+          break if @application.instance_variable_get(:@shutdown)
+
+          process_batch(records, man_indexer)
+          sleep(6) unless @application.instance_variable_get(:@shutdown)
+        end
+
+        mark_indexing_complete
+      end
+
+      private
+
+      def create_man_indexer
+        ManIndexer.new(
           history: @history,
           embeddings_client: @embeddings_client,
           application: @application
         )
+      end
 
-        loop do
-          # Check for shutdown or disabled
+      def should_stop_indexing?
+        return true if @application.instance_variable_get(:@shutdown)
+
+        @history.get_config("index_man_enabled") != "true"
+      end
+
+      def get_pages_to_index(man_indexer)
+        all_man_pages = man_indexer.all_man_pages
+        indexed = @history.get_indexed_sources(kind: "man_page")
+        to_index = all_man_pages - indexed
+
+        {
+          all: all_man_pages,
+          indexed: indexed,
+          to_index: to_index
+        }
+      end
+
+      def update_initial_status(pages_info)
+        @status_mutex.synchronize do
+          @status["running"] = true
+          @status["total"] = pages_info[:all].length
+          @status["completed"] = pages_info[:indexed].length
+        end
+      end
+
+      def indexing_complete?(to_index)
+        return false unless to_index.empty?
+
+        @status_mutex.synchronize do
+          @status["running"] = false
+        end
+        true
+      end
+
+      def update_batch_status(batch)
+        @status_mutex.synchronize do
+          @status["current_batch"] = batch
+        end
+      end
+
+      def extract_batch_descriptions(batch, man_indexer)
+        records = []
+        batch.each do |source|
           break if @application.instance_variable_get(:@shutdown)
-          break unless @history.get_config("index_man_enabled") == "true"
 
-          # Get all man pages from system
-          all_man_pages = man_indexer.all_man_pages
+          description = man_indexer.extract_description(source)
 
-          # Get already indexed man pages from DB
-          indexed = @history.get_indexed_sources(kind: "man_page")
-
-          # Calculate exclusive set (not yet indexed)
-          to_index = all_man_pages - indexed
-
-          # Update total count
-          @status_mutex.synchronize do
-            @status["running"] = true
-            @status["total"] = all_man_pages.length
-            @status["completed"] = indexed.length
-          end
-
-          # Break if nothing left to index
-          if to_index.empty?
-            @status_mutex.synchronize do
-              @status["running"] = false
-            end
-            break
-          end
-
-          # Process in batches of 10
-          batch = to_index.take(10)
-
-          # Update current batch
-          @status_mutex.synchronize do
-            @status["current_batch"] = batch
-          end
-
-          # Extract DESCRIPTION sections
-          records = []
-          batch.each do |source|
-            # Check for shutdown before processing each man page
-            break if @application.instance_variable_get(:@shutdown)
-
-            description = man_indexer.extract_description(source)
-
-            if description.nil? || description.empty?
-              # Skip this man page
-              @status_mutex.synchronize do
-                @status["skipped"] += 1
-              end
-              next
-            end
-
-            records << {
-              source: source,
-              content: description
-            }
-          end
-
-          # Skip API call if no valid descriptions
-          if records.empty?
-            sleep(1)
+          if description.nil? || description.empty?
+            @status_mutex.synchronize { @status["skipped"] += 1 }
             next
           end
 
-          # Check for shutdown before expensive API call
-          break if @application.instance_variable_get(:@shutdown)
-
-          # Call OpenAI embeddings API (batch request)
-          process_batch(records, man_indexer)
-
-          # Rate limiting: sleep to maintain 10 req/min (6 seconds between requests)
-          sleep(6) unless @application.instance_variable_get(:@shutdown)
+          records << { source: source, content: description }
         end
+        records
+      end
 
-        # Mark as complete
+      def skip_empty_batch?(records)
+        return false unless records.empty?
+
+        sleep(1)
+        true
+      end
+
+      def mark_indexing_complete
         @status_mutex.synchronize do
           @status["running"] = false
           @status["current_batch"] = nil
         end
       end
 
-      private
-
       def process_batch(records, _man_indexer)
         contents = records.map { |r| r[:content] }
         response = @embeddings_client.generate_embedding(contents)
 
-        # Check for errors
-        if response["error"]
-          handle_api_error(response, records)
-          return
-        end
+        return handle_api_error(response, records) if response["error"]
 
-        # Get embeddings and add to records
-        embeddings = response["embeddings"]
+        attach_embeddings_to_records(records, response["embeddings"])
+        store_embeddings_in_db(records)
+        update_completion_status(records.length, response)
+      rescue StandardError => e
+        handle_batch_error(e, records)
+      end
+
+      def attach_embeddings_to_records(records, embeddings)
         records.each_with_index do |record, i|
           record[:embedding] = embeddings[i]
         end
+      end
 
-        # Store in database
+      def store_embeddings_in_db(records)
         @application.send(:enter_critical_section)
         begin
           @history.store_embeddings(kind: "man_page", records: records)
         ensure
           @application.send(:exit_critical_section)
         end
+      end
 
-        # Update status
+      def update_completion_status(records_count, response)
         @status_mutex.synchronize do
-          @status["completed"] += records.length
+          @status["completed"] += records_count
           @status["session_spend"] += response["spend"] || 0.0
           @status["session_tokens"] += response["tokens"] || 0
         end
-      rescue StandardError => e
-        # On error, mark batch as failed and log the error
+      end
+
+      def handle_batch_error(error, records)
         @status_mutex.synchronize do
           @status["failed"] += records.length
         end
 
-        # Log error using thread-safe output
-        @application.output_line("[Man Indexer] Error processing batch: #{e.class}: #{e.message}", type: :debug)
-        if @application.instance_variable_get(:@debug)
-          e.backtrace.first(5).each do |line|
-            @application.output_line("  #{line}", type: :debug)
-          end
+        @application.output_line("[Man Indexer] Error processing batch: #{error.class}: #{error.message}", type: :debug)
+        return unless @application.instance_variable_get(:@debug)
+
+        error.backtrace.first(5).each do |line|
+          @application.output_line("  #{line}", type: :debug)
         end
       end
 
