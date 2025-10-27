@@ -6,45 +6,83 @@ module Nu
     class SessionInfo
       def self.build(application)
         lines = []
-        lines << ""
-        lines << "Version:       #{Nu::Agent::VERSION}"
-        lines << ""
-
-        # Models section
-        lines << "Models:"
-        lines << "  Orchestrator:  #{application.orchestrator.model}"
-        lines << "  Spellchecker:  #{application.spellchecker.model}"
-        lines << "  Summarizer:    #{application.summarizer.model}"
-        lines << ""
-
-        lines << "Debug mode:    #{application.debug}"
-        lines << "Verbosity:     #{application.verbosity}"
-        lines << "Redaction:     #{application.redact ? 'on' : 'off'}"
-        lines << "Summarizer:    #{application.summarizer_enabled ? 'on' : 'off'}"
-
-        # Show summarizer status if enabled
-        if application.summarizer_enabled
-          application.status_mutex.synchronize do
-            status = application.summarizer_status
-            if status["running"]
-              lines << "  Status:      running (#{status['completed']}/#{status['total']} conversations)"
-              lines << "  Spend:       $#{format('%.6f', status['spend'])}" if status["spend"].positive?
-            elsif status["total"].positive?
-              completed = status["completed"]
-              total = status["total"]
-              failed = status["failed"]
-              lines << "  Status:      completed (#{completed}/#{total} conversations, #{failed} failed)"
-              lines << "  Spend:       $#{format('%.6f', status['spend'])}" if status["spend"].positive?
-            else
-              lines << "  Status:      idle"
-            end
-          end
-        end
-
-        lines << "Spellcheck:    #{application.spell_check_enabled ? 'on' : 'off'}"
-        lines << "Database:      #{File.expand_path(application.history.db_path)}"
+        lines.concat(build_header_lines)
+        lines.concat(build_models_lines(application))
+        lines.concat(build_settings_lines(application))
+        lines.concat(build_summarizer_status_lines(application))
+        lines.concat(build_footer_lines(application))
 
         lines.join("\n")
+      end
+
+      def self.build_header_lines
+        [
+          "",
+          "Version:       #{Nu::Agent::VERSION}",
+          ""
+        ]
+      end
+
+      def self.build_models_lines(application)
+        [
+          "Models:",
+          "  Orchestrator:  #{application.orchestrator.model}",
+          "  Spellchecker:  #{application.spellchecker.model}",
+          "  Summarizer:    #{application.summarizer.model}",
+          ""
+        ]
+      end
+
+      def self.build_settings_lines(application)
+        [
+          "Debug mode:    #{application.debug}",
+          "Verbosity:     #{application.verbosity}",
+          "Redaction:     #{application.redact ? 'on' : 'off'}",
+          "Summarizer:    #{application.summarizer_enabled ? 'on' : 'off'}"
+        ]
+      end
+
+      def self.build_summarizer_status_lines(application)
+        return [] unless application.summarizer_enabled
+
+        status_lines = []
+        application.status_mutex.synchronize do
+          status = application.summarizer_status
+          status_lines.concat(format_summarizer_status(status))
+        end
+        status_lines
+      end
+
+      def self.format_summarizer_status(status)
+        if status["running"]
+          format_running_status(status)
+        elsif status["total"].positive?
+          format_completed_status(status)
+        else
+          ["  Status:      idle"]
+        end
+      end
+
+      def self.format_running_status(status)
+        lines = ["  Status:      running (#{status['completed']}/#{status['total']} conversations)"]
+        lines << "  Spend:       $#{format('%.6f', status['spend'])}" if status["spend"].positive?
+        lines
+      end
+
+      def self.format_completed_status(status)
+        completed = status["completed"]
+        total = status["total"]
+        failed = status["failed"]
+        lines = ["  Status:      completed (#{completed}/#{total} conversations, #{failed} failed)"]
+        lines << "  Spend:       $#{format('%.6f', status['spend'])}" if status["spend"].positive?
+        lines
+      end
+
+      def self.build_footer_lines(application)
+        [
+          "Spellcheck:    #{application.spell_check_enabled ? 'on' : 'off'}",
+          "Database:      #{File.expand_path(application.history.db_path)}"
+        ]
       end
     end
   end
