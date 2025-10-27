@@ -29,6 +29,7 @@ module Nu
           workers_incremented = true
 
           # Capture values to pass into thread under mutex
+          # rubocop:disable Metrics/BlockLength
           thread = application.operation_mutex.synchronize do
             conv_id = application.conversation_id
             hist = application.history
@@ -65,6 +66,7 @@ module Nu
               history.decrement_workers
             end
           end
+          # rubocop:enable Metrics/BlockLength
 
           application.active_threads << thread
 

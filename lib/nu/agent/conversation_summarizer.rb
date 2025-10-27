@@ -4,12 +4,12 @@ module Nu
   module Agent
     # Manages background conversation summarization worker thread
     class ConversationSummarizer
-      def initialize(history:, summarizer:, application:, status:, status_mutex:, current_conversation_id:)
+      def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:)
         @history = history
         @summarizer = summarizer
         @application = application
-        @status = status
-        @status_mutex = status_mutex
+        @status = status_info[:status]
+        @status_mutex = status_info[:mutex]
         @current_conversation_id = current_conversation_id
       end
 

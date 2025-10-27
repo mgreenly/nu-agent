@@ -4,14 +4,13 @@ module Nu
   module Agent
     # Manages the tool calling loop with LLM
     class ToolCallOrchestrator
-      def initialize(client:, history:, formatter:, console:, conversation_id:, exchange_id:, tool_registry:,
-                     application:)
+      def initialize(client:, history:, exchange_info:, tool_registry:, application:)
         @client = client
         @history = history
-        @formatter = formatter
-        @console = console
-        @conversation_id = conversation_id
-        @exchange_id = exchange_id
+        @formatter = application.formatter
+        @console = application.console
+        @conversation_id = exchange_info[:conversation_id]
+        @exchange_id = exchange_info[:exchange_id]
         @tool_registry = tool_registry
         @application = application
       end

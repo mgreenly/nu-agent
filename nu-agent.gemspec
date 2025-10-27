@@ -2,6 +2,7 @@
 
 require_relative "lib/nu/agent/version"
 
+# rubocop:disable Metrics/BlockLength
 Gem::Specification.new do |spec|
   spec.name = "nu-agent"
   spec.version = Nu::Agent::VERSION
@@ -39,3 +40,4 @@ Gem::Specification.new do |spec|
   spec.add_dependency "ruby-anthropic", "~> 0.4.2"
   spec.add_dependency "ruby-openai", "~> 7.0"
 end
+# rubocop:enable Metrics/BlockLength

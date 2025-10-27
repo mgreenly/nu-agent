@@ -201,10 +201,7 @@ module Nu
         orchestrator = ToolCallOrchestrator.new(
           client: client,
           history: history,
-          formatter: formatter,
-          console: application.instance_variable_get(:@console),
-          conversation_id: conversation_id,
-          exchange_id: exchange_id,
+          exchange_info: { conversation_id: conversation_id, exchange_id: exchange_id },
           tool_registry: tool_registry,
           application: application
         )

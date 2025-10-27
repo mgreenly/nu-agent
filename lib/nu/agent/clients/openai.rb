@@ -228,6 +228,7 @@ module Nu
           # OpenAI uses a system message at the beginning
           formatted << { role: "system", content: system_prompt } if system_prompt && !system_prompt.empty?
 
+          # rubocop:disable Metrics/BlockLength
           messages.each do |msg|
             # Handle tool result messages
             if msg["tool_result"]
@@ -260,6 +261,7 @@ module Nu
               }
             end
           end
+          # rubocop:enable Metrics/BlockLength
 
           formatted
         end

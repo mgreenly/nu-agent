@@ -96,8 +96,6 @@ module Nu
           display_tool_result(message) if @debug
         else
           case message["role"]
-          when "user"
-            display_user_message(message)
           when "assistant"
             display_assistant_message(message)
           when "system"
@@ -138,7 +136,11 @@ module Nu
 
         @console.hide_spinner
 
-        direction = message_direction(role)
+        direction = case role
+                    when "user", "tool", "system" then "Out"
+                    when "assistant" then "In"
+                    else ""
+                    end
         msg_type = details.fetch(:redacted, false) ? "redacted message" : "message"
 
         display_basic_message_info(direction, msg_type, verbosity)
@@ -147,14 +149,6 @@ module Nu
         display_detailed_message_info(actor, role, details, verbosity) if verbosity >= 3
 
         @console.show_spinner("Thinking...") unless @history.workers_idle?
-      end
-
-      def message_direction(role)
-        case role
-        when "user", "tool", "system" then "Out"
-        when "assistant" then "In"
-        else ""
-        end
       end
 
       def display_basic_message_info(direction, msg_type, _verbosity)
@@ -208,11 +202,6 @@ module Nu
       end
 
       private
-
-      def display_user_message(message)
-        # User messages are entered by the user, so we don't need to display them again
-        # (they've already been echoed by the REPL)
-      end
 
       def display_assistant_message(message)
         display_content_or_warning(message)

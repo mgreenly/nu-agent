@@ -92,12 +92,12 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
 
       messages = message_repo.messages(conversation_id: conv_id, include_in_context_only: false)
 
-      exchange_id_1 = messages[0]["exchange_id"]
-      exchange_id_2 = messages[2]["exchange_id"]
+      first_exchange_id = messages[0]["exchange_id"]
+      second_exchange_id = messages[2]["exchange_id"]
 
-      expect(exchange_id_1).not_to eq(exchange_id_2) # Different exchanges
-      expect(messages[1]["exchange_id"]).to eq(exchange_id_1) # First answer in first exchange
-      expect(messages[3]["exchange_id"]).to eq(exchange_id_2) # Second answer in second exchange
+      expect(first_exchange_id).not_to eq(second_exchange_id) # Different exchanges
+      expect(messages[1]["exchange_id"]).to eq(first_exchange_id) # First answer in first exchange
+      expect(messages[3]["exchange_id"]).to eq(second_exchange_id) # Second answer in second exchange
     end
 
     it "sets exchange metrics from messages" do

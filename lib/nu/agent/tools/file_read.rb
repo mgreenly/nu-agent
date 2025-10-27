@@ -4,6 +4,39 @@ module Nu
   module Agent
     module Tools
       class FileRead
+        PARAMETERS = {
+          file: {
+            type: "string",
+            description: "Path to the file to read (relative to project root or absolute)",
+            required: true
+          },
+          start_line: {
+            type: "integer",
+            description: "Starting line number to read from (1-indexed). Use with end_line for range.",
+            required: false
+          },
+          end_line: {
+            type: "integer",
+            description: "Ending line number to read to (1-indexed, inclusive). Use with start_line for range.",
+            required: false
+          },
+          offset: {
+            type: "integer",
+            description: "Starting line number (0-indexed). Use with limit for offset-based reading.",
+            required: false
+          },
+          limit: {
+            type: "integer",
+            description: "Maximum number of lines to read (default: 2000). Can combine with offset.",
+            required: false
+          },
+          show_line_numbers: {
+            type: "boolean",
+            description: "Include line numbers in output like 'cat -n' (default: true)",
+            required: false
+          }
+        }.freeze
+
         def name
           "file_read"
         end
@@ -24,38 +57,7 @@ module Nu
         end
 
         def parameters
-          {
-            file: {
-              type: "string",
-              description: "Path to the file to read (relative to project root or absolute)",
-              required: true
-            },
-            start_line: {
-              type: "integer",
-              description: "Starting line number to read from (1-indexed). Use with end_line for range.",
-              required: false
-            },
-            end_line: {
-              type: "integer",
-              description: "Ending line number to read to (1-indexed, inclusive). Use with start_line for range.",
-              required: false
-            },
-            offset: {
-              type: "integer",
-              description: "Starting line number (0-indexed). Use with limit for offset-based reading.",
-              required: false
-            },
-            limit: {
-              type: "integer",
-              description: "Maximum number of lines to read (default: 2000). Can combine with offset.",
-              required: false
-            },
-            show_line_numbers: {
-              type: "boolean",
-              description: "Include line numbers in output like 'cat -n' (default: true)",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

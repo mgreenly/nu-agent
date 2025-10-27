@@ -8,16 +8,13 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
   let(:formatter) { instance_double(Nu::Agent::Formatter) }
   let(:console) { instance_double(Nu::Agent::ConsoleIO) }
   let(:tool_registry) { instance_double(Nu::Agent::ToolRegistry) }
-  let(:application) { instance_double(Nu::Agent::Application) }
+  let(:application) { instance_double(Nu::Agent::Application, formatter: formatter, console: console) }
 
   let(:orchestrator) do
     described_class.new(
       client: client,
       history: history,
-      formatter: formatter,
-      console: console,
-      conversation_id: 1,
-      exchange_id: 1,
+      exchange_info: { conversation_id: 1, exchange_id: 1 },
       tool_registry: tool_registry,
       application: application
     )

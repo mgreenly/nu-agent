@@ -246,8 +246,7 @@ module Nu
             history: history,
             summarizer: @summarizer,
             application: self,
-            status: @summarizer_status,
-            status_mutex: @status_mutex,
+            status_info: { status: @summarizer_status, mutex: @status_mutex },
             current_conversation_id: conversation_id
           )
 
