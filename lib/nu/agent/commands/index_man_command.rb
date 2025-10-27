@@ -65,57 +65,74 @@ module Nu
 
         def turn_on
           app.history.set_config("index_man_enabled", "true")
+          display_turn_on_messages
+          app.start_man_indexer_worker
+          show_initial_indexer_status
+        end
+
+        def display_turn_on_messages
           app.console.puts("")
           app.output_line("index-man=on", type: :debug)
           app.output_line("Starting man page indexer...", type: :debug)
+        end
 
-          # Start the indexer worker
-          app.start_man_indexer_worker
-
-          # Show initial status
-          sleep(0.5) # Give it a moment to start
+        def show_initial_indexer_status
+          sleep(0.5) # Give worker a moment to start
           app.status_mutex.synchronize do
             status = app.man_indexer_status
             app.output_line("Indexing #{status['total']} man pages...", type: :debug)
-            app.output_line("This will take approximately #{(status['total'] / 10.0 / 60.0).ceil} minutes",
-                            type: :debug)
+            estimated_minutes = (status["total"] / 10.0 / 60.0).ceil
+            app.output_line("This will take approximately #{estimated_minutes} minutes", type: :debug)
           end
         end
 
         def turn_off
           app.history.set_config("index_man_enabled", "false")
+          display_turn_off_messages
+          show_final_indexer_status
+        end
+
+        def display_turn_off_messages
           app.console.puts("")
           app.output_line("index-man=off", type: :debug)
           app.output_line("Indexer will stop after current batch completes", type: :debug)
+        end
 
-          # Show final status
+        def show_final_indexer_status
           app.status_mutex.synchronize do
             status = app.man_indexer_status
-            if status["completed"].positive?
-              app.output_line("Indexed: #{status['completed']}/#{status['total']} man pages", type: :debug)
-              app.output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
-              app.output_line("Session spend: $#{format('%.6f', status['session_spend'])}", type: :debug)
-            end
+            return unless status["completed"].positive?
+
+            app.output_line("Indexed: #{status['completed']}/#{status['total']} man pages", type: :debug)
+            app.output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
+            app.output_line("Session spend: $#{format('%.6f', status['session_spend'])}", type: :debug)
           end
         end
 
         def reset
-          # Stop indexing if running
-          if app.history.get_config("index_man_enabled") == "true"
-            app.history.set_config("index_man_enabled", "false")
-            app.console.puts("")
-            app.output_line("Stopping indexer before reset...", type: :debug)
-            sleep(1) # Give worker time to stop
-          end
+          stop_indexer_if_running
+          count = clear_man_page_data
+          reset_status_counters
+          display_reset_complete(count)
+        end
 
-          # Get count before clearing
+        def stop_indexer_if_running
+          return unless app.history.get_config("index_man_enabled") == "true"
+
+          app.history.set_config("index_man_enabled", "false")
+          app.console.puts("")
+          app.output_line("Stopping indexer before reset...", type: :debug)
+          sleep(1) # Give worker time to stop
+        end
+
+        def clear_man_page_data
           stats = app.history.embedding_stats(kind: "man_page")
           count = stats.find { |s| s["kind"] == "man_page" }&.fetch("count", 0) || 0
-
-          # Clear all man_page embeddings
           app.history.clear_embeddings(kind: "man_page")
+          count
+        end
 
-          # Reset status counters
+        def reset_status_counters
           app.status_mutex.synchronize do
             app.man_indexer_status["total"] = 0
             app.man_indexer_status["completed"] = 0
@@ -124,7 +141,9 @@ module Nu
             app.man_indexer_status["session_spend"] = 0.0
             app.man_indexer_status["session_tokens"] = 0
           end
+        end
 
+        def display_reset_complete(count)
           app.output_line("Reset complete: Cleared #{count} man page embeddings", type: :debug)
         end
 
