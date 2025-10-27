@@ -32,6 +32,13 @@ module Nu
           application: @application,
           debug: @debug
         )
+        @session_statistics = SessionStatistics.new(
+          history: history,
+          orchestrator: orchestrator,
+          console: console,
+          conversation_id: @conversation_id,
+          session_start_time: @session_start_time
+        )
       end
 
       def reset_session(conversation_id:)
@@ -206,7 +213,10 @@ module Nu
       def display_assistant_message(message)
         display_content_or_warning(message)
         display_debug_tool_calls(message)
-        display_session_statistics(message) if should_display_stats?(message)
+        return unless @session_statistics.should_display?(message)
+
+        @session_statistics.display(exchange_start_time: @exchange_start_time,
+                                    debug: @debug)
       end
 
       def display_content_or_warning(message)
@@ -228,43 +238,6 @@ module Nu
         end
       end
 
-      def should_display_stats?(message)
-        message["tokens_input"] && message["tokens_output"] && !message["tool_calls"]
-      end
-
-      def display_session_statistics(_message)
-        elapsed_time = @exchange_start_time ? Time.now - @exchange_start_time : nil
-
-        tokens = @history.session_tokens(
-          conversation_id: @conversation_id,
-          since: @session_start_time
-        )
-
-        display_token_statistics(tokens) if @debug
-        display_spend_statistics(tokens) if @debug
-        display_elapsed_time(elapsed_time) if elapsed_time && @debug
-      end
-
-      def display_token_statistics(tokens)
-        max_context = @orchestrator.max_context
-        percentage = (tokens["total"].to_f / max_context * 100).round(1)
-
-        @console.puts("")
-        inp = tokens["input"]
-        out = tokens["output"]
-        total = tokens["total"]
-        stat_msg = "Session tokens: #{inp} in / #{out} out / #{total} Total / (#{percentage}% of #{max_context})"
-        @console.puts("\e[90m#{stat_msg}\e[0m")
-      end
-
-      def display_spend_statistics(tokens)
-        @console.puts("\e[90mSession spend: $#{format('%.6f', tokens['spend'])}\e[0m")
-      end
-
-      def display_elapsed_time(elapsed_time)
-        @console.puts("\e[90mElapsed time: #{format('%.2f', elapsed_time)}s\e[0m")
-      end
-
       def display_system_message(message)
         content = message["content"].to_s
         return if content.strip.empty?
@@ -272,17 +245,14 @@ module Nu
         normalized = normalize_message_lines(content)
         return unless normalized.any?
 
-        print_system_message(normalized)
+        @console.puts("\e[90m[System] #{normalized.first}\e[0m")
+        normalized[1..].each { |line| @console.puts("\e[90m#{line}\e[0m") }
       end
 
       def normalize_message_lines(content)
         lines = content.lines.map(&:chomp)
-        lines = trim_empty_lines(lines)
+        lines = lines.drop_while(&:empty?).reverse.drop_while(&:empty?).reverse
         collapse_consecutive_blanks(lines)
-      end
-
-      def trim_empty_lines(lines)
-        lines.drop_while(&:empty?).reverse.drop_while(&:empty?).reverse
       end
 
       def collapse_consecutive_blanks(lines)
@@ -298,11 +268,6 @@ module Nu
           end
         end
         normalized
-      end
-
-      def print_system_message(normalized)
-        @console.puts("\e[90m[System] #{normalized.first}\e[0m")
-        normalized[1..].each { |line| @console.puts("\e[90m#{line}\e[0m") }
       end
 
       def display_spell_checker_message(message)

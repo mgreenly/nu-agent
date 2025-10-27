@@ -34,12 +34,6 @@ RSpec.describe Nu::Agent::ConsoleIO do
   end
 
   describe "#initialize" do
-    it "sets up terminal raw mode" do
-      # This test would require actual terminal interaction
-      # Skip for now - test manually or with integration tests
-      skip "Requires actual terminal"
-    end
-
     it "initializes @input_buffer as mutable string to prevent FrozenError" do
       # This test verifies the fix for frozen string literal issue
       # With frozen_string_literal: true, @input_buffer = "" creates a frozen string

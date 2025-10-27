@@ -25,6 +25,9 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: false
 
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
       - name: Install DuckDB
         run: |
           mkdir -p $HOME/duckdb/include $HOME/duckdb/lib

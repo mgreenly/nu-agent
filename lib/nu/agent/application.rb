@@ -3,10 +3,21 @@
 module Nu
   module Agent
     class Application
-      attr_accessor :orchestrator, :spellchecker, :summarizer, :active_threads, :debug, :verbosity, :redact,
+      attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :verbosity, :redact,
                     :summarizer_enabled, :spell_check_enabled, :conversation_id, :session_start_time
-      attr_reader :history, :formatter, :summarizer_status, :man_indexer_status, :status_mutex, :console, :tui,
-                  :operation_mutex
+      attr_reader :history, :formatter, :status_mutex, :console, :tui, :operation_mutex, :worker_manager
+
+      def active_threads
+        @worker_manager&.active_threads || []
+      end
+
+      def summarizer_status
+        @worker_manager&.summarizer_status
+      end
+
+      def man_indexer_status
+        @worker_manager&.man_indexer_status
+      end
 
       def initialize(options:)
         initialize_state(options)
@@ -114,35 +125,14 @@ module Nu
       end
 
       def initialize_status_tracking
-        @active_threads = []
-        @summarizer_status = build_summarizer_status
-        @man_indexer_status = build_man_indexer_status
         @status_mutex = Mutex.new
-      end
-
-      def build_summarizer_status
-        {
-          "running" => false,
-          "total" => 0,
-          "completed" => 0,
-          "failed" => 0,
-          "current_conversation_id" => nil,
-          "last_summary" => nil,
-          "spend" => 0.0
-        }
-      end
-
-      def build_man_indexer_status
-        {
-          "running" => false,
-          "total" => 0,
-          "completed" => 0,
-          "failed" => 0,
-          "skipped" => 0,
-          "current_batch" => nil,
-          "session_spend" => 0.0,
-          "session_tokens" => 0
-        }
+        @worker_manager = BackgroundWorkerManager.new(
+          application: self,
+          history: @history,
+          summarizer: @summarizer,
+          conversation_id: @conversation_id,
+          status_mutex: @status_mutex
+        )
       end
 
       def initialize_commands
@@ -152,7 +142,7 @@ module Nu
       end
 
       def start_background_workers
-        start_summarization_worker
+        @worker_manager.start_summarization_worker if @summarizer_enabled
       end
 
       def register_commands
@@ -259,52 +249,11 @@ module Nu
       end
 
       def start_summarization_worker
-        # Don't start if summarizer is disabled
-        return unless @summarizer_enabled
-
-        # Capture values for thread
-        @operation_mutex.synchronize do
-          # Create summarizer worker and start thread
-          summarizer_worker = ConversationSummarizer.new(
-            history: history,
-            summarizer: @summarizer,
-            application: self,
-            status_info: { status: @summarizer_status, mutex: @status_mutex },
-            current_conversation_id: conversation_id
-          )
-
-          thread = summarizer_worker.start_worker
-          active_threads << thread
-        end
+        @worker_manager.start_summarization_worker if @summarizer_enabled
       end
 
       def start_man_indexer_worker
-        # Capture values for thread
-        @operation_mutex.synchronize do
-          # Create embeddings client
-          begin
-            embeddings_client = Clients::OpenAIEmbeddings.new
-          rescue StandardError => e
-            output_line("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client", type: :error)
-            output_line("  #{e.message}", type: :error)
-            output_line("Man page indexing requires OpenAI embeddings API access.", type: :error)
-            output_line("Please ensure your OpenAI API key has access to text-embedding-3-small.", type: :error)
-            @status_mutex.synchronize { @man_indexer_status["running"] = false }
-            return
-          end
-
-          # Create indexer and start worker
-          indexer = ManPageIndexer.new(
-            history: history,
-            embeddings_client: embeddings_client,
-            application: self,
-            status: @man_indexer_status,
-            status_mutex: @status_mutex
-          )
-
-          thread = indexer.start_worker
-          active_threads << thread
-        end
+        @worker_manager.start_man_indexer_worker
       end
 
       private

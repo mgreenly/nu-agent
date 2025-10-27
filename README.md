@@ -23,28 +23,40 @@ A toy AI Agent!
 
 ### Prerequisites
 
-**DuckDB Installation Required**
+**Required System Dependencies**
 
-The `duckdb` Ruby gem requires DuckDB to be installed with headers available. You have two options:
+1. **DuckDB** - Required for conversation persistence
 
-**Option 1: System Package Manager** (Recommended)
-```bash
-# Debian/Ubuntu
-sudo apt-get install libduckdb-dev
+   **Option 1: System Package Manager** (Recommended)
+   ```bash
+   # Debian/Ubuntu
+   sudo apt-get install libduckdb-dev
 
-# macOS with Homebrew
-brew install duckdb
-```
+   # macOS with Homebrew
+   brew install duckdb
+   ```
 
-**Option 2: Manual Installation**
+   **Option 2: Manual Installation**
 
-Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duckdb/releases) and extract to a local directory (e.g., `~/.local`):
+   Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duckdb/releases) and extract to a local directory (e.g., `~/.local`):
 
-```bash
-# Example structure:
-~/.local/lib/libduckdb.so       # Library file
-~/.local/include/duckdb.h       # Header file
-```
+   ```bash
+   # Example structure:
+   ~/.local/lib/libduckdb.so       # Library file
+   ~/.local/include/duckdb.h       # Header file
+   ```
+
+2. **ripgrep** - Required for code search functionality
+
+   ```bash
+   # Debian/Ubuntu
+   sudo apt-get install ripgrep
+
+   # macOS with Homebrew
+   brew install ripgrep
+
+   # Or download from: https://github.com/BurntSushi/ripgrep/releases
+   ```
 
 ### Installation
 

@@ -199,6 +199,9 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "queries session tokens from database for cumulative totals" do
+      # Enable debug mode to trigger token statistics display
+      formatter.debug = true
+
       message1 = {
         "id" => 1,
         "actor" => "orchestrator",
