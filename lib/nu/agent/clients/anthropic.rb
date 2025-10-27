@@ -57,15 +57,7 @@ module Nu
 
         def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
           formatted_messages = format_messages(messages)
-
-          parameters = {
-            model: model,
-            system: system_prompt,
-            messages: formatted_messages,
-            max_tokens: 4096
-          }
-
-          parameters[:tools] = tools if tools && !tools.empty?
+          parameters = build_request_parameters(formatted_messages, system_prompt, tools)
 
           begin
             response = @client.messages(parameters: parameters)
@@ -73,31 +65,7 @@ module Nu
             return format_error_response(e)
           end
 
-          # Extract content (text and/or tool calls)
-          content_blocks = response["content"] || []
-          text_content = content_blocks.find { |b| b["type"] == "text" }&.dig("text")
-          tool_calls = content_blocks.select { |b| b["type"] == "tool_use" }.map do |tc|
-            {
-              "id" => tc["id"],
-              "name" => tc["name"],
-              "arguments" => tc["input"]
-            }
-          end
-
-          input_tokens = response.dig("usage", "input_tokens")
-          output_tokens = response.dig("usage", "output_tokens")
-
-          {
-            "content" => text_content,
-            "tool_calls" => tool_calls.empty? ? nil : tool_calls,
-            "model" => model,
-            "tokens" => {
-              "input" => input_tokens,
-              "output" => output_tokens
-            },
-            "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
-            "finish_reason" => response["stop_reason"]
-          }
+          parse_response(response)
         end
 
         def name
@@ -131,6 +99,53 @@ module Nu
         end
 
         private
+
+        def build_request_parameters(formatted_messages, system_prompt, tools)
+          parameters = {
+            model: model,
+            system: system_prompt,
+            messages: formatted_messages,
+            max_tokens: 4096
+          }
+
+          parameters[:tools] = tools if tools && !tools.empty?
+          parameters
+        end
+
+        def parse_response(response)
+          content_blocks = response["content"] || []
+          text_content = extract_text_content(content_blocks)
+          tool_calls = extract_tool_calls(content_blocks)
+
+          input_tokens = response.dig("usage", "input_tokens")
+          output_tokens = response.dig("usage", "output_tokens")
+
+          {
+            "content" => text_content,
+            "tool_calls" => tool_calls.empty? ? nil : tool_calls,
+            "model" => model,
+            "tokens" => {
+              "input" => input_tokens,
+              "output" => output_tokens
+            },
+            "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
+            "finish_reason" => response["stop_reason"]
+          }
+        end
+
+        def extract_text_content(content_blocks)
+          content_blocks.find { |b| b["type"] == "text" }&.dig("text")
+        end
+
+        def extract_tool_calls(content_blocks)
+          content_blocks.select { |b| b["type"] == "tool_use" }.map do |tc|
+            {
+              "id" => tc["id"],
+              "name" => tc["name"],
+              "arguments" => tc["input"]
+            }
+          end
+        end
 
         def format_error_response(error)
           status = error.response&.dig(:status) || "unknown"
@@ -175,42 +190,49 @@ module Nu
           # Internal: { "actor" => '...', "role" => 'user'|'assistant'|'tool',
           #             "content" => '...', "tool_calls" => [...], "tool_result" => {...} }
           # Anthropic: { role: 'user'|'assistant', content: '...' or [...] }
-          messages.map do |msg|
-            # Translate our domain model to Anthropic's format
-            # Our 'tool' role becomes 'user' for Anthropic
-            role = msg["role"] == "tool" ? "user" : msg["role"]
-            formatted = { role: role }
+          messages.map { |msg| format_single_message(msg) }
+        end
 
-            # Handle tool result messages
-            if msg["tool_result"]
-              formatted[:content] = [
-                {
-                  type: "tool_result",
-                  tool_use_id: msg["tool_call_id"],
-                  content: JSON.generate(msg["tool_result"]["result"])
-                }
-              ]
-            # Handle messages with tool calls
-            elsif msg["tool_calls"]
-              # Build content array with text and tool_use blocks
-              content = []
-              content << { type: "text", text: msg["content"] } if msg["content"] && !msg["content"].empty?
-              msg["tool_calls"].each do |tc|
-                content << {
-                  type: "tool_use",
-                  id: tc["id"],
-                  name: tc["name"],
-                  input: tc["arguments"]
-                }
-              end
-              formatted[:content] = content
-            # Regular text message
-            else
-              formatted[:content] = msg["content"]
-            end
+        def format_single_message(msg)
+          # Translate our domain model to Anthropic's format
+          # Our 'tool' role becomes 'user' for Anthropic
+          role = msg["role"] == "tool" ? "user" : msg["role"]
+          formatted = { role: role }
 
-            formatted
+          formatted[:content] = if msg["tool_result"]
+                                  format_tool_result_content(msg)
+                                elsif msg["tool_calls"]
+                                  format_tool_calls_content(msg)
+                                else
+                                  msg["content"]
+                                end
+
+          formatted
+        end
+
+        def format_tool_result_content(msg)
+          [
+            {
+              type: "tool_result",
+              tool_use_id: msg["tool_call_id"],
+              content: JSON.generate(msg["tool_result"]["result"])
+            }
+          ]
+        end
+
+        def format_tool_calls_content(msg)
+          # Build content array with text and tool_use blocks
+          content = []
+          content << { type: "text", text: msg["content"] } if msg["content"] && !msg["content"].empty?
+          msg["tool_calls"].each do |tc|
+            content << {
+              type: "tool_use",
+              id: tc["id"],
+              name: tc["name"],
+              input: tc["arguments"]
+            }
           end
+          content
         end
       end
     end
