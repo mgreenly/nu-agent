@@ -89,23 +89,25 @@ module Nu
           ORDER BY exchange_number ASC
         SQL
 
-        result.map do |row|
-          {
-            "id" => row[0],
-            "exchange_number" => row[1],
-            "started_at" => row[2],
-            "completed_at" => row[3],
-            "status" => row[4],
-            "user_message" => row[5],
-            "assistant_message" => row[6],
-            "summary" => row[7],
-            "tokens_input" => row[8],
-            "tokens_output" => row[9],
-            "spend" => row[10],
-            "message_count" => row[11],
-            "tool_call_count" => row[12]
-          }
-        end
+        result.map { |row| row_to_exchange_hash(row) }
+      end
+
+      def row_to_exchange_hash(row)
+        {
+          "id" => row[0],
+          "exchange_number" => row[1],
+          "started_at" => row[2],
+          "completed_at" => row[3],
+          "status" => row[4],
+          "user_message" => row[5],
+          "assistant_message" => row[6],
+          "summary" => row[7],
+          "tokens_input" => row[8],
+          "tokens_output" => row[9],
+          "spend" => row[10],
+          "message_count" => row[11],
+          "tool_call_count" => row[12]
+        }
       end
 
       private

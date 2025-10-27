@@ -73,29 +73,35 @@ module Nu
       private
 
       def register_default_tools
-        register(Tools::AgentSummarizer.new)
-        register(Tools::ManIndexer.new)
-        register(Tools::DatabaseMessage.new)
-        register(Tools::DatabaseQuery.new)
-        register(Tools::DatabaseSchema.new)
-        register(Tools::DatabaseTables.new)
-        register(Tools::DirCreate.new)
-        register(Tools::DirDelete.new)
-        register(Tools::DirList.new)
-        register(Tools::DirTree.new)
-        register(Tools::ExecuteBash.new)
-        register(Tools::ExecutePython.new)
-        register(Tools::FileCopy.new)
-        register(Tools::FileDelete.new)
-        register(Tools::FileEdit.new)
-        register(Tools::FileGlob.new)
-        register(Tools::FileGrep.new)
-        register(Tools::FileMove.new)
-        register(Tools::FileRead.new)
-        register(Tools::FileStat.new)
-        register(Tools::FileTree.new)
-        register(Tools::FileWrite.new)
-        register(Tools::SearchInternet.new)
+        default_tool_classes.each { |tool_class| register(tool_class.new) }
+      end
+
+      def default_tool_classes
+        [
+          Tools::AgentSummarizer,
+          Tools::ManIndexer,
+          Tools::DatabaseMessage,
+          Tools::DatabaseQuery,
+          Tools::DatabaseSchema,
+          Tools::DatabaseTables,
+          Tools::DirCreate,
+          Tools::DirDelete,
+          Tools::DirList,
+          Tools::DirTree,
+          Tools::ExecuteBash,
+          Tools::ExecutePython,
+          Tools::FileCopy,
+          Tools::FileDelete,
+          Tools::FileEdit,
+          Tools::FileGlob,
+          Tools::FileGrep,
+          Tools::FileMove,
+          Tools::FileRead,
+          Tools::FileStat,
+          Tools::FileTree,
+          Tools::FileWrite,
+          Tools::SearchInternet
+        ]
       end
 
       def parameters_to_schema(parameters)

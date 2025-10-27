@@ -27,39 +27,22 @@ module Nu
       private
 
       def execute_exchange(conversation_id, user_input, session_start_time, client, tool_registry)
-        # Create exchange and add user message
         exchange_id = create_user_message(conversation_id, user_input)
+        history_messages, redacted_ranges = prepare_history_messages(conversation_id, exchange_id, session_start_time)
 
-        # Get conversation history (only unredacted messages from previous exchanges)
-        history_messages, redacted_message_ranges = prepare_history_messages(
-          conversation_id,
-          exchange_id,
-          session_start_time
-        )
-
-        # Prepare LLM request with context, messages, and tools
-        request_context = {
-          user_query: user_input,
-          history_messages: history_messages,
-          redacted_ranges: redacted_message_ranges
-        }
+        request_context = { user_query: user_input, history_messages: history_messages,
+                            redacted_ranges: redacted_ranges }
         messages, tools = prepare_llm_request(request_context, tool_registry, conversation_id, client)
 
-        # Call inner tool calling loop
         result = tool_calling_loop(
-          messages: messages,
-          tools: tools,
-          client: client,
-          history: history,
-          conversation_id: conversation_id,
-          exchange_id: exchange_id,
-          tool_registry: tool_registry,
-          application: application
+          messages: messages, tools: tools, client: client, history: history,
+          conversation_id: conversation_id, exchange_id: exchange_id,
+          tool_registry: tool_registry, application: application
         )
 
-        # Handle result (success or error)
         if result[:error]
-          handle_error_result(exchange_id, result)
+          handle_error_result(exchange_id,
+                              result)
         else
           handle_success_result(conversation_id, exchange_id, result)
         end

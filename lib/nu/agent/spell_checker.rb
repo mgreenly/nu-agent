@@ -15,54 +15,40 @@ module Nu
       end
 
       def check_spelling(text)
-        # Add spell check request to history
+        add_spell_check_request(text)
+        spell_check_messages = spell_check_messages_from_history
+        response = @client.send_message(messages: spell_check_messages, system_prompt: SYSTEM_PROMPT)
+        corrected_text = response["content"].strip
+        save_corrected_response(corrected_text, response)
+        corrected_text
+      rescue StandardError
+        text
+      end
+
+      private
+
+      def add_spell_check_request(text)
         prompt = <<~PROMPT
           Fix ONLY misspelled words in the following text. Do NOT change capitalization, grammar, or punctuation. Return ONLY the corrected text with no explanations:
 
           #{text}
         PROMPT
         @history.add_message(
-          conversation_id: @conversation_id,
-          actor: ACTOR,
-          role: "user",
-          content: prompt,
-          redacted: true
+          conversation_id: @conversation_id, actor: ACTOR, role: "user", content: prompt, redacted: true
         )
+      end
 
-        # Get messages for this conversation
-        messages = @history.messages(
-          conversation_id: @conversation_id,
-          include_in_context_only: true
-        )
+      def spell_check_messages_from_history
+        messages = @history.messages(conversation_id: @conversation_id, include_in_context_only: true)
+        messages.select { |m| m["actor"] == ACTOR }
+      end
 
-        # Only send the spell check related messages
-        spell_check_messages = messages.select { |m| m["actor"] == ACTOR }
-
-        # Call gemini-2.5-flash to fix spelling
-        response = @client.send_message(
-          messages: spell_check_messages,
-          system_prompt: SYSTEM_PROMPT
-        )
-
-        corrected_text = response["content"].strip
-
-        # Add the corrected response to history
+      def save_corrected_response(corrected_text, response)
         @history.add_message(
-          conversation_id: @conversation_id,
-          actor: ACTOR,
-          role: "assistant",
-          content: corrected_text,
-          model: response["model"],
-          tokens_input: response["tokens"]["input"],
-          tokens_output: response["tokens"]["output"],
-          spend: response["spend"],
-          redacted: true
+          conversation_id: @conversation_id, actor: ACTOR, role: "assistant", content: corrected_text,
+          model: response["model"], tokens_input: response["tokens"]["input"],
+          tokens_output: response["tokens"]["output"], spend: response["spend"], redacted: true
         )
-
-        corrected_text
-      rescue StandardError
-        # On error, return original text
-        text
       end
     end
   end
