@@ -15,6 +15,10 @@ module Nu
         @embedding_store = EmbeddingStore.new(connection)
         @config_store = ConfigStore.new(connection)
         @worker_counter = WorkerCounter.new(@config_store)
+        @message_repo = MessageRepository.new(connection)
+        @conversation_repo = ConversationRepository.new(connection)
+        @exchange_repo = ExchangeRepository.new(connection)
+        @exchange_migrator = ExchangeMigrator.new(connection, @conversation_repo, @message_repo, @exchange_repo)
 
         # Setup schema using main thread's connection
         @schema_manager.setup_schema
@@ -50,472 +54,68 @@ module Nu
       end
 
       def add_message(conversation_id:, actor:, role:, content:, **attributes)
-        # Set defaults for optional attributes
-        attributes = {
-          model: nil,
-          include_in_context: true,
-          tokens_input: nil,
-          tokens_output: nil,
-          spend: nil,
-          tool_calls: nil,
-          tool_call_id: nil,
-          tool_result: nil,
-          error: nil,
-          redacted: false,
-          exchange_id: nil
-        }.merge(attributes)
-
-        tool_calls_json = attributes[:tool_calls] ? "'#{escape_sql(JSON.generate(attributes[:tool_calls]))}'" : "NULL"
-        tool_result_json = attributes[:tool_result] ? "'#{escape_sql(JSON.generate(attributes[:tool_result]))}'" : "NULL"
-        error_json = attributes[:error] ? "'#{escape_sql(JSON.generate(attributes[:error]))}'" : "NULL"
-
-        connection.query(<<~SQL)
-          INSERT INTO messages (
-            conversation_id, actor, role, content, model,
-            include_in_context, tokens_input, tokens_output, spend,
-            tool_calls, tool_call_id, tool_result, error, redacted, exchange_id, created_at
-          ) VALUES (
-            #{conversation_id}, '#{escape_sql(actor)}', '#{escape_sql(role)}',
-            '#{escape_sql(content || '')}', #{attributes[:model] ? "'#{escape_sql(attributes[:model])}'" : 'NULL'},
-            #{attributes[:include_in_context]}, #{attributes[:tokens_input] || 'NULL'}, #{attributes[:tokens_output] || 'NULL'},
-            #{attributes[:spend] || 'NULL'}, #{tool_calls_json}, #{attributes[:tool_call_id] ? "'#{escape_sql(attributes[:tool_call_id])}'" : 'NULL'},
-            #{tool_result_json}, #{error_json}, #{attributes[:redacted]}, #{attributes[:exchange_id] || 'NULL'}, CURRENT_TIMESTAMP
-          )
-        SQL
+        @message_repo.add_message(conversation_id: conversation_id, actor: actor, role: role, content: content, **attributes)
       end
 
       def messages(conversation_id:, include_in_context_only: true, since: nil)
-        conditions = []
-        conditions << "include_in_context = true" if include_in_context_only
-        conditions << "created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'" if since
-
-        where_clause = conditions.empty? ? "" : "AND #{conditions.join(' AND ')}"
-
-        result = connection.query(<<~SQL)
-          SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                 tool_calls, tool_call_id, tool_result, error, created_at, redacted, exchange_id
-          FROM messages
-          WHERE conversation_id = #{conversation_id} #{where_clause}
-          ORDER BY id ASC
-        SQL
-
-        result.map do |row|
-          {
-            "id" => row[0],
-            "actor" => row[1],
-            "role" => row[2],
-            "content" => row[3],
-            "model" => row[4],
-            "tokens_input" => row[5],
-            "tokens_output" => row[6],
-            "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
-            "tool_call_id" => row[8],
-            "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-            "error" => row[10] ? JSON.parse(row[10]) : nil,
-            "created_at" => row[11],
-            "redacted" => row[12],
-            "exchange_id" => row[13]
-          }
-        end
+        @message_repo.messages(conversation_id: conversation_id, include_in_context_only: include_in_context_only, since: since)
       end
 
       def messages_since(conversation_id:, message_id:)
-        result = connection.query(<<~SQL)
-          SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                 tool_calls, tool_call_id, tool_result, error, created_at, redacted, exchange_id
-          FROM messages
-          WHERE conversation_id = #{conversation_id} AND id > #{message_id}
-          ORDER BY id ASC
-        SQL
-
-        result.map do |row|
-          {
-            "id" => row[0],
-            "actor" => row[1],
-            "role" => row[2],
-            "content" => row[3],
-            "model" => row[4],
-            "tokens_input" => row[5],
-            "tokens_output" => row[6],
-            "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
-            "tool_call_id" => row[8],
-            "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-            "error" => row[10] ? JSON.parse(row[10]) : nil,
-            "created_at" => row[11],
-            "redacted" => row[12],
-            "exchange_id" => row[13]
-          }
-        end
+        @message_repo.messages_since(conversation_id: conversation_id, message_id: message_id)
       end
 
       def session_tokens(conversation_id:, since:)
-        result = connection.query(<<~SQL)
-          SELECT
-            COALESCE(MAX(tokens_input), 0) as total_input,
-            COALESCE(SUM(tokens_output), 0) as total_output,
-            COALESCE(SUM(spend), 0.0) as total_spend
-          FROM messages
-          WHERE conversation_id = #{conversation_id}
-            AND created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'
-        SQL
-
-        row = result.to_a.first
-        {
-          "input" => row[0],
-          "output" => row[1],
-          "total" => row[0] + row[1],
-          "spend" => row[2]
-        }
+        @message_repo.session_tokens(conversation_id: conversation_id, since: since)
       end
 
       def current_context_size(conversation_id:, since:, model:)
-        result = connection.query(<<~SQL)
-          SELECT tokens_input
-          FROM messages
-          WHERE conversation_id = #{conversation_id}
-            AND created_at >= '#{since.strftime('%Y-%m-%d %H:%M:%S.%6N')}'
-            AND model = '#{escape_sql(model)}'
-            AND tokens_input IS NOT NULL
-          ORDER BY created_at DESC
-          LIMIT 1
-        SQL
-
-        row = result.to_a.first
-        row ? row[0] : 0
+        @message_repo.current_context_size(conversation_id: conversation_id, since: since, model: model)
       end
 
       def get_message_by_id(message_id, conversation_id:)
-        result = connection.query(<<~SQL)
-          SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                 tool_calls, tool_call_id, tool_result, error, created_at
-          FROM messages
-          WHERE id = #{message_id} AND conversation_id = #{conversation_id}
-          LIMIT 1
-        SQL
-
-        rows = result.to_a
-        return nil if rows.empty?
-
-        row = rows.first
-        {
-          "id" => row[0],
-          "actor" => row[1],
-          "role" => row[2],
-          "content" => row[3],
-          "model" => row[4],
-          "tokens_input" => row[5],
-          "tokens_output" => row[6],
-          "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
-          "tool_call_id" => row[8],
-          "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-          "error" => row[10] ? JSON.parse(row[10]) : nil,
-          "created_at" => row[11]
-        }
+        @message_repo.get_message_by_id(message_id, conversation_id: conversation_id)
       end
 
       def create_conversation
-        result = connection.query(<<~SQL)
-          INSERT INTO conversations (created_at, title, status)
-          VALUES (CURRENT_TIMESTAMP, 'New Conversation', 'active')
-          RETURNING id
-        SQL
-        result.to_a.first.first
+        @conversation_repo.create_conversation
       end
 
       def update_conversation_summary(conversation_id:, summary:, model:, cost: nil)
-        connection.query(<<~SQL)
-          UPDATE conversations
-          SET summary = '#{escape_sql(summary)}',
-              summary_model = '#{escape_sql(model)}',
-              summary_cost = #{cost || 'NULL'}
-          WHERE id = #{conversation_id}
-        SQL
+        @conversation_repo.update_conversation_summary(conversation_id: conversation_id, summary: summary, model: model, cost: cost)
       end
 
       def create_exchange(conversation_id:, user_message:)
-        # Get the next exchange number for this conversation
-        result = connection.query(<<~SQL)
-          SELECT COALESCE(MAX(exchange_number), 0) + 1 as next_number
-          FROM exchanges
-          WHERE conversation_id = #{conversation_id}
-        SQL
-        exchange_number = result.to_a.first.first
-
-        # Create the exchange
-        result = connection.query(<<~SQL)
-          INSERT INTO exchanges (
-            conversation_id, exchange_number, started_at, status, user_message
-          ) VALUES (
-            #{conversation_id}, #{exchange_number}, CURRENT_TIMESTAMP, 'in_progress', '#{escape_sql(user_message)}'
-          )
-          RETURNING id
-        SQL
-        result.to_a.first.first
+        @exchange_repo.create_exchange(conversation_id: conversation_id, user_message: user_message)
       end
 
       def update_exchange(exchange_id:, updates: {})
-        set_clauses = []
-
-        updates.each do |key, value|
-          case key.to_s
-          when "status", "summary", "summary_model", "error", "assistant_message"
-            set_clauses << "#{key} = '#{escape_sql(value)}'"
-          when "completed_at"
-            set_clauses << if value.is_a?(Time)
-                             "#{key} = '#{value.strftime('%Y-%m-%d %H:%M:%S.%6N')}'"
-                           else
-                             "#{key} = CURRENT_TIMESTAMP"
-                           end
-          when "tokens_input", "tokens_output", "spend", "message_count", "tool_call_count"
-            set_clauses << "#{key} = #{value || 'NULL'}"
-          end
-        end
-
-        return if set_clauses.empty?
-
-        connection.query(<<~SQL)
-          UPDATE exchanges
-          SET #{set_clauses.join(', ')}
-          WHERE id = #{exchange_id}
-        SQL
+        @exchange_repo.update_exchange(exchange_id: exchange_id, updates: updates)
       end
 
       def complete_exchange(exchange_id:, summary: nil, assistant_message: nil, metrics: {})
-        set_clauses = ["status = 'completed'", "completed_at = CURRENT_TIMESTAMP"]
-
-        set_clauses << "summary = '#{escape_sql(summary)}'" if summary
-
-        set_clauses << "assistant_message = '#{escape_sql(assistant_message)}'" if assistant_message
-
-        # Add metrics
-        metrics.each do |key, value|
-          case key.to_s
-          when "tokens_input", "tokens_output", "spend", "message_count", "tool_call_count"
-            set_clauses << "#{key} = #{value || 'NULL'}"
-          end
-        end
-
-        connection.query(<<~SQL)
-          UPDATE exchanges
-          SET #{set_clauses.join(', ')}
-          WHERE id = #{exchange_id}
-        SQL
+        @exchange_repo.complete_exchange(exchange_id: exchange_id, summary: summary, assistant_message: assistant_message, metrics: metrics)
       end
 
       def get_exchange_messages(exchange_id:)
-        result = connection.query(<<~SQL)
-          SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                 tool_calls, tool_call_id, tool_result, error, created_at, redacted, exchange_id
-          FROM messages
-          WHERE exchange_id = #{exchange_id}
-          ORDER BY id ASC
-        SQL
-
-        result.map do |row|
-          {
-            "id" => row[0],
-            "actor" => row[1],
-            "role" => row[2],
-            "content" => row[3],
-            "model" => row[4],
-            "tokens_input" => row[5],
-            "tokens_output" => row[6],
-            "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
-            "tool_call_id" => row[8],
-            "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-            "error" => row[10] ? JSON.parse(row[10]) : nil,
-            "created_at" => row[11],
-            "redacted" => row[12],
-            "exchange_id" => row[13]
-          }
-        end
+        @message_repo.get_exchange_messages(exchange_id: exchange_id)
       end
 
       def get_conversation_exchanges(conversation_id:)
-        result = connection.query(<<~SQL)
-          SELECT id, exchange_number, started_at, completed_at, status,
-                 user_message, assistant_message, summary,
-                 tokens_input, tokens_output, spend,
-                 message_count, tool_call_count
-          FROM exchanges
-          WHERE conversation_id = #{conversation_id}
-          ORDER BY exchange_number ASC
-        SQL
-
-        result.map do |row|
-          {
-            "id" => row[0],
-            "exchange_number" => row[1],
-            "started_at" => row[2],
-            "completed_at" => row[3],
-            "status" => row[4],
-            "user_message" => row[5],
-            "assistant_message" => row[6],
-            "summary" => row[7],
-            "tokens_input" => row[8],
-            "tokens_output" => row[9],
-            "spend" => row[10],
-            "message_count" => row[11],
-            "tool_call_count" => row[12]
-          }
-        end
+        @exchange_repo.get_conversation_exchanges(conversation_id: conversation_id)
       end
 
       def all_conversations
-        result = connection.query(<<~SQL)
-          SELECT id, created_at, title, status
-          FROM conversations
-          ORDER BY id ASC
-        SQL
-
-        result.map do |row|
-          {
-            "id" => row[0],
-            "created_at" => row[1],
-            "title" => row[2],
-            "status" => row[3]
-          }
-        end
+        @conversation_repo.all_conversations
       end
 
       def update_message_exchange_id(message_id:, exchange_id:)
-        connection.query(<<~SQL)
-          UPDATE messages
-          SET exchange_id = #{exchange_id}
-          WHERE id = #{message_id}
-        SQL
+        @message_repo.update_message_exchange_id(message_id: message_id, exchange_id: exchange_id)
       end
 
       def migrate_exchanges
-        stats = {
-          conversations: 0,
-          exchanges_created: 0,
-          messages_updated: 0
-        }
-
-        conversations = all_conversations
-
-        conversations.each do |conv|
-          conv_id = conv["id"]
-
-          # Get all messages for this conversation (not just current session)
-          result = connection.query(<<~SQL)
-            SELECT id, actor, role, content, model, tokens_input, tokens_output,
-                   tool_calls, tool_call_id, tool_result, error, created_at, redacted, spend
-            FROM messages
-            WHERE conversation_id = #{conv_id}
-            ORDER BY id ASC
-          SQL
-
-          messages = result.map do |row|
-            {
-              "id" => row[0],
-              "actor" => row[1],
-              "role" => row[2],
-              "content" => row[3],
-              "model" => row[4],
-              "tokens_input" => row[5],
-              "tokens_output" => row[6],
-              "tool_calls" => row[7] ? JSON.parse(row[7]) : nil,
-              "tool_call_id" => row[8],
-              "tool_result" => row[9] ? JSON.parse(row[9]) : nil,
-              "error" => row[10] ? JSON.parse(row[10]) : nil,
-              "created_at" => row[11],
-              "redacted" => row[12],
-              "spend" => row[13]
-            }
-          end
-
-          next if messages.empty?
-
-          current_exchange_id = nil
-          exchange_messages = []
-
-          messages.each do |msg|
-            # Start new exchange on user messages (excluding spell_checker)
-            if msg["role"] == "user" && msg["actor"] != "spell_checker"
-              # Finalize previous exchange if exists
-              if current_exchange_id && !exchange_messages.empty?
-                finalize_exchange(current_exchange_id, exchange_messages)
-                stats[:messages_updated] += exchange_messages.length
-              end
-
-              # Create new exchange
-              current_exchange_id = create_exchange(
-                conversation_id: conv_id,
-                user_message: msg["content"] || ""
-              )
-              stats[:exchanges_created] += 1
-              exchange_messages = [msg]
-            elsif current_exchange_id
-              # Add to current exchange (if one exists)
-              exchange_messages << msg
-            end
-          end
-
-          # Finalize last exchange
-          if current_exchange_id && !exchange_messages.empty?
-            finalize_exchange(current_exchange_id, exchange_messages)
-            stats[:messages_updated] += exchange_messages.length
-          end
-
-          stats[:conversations] += 1
-        end
-
-        stats
+        @exchange_migrator.migrate_exchanges
       end
-
-      private
-
-      def finalize_exchange(exchange_id, messages)
-        # Calculate metrics from messages
-        tokens_input = messages.map { |m| m["tokens_input"] || 0 }.max || 0
-        tokens_output = messages.sum { |m| m["tokens_output"] || 0 }
-        spend = messages.sum { |m| m["spend"] || 0.0 }
-        tool_call_count = messages.count { |m| m["tool_calls"] && !m["tool_calls"].empty? }
-
-        # Find final assistant message (last assistant message with content, no tool_calls)
-        assistant_msg = messages.reverse.find do |m|
-          m["role"] == "assistant" && m["content"] && !m["content"].empty? && !m["tool_calls"]
-        end
-
-        # Get timestamps from messages (they're already Time objects)
-        started_at = messages.first["created_at"]
-        completed_at = messages.last["created_at"]
-
-        # Convert to Time if they're strings
-        started_at = Time.parse(started_at) if started_at.is_a?(String)
-        completed_at = Time.parse(completed_at) if completed_at.is_a?(String)
-
-        # Update exchange with completion info
-        set_clauses = [
-          "status = 'completed'",
-          "completed_at = '#{completed_at.strftime('%Y-%m-%d %H:%M:%S.%6N')}'",
-          "started_at = '#{started_at.strftime('%Y-%m-%d %H:%M:%S.%6N')}'",
-          "tokens_input = #{tokens_input}",
-          "tokens_output = #{tokens_output}",
-          "spend = #{spend}",
-          "message_count = #{messages.length}",
-          "tool_call_count = #{tool_call_count}"
-        ]
-
-        if assistant_msg && assistant_msg["content"]
-          set_clauses << "assistant_message = '#{escape_sql(assistant_msg['content'])}'"
-        end
-
-        connection.query(<<~SQL)
-          UPDATE exchanges
-          SET #{set_clauses.join(', ')}
-          WHERE id = #{exchange_id}
-        SQL
-
-        # Update all messages with this exchange_id
-        messages.each do |msg|
-          update_message_exchange_id(message_id: msg["id"], exchange_id: exchange_id)
-        end
-      end
-
-      public
 
       # NOTE: This method is no longer used as of the Phase 5 architecture redesign.
       # Messages are now created with redacted=true from the start in tool_calling_loop,
@@ -547,20 +147,7 @@ module Nu
       # end
 
       def get_unsummarized_conversations(exclude_id:)
-        result = connection.query(<<~SQL)
-          SELECT id, created_at
-          FROM conversations
-          WHERE summary IS NULL
-            AND id != #{exclude_id}
-          ORDER BY id DESC
-        SQL
-
-        result.map do |row|
-          {
-            "id" => row[0],
-            "created_at" => row[1]
-          }
-        end
+        @conversation_repo.get_unsummarized_conversations(exclude_id: exclude_id)
       end
 
       def set_config(key, value)
