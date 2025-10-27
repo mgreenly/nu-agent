@@ -148,7 +148,9 @@ module Nu
           return "insert_after" if ops[:insert_after]
           return "insert_before" if ops[:insert_before]
           return "insert_line (#{ops[:insert_line]})" if ops[:insert_line]
-          return "replace_range (#{ops[:replace_start]}-#{ops[:replace_end]})" if ops[:replace_start] && ops[:replace_end]
+          if ops[:replace_start] && ops[:replace_end]
+            return "replace_range (#{ops[:replace_start]}-#{ops[:replace_end]})"
+          end
 
           nil
         end

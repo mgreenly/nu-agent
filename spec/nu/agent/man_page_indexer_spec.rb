@@ -109,10 +109,10 @@ RSpec.describe Nu::Agent::ManPageIndexer do
       allow(history).to receive(:get_indexed_sources).with(kind: "man_page").and_return([])
       allow(man_indexer).to receive(:extract_description).and_return("test description")
       allow(embeddings_client).to receive(:generate_embedding).and_return({
-        "embeddings" => [[0.1, 0.2], [0.3, 0.4]],
-        "spend" => 0.001,
-        "tokens" => 100
-      })
+                                                                            "embeddings" => [[0.1, 0.2], [0.3, 0.4]],
+                                                                            "spend" => 0.001,
+                                                                            "tokens" => 100
+                                                                          })
       allow(application).to receive(:send).with(:enter_critical_section)
       allow(application).to receive(:send).with(:exit_critical_section)
       allow(history).to receive(:store_embeddings)

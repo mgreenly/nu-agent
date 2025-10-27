@@ -122,7 +122,7 @@ module Nu
 
       private
 
-      def process_batch(records, man_indexer)
+      def process_batch(records, _man_indexer)
         contents = records.map { |r| r[:content] }
         response = @embeddings_client.generate_embedding(contents)
 

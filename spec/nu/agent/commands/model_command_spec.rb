@@ -53,10 +53,14 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
       it "shows usage message" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Usage:", type: :debug)
-        expect(application).to receive(:output_line).with("  /model                        Show current models", type: :debug)
-        expect(application).to receive(:output_line).with("  /model orchestrator <name>    Set orchestrator model", type: :debug)
-        expect(application).to receive(:output_line).with("  /model spellchecker <name>    Set spellchecker model", type: :debug)
-        expect(application).to receive(:output_line).with("  /model summarizer <name>      Set summarizer model", type: :debug)
+        expect(application).to receive(:output_line).with("  /model                        Show current models",
+                                                          type: :debug)
+        expect(application).to receive(:output_line).with("  /model orchestrator <name>    Set orchestrator model",
+                                                          type: :debug)
+        expect(application).to receive(:output_line).with("  /model spellchecker <name>    Set spellchecker model",
+                                                          type: :debug)
+        expect(application).to receive(:output_line).with("  /model summarizer <name>      Set summarizer model",
+                                                          type: :debug)
         expect(application).to receive(:output_line).with("Example: /model orchestrator gpt-5", type: :debug)
         expect(application).to receive(:output_line).with("Run /models to see available models", type: :debug)
 
@@ -88,14 +92,15 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
       end
 
       context "when there are active threads" do
-        let(:active_thread) { Thread.new { sleep 0.1 } }  # Sleep longer than join timeout (0.05s)
+        let(:active_thread) { Thread.new { sleep 0.1 } } # Sleep longer than join timeout (0.05s)
 
         before do
           allow(application).to receive(:active_threads).and_return([active_thread])
         end
 
         it "waits for active threads to complete" do
-          expect(application).to receive(:output_line).with("Waiting for current operation to complete...", type: :debug)
+          expect(application).to receive(:output_line).with("Waiting for current operation to complete...",
+                                                            type: :debug)
           command.execute("/model orchestrator gpt-5")
           expect(active_thread.status).to be_falsey
         end

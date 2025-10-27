@@ -23,7 +23,7 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
       expect(application).to receive(:output_lines) do |*lines, type:|
         expect(type).to eq(:debug)
         expect(lines).to include(match(/Available commands/))
-        expect(lines).to include(match(/\/help.*Show this help message/))
+        expect(lines).to include(match(%r{/help.*Show this help message}))
       end
       command.execute("/help")
     end

@@ -41,19 +41,18 @@ module Nu
           update_metrics(metrics, response)
 
           # Check for tool calls
-          if response["tool_calls"]
-            handle_tool_calls(response, messages, metrics)
-            # Continue loop to get next LLM response
-          else
-            # No tool calls - this is the final response
-            return { error: false, response: response, metrics: metrics }
-          end
+          return { error: false, response: response, metrics: metrics } unless response["tool_calls"]
+
+          handle_tool_calls(response, messages, metrics)
+          # Continue loop to get next LLM response
+
+          # No tool calls - this is the final response
         end
       end
 
       private
 
-      def handle_error_response(response, metrics)
+      def handle_error_response(response, _metrics)
         # Save error message (unredacted so user can see it)
         @history.add_message(
           conversation_id: @conversation_id,

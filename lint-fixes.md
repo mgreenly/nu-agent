@@ -1,12 +1,12 @@
 # RuboCop Lint Fixes Progress
 
-**Current Status (as of 2025-10-26):**
-- Total offenses: 192 (down from 289 initial - 34% reduction)
-- Application.rb: 848 lines (down from 1,236 - 31% reduction)
+**Current Status (as of 2025-10-26 - Session 2):**
+- Total offenses: 166 (down from 289 initial - 43% reduction)
+- Application.rb: 544 lines (down from 1,236 - 56% reduction)
 - handle_command: 12 lines, no violations (down from 312 lines, complexity 70 - 96% reduction!)
-- Tests: 372 passing (up from 260 - 112 new specs added)
+- Tests: 390 passing (up from 260 - 130 new specs added)
 
-**Latest Achievement:** ✅ Command Pattern extraction COMPLETE (16/16 commands - 100%!)
+**Latest Achievement:** ✅ Phase 2 Extractions COMPLETE (3/3 display methods extracted!)
 
 ## ✅ Completed Phases
 
@@ -120,6 +120,29 @@
 **Infrastructure:**
 - BaseCommand (lib/nu/agent/commands/base_command.rb) - 26 lines, 2 specs
 - CommandRegistry (lib/nu/agent/commands/command_registry.rb) - 48 lines, 10 specs
+
+**✅ Extraction #5 COMPLETE: Phase 2 Display Methods (2025-10-26 Session 2)**
+- **Approach:** Extract display formatting logic to dedicated builder/formatter classes
+- **Status:** 3/3 display methods extracted (100% COMPLETE!)
+- **Methods Extracted:**
+  1. **print_help → HelpTextBuilder** (31 → 4 lines, 96% reduction)
+     - Location: lib/nu/agent/help_text_builder.rb (38 lines, 3 specs)
+     - Eliminated MethodLength violation
+  2. **print_info → SessionInfo** (44 → 3 lines, 93% reduction)
+     - Location: lib/nu/agent/session_info.rb (52 lines, 8 specs)
+     - Eliminated MethodLength + AbcSize violations
+  3. **print_models → ModelDisplayFormatter** (21 → 3 lines, 86% reduction)
+     - Location: lib/nu/agent/model_display_formatter.rb (33 lines, 7 specs)
+     - Eliminated MethodLength violation
+- **Impact:**
+  - Application.rb: **848 → 544 lines** (304 lines / 36% reduction)
+  - Total offenses: **192 → 166** (26 offenses / 14% reduction)
+  - Tests: **372 → 390** (18 new specs, all passing)
+- **Benefits:**
+  - ✅ Single Responsibility - Each formatter has one clear purpose
+  - ✅ Testability - Display logic tested in isolation
+  - ✅ Maintainability - Easy to update help/info text
+  - ✅ Reusability - Formatters can be used elsewhere if needed
 
 ## 🎯 Recommended Refactoring Order (Next Steps)
 

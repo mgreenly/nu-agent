@@ -167,7 +167,8 @@ RSpec.describe Nu::Agent::Commands::IndexManCommand do
 
       it "clears embeddings and resets status" do
         expect(history).to receive(:clear_embeddings).with(kind: "man_page")
-        expect(application).to receive(:output_line).with("Reset complete: Cleared 250 man page embeddings", type: :debug)
+        expect(application).to receive(:output_line).with("Reset complete: Cleared 250 man page embeddings",
+                                                          type: :debug)
 
         command.execute("/index-man reset")
       end
@@ -201,7 +202,8 @@ RSpec.describe Nu::Agent::Commands::IndexManCommand do
         let(:embedding_stats) { [] }
 
         it "handles zero count gracefully" do
-          expect(application).to receive(:output_line).with("Reset complete: Cleared 0 man page embeddings", type: :debug)
+          expect(application).to receive(:output_line).with("Reset complete: Cleared 0 man page embeddings",
+                                                            type: :debug)
 
           command.execute("/index-man reset")
         end
@@ -215,7 +217,8 @@ RSpec.describe Nu::Agent::Commands::IndexManCommand do
 
       it "shows error message" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Invalid option. Use: /index-man <on|off|reset>", type: :debug)
+        expect(application).to receive(:output_line).with("Invalid option. Use: /index-man <on|off|reset>",
+                                                          type: :debug)
 
         result = command.execute("/index-man invalid")
         expect(result).to eq(:continue)

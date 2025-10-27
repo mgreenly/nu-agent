@@ -141,7 +141,7 @@ module Nu
         end
       end
 
-      def display_basic_message_info(direction, msg_type, verbosity)
+      def display_basic_message_info(direction, msg_type, _verbosity)
         @console.puts("")
         @console.puts("\e[90m[Message #{direction}] Created #{msg_type}\e[0m")
       end

@@ -3,12 +3,10 @@
 module Nu
   module Agent
     class Application
-      attr_reader :orchestrator, :history, :formatter, :summarizer_status,
-                  :man_indexer_status, :status_mutex, :console, :tui, :operation_mutex,
-                  :spellchecker, :summarizer
-      attr_accessor :active_threads, :debug, :verbosity, :redact, :summarizer_enabled, :spell_check_enabled,
-                    :conversation_id, :session_start_time
-      attr_writer :orchestrator, :spellchecker, :summarizer
+      attr_accessor :orchestrator, :spellchecker, :summarizer, :active_threads, :debug, :verbosity, :redact,
+                    :summarizer_enabled, :spell_check_enabled, :conversation_id, :session_start_time
+      attr_reader :history, :formatter, :summarizer_status, :man_indexer_status, :status_mutex, :console, :tui,
+                  :operation_mutex
 
       def initialize(options:)
         $stdout.sync = true
@@ -531,9 +529,7 @@ module Nu
       def handle_command(input)
         # Check if command is registered in the command registry
         command_name = input.split.first&.downcase
-        if @command_registry.registered?(command_name)
-          return @command_registry.execute(command_name, input, self)
-        end
+        return @command_registry.execute(command_name, input, self) if @command_registry.registered?(command_name)
 
         # Unknown command
         @console.puts("")
@@ -543,34 +539,7 @@ module Nu
 
       def print_help
         @console.puts("")
-        help_text = <<~HELP
-          Available commands:
-            /clear                         - Clear the screen
-            /debug <on|off>                - Enable/disable debug mode (show/hide tool calls and results)
-            /exit                          - Exit the REPL
-            /fix                           - Scan and fix database corruption issues
-            /help                          - Show this help message
-            /index-man <on|off|reset>      - Enable/disable background man page indexing, or reset database
-            /info                          - Show current session information
-            /migrate-exchanges             - Create exchanges from existing messages (one-time migration)
-            /model orchestrator <name>     - Switch orchestrator model
-            /model spellchecker <name>     - Switch spellchecker model
-            /model summarizer <name>       - Switch summarizer model
-            /models                        - List available models
-            /redaction <on|off>            - Enable/disable redaction of tool results in context
-            /verbosity <number>            - Set verbosity level for debug output (default: 0)
-                                             - Level 0: Thread lifecycle events + tool names only
-                                             - Level 1: Level 0 + truncated tool call/result params (30 chars)
-                                             - Level 2: Level 1 + message creation notifications
-                                             - Level 3: Level 2 + message role/actor + truncated content/params (30 chars)
-                                             - Level 4: Level 3 + full tool params + messages sent to LLM
-                                             - Level 5: Level 4 + tools array
-                                             - Level 6: Level 5 + longer message content previews (100 chars)
-            /reset                         - Start a new conversation
-            /spellcheck <on|off>           - Enable/disable automatic spell checking of user input
-            /summarizer <on|off>           - Enable/disable background conversation summarization
-            /tools                         - List available tools
-        HELP
+        help_text = HelpTextBuilder.build
         output_lines(*help_text.lines.map(&:chomp), type: :debug)
       end
 
@@ -637,72 +606,13 @@ module Nu
       end
 
       def print_info
-        @console.puts("")
-        output_line("Version:       #{Nu::Agent::VERSION}", type: :debug)
-
-        # Models section
-        output_line("Models:", type: :debug)
-        output_line("  Orchestrator:  #{@orchestrator.model}", type: :debug)
-        output_line("  Spellchecker:  #{@spellchecker.model}", type: :debug)
-        output_line("  Summarizer:    #{@summarizer.model}", type: :debug)
-
-        output_line("Debug mode:    #{@debug}", type: :debug)
-        output_line("Verbosity:     #{@verbosity}", type: :debug)
-        output_line("Redaction:     #{@redact ? 'on' : 'off'}", type: :debug)
-        output_line("Summarizer:    #{@summarizer_enabled ? 'on' : 'off'}", type: :debug)
-
-        # Show summarizer status if enabled
-        if @summarizer_enabled
-          @status_mutex.synchronize do
-            status = @summarizer_status
-            if status["running"]
-              output_line("  Status:      running (#{status['completed']}/#{status['total']} conversations)",
-                          type: :debug)
-              if status["spend"].positive?
-                output_line("  Spend:       $#{format('%.6f', status['spend'])}",
-                            type: :debug)
-              end
-            elsif status["total"].positive?
-              completed = status["completed"]
-              total = status["total"]
-              failed = status["failed"]
-              output_line("  Status:      completed (#{completed}/#{total} conversations, #{failed} failed)",
-                          type: :debug)
-              if status["spend"].positive?
-                output_line("  Spend:       $#{format('%.6f', status['spend'])}",
-                            type: :debug)
-              end
-            else
-              output_line("  Status:      idle", type: :debug)
-            end
-          end
-        end
-
-        output_line("Spellcheck:    #{@spell_check_enabled ? 'on' : 'off'}", type: :debug)
-        output_line("Database:      #{File.expand_path(history.db_path)}", type: :debug)
+        info_text = SessionInfo.build(self)
+        output_lines(*info_text.lines.map(&:chomp), type: :debug)
       end
 
       def print_models
-        @console.puts("")
-        models = ClientFactory.display_models
-
-        # Get defaults from each client
-        anthropic_default = Nu::Agent::Clients::Anthropic::DEFAULT_MODEL
-        google_default = Nu::Agent::Clients::Google::DEFAULT_MODEL
-        openai_default = Nu::Agent::Clients::OpenAI::DEFAULT_MODEL
-        xai_default = Nu::Agent::Clients::XAI::DEFAULT_MODEL
-
-        # Mark defaults with asterisk
-        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(", ")
-        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(", ")
-        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(", ")
-        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(", ")
-
-        output_line("Available Models (* = default):", type: :debug)
-        output_line("  Anthropic: #{anthropic_list}", type: :debug)
-        output_line("  Google:    #{google_list}", type: :debug)
-        output_line("  OpenAI:    #{openai_list}", type: :debug)
-        output_line("  X.AI:      #{xai_list}", type: :debug)
+        model_text = ModelDisplayFormatter.build
+        output_lines(*model_text.lines.map(&:chomp), type: :debug)
       end
 
       def print_tools
@@ -842,7 +752,6 @@ module Nu
           "unknown"
         end
       end
-
     end
   end
 end
