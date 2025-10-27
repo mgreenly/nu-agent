@@ -19,43 +19,19 @@ module Nu
         @operation_mutex = Mutex.new
         @history = History.new
 
-        # Load or initialize model configurations
-        orchestrator_model = @history.get_config("model_orchestrator")
-        spellchecker_model = @history.get_config("model_spellchecker")
-        summarizer_model = @history.get_config("model_summarizer")
-
-        # Handle --reset-model flag
-        if @options.reset_model
-          @history.set_config("model_orchestrator", @options.reset_model)
-          @history.set_config("model_spellchecker", @options.reset_model)
-          @history.set_config("model_summarizer", @options.reset_model)
-          orchestrator_model = @options.reset_model
-          spellchecker_model = @options.reset_model
-          summarizer_model = @options.reset_model
-        elsif orchestrator_model.nil? || spellchecker_model.nil? || summarizer_model.nil?
-          # Models not configured and no reset flag provided
-          raise Error, "Models not configured. Run with --reset-models <model_name> to initialize."
-        end
-
-        # Create client instances with configured models
-        @orchestrator = ClientFactory.create(orchestrator_model)
-        @spellchecker = ClientFactory.create(spellchecker_model)
-        @summarizer = ClientFactory.create(summarizer_model)
-
-        # Load settings from database (default all to true, except debug which defaults to false)
-        @debug = @history.get_config("debug", default: "false") == "true"
-        @debug = true if @options.debug # Command line option overrides database setting
+        # Load configuration (models and settings)
+        config = ConfigurationLoader.load(history: @history, options: @options)
+        @orchestrator = config.orchestrator
+        @spellchecker = config.spellchecker
+        @summarizer = config.summarizer
+        @debug = config.debug
+        @verbosity = config.verbosity
+        @redact = config.redact
+        @summarizer_enabled = config.summarizer_enabled
+        @spell_check_enabled = config.spell_check_enabled
 
         # Initialize ConsoleIO (new unified console system)
         @console = ConsoleIO.new(db_history: @history, debug: @debug)
-
-        # Load verbosity
-        @verbosity = @history.get_config("verbosity", default: "0").to_i
-
-        # Old TUI system removed - now using ConsoleIO exclusively
-        @redact = @history.get_config("redaction", default: "true") == "true"
-        @summarizer_enabled = @history.get_config("summarizer_enabled", default: "true") == "true"
-        @spell_check_enabled = @history.get_config("spell_check_enabled", default: "true") == "true"
         @conversation_id = @history.create_conversation
         @formatter = Formatter.new(
           history: @history,

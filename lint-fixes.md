@@ -2,11 +2,12 @@
 
 **Current Status (as of 2025-10-26 - Session 2):**
 - Total offenses: 166 (down from 289 initial - 43% reduction)
-- Application.rb: 544 lines (down from 1,236 - 56% reduction)
+- Application.rb: 531 lines (down from 1,236 - 57% reduction)
 - handle_command: 12 lines, no violations (down from 312 lines, complexity 70 - 96% reduction!)
-- Tests: 390 passing (up from 260 - 130 new specs added)
+- initialize: 77 lines, AbcSize 34.73 (down from 90 lines, AbcSize 52.96 - 35% complexity reduction!)
+- Tests: 397 passing (up from 260 - 137 new specs added)
 
-**Latest Achievement:** ✅ Phase 2 Extractions COMPLETE (3/3 display methods extracted!)
+**Latest Achievement:** ✅ Phase 2 COMPLETE (4/4 extractions done!)
 
 ## ✅ Completed Phases
 
@@ -143,6 +144,29 @@
   - ✅ Testability - Display logic tested in isolation
   - ✅ Maintainability - Easy to update help/info text
   - ✅ Reusability - Formatters can be used elsewhere if needed
+
+**✅ Extraction #6 COMPLETE: Phase 2.4 Initialize Method Simplification (2025-10-26 Session 2)**
+- **Approach:** Extract configuration loading logic to ConfigurationLoader class
+- **Status:** Configuration extraction complete!
+- **Extracted Logic:**
+  - Model configuration loading from database
+  - Reset-model flag handling
+  - Client instance creation
+  - Settings loading (debug, verbosity, redact, summarizer_enabled, spell_check_enabled)
+- **New Class:** ConfigurationLoader (lib/nu/agent/configuration_loader.rb - 66 lines, 7 specs)
+  - Uses Struct-based Configuration object for clean data passing
+  - Handles all configuration edge cases (missing models, reset flag, etc.)
+- **Impact:**
+  - initialize method: **90 → 77 lines** (13 lines / 14% reduction)
+  - initialize AbcSize: **52.96 → 34.73** (35% reduction!)
+  - Application.rb: **544 → 531 lines** (13 lines / 2% reduction)
+  - Tests: **390 → 397** (7 new specs, all passing)
+  - Total offenses: **166** (unchanged - new class complexity balanced removals)
+- **Benefits:**
+  - ✅ Single Responsibility - Configuration loading isolated
+  - ✅ Testability - Configuration logic tested independently
+  - ✅ Maintainability - Easier to modify configuration behavior
+  - ✅ Reduced initialize complexity - AbcSize significantly improved
 
 ## 🎯 Recommended Refactoring Order (Next Steps)
 
