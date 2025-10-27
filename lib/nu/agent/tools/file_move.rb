@@ -30,67 +30,54 @@ module Nu
         end
 
         def execute(arguments:, **)
-          source_path = arguments[:source] || arguments["source"]
-          dest_path = arguments[:destination] || arguments["destination"]
+          source_path = extract_argument(arguments, :source)
+          dest_path = extract_argument(arguments, :destination)
 
-          if source_path.nil? || source_path.empty?
-            return {
-              status: "error",
-              error: "source path is required"
-            }
-          end
+          return validation_error("source path is required") if source_path.nil? || source_path.empty?
+          return validation_error("destination path is required") if dest_path.nil? || dest_path.empty?
 
-          if dest_path.nil? || dest_path.empty?
-            return {
-              status: "error",
-              error: "destination path is required"
-            }
-          end
-
-          # Resolve and validate paths
           resolved_source = resolve_path(source_path)
           resolved_dest = resolve_path(dest_path)
 
           validate_path(resolved_source)
           validate_path(resolved_dest)
 
-          begin
-            unless File.exist?(resolved_source)
-              return {
-                status: "error",
-                error: "Source file not found: #{source_path}"
-              }
-            end
+          error = validate_source_file(resolved_source, source_path)
+          return error if error
 
-            unless File.file?(resolved_source)
-              return {
-                status: "error",
-                error: "Source is not a file: #{source_path}"
-              }
-            end
-
-            # Create destination directory if needed
-            dest_dir = File.dirname(resolved_dest)
-            FileUtils.mkdir_p(dest_dir)
-
-            # Move the file
-            FileUtils.mv(resolved_source, resolved_dest)
-
-            {
-              status: "success",
-              source: source_path,
-              destination: dest_path,
-              message: "File moved successfully"
-            }
-          rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to move file: #{e.message}"
-            }
-          end
+          perform_move(source_path, dest_path, resolved_source, resolved_dest)
         end
 
         private
+
+        def extract_argument(arguments, key)
+          arguments[key] || arguments[key.to_s]
+        end
+
+        def validation_error(message)
+          { status: "error", error: message }
+        end
+
+        def validate_source_file(resolved_source, source_path)
+          return validation_error("Source file not found: #{source_path}") unless File.exist?(resolved_source)
+          return validation_error("Source is not a file: #{source_path}") unless File.file?(resolved_source)
+
+          nil
+        end
+
+        def perform_move(source_path, dest_path, resolved_source, resolved_dest)
+          FileUtils.mkdir_p(File.dirname(resolved_dest))
+          FileUtils.mv(resolved_source, resolved_dest)
+
+          {
+            status: "success",
+            source: source_path,
+            destination: dest_path,
+            message: "File moved successfully"
+          }
+        rescue StandardError => e
+          validation_error("Failed to move file: #{e.message}")
+        end
 
         def resolve_path(file_path)
           if file_path.start_with?("/")
