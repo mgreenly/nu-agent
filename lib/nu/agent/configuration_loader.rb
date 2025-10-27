@@ -18,48 +18,57 @@ module Nu
       )
 
       def self.load(history:, options:)
-        # Load or initialize model configurations
-        orchestrator_model = history.get_config("model_orchestrator")
-        spellchecker_model = history.get_config("model_spellchecker")
-        summarizer_model = history.get_config("model_summarizer")
+        models = load_or_reset_models(history, options)
+        clients = create_clients(models)
+        settings = load_settings(history, options)
 
-        # Handle --reset-model flag
+        build_configuration(clients, settings)
+      end
+
+      def self.load_or_reset_models(history, options)
+        orchestrator = history.get_config("model_orchestrator")
+        spellchecker = history.get_config("model_spellchecker")
+        summarizer = history.get_config("model_summarizer")
+
         if options.reset_model
           history.set_config("model_orchestrator", options.reset_model)
           history.set_config("model_spellchecker", options.reset_model)
           history.set_config("model_summarizer", options.reset_model)
-          orchestrator_model = options.reset_model
-          spellchecker_model = options.reset_model
-          summarizer_model = options.reset_model
-        elsif orchestrator_model.nil? || spellchecker_model.nil? || summarizer_model.nil?
-          # Models not configured and no reset flag provided
+          { orchestrator: options.reset_model, spellchecker: options.reset_model, summarizer: options.reset_model }
+        elsif orchestrator.nil? || spellchecker.nil? || summarizer.nil?
           raise Error, "Models not configured. Run with --reset-models <model_name> to initialize."
+        else
+          { orchestrator: orchestrator, spellchecker: spellchecker, summarizer: summarizer }
         end
+      end
 
-        # Create client instances with configured models
-        orchestrator = ClientFactory.create(orchestrator_model)
-        spellchecker = ClientFactory.create(spellchecker_model)
-        summarizer = ClientFactory.create(summarizer_model)
+      def self.create_clients(models)
+        {
+          orchestrator: ClientFactory.create(models[:orchestrator]),
+          spellchecker: ClientFactory.create(models[:spellchecker]),
+          summarizer: ClientFactory.create(models[:summarizer])
+        }
+      end
 
-        # Load settings from database (default all to true, except debug which defaults to false)
+      def self.load_settings(history, options)
         debug = history.get_config("debug", default: "false") == "true"
-        debug = true if options.debug # Command line option overrides database setting
+        debug = true if options.debug
 
-        # Load other settings
-        verbosity = history.get_config("verbosity", default: "0").to_i
-        redact = history.get_config("redaction", default: "true") == "true"
-        summarizer_enabled = history.get_config("summarizer_enabled", default: "true") == "true"
-        spell_check_enabled = history.get_config("spell_check_enabled", default: "true") == "true"
-
-        Configuration.new(
-          orchestrator: orchestrator,
-          spellchecker: spellchecker,
-          summarizer: summarizer,
+        {
           debug: debug,
-          verbosity: verbosity,
-          redact: redact,
-          summarizer_enabled: summarizer_enabled,
-          spell_check_enabled: spell_check_enabled
+          verbosity: history.get_config("verbosity", default: "0").to_i,
+          redact: history.get_config("redaction", default: "true") == "true",
+          summarizer_enabled: history.get_config("summarizer_enabled", default: "true") == "true",
+          spell_check_enabled: history.get_config("spell_check_enabled", default: "true") == "true"
+        }
+      end
+
+      def self.build_configuration(clients, settings)
+        Configuration.new(
+          orchestrator: clients[:orchestrator],
+          spellchecker: clients[:spellchecker],
+          summarizer: clients[:summarizer],
+          **settings
         )
       end
     end
