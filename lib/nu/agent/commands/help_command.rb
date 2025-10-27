@@ -9,7 +9,14 @@ module Nu
       class HelpCommand < BaseCommand
         def execute(_input)
           app.console.puts("")
-          help_text = <<~HELP
+          app.output_lines(*help_text.lines.map(&:chomp), type: :debug)
+          :continue
+        end
+
+        private
+
+        def help_text
+          <<~HELP
             Available commands:
               /clear                         - Clear the screen
               /debug <on|off>                - Enable/disable debug mode (show/hide tool calls and results)
@@ -37,8 +44,6 @@ module Nu
               /summarizer <on|off>           - Enable/disable background conversation summarization
               /tools                         - List available tools
           HELP
-          app.output_lines(*help_text.lines.map(&:chomp), type: :debug)
-          :continue
         end
       end
     end
