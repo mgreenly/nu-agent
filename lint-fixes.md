@@ -1,169 +1,195 @@
-# RuboCop Lint Fixes Progress
+# RuboCop Refactoring Guide
 
 ## Current Status (2025-10-26)
 
-**Overall Metrics:**
-- **Total offenses:** 147 (down from 289 initial - **49% reduction!**)
-- **ClassLength violations:** 0 (down from 4 - **100% ELIMINATED!** 🎉)
-- **Layout/LineLength violations:** 0 (down from 8 - **100% ELIMINATED!** 🎉)
-- **Tests:** 582 passing (up from 260 - **322 new specs added!**)
+- **Total violations:** 25 (down from 97 at session start - **74% reduction**)
+- **Tests:** 623 passing ✅
 
-**Remaining ClassLength Violations:**
-- ✅ **NONE! All ClassLength violations eliminated!**
+**Remaining violations:**
+- Metrics/AbcSize: 13
+- Metrics/MethodLength: 11
+- Metrics/ClassLength: 1 (Formatter only)
 
-**Completed Refactorings:**
-- ✅ Application.rb: **COMPLIANT!** (669 → 315 lines, **53% reduction**)
-- ✅ History.rb: **COMPLIANT!** (965 → 313 lines, **68% reduction**)
-- ✅ FileEdit.rb: **COMPLIANT!** (333 → 174 lines, **48% reduction**)
-- ✅ handle_command: 12 lines (was 312 lines, complexity 70)
+**Files with violations:** 24 files (most have 1 violation each)
 
 ---
 
-## 📊 Refactoring Summary
+## Goal
 
-### Total Project Impact
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Total Offenses | 289 | 147 | -142 (-49%) |
-| ClassLength Violations | 4 | 0 | -4 (-100%) ✅ |
-| Layout/LineLength Violations | 8 | 0 | -8 (-100%) ✅ |
-| Application.rb | 1,236 lines | 315 lines | -921 (-75%) |
-| History.rb | 965 lines | 313 lines | -652 (-68%) |
-| FileEdit.rb | 333 lines | 174 lines | -159 (-48%) |
-| Test Specs | 260 | 582 | +322 (+124%) |
+**Eliminate all RuboCop violations while maintaining 100% test coverage.**
 
-### Classes Extracted
-**Total: 37 new classes with 3,074 lines of clean, tested code**
-
-All extracted classes have **ZERO RuboCop violations** ✅
+Target: 0 violations, 623+ tests passing
 
 ---
 
-## ✅ Completed Refactorings
+## Prioritization Strategy
 
-### Application.rb Refactoring (Phase 1 + Phase 2)
-**29 classes extracted** including service classes, command pattern (16 commands), display formatters, orchestrators, and utility classes.
+**Focus on maximum impact per effort:**
 
-**Result:** 1,236 → 315 lines (75% reduction) - **NOW COMPLIANT!** ✅
+1. **Files with multiple violations** - Bigger wins per file
+   - Application.rb (2 violations)
+   - Formatter.rb (1 ClassLength)
 
-**Phase 1 extractions:**
-- Command Pattern (18 classes) - handle_command reduced from 312 → 12 lines
-- Service layer (ManPageIndexer, ConversationSummarizer, ToolCallOrchestrator)
-- Display formatters (HelpTextBuilder, SessionInfo, ModelDisplayFormatter, etc.)
-- Configuration & utilities (ConfigurationLoader, DatabaseFixRunner, etc.)
+2. **Files with 1-2 violations** - Quick wins
+   - Tool files (file operations, formatters)
+   - Command files
+   - Service classes
 
-**Phase 2 extractions (Final Compliance):**
-- ChatLoopOrchestrator (236 lines) - complete chat loop logic with context building
-- InputProcessor (112 lines) - input routing, thread management, interrupt handling
-- Dead code removal (61 lines) - unused readline and time_ago methods
-- **12 new test specs** added with 100% test coverage
+3. **Auto-correctable violations** - Run `bundle exec rubocop -a` first
 
-### History.rb Refactoring
-**8 repository/service classes extracted** using Repository Pattern.
-
-**Result:** 965 → 313 lines (68% reduction) - **NOW COMPLIANT!** ✅
-
-**Key extractions:**
-- Service layer: SchemaManager, EmbeddingStore, ConfigStore, WorkerCounter
-- Repository layer: MessageRepository, ConversationRepository, ExchangeRepository, ExchangeMigrator
-
-### FileEdit.rb Refactoring
-**8 strategy classes extracted** using Strategy Pattern.
-
-**Result:** 333 → 174 lines (48% reduction) - **NOW COMPLIANT!** ✅
-
-**Key extractions:**
-- Base: EditOperation (shared path validation/resolution)
-- Strategies: ReplaceOperation, AppendOperation, PrependOperation, InsertAfterOperation, InsertBeforeOperation, InsertLineOperation, ReplaceRangeOperation
-- **46 new test specs** added with 100% test coverage
+**Check current violations:**
+```bash
+bundle exec rubocop --format offenses
+bundle exec rubocop | grep -E "^lib/.*\.rb:" | awk -F: '{print $1}' | sort | uniq -c | sort -rn
+```
 
 ---
 
-## 🎯 Next Steps
+## Refactoring Approach
 
-### Remaining ClassLength Violations (0)
+### TDD Red-Green-Refactor Cycle
 
-✅ **ALL ClassLength violations have been eliminated!**
+**ALWAYS follow Test-Driven Development:**
 
-All major classes are now compliant:
-- ✅ Application.rb: 315 lines (≤ 250 by RuboCop count)
-- ✅ History.rb: 313 lines
-- ✅ FileEdit.rb: 174 lines
+1. **RED:** Check if tests exist, write new ones if needed
+2. **GREEN:** Verify tests pass before refactoring
+3. **REFACTOR:** Extract methods/classes while keeping tests green
+
+### Extract Method Pattern
+
+**For AbcSize/MethodLength violations:**
+
+```ruby
+# Before: Complex 50-line method
+def execute(args)
+  # validation logic (10 lines)
+  # processing logic (20 lines)
+  # formatting logic (15 lines)
+  # error handling (5 lines)
+end
+
+# After: Clean delegation
+def execute(args)
+  return error_response unless valid_args?(args)
+
+  data = process_data(args)
+  format_response(data)
+end
+
+private
+
+def valid_args?(args)
+  # validation logic
+end
+
+def process_data(args)
+  # processing logic
+end
+
+def format_response(data)
+  # formatting logic
+end
+
+def error_response
+  # error handling
+end
+```
+
+### Verification Workflow
+
+After each change:
+
+```bash
+# 1. Run specific test file
+bundle exec rspec spec/path/to/file_spec.rb --format documentation
+
+# 2. Check violations for that file
+bundle exec rubocop lib/path/to/file.rb
+
+# 3. Run all tests (before commit)
+bundle exec rspec --format progress
+
+# 4. Commit with descriptive message
+git add lib/path/to/file.rb
+git commit -m "Refactor ClassName - eliminate X violations (TDD)
+
+- extract_helper_1: Purpose
+- extract_helper_2: Purpose
+
+All N tests passing. XX → YY violations (ZZ% total reduction)."
+git push
+```
 
 ---
 
-### Other Remaining Offenses (147)
-
-**By Type:**
-- Metrics/AbcSize: 50
-- Metrics/MethodLength: 45
-- Metrics/CyclomaticComplexity: 20
-- Metrics/PerceivedComplexity: 20
-- Metrics/BlockLength: 8
-- Metrics/ParameterLists: 2
-- Naming/VariableNumber: 2
-
-**Top Violators (best refactoring candidates):**
-1. **ChatLoopOrchestrator.execute** - 87 lines, complexity 14, ABC 77.7
-2. **ExchangeMigrator** - 9 violations across multiple methods
-3. **Tools/DirList** - 9 violations (47-line execute, complexity 19)
-4. **ManPageIndexer** - 7 violations
-5. **Formatter** - 7 violations
-6. **Clients/Google** - 7 violations
-7. **ConversationSummarizer** - 5 violations
-
-**Recommended approach:**
-1. ✅ Fix auto-correctable violations (`bundle exec rubocop -a`) - **DONE**
-2. ✅ Fix Layout/LineLength violations - **DONE**
-3. Extract ChatLoopOrchestrator.execute method (largest complexity)
-4. Refactor ExchangeMigrator methods
-5. Address remaining method complexity violations using TDD
-
----
-
-## 📝 Key Principles
-
-**TDD Red-Green-Refactor Cycle:**
-1. **RED:** Write failing test first
-2. **GREEN:** Write minimal code to pass
-3. **REFACTOR:** Improve design while keeping tests green
+## Key Principles
 
 **Good Refactoring:**
-- ✅ Extract classes with clear single responsibilities
-- ✅ Follow SOLID principles
-- ✅ Maintain or improve test coverage
+- ✅ Extract methods with clear single responsibilities
+- ✅ Name methods descriptively (what they do, not how)
 - ✅ Keep all tests passing throughout
+- ✅ Run tests after EVERY change
+- ✅ Commit frequently with clear messages
 
 **Bad Refactoring:**
-- ❌ Move methods to modules just to game metrics
-- ❌ Skip writing tests
-- ❌ Break existing functionality
+- ❌ Moving code without improving design
+- ❌ Skipping tests
+- ❌ Breaking existing functionality
+- ❌ Creating unclear/cryptic method names
 
-**Development Workflow:**
-- Always follow TDD (write tests first)
-- Run `bundle exec rspec` after each extraction
-- Run `bundle exec rubocop` to verify metrics improvement
-- Commit frequently with clear messages
-- **Don't just move code - actually improve the design**
-
----
-
-## 🎉 Achievements
-
-- **49% reduction** in total offenses (289 → 147) 🎉
-- **100% ELIMINATION** of ClassLength violations (4 → 0) ✅
-- **100% ELIMINATION** of Layout/LineLength violations (8 → 0) ✅
-- **Application.rb is now COMPLIANT!** (1,236 → 315 lines, 75% reduction)
-- **History.rb is now COMPLIANT!** (965 → 313 lines, 68% reduction)
-- **FileEdit.rb is now COMPLIANT!** (333 → 174 lines, 48% reduction)
-- **37 new classes** with clean architecture
-- **322 new test specs** added (124% increase)
-- **All extracted classes have ZERO violations**
-- **All 582 tests passing** ✅
+**Common Patterns:**
+- Extract parameter validation → `validate_args`, `parse_arguments`
+- Extract formatting logic → `format_response`, `build_result_hash`
+- Extract business logic → `process_data`, `calculate_result`
+- Extract error handling → `error_response`, `handle_error`
+- Extract I/O operations → `read_from_source`, `write_to_destination`
 
 ---
 
-**Started:** 289 offenses, 4 ClassLength violations
-**Current:** 147 offenses, 0 ClassLength violations ✅
-**Progress:** 49% reduction in total offenses
-**Goal:** ~100 offenses, 0 ClassLength violations - **ClassLength goal achieved!**
+## Starting a New Session
+
+When starting fresh with limited context:
+
+1. **Read this file** to understand the current state and approach
+2. **Check current status:**
+   ```bash
+   bundle exec rubocop --format offenses
+   bundle exec rspec --format progress | tail -3
+   ```
+3. **Identify target files** (files with most violations)
+4. **Pick ONE file** to refactor
+5. **Follow the TDD workflow** above
+6. **Commit and continue** to next file
+
+**Remember:** You're at 25 violations (74% reduction from start). Focus on files with 2+ violations for maximum impact, then tackle single-violation files.
+
+---
+
+## Quick Reference
+
+**Most useful commands:**
+```bash
+# Overall status
+bundle exec rubocop | grep -E "files inspected|offenses detected"
+
+# Files sorted by violation count
+bundle exec rubocop 2>&1 | grep -E "^lib/.*\.rb:" | awk -F: '{print $1}' | sort | uniq -c | sort -rn
+
+# Check specific file
+bundle exec rubocop lib/path/to/file.rb
+
+# Run specific test file
+bundle exec rspec spec/path/to/file_spec.rb --format documentation
+
+# Run all tests
+bundle exec rspec --format progress
+
+# Auto-fix safe violations
+bundle exec rubocop -a
+```
+
+---
+
+**Progress:** 97 → 25 violations (74% reduction)
+**Goal:** 0 violations
+**Status:** 25 violations remaining in 24 files
