@@ -31,9 +31,9 @@ Conversation (1)
 
 ### Foreign Keys
 
-Currently enforced at **application level** only:
-- `exchanges.conversation_id` → `conversations.id`
+Enforced at **database level** with DuckDB foreign key constraints:
+- `exchanges.conversation_id` → `conversations.id` (NOT NULL)
 - `messages.conversation_id` → `conversations.id`
 - `messages.exchange_id` → `exchanges.id`
 
-No database-level constraints defined. Messages have dual foreign keys for efficient querying at both conversation and exchange levels.
+Messages have dual foreign keys for efficient querying at both conversation and exchange levels. The database prevents orphaned records by rejecting inserts/updates that violate referential integrity.

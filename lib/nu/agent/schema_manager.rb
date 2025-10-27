@@ -90,7 +90,7 @@ module Nu
         @connection.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS exchanges (
             id INTEGER PRIMARY KEY DEFAULT nextval('exchanges_id_seq'),
-            conversation_id INTEGER NOT NULL,
+            conversation_id INTEGER NOT NULL REFERENCES conversations(id),
             exchange_number INTEGER NOT NULL,
             started_at TIMESTAMP NOT NULL,
             completed_at TIMESTAMP,
@@ -113,7 +113,7 @@ module Nu
         @connection.query(<<~SQL)
           CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY DEFAULT nextval('messages_id_seq'),
-            conversation_id INTEGER,
+            conversation_id INTEGER REFERENCES conversations(id),
             actor TEXT,
             role TEXT,
             content TEXT,
@@ -125,6 +125,9 @@ module Nu
             tool_calls TEXT,
             tool_call_id TEXT,
             tool_result TEXT,
+            error TEXT,
+            redacted BOOLEAN DEFAULT FALSE,
+            exchange_id INTEGER REFERENCES exchanges(id),
             created_at TIMESTAMP
           )
         SQL

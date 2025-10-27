@@ -14,6 +14,13 @@ RSpec.describe Nu::Agent::MessageRepository do
     FileUtils.rm_rf(test_db_path)
     FileUtils.mkdir_p("db")
     schema_manager.setup_schema
+    # Create a test conversation to satisfy foreign key constraints
+    connection.query("INSERT INTO conversations (id, created_at) VALUES (1, '2025-01-01 00:00:00')")
+    # Create a test exchange to satisfy foreign key constraints
+    connection.query(<<~SQL)
+      INSERT INTO exchanges (id, conversation_id, exchange_number, started_at)
+      VALUES (1, 1, 1, '2025-01-01 00:00:00')
+    SQL
   end
 
   after do
@@ -265,6 +272,12 @@ RSpec.describe Nu::Agent::MessageRepository do
     let(:exchange_id) { 42 }
 
     it "updates the exchange_id of a message" do
+      # Create the exchange that we'll reference
+      connection.query(<<~SQL)
+        INSERT INTO exchanges (id, conversation_id, exchange_number, started_at)
+        VALUES (#{exchange_id}, #{conversation_id}, 2, '2025-01-01 00:00:00')
+      SQL
+
       message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
 
       result = connection.query("SELECT id FROM messages WHERE conversation_id = #{conversation_id}")
@@ -283,6 +296,16 @@ RSpec.describe Nu::Agent::MessageRepository do
     let(:exchange_id) { 10 }
 
     it "retrieves all messages for a specific exchange" do
+      # Create the exchanges we'll reference
+      connection.query(<<~SQL)
+        INSERT INTO exchanges (id, conversation_id, exchange_number, started_at)
+        VALUES (#{exchange_id}, #{conversation_id}, 2, '2025-01-01 00:00:00')
+      SQL
+      connection.query(<<~SQL)
+        INSERT INTO exchanges (id, conversation_id, exchange_number, started_at)
+        VALUES (99, #{conversation_id}, 3, '2025-01-01 00:00:00')
+      SQL
+
       message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "First",
                                exchange_id: exchange_id)
       message_repo.add_message(conversation_id: conversation_id, actor: "assistant", role: "assistant",
