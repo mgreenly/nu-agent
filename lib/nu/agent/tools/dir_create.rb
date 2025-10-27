@@ -25,52 +25,50 @@ module Nu
           }
         end
 
-        def execute(arguments:, context:, **)
-          dir_path = arguments[:path] || arguments["path"]
+        def execute(arguments:, _context:, **)
+          dir_path = extract_argument(arguments, :path)
 
-          if dir_path.nil? || dir_path.empty?
-            return {
-              status: "error",
-              error: "path is required"
-            }
-          end
+          return validation_error("path is required") if dir_path.nil? || dir_path.empty?
 
-          # Resolve and validate path
           resolved_path = resolve_path(dir_path)
           validate_path(resolved_path)
 
-          # Debug output
-          context["application"]
-
-          begin
-            # Check if it already exists
-            if Dir.exist?(resolved_path)
-              return {
-                status: "success",
-                path: dir_path,
-                message: "Directory already exists",
-                created: false
-              }
-            end
-
-            # Create directory and parents if needed
-            FileUtils.mkdir_p(resolved_path)
-
-            {
-              status: "success",
-              path: dir_path,
-              message: "Directory created successfully",
-              created: true
-            }
-          rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to create directory: #{e.message}"
-            }
-          end
+          create_directory(dir_path, resolved_path)
         end
 
         private
+
+        def extract_argument(arguments, key)
+          arguments[key] || arguments[key.to_s]
+        end
+
+        def validation_error(message)
+          { status: "error", error: message }
+        end
+
+        def create_directory(dir_path, resolved_path)
+          return already_exists_response(dir_path) if Dir.exist?(resolved_path)
+
+          FileUtils.mkdir_p(resolved_path)
+
+          {
+            status: "success",
+            path: dir_path,
+            message: "Directory created successfully",
+            created: true
+          }
+        rescue StandardError => e
+          validation_error("Failed to create directory: #{e.message}")
+        end
+
+        def already_exists_response(dir_path)
+          {
+            status: "success",
+            path: dir_path,
+            message: "Directory already exists",
+            created: false
+          }
+        end
 
         def resolve_path(dir_path)
           if dir_path.start_with?("/")
