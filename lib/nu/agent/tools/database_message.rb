@@ -60,36 +60,38 @@ module Nu
         private
 
         def format_message(msg)
-          # Format message in a clear, readable way for the LLM
-          result = {
+          result = build_base_result(msg)
+          add_optional_fields(result, msg)
+          result
+        end
+
+        def build_base_result(msg)
+          {
             "message_id" => msg["id"],
             "role" => msg["role"],
             "timestamp" => msg["created_at"]
           }
+        end
 
-          # Include content if present
+        def add_optional_fields(result, msg)
           result["message_content"] = msg["content"] if msg["content"] && !msg["content"].empty?
-
-          # Format tool calls in a clear way
-          if msg["tool_calls"]
-            result["tool_calls"] = msg["tool_calls"].map do |tc|
-              {
-                "tool_name" => tc["name"],
-                "arguments" => tc["arguments"]
-              }
-            end
-          end
-
-          # Format tool results clearly
-          if msg["tool_result"]
-            result["tool_name"] = msg["tool_result"]["name"]
-            result["tool_output"] = msg["tool_result"]["result"]
-          end
-
-          # Include errors if present
+          result["tool_calls"] = format_tool_calls(msg["tool_calls"]) if msg["tool_calls"]
+          add_tool_result(result, msg["tool_result"]) if msg["tool_result"]
           result["error_details"] = msg["error"] if msg["error"]
+        end
 
-          result
+        def format_tool_calls(tool_calls)
+          tool_calls.map do |tc|
+            {
+              "tool_name" => tc["name"],
+              "arguments" => tc["arguments"]
+            }
+          end
+        end
+
+        def add_tool_result(result, tool_result)
+          result["tool_name"] = tool_result["name"]
+          result["tool_output"] = tool_result["result"]
         end
       end
     end
