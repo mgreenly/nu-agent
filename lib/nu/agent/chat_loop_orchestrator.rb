@@ -1,0 +1,226 @@
+# frozen_string_literal: true
+
+module Nu
+  module Agent
+    class ChatLoopOrchestrator
+      attr_reader :history, :formatter, :application, :user_actor
+
+      def initialize(history:, formatter:, application:, user_actor:)
+        @history = history
+        @formatter = formatter
+        @application = application
+        @user_actor = user_actor
+      end
+
+      def execute(conversation_id:, client:, tool_registry:, **context)
+        # Orchestrator owns the entire exchange - wrap everything in a transaction
+        # Either the exchange completes successfully or nothing is saved
+        session_start_time = context[:session_start_time]
+        user_input = context[:user_input]
+
+        history.transaction do
+          # Create exchange and add user message (atomic with rest of exchange)
+          exchange_id = history.create_exchange(
+            conversation_id: conversation_id,
+            user_message: user_input
+          )
+
+          history.add_message(
+            conversation_id: conversation_id,
+            exchange_id: exchange_id,
+            actor: user_actor,
+            role: "user",
+            content: user_input
+          )
+          formatter.display_message_created(actor: user_actor, role: "user", content: user_input)
+
+          # Get conversation history (only unredacted messages from previous exchanges)
+          all_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
+
+          # Get redacted message IDs and format as ranges
+          redacted_message_ranges = nil
+          if application.redact
+            redacted_ids = all_messages.select { |m| m["redacted"] }.map { |m| m["id"] }.compact
+            redacted_message_ranges = format_id_ranges(redacted_ids.sort) if redacted_ids.any?
+          end
+
+          # Filter to only unredacted messages from PREVIOUS exchanges (exclude current exchange)
+          history_messages = all_messages.reject { |m| m["redacted"] || m["exchange_id"] == exchange_id }
+
+          # User query is the input we just received
+          user_query = user_input
+
+          # Build context document (markdown) with RAG, tools, and user query
+          markdown_document = build_context_document(
+            user_query: user_query,
+            tool_registry: tool_registry,
+            redacted_message_ranges: redacted_message_ranges,
+            conversation_id: conversation_id
+          )
+
+          # Build initial messages array: history + markdown document
+          messages = history_messages.dup
+          messages << {
+            "role" => "user",
+            "content" => markdown_document
+          }
+
+          # Get tools formatted for this client
+          tools = client.format_tools(tool_registry)
+
+          # Display LLM request (verbosity level 3+)
+          formatter.display_llm_request(messages, tools, markdown_document)
+
+          # Call inner tool calling loop
+          result = tool_calling_loop(
+            messages: messages,
+            tools: tools,
+            client: client,
+            history: history,
+            conversation_id: conversation_id,
+            exchange_id: exchange_id,
+            tool_registry: tool_registry,
+            application: application
+          )
+
+          # Handle result
+          if result[:error]
+            # Mark exchange as failed
+            history.update_exchange(
+              exchange_id: exchange_id,
+              updates: {
+                status: "failed",
+                error: result[:response]["error"].to_json,
+                completed_at: Time.now
+              }.merge(result[:metrics])
+            )
+          else
+            # Save final assistant response (unredacted)
+            final_response = result[:response]
+            history.add_message(
+              conversation_id: conversation_id,
+              exchange_id: exchange_id,
+              actor: "orchestrator",
+              role: "assistant",
+              content: final_response["content"],
+              model: final_response["model"],
+              tokens_input: final_response["tokens"]["input"] || 0,
+              tokens_output: final_response["tokens"]["output"] || 0,
+              spend: final_response["spend"] || 0.0,
+              redacted: false # Final response is unredacted
+            )
+            formatter.display_message_created(
+              actor: "orchestrator",
+              role: "assistant",
+              content: final_response["content"],
+              redacted: false
+            )
+
+            # Update metrics to include final response (with nil protection)
+            metrics = result[:metrics]
+            metrics[:tokens_input] = [metrics[:tokens_input], final_response["tokens"]["input"] || 0].max
+            metrics[:tokens_output] += final_response["tokens"]["output"] || 0
+            metrics[:spend] += final_response["spend"] || 0.0
+            metrics[:message_count] += 1
+
+            # Complete the exchange
+            history.complete_exchange(
+              exchange_id: exchange_id,
+              assistant_message: final_response["content"],
+              metrics: metrics
+            )
+          end
+        end
+        # Transaction commits here on success, rolls back on exception
+      end
+
+      private
+
+      def tool_calling_loop(messages:, client:, conversation_id:, **context)
+        # Extract context parameters
+        tools = context[:tools]
+        history = context[:history]
+        exchange_id = context[:exchange_id]
+        tool_registry = context[:tool_registry]
+        application = context[:application]
+
+        # Create orchestrator and execute
+        orchestrator = ToolCallOrchestrator.new(
+          client: client,
+          history: history,
+          formatter: formatter,
+          console: application.instance_variable_get(:@console),
+          conversation_id: conversation_id,
+          exchange_id: exchange_id,
+          tool_registry: tool_registry,
+          application: application
+        )
+
+        orchestrator.execute(messages: messages, tools: tools)
+      end
+
+      def build_context_document(user_query:, tool_registry:, redacted_message_ranges: nil, conversation_id: nil)
+        builder = DocumentBuilder.new
+
+        # Context section (RAG - Retrieval Augmented Generation)
+        # Multiple RAG sub-processes will be added here in the future
+        rag_content = []
+
+        # RAG sub-process 1: Redacted message ranges
+        if redacted_message_ranges && !redacted_message_ranges.empty?
+          rag_content << "Redacted messages: #{redacted_message_ranges}"
+        end
+
+        # RAG sub-process 2: Spell checking (if enabled)
+        if application.spell_check_enabled && application.spellchecker
+          spell_checker = SpellChecker.new(
+            history: history,
+            conversation_id: conversation_id,
+            client: application.spellchecker
+          )
+          corrected_query = spell_checker.check_spelling(user_query)
+
+          rag_content << "The user said '#{user_query}' but means '#{corrected_query}'" if corrected_query != user_query
+        end
+
+        # If no RAG content was generated, indicate that
+        rag_content << "No Augmented Information Generated" if rag_content.empty?
+
+        builder.add_section("Context", rag_content.join("\n\n"))
+
+        # Available Tools section
+        tool_names = tool_registry.available.map(&:name)
+        tools_list = tool_names.join(", ")
+        builder.add_section("Available Tools", tools_list)
+
+        # User Query section (final section - ends the document)
+        builder.add_section("User Query", user_query)
+
+        builder.build
+      end
+
+      def format_id_ranges(ids)
+        return "" if ids.empty?
+
+        ranges = []
+        range_start = ids.first
+        range_end = ids.first
+
+        ids.each_cons(2) do |current, nxt|
+          if nxt == current + 1
+            range_end = nxt
+          else
+            ranges << (range_start == range_end ? range_start.to_s : "#{range_start}-#{range_end}")
+            range_start = nxt
+            range_end = nxt
+          end
+        end
+
+        # Add final range
+        ranges << (range_start == range_end ? range_start.to_s : "#{range_start}-#{range_end}")
+
+        ranges.join(", ")
+      end
+    end
+  end
+end

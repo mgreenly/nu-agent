@@ -18,7 +18,7 @@ module Nu
         @critical_mutex = Mutex.new
         @operation_mutex = Mutex.new
         @history = History.new
-
+        @input_processor = InputProcessor.new(application: self, user_actor: @user_actor)
         # Load configuration (models and settings)
         config = ConfigurationLoader.load(history: @history, options: @options)
         @orchestrator = config.orchestrator
@@ -39,7 +39,7 @@ module Nu
           conversation_id: @conversation_id,
           orchestrator: @orchestrator,
           debug: @debug,
-          console: @console, # ConsoleIO for all output
+          console: @console,
           application: self
         )
         @active_threads = []
@@ -98,86 +98,7 @@ module Nu
       end
 
       def process_input(input)
-        # Handle commands
-        return handle_command(input) if input.start_with?("/")
-
-        # Capture exchange start time for elapsed time calculation
-        @formatter.exchange_start_time = Time.now
-
-        # Start spinner
-        @console.show_spinner("Thinking...")
-
-        thread = nil
-        workers_incremented = false
-
-        begin
-          # Increment workers BEFORE spawning thread
-          history.increment_workers
-          workers_incremented = true
-
-          # Capture values to pass into thread under mutex
-          thread = @operation_mutex.synchronize do
-            conv_id = conversation_id
-            hist = history
-            cli = orchestrator
-            session_start = session_start_time
-            user_in = input
-            formatter
-            app = self
-
-            # Display thread start event
-            formatter.display_thread_event("Orchestrator", "Starting")
-
-            # Spawn orchestrator thread with raw user input
-            context = {
-              session_start_time: session_start,
-              user_input: user_in,
-              application: app
-            }
-            Thread.new(conv_id, hist, cli, context) do |conversation_id, history, client, ctx|
-              chat_loop(
-                conversation_id: conversation_id,
-                history: history,
-                client: client,
-                **ctx
-              )
-            ensure
-              history.decrement_workers
-            end
-          end
-
-          active_threads << thread
-
-          # Wait for completion and display
-          formatter.wait_for_completion(conversation_id: conversation_id)
-
-          # Display thread finished event (after all output is shown)
-          formatter.display_thread_event("Orchestrator", "Finished")
-        rescue Interrupt
-          # Ctrl-C pressed - kill thread and return to prompt
-          # Transaction will rollback automatically - no exchange will be saved
-          @console.hide_spinner
-          output_line("(Ctrl-C) Operation aborted by user.", type: :debug)
-
-          # Kill all active threads (orchestrator, summarizer, etc.)
-          active_threads.each do |t|
-            t.kill if t.alive?
-          end
-          active_threads.clear
-
-          # Clean up worker count if needed
-          if thread&.alive? || workers_incremented
-            # Decrement if thread is alive or workers were incremented but thread wasn't created yet
-            history.decrement_workers
-          end
-        ensure
-          # Always stop the spinner
-          @console.hide_spinner
-          # Remove completed thread
-          active_threads.delete(thread) if thread
-        end
-
-        :continue
+        @input_processor.process(input)
       end
 
       # Helper to output text via ConsoleIO
@@ -248,194 +169,6 @@ module Nu
         end
       end
 
-      def build_context_document(user_query:, tool_registry:, redacted_message_ranges: nil, conversation_id: nil)
-        builder = DocumentBuilder.new
-
-        # Context section (RAG - Retrieval Augmented Generation)
-        # Multiple RAG sub-processes will be added here in the future
-        rag_content = []
-
-        # RAG sub-process 1: Redacted message ranges
-        if redacted_message_ranges && !redacted_message_ranges.empty?
-          rag_content << "Redacted messages: #{redacted_message_ranges}"
-        end
-
-        # RAG sub-process 2: Spell checking (if enabled)
-        if @spell_check_enabled && @spellchecker
-          spell_checker = SpellChecker.new(
-            history: history,
-            conversation_id: conversation_id,
-            client: @spellchecker
-          )
-          corrected_query = spell_checker.check_spelling(user_query)
-
-          rag_content << "The user said '#{user_query}' but means '#{corrected_query}'" if corrected_query != user_query
-        end
-
-        # If no RAG content was generated, indicate that
-        rag_content << "No Augmented Information Generated" if rag_content.empty?
-
-        builder.add_section("Context", rag_content.join("\n\n"))
-
-        # Available Tools section
-        tool_names = tool_registry.available.map(&:name)
-        tools_list = tool_names.join(", ")
-        builder.add_section("Available Tools", tools_list)
-
-        # User Query section (final section - ends the document)
-        builder.add_section("User Query", user_query)
-
-        builder.build
-      end
-
-      def tool_calling_loop(messages:, client:, conversation_id:, **context)
-        # Extract context parameters
-        tools = context[:tools]
-        history = context[:history]
-        exchange_id = context[:exchange_id]
-        tool_registry = context[:tool_registry]
-        application = context[:application]
-
-        # Create orchestrator and execute
-        orchestrator = ToolCallOrchestrator.new(
-          client: client,
-          history: history,
-          formatter: @formatter,
-          console: @console,
-          conversation_id: conversation_id,
-          exchange_id: exchange_id,
-          tool_registry: tool_registry,
-          application: application
-        )
-
-        orchestrator.execute(messages: messages, tools: tools)
-      end
-
-      def chat_loop(conversation_id:, history:, client:, **context)
-        # Orchestrator owns the entire exchange - wrap everything in a transaction
-        # Either the exchange completes successfully or nothing is saved
-        session_start_time = context[:session_start_time]
-        user_input = context[:user_input]
-        application = context[:application]
-
-        history.transaction do
-          tool_registry = ToolRegistry.new
-
-          # Create exchange and add user message (atomic with rest of exchange)
-          exchange_id = history.create_exchange(
-            conversation_id: conversation_id,
-            user_message: user_input
-          )
-
-          history.add_message(
-            conversation_id: conversation_id,
-            exchange_id: exchange_id,
-            actor: @user_actor,
-            role: "user",
-            content: user_input
-          )
-          @formatter.display_message_created(actor: @user_actor, role: "user", content: user_input)
-
-          # Get conversation history (only unredacted messages from previous exchanges)
-          all_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
-
-          # Get redacted message IDs and format as ranges
-          redacted_message_ranges = nil
-          if @redact
-            redacted_ids = all_messages.select { |m| m["redacted"] }.map { |m| m["id"] }.compact
-            redacted_message_ranges = format_id_ranges(redacted_ids.sort) if redacted_ids.any?
-          end
-
-          # Filter to only unredacted messages from PREVIOUS exchanges (exclude current exchange)
-          history_messages = all_messages.reject { |m| m["redacted"] || m["exchange_id"] == exchange_id }
-
-          # User query is the input we just received
-          user_query = user_input
-
-          # Build context document (markdown) with RAG, tools, and user query
-          markdown_document = build_context_document(
-            user_query: user_query,
-            tool_registry: tool_registry,
-            redacted_message_ranges: redacted_message_ranges,
-            conversation_id: conversation_id
-          )
-
-          # Build initial messages array: history + markdown document
-          messages = history_messages.dup
-          messages << {
-            "role" => "user",
-            "content" => markdown_document
-          }
-
-          # Get tools formatted for this client
-          tools = client.format_tools(tool_registry)
-
-          # Display LLM request (verbosity level 3+)
-          @formatter.display_llm_request(messages, tools, markdown_document)
-
-          # Call inner tool calling loop
-          result = tool_calling_loop(
-            messages: messages,
-            tools: tools,
-            client: client,
-            history: history,
-            conversation_id: conversation_id,
-            exchange_id: exchange_id,
-            tool_registry: tool_registry,
-            application: application
-          )
-
-          # Handle result
-          if result[:error]
-            # Mark exchange as failed
-            history.update_exchange(
-              exchange_id: exchange_id,
-              updates: {
-                status: "failed",
-                error: result[:response]["error"].to_json,
-                completed_at: Time.now
-              }.merge(result[:metrics])
-            )
-          else
-            # Save final assistant response (unredacted)
-            final_response = result[:response]
-            history.add_message(
-              conversation_id: conversation_id,
-              exchange_id: exchange_id,
-              actor: "orchestrator",
-              role: "assistant",
-              content: final_response["content"],
-              model: final_response["model"],
-              tokens_input: final_response["tokens"]["input"] || 0,
-              tokens_output: final_response["tokens"]["output"] || 0,
-              spend: final_response["spend"] || 0.0,
-              redacted: false # Final response is unredacted
-            )
-            @formatter.display_message_created(
-              actor: "orchestrator",
-              role: "assistant",
-              content: final_response["content"],
-              redacted: false
-            )
-
-            # Update metrics to include final response (with nil protection)
-            metrics = result[:metrics]
-            metrics[:tokens_input] = [metrics[:tokens_input], final_response["tokens"]["input"] || 0].max
-            metrics[:tokens_output] += final_response["tokens"]["output"] || 0
-            metrics[:spend] += final_response["spend"] || 0.0
-            metrics[:message_count] += 1
-
-            # Complete the exchange
-            history.complete_exchange(
-              exchange_id: exchange_id,
-              assistant_message: final_response["content"],
-              metrics: metrics
-            )
-          end
-        end
-        # Transaction commits here on success, rolls back on exception
-      end
-
       def repl
         loop do
           # Add blank line before prompt for better readability
@@ -460,47 +193,13 @@ module Nu
         end
       end
 
-      def setup_readline
-        # Set up tab completion
-        commands = ["/clear", "/debug", "/exit", "/fix", "/help", "/index-man", "/info", "/migrate-exchanges",
-                    "/model", "/models", "/redaction", "/reset", "/spellcheck", "/summarizer", "/tools", "/verbosity"]
-        all_models = ClientFactory.available_models.values.flatten
-
-        Readline.completion_proc = proc do |str|
-          # Check if we're completing after '/model '
-          line = Readline.line_buffer
-          if line.start_with?("/model ")
-            # Complete model names
-            prefix_match = line.match(%r{^/model\s+(.*)})
-            if prefix_match
-              partial = prefix_match[1]
-              all_models.grep(/^#{Regexp.escape(partial)}/i)
-            else
-              all_models
-            end
-          else
-            # Complete commands
-            commands.grep(/^#{Regexp.escape(str)}/)
-          end
-        end
-
-        # Load history from file
-        history_file = File.join(Dir.home, ".nu_agent_history")
-        return unless File.exist?(history_file)
-
-        File.readlines(history_file).each do |line|
-          Readline::HISTORY.push(line.chomp)
-        end
+      def print_help
+        @console.puts("")
+        help_text = HelpTextBuilder.build
+        output_lines(*help_text.lines.map(&:chomp), type: :debug)
       end
 
-      def save_history
-        history_file = File.join(Dir.home, ".nu_agent_history")
-        File.open(history_file, "w") do |f|
-          Readline::HISTORY.to_a.last(1000).each { |line| f.puts(line) }
-        end
-      rescue StandardError
-        # Silently ignore history save errors
-      end
+      public
 
       def handle_command(input)
         # Check if command is registered in the command registry
@@ -512,14 +211,6 @@ module Nu
         output_line("Unknown command: #{input}", type: :debug)
         :continue
       end
-
-      def print_help
-        @console.puts("")
-        help_text = HelpTextBuilder.build
-        output_lines(*help_text.lines.map(&:chomp), type: :debug)
-      end
-
-      public
 
       def run_fix
         DatabaseFixRunner.run(self)
@@ -618,50 +309,6 @@ module Nu
 
       def print_goodbye
         output_line("Goodbye!", type: :debug)
-      end
-
-      def format_id_ranges(ids)
-        return "" if ids.empty?
-
-        ranges = []
-        range_start = ids.first
-        range_end = ids.first
-
-        ids.each_cons(2) do |current, nxt|
-          if nxt == current + 1
-            range_end = nxt
-          else
-            ranges << (range_start == range_end ? range_start.to_s : "#{range_start}-#{range_end}")
-            range_start = nxt
-            range_end = nxt
-          end
-        end
-
-        # Add final range
-        ranges << (range_start == range_end ? range_start.to_s : "#{range_start}-#{range_end}")
-
-        ranges.join(", ")
-      end
-
-      def time_ago(timestamp)
-        return "unknown" unless timestamp
-
-        begin
-          time = timestamp.is_a?(String) ? Time.parse(timestamp) : timestamp
-          seconds = (Time.now - time).to_i
-
-          if seconds < 60
-            "#{seconds}s ago"
-          elsif seconds < 3600
-            "#{seconds / 60}m ago"
-          elsif seconds < 86_400
-            "#{seconds / 3600}h ago"
-          else
-            "#{seconds / 86_400}d ago"
-          end
-        rescue StandardError
-          "unknown"
-        end
       end
     end
   end
