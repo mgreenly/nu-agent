@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    nu-agent (0.8.0)
+    nu-agent (0.9.0)
       duckdb (~> 1.1)
       gemini-ai (~> 4.0)
       ruby-anthropic (~> 0.4.2)
