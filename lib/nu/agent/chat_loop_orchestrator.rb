@@ -19,57 +19,25 @@ module Nu
         user_input = context[:user_input]
 
         history.transaction do
-          # Create exchange and add user message (atomic with rest of exchange)
-          exchange_id = history.create_exchange(
-            conversation_id: conversation_id,
-            user_message: user_input
-          )
-
-          history.add_message(
-            conversation_id: conversation_id,
-            exchange_id: exchange_id,
-            actor: user_actor,
-            role: "user",
-            content: user_input
-          )
-          formatter.display_message_created(actor: user_actor, role: "user", content: user_input)
+          # Create exchange and add user message
+          exchange_id = create_user_message(conversation_id, user_input)
 
           # Get conversation history (only unredacted messages from previous exchanges)
-          all_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
-
-          # Get redacted message IDs and format as ranges
-          redacted_message_ranges = nil
-          if application.redact
-            redacted_ids = all_messages.select { |m| m["redacted"] }.map { |m| m["id"] }.compact
-            redacted_message_ranges = format_id_ranges(redacted_ids.sort) if redacted_ids.any?
-          end
-
-          # Filter to only unredacted messages from PREVIOUS exchanges (exclude current exchange)
-          history_messages = all_messages.reject { |m| m["redacted"] || m["exchange_id"] == exchange_id }
-
-          # User query is the input we just received
-          user_query = user_input
-
-          # Build context document (markdown) with RAG, tools, and user query
-          markdown_document = build_context_document(
-            user_query: user_query,
-            tool_registry: tool_registry,
-            redacted_message_ranges: redacted_message_ranges,
-            conversation_id: conversation_id
+          history_messages, redacted_message_ranges = prepare_history_messages(
+            conversation_id,
+            exchange_id,
+            session_start_time
           )
 
-          # Build initial messages array: history + markdown document
-          messages = history_messages.dup
-          messages << {
-            "role" => "user",
-            "content" => markdown_document
-          }
-
-          # Get tools formatted for this client
-          tools = client.format_tools(tool_registry)
-
-          # Display LLM request (verbosity level 3+)
-          formatter.display_llm_request(messages, tools, markdown_document)
+          # Prepare LLM request with context, messages, and tools
+          messages, tools = prepare_llm_request(
+            user_input,
+            history_messages,
+            redacted_message_ranges,
+            tool_registry,
+            conversation_id,
+            client
+          )
 
           # Call inner tool calling loop
           result = tool_calling_loop(
@@ -83,58 +51,127 @@ module Nu
             application: application
           )
 
-          # Handle result
+          # Handle result (success or error)
           if result[:error]
-            # Mark exchange as failed
-            history.update_exchange(
-              exchange_id: exchange_id,
-              updates: {
-                status: "failed",
-                error: result[:response]["error"].to_json,
-                completed_at: Time.now
-              }.merge(result[:metrics])
-            )
+            handle_error_result(exchange_id, result)
           else
-            # Save final assistant response (unredacted)
-            final_response = result[:response]
-            history.add_message(
-              conversation_id: conversation_id,
-              exchange_id: exchange_id,
-              actor: "orchestrator",
-              role: "assistant",
-              content: final_response["content"],
-              model: final_response["model"],
-              tokens_input: final_response["tokens"]["input"] || 0,
-              tokens_output: final_response["tokens"]["output"] || 0,
-              spend: final_response["spend"] || 0.0,
-              redacted: false # Final response is unredacted
-            )
-            formatter.display_message_created(
-              actor: "orchestrator",
-              role: "assistant",
-              content: final_response["content"],
-              redacted: false
-            )
-
-            # Update metrics to include final response (with nil protection)
-            metrics = result[:metrics]
-            metrics[:tokens_input] = [metrics[:tokens_input], final_response["tokens"]["input"] || 0].max
-            metrics[:tokens_output] += final_response["tokens"]["output"] || 0
-            metrics[:spend] += final_response["spend"] || 0.0
-            metrics[:message_count] += 1
-
-            # Complete the exchange
-            history.complete_exchange(
-              exchange_id: exchange_id,
-              assistant_message: final_response["content"],
-              metrics: metrics
-            )
+            handle_success_result(conversation_id, exchange_id, result)
           end
         end
         # Transaction commits here on success, rolls back on exception
       end
 
       private
+
+      def create_user_message(conversation_id, user_input)
+        # Create exchange and add user message (atomic with rest of exchange)
+        exchange_id = history.create_exchange(
+          conversation_id: conversation_id,
+          user_message: user_input
+        )
+
+        history.add_message(
+          conversation_id: conversation_id,
+          exchange_id: exchange_id,
+          actor: user_actor,
+          role: "user",
+          content: user_input
+        )
+        formatter.display_message_created(actor: user_actor, role: "user", content: user_input)
+
+        exchange_id
+      end
+
+      def prepare_history_messages(conversation_id, exchange_id, session_start_time)
+        # Get conversation history (only unredacted messages from previous exchanges)
+        all_messages = history.messages(conversation_id: conversation_id, since: session_start_time)
+
+        # Get redacted message IDs and format as ranges
+        redacted_message_ranges = nil
+        if application.redact
+          redacted_ids = all_messages.select { |m| m["redacted"] }.map { |m| m["id"] }.compact
+          redacted_message_ranges = format_id_ranges(redacted_ids.sort) if redacted_ids.any?
+        end
+
+        # Filter to only unredacted messages from PREVIOUS exchanges (exclude current exchange)
+        history_messages = all_messages.reject { |m| m["redacted"] || m["exchange_id"] == exchange_id }
+
+        [history_messages, redacted_message_ranges]
+      end
+
+      def prepare_llm_request(user_query, history_messages, redacted_ranges, tool_registry, conversation_id, client)
+        # Build context document (markdown) with RAG, tools, and user query
+        markdown_document = build_context_document(
+          user_query: user_query,
+          tool_registry: tool_registry,
+          redacted_message_ranges: redacted_ranges,
+          conversation_id: conversation_id
+        )
+
+        # Build initial messages array: history + markdown document
+        messages = history_messages.dup
+        messages << {
+          "role" => "user",
+          "content" => markdown_document
+        }
+
+        # Get tools formatted for this client
+        tools = client.format_tools(tool_registry)
+
+        # Display LLM request (verbosity level 3+)
+        formatter.display_llm_request(messages, tools, markdown_document)
+
+        [messages, tools]
+      end
+
+      def handle_error_result(exchange_id, result)
+        # Mark exchange as failed
+        history.update_exchange(
+          exchange_id: exchange_id,
+          updates: {
+            status: "failed",
+            error: result[:response]["error"].to_json,
+            completed_at: Time.now
+          }.merge(result[:metrics])
+        )
+      end
+
+      def handle_success_result(conversation_id, exchange_id, result)
+        # Save final assistant response (unredacted)
+        final_response = result[:response]
+        history.add_message(
+          conversation_id: conversation_id,
+          exchange_id: exchange_id,
+          actor: "orchestrator",
+          role: "assistant",
+          content: final_response["content"],
+          model: final_response["model"],
+          tokens_input: final_response["tokens"]["input"] || 0,
+          tokens_output: final_response["tokens"]["output"] || 0,
+          spend: final_response["spend"] || 0.0,
+          redacted: false # Final response is unredacted
+        )
+        formatter.display_message_created(
+          actor: "orchestrator",
+          role: "assistant",
+          content: final_response["content"],
+          redacted: false
+        )
+
+        # Update metrics to include final response (with nil protection)
+        metrics = result[:metrics]
+        metrics[:tokens_input] = [metrics[:tokens_input], final_response["tokens"]["input"] || 0].max
+        metrics[:tokens_output] += final_response["tokens"]["output"] || 0
+        metrics[:spend] += final_response["spend"] || 0.0
+        metrics[:message_count] += 1
+
+        # Complete the exchange
+        history.complete_exchange(
+          exchange_id: exchange_id,
+          assistant_message: final_response["content"],
+          metrics: metrics
+        )
+      end
 
       def tool_calling_loop(messages:, client:, conversation_id:, **context)
         # Extract context parameters

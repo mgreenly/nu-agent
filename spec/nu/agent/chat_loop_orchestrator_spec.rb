@@ -228,4 +228,237 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       end
     end
   end
+
+  describe "#create_user_message" do
+    it "creates exchange, adds user message, and returns exchange_id" do
+      allow(history).to receive(:create_exchange).and_return(exchange_id)
+      allow(history).to receive(:add_message)
+      allow(formatter).to receive(:display_message_created)
+
+      result = orchestrator.send(:create_user_message, conversation_id, user_input)
+
+      expect(result).to eq(exchange_id)
+
+      expect(history).to have_received(:create_exchange).with(
+        conversation_id: conversation_id,
+        user_message: user_input
+      )
+
+      expect(history).to have_received(:add_message).with(
+        conversation_id: conversation_id,
+        exchange_id: exchange_id,
+        actor: user_actor,
+        role: "user",
+        content: user_input
+      )
+
+      expect(formatter).to have_received(:display_message_created).with(
+        actor: user_actor,
+        role: "user",
+        content: user_input
+      )
+    end
+  end
+
+  describe "#prepare_history_messages" do
+    context "when redaction is disabled" do
+      it "returns filtered messages and nil redacted ranges" do
+        messages = [
+          { "id" => 1, "redacted" => false, "exchange_id" => 100 },
+          { "id" => 2, "redacted" => false, "exchange_id" => 100 },
+          { "id" => 3, "redacted" => false, "exchange_id" => exchange_id }
+        ]
+        allow(history).to receive(:messages).and_return(messages)
+        allow(application).to receive(:redact).and_return(false)
+
+        history_msgs, redacted_ranges = orchestrator.send(
+          :prepare_history_messages,
+          conversation_id,
+          exchange_id,
+          session_start_time
+        )
+
+        expect(history_msgs).to eq([
+          { "id" => 1, "redacted" => false, "exchange_id" => 100 },
+          { "id" => 2, "redacted" => false, "exchange_id" => 100 }
+        ])
+        expect(redacted_ranges).to be_nil
+      end
+    end
+
+    context "when redaction is enabled" do
+      it "returns filtered messages and formatted redacted ranges" do
+        messages = [
+          { "id" => 5, "redacted" => true, "exchange_id" => 100 },
+          { "id" => 6, "redacted" => true, "exchange_id" => 100 },
+          { "id" => 7, "redacted" => false, "exchange_id" => 101 },
+          { "id" => 8, "redacted" => false, "exchange_id" => exchange_id }
+        ]
+        allow(history).to receive(:messages).and_return(messages)
+        allow(application).to receive(:redact).and_return(true)
+
+        history_msgs, redacted_ranges = orchestrator.send(
+          :prepare_history_messages,
+          conversation_id,
+          exchange_id,
+          session_start_time
+        )
+
+        expect(history_msgs).to eq([
+          { "id" => 7, "redacted" => false, "exchange_id" => 101 }
+        ])
+        expect(redacted_ranges).to eq("5-6")
+      end
+    end
+  end
+
+  describe "#prepare_llm_request" do
+    let(:history_messages) do
+      [
+        { "role" => "user", "content" => "Previous message" },
+        { "role" => "assistant", "content" => "Previous response" }
+      ]
+    end
+    let(:redacted_ranges) { "5-6" }
+    let(:formatted_tools) { [{ "name" => "test_tool" }] }
+    let(:markdown_doc) { "# Context\n\nUser Query: #{user_input}" }
+
+    before do
+      allow(tool_registry).to receive(:available).and_return([])
+      allow(client).to receive(:format_tools).and_return(formatted_tools)
+      allow(formatter).to receive(:display_llm_request)
+    end
+
+    it "builds context document, prepares messages, gets tools, and displays request" do
+      # Mock build_context_document to return a specific value
+      expect(orchestrator).to receive(:build_context_document).with(
+        user_query: user_input,
+        tool_registry: tool_registry,
+        redacted_message_ranges: redacted_ranges,
+        conversation_id: conversation_id
+      ).and_return(markdown_doc)
+
+      messages, tools = orchestrator.send(
+        :prepare_llm_request,
+        user_input,
+        history_messages,
+        redacted_ranges,
+        tool_registry,
+        conversation_id,
+        client
+      )
+
+      # Verify messages include history + markdown doc
+      expect(messages).to eq(history_messages + [{ "role" => "user", "content" => markdown_doc }])
+
+      # Verify tools are formatted
+      expect(tools).to eq(formatted_tools)
+      expect(client).to have_received(:format_tools).with(tool_registry)
+
+      # Verify display was called
+      expect(formatter).to have_received(:display_llm_request).with(messages, formatted_tools, markdown_doc)
+    end
+  end
+
+  describe "#handle_error_result" do
+    let(:error_result) do
+      {
+        error: true,
+        response: {
+          "error" => "API Error message",
+          "content" => "Error occurred"
+        },
+        metrics: {
+          tokens_input: 10,
+          tokens_output: 0,
+          spend: 0.0,
+          message_count: 1,
+          tool_call_count: 0
+        }
+      }
+    end
+
+    it "updates exchange as failed with error and metrics" do
+      allow(history).to receive(:update_exchange)
+
+      orchestrator.send(:handle_error_result, exchange_id, error_result)
+
+      expect(history).to have_received(:update_exchange).with(
+        exchange_id: exchange_id,
+        updates: hash_including(
+          status: "failed",
+          error: '"API Error message"',
+          tokens_input: 10,
+          tokens_output: 0,
+          spend: 0.0,
+          message_count: 1,
+          tool_call_count: 0
+        )
+      )
+    end
+  end
+
+  describe "#handle_success_result" do
+    let(:success_result) do
+      {
+        error: false,
+        response: {
+          "content" => "Final response",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 20, "output" => 30 },
+          "spend" => 0.005
+        },
+        metrics: {
+          tokens_input: 10,
+          tokens_output: 15,
+          spend: 0.002,
+          message_count: 1,
+          tool_call_count: 2
+        }
+      }
+    end
+
+    it "adds final message and completes exchange with accumulated metrics" do
+      allow(history).to receive(:add_message)
+      allow(history).to receive(:complete_exchange)
+      allow(formatter).to receive(:display_message_created)
+
+      orchestrator.send(:handle_success_result, conversation_id, exchange_id, success_result)
+
+      # Verify final message was added
+      expect(history).to have_received(:add_message).with(
+        conversation_id: conversation_id,
+        exchange_id: exchange_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "Final response",
+        model: "claude-sonnet-4-5",
+        tokens_input: 20,
+        tokens_output: 30,
+        spend: 0.005,
+        redacted: false
+      )
+
+      # Verify display was called
+      expect(formatter).to have_received(:display_message_created).with(
+        actor: "orchestrator",
+        role: "assistant",
+        content: "Final response",
+        redacted: false
+      )
+
+      # Verify exchange was completed with accumulated metrics
+      expect(history).to have_received(:complete_exchange).with(
+        exchange_id: exchange_id,
+        assistant_message: "Final response",
+        metrics: hash_including(
+          tokens_input: 20,      # max(10, 20)
+          tokens_output: 45,     # 15 + 30
+          spend: 0.007,          # 0.002 + 0.005
+          message_count: 2,      # 1 + 1
+          tool_call_count: 2
+        )
+      )
+    end
+  end
 end
