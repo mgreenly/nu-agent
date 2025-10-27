@@ -215,7 +215,12 @@ module Nu
       end
 
       def display_assistant_message(message)
-        # Display any text content
+        display_content_or_warning(message)
+        display_debug_tool_calls(message)
+        display_session_statistics(message) if should_display_stats?(message)
+      end
+
+      def display_content_or_warning(message)
         if message["content"] && !message["content"].strip.empty?
           @console.puts("")
           @console.puts(message["content"])
@@ -223,44 +228,52 @@ module Nu
           # LLM generated output but content is empty (unusual case - possibly API issue)
           @console.puts("\e[90m(LLM returned empty response - this may be an API/model issue)\e[0m") if @debug
         end
+      end
 
-        # Display tool calls if present (only in debug mode)
-        if @debug && message["tool_calls"]
-          total_count = message["tool_calls"].length
-          message["tool_calls"].each_with_index do |tc, index|
-            display_tool_call(tc, index: index + 1, total: total_count)
-          end
+      def display_debug_tool_calls(message)
+        return unless @debug && message["tool_calls"]
+
+        total_count = message["tool_calls"].length
+        message["tool_calls"].each_with_index do |tc, index|
+          display_tool_call(tc, index: index + 1, total: total_count)
         end
+      end
 
-        # Only show token stats on final message (no tool calls)
-        return unless message["tokens_input"] && message["tokens_output"] && !message["tool_calls"]
+      def should_display_stats?(message)
+        message["tokens_input"] && message["tokens_output"] && !message["tool_calls"]
+      end
 
-        # Calculate elapsed time for this exchange
-        elapsed_time = nil
-        elapsed_time = Time.now - @exchange_start_time if @exchange_start_time
+      def display_session_statistics(_message)
+        elapsed_time = @exchange_start_time ? Time.now - @exchange_start_time : nil
 
-        # Query database for session totals (for billing)
         tokens = @history.session_tokens(
           conversation_id: @conversation_id,
           since: @session_start_time
         )
 
+        display_token_statistics(tokens) if @debug
+        display_spend_statistics(tokens) if @debug
+        display_elapsed_time(elapsed_time) if elapsed_time && @debug
+      end
+
+      def display_token_statistics(tokens)
         max_context = @orchestrator.max_context
         percentage = (tokens["total"].to_f / max_context * 100).round(1)
 
-        if @debug
-          @console.puts("")
-          inp = tokens["input"]
-          out = tokens["output"]
-          total = tokens["total"]
-          pct = percentage
-          max = max_context
-          @console.puts("\e[90mSession tokens: #{inp} in / #{out} out / #{total} Total / (#{pct}% of #{max})\e[0m")
-        end
-        @console.puts("\e[90mSession spend: $#{format('%.6f', tokens['spend'])}\e[0m") if @debug
-        return unless elapsed_time
+        @console.puts("")
+        inp = tokens["input"]
+        out = tokens["output"]
+        total = tokens["total"]
+        stat_msg = "Session tokens: #{inp} in / #{out} out / #{total} Total / (#{percentage}% of #{max_context})"
+        @console.puts("\e[90m#{stat_msg}\e[0m")
+      end
 
-        @console.puts("\e[90mElapsed time: #{format('%.2f', elapsed_time)}s\e[0m") if @debug
+      def display_spend_statistics(tokens)
+        @console.puts("\e[90mSession spend: $#{format('%.6f', tokens['spend'])}\e[0m")
+      end
+
+      def display_elapsed_time(elapsed_time)
+        @console.puts("\e[90mElapsed time: #{format('%.2f', elapsed_time)}s\e[0m")
       end
 
       def display_system_message(message)
