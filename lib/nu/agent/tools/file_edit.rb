@@ -12,6 +12,73 @@ module Nu
   module Agent
     module Tools
       class FileEdit
+        PARAMETERS = {
+          file: {
+            type: "string",
+            description: "Path to the file (relative to project root or absolute within project)",
+            required: true
+          },
+          old_string: {
+            type: "string",
+            description: "Exact text to find and replace (must match exactly including whitespace). " \
+                         "Use with new_string.",
+            required: false
+          },
+          new_string: {
+            type: "string",
+            description: "Replacement text. Use with old_string.",
+            required: false
+          },
+          replace_all: {
+            type: "boolean",
+            description: "Replace all occurrences of old_string (default: false, only replaces first match)",
+            required: false
+          },
+          append: {
+            type: "string",
+            description: "Content to append to end of file. Mutually exclusive with other operations.",
+            required: false
+          },
+          prepend: {
+            type: "string",
+            description: "Content to prepend to beginning of file. Mutually exclusive with other operations.",
+            required: false
+          },
+          insert_after: {
+            type: "string",
+            description: "Pattern to find. Will insert content after first match. Use with content parameter.",
+            required: false
+          },
+          insert_before: {
+            type: "string",
+            description: "Pattern to find. Will insert content before first match. Use with content parameter.",
+            required: false
+          },
+          content: {
+            type: "string",
+            description: "Content to insert when using insert_after, insert_before, insert_line, or replace_range.",
+            required: false
+          },
+          insert_line: {
+            type: "integer",
+            description: "Line number to insert content at (1-indexed). " \
+                         "Content will be inserted before this line. Use with content parameter.",
+            required: false
+          },
+          replace_range_start: {
+            type: "integer",
+            description: "Starting line number for range replacement (1-indexed, inclusive). " \
+                         "Use with replace_range_end and content.",
+            required: false
+          },
+          replace_range_end: {
+            type: "integer",
+            description: "Ending line number for range replacement (1-indexed, inclusive). " \
+                         "Use with replace_range_start and content.",
+            required: false
+          }
+        }.freeze
+
         def name
           "file_edit"
         end
@@ -39,72 +106,7 @@ module Nu
         end
 
         def parameters
-          {
-            file: {
-              type: "string",
-              description: "Path to the file (relative to project root or absolute within project)",
-              required: true
-            },
-            old_string: {
-              type: "string",
-              description: "Exact text to find and replace (must match exactly including whitespace). " \
-                           "Use with new_string.",
-              required: false
-            },
-            new_string: {
-              type: "string",
-              description: "Replacement text. Use with old_string.",
-              required: false
-            },
-            replace_all: {
-              type: "boolean",
-              description: "Replace all occurrences of old_string (default: false, only replaces first match)",
-              required: false
-            },
-            append: {
-              type: "string",
-              description: "Content to append to end of file. Mutually exclusive with other operations.",
-              required: false
-            },
-            prepend: {
-              type: "string",
-              description: "Content to prepend to beginning of file. Mutually exclusive with other operations.",
-              required: false
-            },
-            insert_after: {
-              type: "string",
-              description: "Pattern to find. Will insert content after first match. Use with content parameter.",
-              required: false
-            },
-            insert_before: {
-              type: "string",
-              description: "Pattern to find. Will insert content before first match. Use with content parameter.",
-              required: false
-            },
-            content: {
-              type: "string",
-              description: "Content to insert when using insert_after, insert_before, insert_line, or replace_range.",
-              required: false
-            },
-            insert_line: {
-              type: "integer",
-              description: "Line number to insert content at (1-indexed). " \
-                           "Content will be inserted before this line. Use with content parameter.",
-              required: false
-            },
-            replace_range_start: {
-              type: "integer",
-              description: "Starting line number for range replacement (1-indexed, inclusive). " \
-                           "Use with replace_range_end and content.",
-              required: false
-            },
-            replace_range_end: {
-              type: "integer",
-              description: "Ending line number for range replacement (1-indexed, inclusive). " \
-                           "Use with replace_range_start and content.",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)
@@ -132,20 +134,23 @@ module Nu
 
         def parse_operations(arguments)
           {
-            old_string: arguments[:old_string] || arguments["old_string"],
-            new_string: arguments[:new_string] || arguments["new_string"],
-            replace_all: arguments[:replace_all] || arguments["replace_all"] || false,
-            append: arguments[:append] || arguments["append"],
-            prepend: arguments[:prepend] || arguments["prepend"],
-            pattern: arguments[:insert_after] || arguments["insert_after"] ||
-              arguments[:insert_before] || arguments["insert_before"],
-            insert_after: arguments[:insert_after] || arguments["insert_after"],
-            insert_before: arguments[:insert_before] || arguments["insert_before"],
-            content: arguments[:content] || arguments["content"],
-            line_number: arguments[:insert_line] || arguments["insert_line"],
-            start_line: arguments[:replace_range_start] || arguments["replace_range_start"],
-            end_line: arguments[:replace_range_end] || arguments["replace_range_end"]
+            old_string: get_arg(arguments, :old_string),
+            new_string: get_arg(arguments, :new_string),
+            replace_all: get_arg(arguments, :replace_all, false),
+            append: get_arg(arguments, :append),
+            prepend: get_arg(arguments, :prepend),
+            pattern: get_arg(arguments, :insert_after) || get_arg(arguments, :insert_before),
+            insert_after: get_arg(arguments, :insert_after),
+            insert_before: get_arg(arguments, :insert_before),
+            content: get_arg(arguments, :content),
+            line_number: get_arg(arguments, :insert_line),
+            start_line: get_arg(arguments, :replace_range_start),
+            end_line: get_arg(arguments, :replace_range_end)
           }
+        end
+
+        def get_arg(arguments, key, default = nil)
+          arguments[key] || arguments[key.to_s] || default
         end
 
         def select_strategy(ops)
