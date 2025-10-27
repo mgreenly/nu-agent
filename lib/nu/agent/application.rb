@@ -4,9 +4,11 @@ module Nu
   module Agent
     class Application
       attr_reader :orchestrator, :history, :formatter, :summarizer_status,
-                  :man_indexer_status, :status_mutex, :console, :tui
+                  :man_indexer_status, :status_mutex, :console, :tui, :operation_mutex,
+                  :spellchecker, :summarizer
       attr_accessor :active_threads, :debug, :verbosity, :redact, :summarizer_enabled, :spell_check_enabled,
                     :conversation_id, :session_start_time
+      attr_writer :orchestrator, :spellchecker, :summarizer
 
       def initialize(options:)
         $stdout.sync = true
@@ -250,6 +252,8 @@ module Nu
         @command_registry.register("/summarizer", Commands::SummarizerCommand)
         @command_registry.register("/spellcheck", Commands::SpellcheckCommand)
         @command_registry.register("/reset", Commands::ResetCommand)
+        @command_registry.register("/model", Commands::ModelCommand)
+        @command_registry.register("/index-man", Commands::IndexManCommand)
       end
 
       def enter_critical_section
@@ -531,200 +535,6 @@ module Nu
           return @command_registry.execute(command_name, input, self)
         end
 
-        # Handle /model command with subcommands
-        parts = input.split
-        if parts.first&.downcase == "/model"
-
-          # /model without arguments - show current models
-          if parts.length == 1
-            @console.puts("")
-            output_line("Current Models:", type: :debug)
-            output_line("  Orchestrator:  #{@orchestrator.model}", type: :debug)
-            output_line("  Spellchecker:  #{@spellchecker.model}", type: :debug)
-            output_line("  Summarizer:    #{@summarizer.model}", type: :debug)
-            return :continue
-          end
-
-          # /model <subcommand> <name>
-          if parts.length < 3
-            @console.puts("")
-            output_line("Usage:", type: :debug)
-            output_line("  /model                        Show current models", type: :debug)
-            output_line("  /model orchestrator <name>    Set orchestrator model", type: :debug)
-            output_line("  /model spellchecker <name>    Set spellchecker model", type: :debug)
-            output_line("  /model summarizer <name>      Set summarizer model", type: :debug)
-            output_line("Example: /model orchestrator gpt-5", type: :debug)
-            output_line("Run /models to see available models", type: :debug)
-            return :continue
-          end
-
-          subcommand = parts[1].strip.downcase
-          new_model_name = parts[2].strip
-
-          case subcommand
-          when "orchestrator"
-            # Switch model under mutex (blocks if thread is running)
-            @operation_mutex.synchronize do
-              # Wait for active threads to complete
-              unless active_threads.empty?
-                still_running = active_threads.any? do |thread|
-                  !thread.join(0.05)
-                end
-
-                if still_running
-                  output_line("Waiting for current operation to complete...", type: :debug)
-                  active_threads.each(&:join)
-                end
-              end
-
-              # Try to create new client
-              begin
-                new_client = ClientFactory.create(new_model_name)
-              rescue Error => e
-                output_line("Error: #{e.message}", type: :error)
-                return :continue
-              end
-
-              # Switch both orchestrator and formatter
-              @orchestrator = new_client
-              @formatter.orchestrator = new_client
-              @history.set_config("model_orchestrator", new_model_name)
-
-              @console.puts("")
-              output_line("Switched orchestrator to: #{@orchestrator.name} (#{@orchestrator.model})", type: :debug)
-            end
-
-          when "spellchecker"
-            begin
-              # Create new client
-              new_client = ClientFactory.create(new_model_name)
-              @spellchecker = new_client
-              @history.set_config("model_spellchecker", new_model_name)
-              @console.puts("")
-              output_line("Switched spellchecker to: #{new_model_name}", type: :debug)
-            rescue Error => e
-              @console.puts("")
-              output_line("Error: #{e.message}", type: :error)
-            end
-
-          when "summarizer"
-            begin
-              # Create new client
-              new_client = ClientFactory.create(new_model_name)
-              @summarizer = new_client
-              @history.set_config("model_summarizer", new_model_name)
-              @console.puts("")
-              output_line("Switched summarizer to: #{new_model_name}", type: :debug)
-              output_line("Note: Change takes effect at the start of the next session (/reset)", type: :debug)
-            rescue Error => e
-              @console.puts("")
-              output_line("Error: #{e.message}", type: :error)
-            end
-
-          else
-            @console.puts("")
-            output_line("Unknown subcommand: #{subcommand}", type: :debug)
-            output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :debug)
-          end
-
-          return :continue
-        end
-
-        # Handle /index-man [on|off|reset] command
-        if input.downcase.start_with?("/index-man")
-          parts = input.split(" ", 2)
-          if parts.length < 2 || parts[1].strip.empty?
-            @console.puts("")
-            output_line("Usage: /index-man <on|off|reset>", type: :debug)
-            enabled = history.get_config("index_man_enabled") == "true"
-            output_line("Current: index-man=#{enabled ? 'on' : 'off'}", type: :debug)
-
-            # Show status if available
-            @status_mutex.synchronize do
-              status = @man_indexer_status
-              if status["running"]
-                output_line("Status: running (#{status['completed']}/#{status['total']} man pages)", type: :debug)
-                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
-                output_line("Session spend: $#{format('%.6f', status['session_spend'])}", type: :debug)
-              elsif status["total"].positive?
-                output_line("Status: completed (#{status['completed']}/#{status['total']} man pages)", type: :debug)
-                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
-                output_line("Session spend: $#{format('%.6f', status['session_spend'])}", type: :debug)
-              end
-            end
-
-            return :continue
-          end
-
-          setting = parts[1].strip.downcase
-          case setting
-          when "on"
-            history.set_config("index_man_enabled", "true")
-            @console.puts("")
-            output_line("index-man=on", type: :debug)
-            output_line("Starting man page indexer...", type: :debug)
-
-            # Start the indexer worker
-            start_man_indexer_worker
-
-            # Show initial status
-            sleep(0.5) # Give it a moment to start
-            @status_mutex.synchronize do
-              status = @man_indexer_status
-              output_line("Indexing #{status['total']} man pages...", type: :debug)
-              output_line("This will take approximately #{(status['total'] / 10.0 / 60.0).ceil} minutes", type: :debug)
-            end
-
-          when "off"
-            history.set_config("index_man_enabled", "false")
-            @console.puts("")
-            output_line("index-man=off", type: :debug)
-            output_line("Indexer will stop after current batch completes", type: :debug)
-
-            # Show final status
-            @status_mutex.synchronize do
-              status = @man_indexer_status
-              if status["completed"].positive?
-                output_line("Indexed: #{status['completed']}/#{status['total']} man pages", type: :debug)
-                output_line("Failed: #{status['failed']}, Skipped: #{status['skipped']}", type: :debug)
-                output_line("Session spend: $#{format('%.6f', status['session_spend'])}", type: :debug)
-              end
-            end
-          when "reset"
-            # Stop indexing if running
-            if history.get_config("index_man_enabled") == "true"
-              history.set_config("index_man_enabled", "false")
-              @console.puts("")
-              output_line("Stopping indexer before reset...", type: :debug)
-              sleep(1) # Give worker time to stop
-            end
-
-            # Get count before clearing
-            stats = history.embedding_stats(kind: "man_page")
-            count = stats.find { |s| s["kind"] == "man_page" }&.fetch("count", 0) || 0
-
-            # Clear all man_page embeddings
-            history.clear_embeddings(kind: "man_page")
-
-            # Reset status counters
-            @status_mutex.synchronize do
-              @man_indexer_status["total"] = 0
-              @man_indexer_status["completed"] = 0
-              @man_indexer_status["failed"] = 0
-              @man_indexer_status["skipped"] = 0
-              @man_indexer_status["session_spend"] = 0.0
-              @man_indexer_status["session_tokens"] = 0
-            end
-
-            output_line("Reset complete: Cleared #{count} man page embeddings", type: :debug)
-          else
-            @console.puts("")
-            output_line("Invalid option. Use: /index-man <on|off|reset>", type: :debug)
-          end
-
-          return :continue
-        end
-
         # Unknown command
         @console.puts("")
         output_line("Unknown command: #{input}", type: :debug)
@@ -934,6 +744,35 @@ module Nu
         end
       end
 
+      def start_man_indexer_worker
+        # Capture values for thread
+        @operation_mutex.synchronize do
+          # Create embeddings client
+          begin
+            embeddings_client = Clients::OpenAIEmbeddings.new
+          rescue StandardError => e
+            output_line("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client", type: :error)
+            output_line("  #{e.message}", type: :error)
+            output_line("Man page indexing requires OpenAI embeddings API access.", type: :error)
+            output_line("Please ensure your OpenAI API key has access to text-embedding-3-small.", type: :error)
+            @status_mutex.synchronize { @man_indexer_status["running"] = false }
+            return
+          end
+
+          # Create indexer and start worker
+          indexer = ManPageIndexer.new(
+            history: history,
+            embeddings_client: embeddings_client,
+            application: self,
+            status: @man_indexer_status,
+            status_mutex: @status_mutex
+          )
+
+          thread = indexer.start_worker
+          active_threads << thread
+        end
+      end
+
       private
 
       def setup_signal_handlers
@@ -1001,35 +840,6 @@ module Nu
           end
         rescue StandardError
           "unknown"
-        end
-      end
-
-      def start_man_indexer_worker
-        # Capture values for thread
-        @operation_mutex.synchronize do
-          # Create embeddings client
-          begin
-            embeddings_client = Clients::OpenAIEmbeddings.new
-          rescue StandardError => e
-            output_line("[Man Indexer] ERROR: Failed to create OpenAI Embeddings client", type: :error)
-            output_line("  #{e.message}", type: :error)
-            output_line("Man page indexing requires OpenAI embeddings API access.", type: :error)
-            output_line("Please ensure your OpenAI API key has access to text-embedding-3-small.", type: :error)
-            @status_mutex.synchronize { @man_indexer_status["running"] = false }
-            return
-          end
-
-          # Create indexer and start worker
-          indexer = ManPageIndexer.new(
-            history: history,
-            embeddings_client: embeddings_client,
-            application: self,
-            status: @man_indexer_status,
-            status_mutex: @status_mutex
-          )
-
-          thread = indexer.start_worker
-          active_threads << thread
         end
       end
 
