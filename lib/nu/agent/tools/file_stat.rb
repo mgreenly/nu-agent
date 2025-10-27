@@ -27,81 +27,63 @@ module Nu
         def execute(arguments:, **)
           path = arguments[:path] || arguments["path"]
 
-          if path.nil? || path.empty?
-            return {
-              status: "error",
-              error: "path is required"
-            }
-          end
+          return error_response("path is required") if path.nil? || path.empty?
 
-          # Resolve and validate path
           resolved_path = resolve_path(path)
           validate_path(resolved_path)
 
-          # Debug output
-          context["application"]
-
           begin
-            unless File.exist?(resolved_path)
-              return {
-                status: "error",
-                error: "Path not found: #{path}"
-              }
-            end
+            return error_response("Path not found: #{path}") unless File.exist?(resolved_path)
 
             stat = File.stat(resolved_path)
+            file_type = determine_file_type(resolved_path)
 
-            # Determine file type
-            file_type = if File.directory?(resolved_path)
-                          "directory"
-                        elsif File.file?(resolved_path)
-                          "file"
-                        elsif File.symlink?(resolved_path)
-                          "symlink"
-                        else
-                          "other"
-                        end
-
-            # Format permissions as octal string (e.g., "0755")
-            permissions = format("%o", stat.mode & 0o777)
-
-            # Build result
-            result = {
-              status: "success",
-              path: path,
-              type: file_type,
-              size_bytes: stat.size,
-              permissions: permissions,
-              readable: File.readable?(resolved_path),
-              writable: File.writable?(resolved_path),
-              executable: File.executable?(resolved_path),
-              modified_at: stat.mtime.iso8601,
-              accessed_at: stat.atime.iso8601,
-              created_at: stat.ctime.iso8601
-            }
-
-            # Add human-readable size
-            result[:size_human] = human_readable_size(stat.size)
-
-            # For directories, include entry count
-            if file_type == "directory"
-              entry_count = Dir.entries(resolved_path).length - 2 # Exclude . and ..
-              result[:entries] = entry_count
-            end
-
-            # For symlinks, include target
-            result[:symlink_target] = File.readlink(resolved_path) if File.symlink?(resolved_path)
+            result = build_base_result(path, resolved_path, stat, file_type)
+            add_extra_attributes(result, resolved_path, file_type, stat.size)
 
             result
           rescue StandardError => e
-            {
-              status: "error",
-              error: "Failed to get file stats: #{e.message}"
-            }
+            error_response("Failed to get file stats: #{e.message}")
           end
         end
 
         private
+
+        def error_response(message)
+          { status: "error", error: message }
+        end
+
+        def determine_file_type(resolved_path)
+          return "directory" if File.directory?(resolved_path)
+          return "file" if File.file?(resolved_path)
+          return "symlink" if File.symlink?(resolved_path)
+
+          "other"
+        end
+
+        def build_base_result(path, resolved_path, stat, file_type)
+          {
+            status: "success",
+            path: path,
+            type: file_type,
+            size_bytes: stat.size,
+            permissions: format("%o", stat.mode & 0o777),
+            readable: File.readable?(resolved_path),
+            writable: File.writable?(resolved_path),
+            executable: File.executable?(resolved_path),
+            modified_at: stat.mtime.iso8601,
+            accessed_at: stat.atime.iso8601,
+            created_at: stat.ctime.iso8601
+          }
+        end
+
+        def add_extra_attributes(result, resolved_path, file_type, size)
+          result[:size_human] = human_readable_size(size)
+
+          result[:entries] = Dir.entries(resolved_path).length - 2 if file_type == "directory"
+
+          result[:symlink_target] = File.readlink(resolved_path) if File.symlink?(resolved_path)
+        end
 
         def resolve_path(file_path)
           if file_path.start_with?("/")

@@ -61,120 +61,110 @@ module Nu
         end
 
         def execute(arguments:, **)
-          file_path = arguments[:file] || arguments["file"]
-          start_line = arguments[:start_line] || arguments["start_line"]
-          end_line = arguments[:end_line] || arguments["end_line"]
-          offset = arguments[:offset] || arguments["offset"]
-          limit = arguments[:limit] || arguments["limit"] || 2000
-          show_line_numbers = arguments[:show_line_numbers] || arguments["show_line_numbers"]
-          show_line_numbers = true if show_line_numbers.nil? # Default to true
+          args = parse_arguments(arguments)
 
-          # Validate required parameters
-          if file_path.nil? || file_path.empty?
-            return {
-              error: "file path is required",
-              content: nil
-            }
-          end
+          return error_response("file path is required") if args[:file_path].nil? || args[:file_path].empty?
 
-          # Resolve file path
-          resolved_path = resolve_path(file_path)
+          resolved_path = resolve_path(args[:file_path])
 
           begin
-            # Check if file exists and is readable
-            unless File.exist?(resolved_path)
-              return {
-                error: "File not found: #{file_path}",
-                content: nil
-              }
-            end
+            error = validate_file(resolved_path, args[:file_path])
+            return error if error
 
-            unless File.file?(resolved_path)
-              return {
-                error: "Not a file: #{file_path}",
-                content: nil
-              }
-            end
-
-            unless File.readable?(resolved_path)
-              return {
-                error: "File not readable: #{file_path}",
-                content: nil
-              }
-            end
-
-            # Read file lines
             lines = File.readlines(resolved_path)
-            total_lines = lines.length
+            selected_lines = select_lines(lines, args)
+            content = format_content(selected_lines, args)
 
-            # Determine which lines to return
-            selected_lines = if start_line && end_line
-                               # Range: start_line to end_line (1-indexed, inclusive)
-                               # Clamp to valid range instead of erroring
-                               start_idx = (start_line - 1).clamp(0, total_lines - 1)
-                               end_idx = (end_line - 1).clamp(0, total_lines - 1)
-
-                               # Return empty if start is beyond file
-                               if start_line - 1 >= total_lines
-                                 []
-                               else
-                                 lines[start_idx..end_idx]
-                               end
-                             elsif offset
-                               # Offset-based (0-indexed)
-                               # Return empty if offset is beyond file, otherwise return what exists
-                               if offset >= total_lines
-                                 []
-                               else
-                                 lines[offset, limit] || []
-                               end
-                             else
-                               # Just limit (from beginning)
-                               lines.take(limit)
-                             end
-
-            # Format with line numbers if requested
-            if show_line_numbers
-              # Calculate starting line number for display
-              first_line_num = if start_line
-                                 start_line
-                               elsif offset
-                                 offset + 1 # Convert 0-indexed to 1-indexed
-                               else
-                                 1
-                               end
-
-              # Format like cat -n (line number, tab, content)
-              formatted_lines = selected_lines.each_with_index.map do |line, idx|
-                line_num = first_line_num + idx
-                # Right-align line numbers to 6 characters, then tab, then content
-                format("%<num>6d\t%<line>s", num: line_num, line: line)
-              end
-
-              content = formatted_lines.join
-            else
-              content = selected_lines.join
-            end
-
-            {
-              file: file_path,
-              total_lines: total_lines,
-              lines_read: selected_lines.length,
-              content: content,
-              truncated: selected_lines.length >= limit && selected_lines.length < total_lines
-            }
+            build_success_response(args[:file_path], lines.length, selected_lines.length, content, args[:limit])
           rescue StandardError => e
-            {
-              error: "Failed to read file: #{e.message}",
-              content: nil
-            }
+            error_response("Failed to read file: #{e.message}")
           end
         end
 
         private
 
+        def parse_arguments(arguments)
+          {
+            file_path: arguments[:file] || arguments["file"],
+            start_line: arguments[:start_line] || arguments["start_line"],
+            end_line: arguments[:end_line] || arguments["end_line"],
+            offset: arguments[:offset] || arguments["offset"],
+            limit: arguments[:limit] || arguments["limit"] || 2000,
+            show_line_numbers: arguments[:show_line_numbers] || arguments["show_line_numbers"] || true
+          }
+        end
+
+        def error_response(message)
+          { error: message, content: nil }
+        end
+
+        def validate_file(resolved_path, file_path)
+          return error_response("File not found: #{file_path}") unless File.exist?(resolved_path)
+          return error_response("Not a file: #{file_path}") unless File.file?(resolved_path)
+          return error_response("File not readable: #{file_path}") unless File.readable?(resolved_path)
+
+          nil
+        end
+
+        def select_lines(lines, args)
+          total_lines = lines.length
+
+          if args[:start_line] && args[:end_line]
+            select_line_range(lines, args[:start_line], args[:end_line], total_lines)
+          elsif args[:offset]
+            select_lines_from_offset(lines, args[:offset], args[:limit], total_lines)
+          else
+            lines.take(args[:limit])
+          end
+        end
+
+        def select_line_range(lines, start_line, end_line, total_lines)
+          return [] if start_line - 1 >= total_lines
+
+          start_idx = (start_line - 1).clamp(0, total_lines - 1)
+          end_idx = (end_line - 1).clamp(0, total_lines - 1)
+          lines[start_idx..end_idx]
+        end
+
+        def select_lines_from_offset(lines, offset, limit, total_lines)
+          return [] if offset >= total_lines
+
+          lines[offset, limit] || []
+        end
+
+        def format_content(selected_lines, args)
+          return selected_lines.join unless args[:show_line_numbers]
+
+          first_line_num = calculate_first_line_number(args)
+          format_with_line_numbers(selected_lines, first_line_num)
+        end
+
+        def calculate_first_line_number(args)
+          return args[:start_line] if args[:start_line]
+          return args[:offset] + 1 if args[:offset]
+
+          1
+        end
+
+        def format_with_line_numbers(lines, first_line_num)
+          formatted_lines = lines.each_with_index.map do |line, idx|
+            line_num = first_line_num + idx
+            format("%<num>6d\t%<line>s", num: line_num, line: line)
+          end
+          formatted_lines.join
+        end
+
+        def build_success_response(file_path, total_lines, lines_read, content, limit)
+          {
+            file: file_path,
+            total_lines: total_lines,
+            lines_read: lines_read,
+            content: content,
+            truncated: lines_read >= limit && lines_read < total_lines
+          }
+        end
+
         def resolve_path(file_path)
-          # If relative path, make it relative to current directory
           if file_path.start_with?("/")
             File.expand_path(file_path)
           else
