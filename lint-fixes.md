@@ -1,13 +1,13 @@
 # RuboCop Lint Fixes Progress
 
 **Current Status (as of 2025-10-26 - Session 2):**
-- Total offenses: 166 (down from 289 initial - 43% reduction)
-- Application.rb: 531 lines (down from 1,236 - 57% reduction)
+- Total offenses: 167 (down from 289 initial - 42% reduction)
+- Application.rb: 481 lines (down from 1,236 - 61% reduction!)
 - handle_command: 12 lines, no violations (down from 312 lines, complexity 70 - 96% reduction!)
 - initialize: 77 lines, AbcSize 34.73 (down from 90 lines, AbcSize 52.96 - 35% complexity reduction!)
-- Tests: 397 passing (up from 260 - 137 new specs added)
+- Tests: 413 passing (up from 260 - 153 new specs added)
 
-**Latest Achievement:** ✅ Phase 2 COMPLETE (4/4 extractions done!)
+**Latest Achievement:** ✅ Phase 2 + Additional Extractions COMPLETE (7/7 done!)
 
 ## ✅ Completed Phases
 
@@ -167,6 +167,35 @@
   - ✅ Testability - Configuration logic tested independently
   - ✅ Maintainability - Easier to modify configuration behavior
   - ✅ Reduced initialize complexity - AbcSize significantly improved
+
+**✅ Additional Extractions: Three More Application Methods (2025-10-26 Session 2)**
+- **Approach:** Continue extracting operation/display methods following proven pattern
+- **Status:** 3/3 additional extractions complete!
+- **Methods Extracted:**
+  1. **print_tools → ToolsDisplayFormatter** (17 → 3 lines, 82% reduction)
+     - Location: lib/nu/agent/tools_display_formatter.rb (28 lines, 6 specs)
+     - Eliminated display logic from Application
+  2. **run_fix → DatabaseFixRunner** (32 → 1 line, 97% reduction)
+     - Location: lib/nu/agent/database_fix_runner.rb (46 lines, 5 specs)
+     - Eliminated AbcSize violation, isolated corruption fix logic
+  3. **run_migrate_exchanges → ExchangeMigrationRunner** (26 → 1 line, 96% reduction)
+     - Location: lib/nu/agent/exchange_migration_runner.rb (40 lines, 5 specs)
+     - Eliminated AbcSize violation, isolated migration logic
+- **Impact:**
+  - Application.rb: **531 → 481 lines** (50 lines / 9% reduction)
+  - Total offenses: **166 → 167** (+1, essentially unchanged)
+  - Tests: **397 → 413** (16 new specs, all passing)
+- **Benefits:**
+  - ✅ Single Responsibility - Each runner/formatter has clear purpose
+  - ✅ Testability - Operations tested independently
+  - ✅ Consistency - Follows established extraction pattern
+  - ✅ Maintainability - Easy to locate and modify specific operations
+
+**Session 2 Total Impact:**
+- Application.rb: **1,236 → 481 lines** (755 lines / **61% reduction!**)
+- Total offenses: **289 → 167** (122 offenses / **42% reduction**)
+- Tests: **260 → 413** (153 new specs / **59% increase**)
+- **7 extractions** completed in single session (Phase 2 + 3 additional)
 
 ## 🎯 Recommended Refactoring Order (Next Steps)
 

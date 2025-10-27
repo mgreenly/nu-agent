@@ -522,63 +522,11 @@ module Nu
       public
 
       def run_fix
-        @console.puts("")
-        output_line("Scanning database for corruption...", type: :debug)
-
-        corrupted = history.find_corrupted_messages
-
-        if corrupted.empty?
-          output_line("✓ No corruption found", type: :debug)
-          return
-        end
-
-        output_line("Found #{corrupted.length} corrupted message(s):", type: :debug)
-        corrupted.each do |msg|
-          output_line("  • Message #{msg['id']}: #{msg['tool_name']} with redacted arguments (#{msg['created_at']})",
-                      type: :debug)
-        end
-
-        if @tui&.active
-          response = @tui.readline("Delete these messages? [y/N] ").chomp.downcase
-        else
-          print "\nDelete these messages? [y/N] "
-          response = gets.chomp.downcase
-        end
-
-        if response == "y"
-          ids = corrupted.map { |m| m["id"] }
-          count = history.fix_corrupted_messages(ids)
-          output_line("✓ Deleted #{count} corrupted message(s)", type: :debug)
-        else
-          output_line("Skipped", type: :debug)
-        end
+        DatabaseFixRunner.run(self)
       end
 
       def run_migrate_exchanges
-        @console.puts("")
-        output_line("This will analyze all messages and group them into exchanges.", type: :debug)
-        output_line("Existing exchanges will NOT be affected.", type: :debug)
-
-        if @tui&.active
-          response = @tui.readline("Continue with migration? [y/N] ").chomp.downcase
-        else
-          print "Continue with migration? [y/N] "
-          response = gets.chomp.downcase
-        end
-
-        return unless response == "y"
-
-        output_line("Migrating exchanges...", type: :debug)
-
-        start_time = Time.now
-        stats = history.migrate_exchanges
-        elapsed = Time.now - start_time
-
-        output_line("Migration complete!", type: :debug)
-        output_line("  Conversations processed: #{stats[:conversations]}", type: :debug)
-        output_line("  Exchanges created: #{stats[:exchanges_created]}", type: :debug)
-        output_line("  Messages updated: #{stats[:messages_updated]}", type: :debug)
-        output_line("  Time elapsed: #{format('%.2f', elapsed)}s", type: :debug)
+        ExchangeMigrationRunner.run(self)
       end
 
       def print_info
@@ -592,21 +540,8 @@ module Nu
       end
 
       def print_tools
-        tool_registry = ToolRegistry.new
-
-        @console.puts("")
-        output_line("Available Tools:", type: :debug)
-        tool_registry.all.each do |tool|
-          # Get first sentence of description
-          desc = tool.description.split(/\.\s+/).first || tool.description
-          desc = desc.strip
-          desc += "." unless desc.end_with?(".")
-
-          # Check if tool has credentials (if applicable)
-          desc += " (disabled)" if tool.respond_to?(:available?) && !tool.available?
-
-          output_line("  #{tool.name.ljust(25)} - #{desc}", type: :debug)
-        end
+        tools_text = ToolsDisplayFormatter.build
+        output_lines(*tools_text.lines.map(&:chomp), type: :debug)
       end
 
       def start_summarization_worker
