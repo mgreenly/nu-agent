@@ -65,9 +65,7 @@ module Nu
 
         def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
           formatted_messages = format_messages(messages, system_prompt: system_prompt)
-
-          request = { contents: formatted_messages }
-          request[:tools] = [{ "functionDeclarations" => tools }] if tools && !tools.empty?
+          request = build_request(formatted_messages, tools)
 
           begin
             result = @client.generate_content(request)
@@ -75,31 +73,7 @@ module Nu
             return format_error_response(e)
           end
 
-          # Extract content and tool calls
-          parts = result.dig("candidates", 0, "content", "parts") || []
-          text_content = parts.find { |p| p["text"] }&.dig("text")
-          tool_calls = parts.select { |p| p["functionCall"] }.map do |fc|
-            {
-              "id" => SecureRandom.uuid, # Gemini doesn't provide IDs, generate one
-              "name" => fc["functionCall"]["name"],
-              "arguments" => fc["functionCall"]["args"]
-            }
-          end
-
-          input_tokens = result.dig("usageMetadata", "promptTokenCount")
-          output_tokens = result.dig("usageMetadata", "candidatesTokenCount")
-
-          {
-            "content" => text_content,
-            "tool_calls" => tool_calls.empty? ? nil : tool_calls,
-            "model" => model,
-            "tokens" => {
-              "input" => input_tokens,
-              "output" => output_tokens
-            },
-            "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
-            "finish_reason" => result.dig("candidates", 0, "finishReason")
-          }
+          parse_api_response(result)
         end
 
         def name
@@ -133,6 +107,43 @@ module Nu
         end
 
         private
+
+        def build_request(formatted_messages, tools)
+          request = { contents: formatted_messages }
+          request[:tools] = [{ "functionDeclarations" => tools }] if tools && !tools.empty?
+          request
+        end
+
+        def parse_api_response(result)
+          parts = result.dig("candidates", 0, "content", "parts") || []
+          text_content = parts.find { |p| p["text"] }&.dig("text")
+          tool_calls = extract_tool_calls(parts)
+
+          input_tokens = result.dig("usageMetadata", "promptTokenCount")
+          output_tokens = result.dig("usageMetadata", "candidatesTokenCount")
+
+          {
+            "content" => text_content,
+            "tool_calls" => tool_calls.empty? ? nil : tool_calls,
+            "model" => model,
+            "tokens" => {
+              "input" => input_tokens,
+              "output" => output_tokens
+            },
+            "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
+            "finish_reason" => result.dig("candidates", 0, "finishReason")
+          }
+        end
+
+        def extract_tool_calls(parts)
+          parts.select { |p| p["functionCall"] }.map do |fc|
+            {
+              "id" => SecureRandom.uuid, # Gemini doesn't provide IDs, generate one
+              "name" => fc["functionCall"]["name"],
+              "arguments" => fc["functionCall"]["args"]
+            }
+          end
+        end
 
         def format_error_response(error)
           status = error.response&.dig(:status) || "unknown"
@@ -174,11 +185,6 @@ module Nu
 
         def format_messages(messages, system_prompt:)
           # Convert from internal format to Gemini format
-          # Internal: { 'actor' => '...', 'role' => 'user'|'assistant'|'tool',
-          #             'content' => '...', 'tool_calls' => [...], 'tool_result' => {...} }
-          # Gemini: { role: 'user'|'model'|'function',
-          #           parts: { text: '...' } or { functionCall/functionResponse: {...} } }
-
           # Gemini doesn't have a separate system parameter, so we prepend the system prompt
           # as the first user message
           formatted = []
@@ -186,51 +192,66 @@ module Nu
           formatted << { role: "user", parts: [{ text: system_prompt }] } if system_prompt && !system_prompt.empty?
 
           messages.each do |msg|
-            # Handle tool result messages
-            if msg["tool_result"]
-              formatted << {
-                role: "function",
-                parts: [{
-                  functionResponse: {
-                    name: msg["tool_result"]["name"],
-                    response: msg["tool_result"]["result"]
-                  }
-                }]
-              }
-            # Handle messages with tool calls
-            elsif msg["tool_calls"]
-              # Build parts array with text and functionCall
-              parts = []
-              parts << { text: msg["content"] } if msg["content"] && !msg["content"].empty?
-              msg["tool_calls"].each do |tc|
-                parts << {
-                  functionCall: {
-                    name: tc["name"],
-                    args: tc["arguments"]
-                  }
-                }
-              end
-              formatted << {
-                role: "model",
-                parts: parts
-              }
-            # Regular text message
-            else
-              # Translate our domain model to Gemini's format
-              # Our 'assistant' becomes 'model', 'tool' becomes 'function'
-              role = case msg["role"]
-                     when "assistant" then "model"
-                     when "tool" then "function"
-                     else msg["role"]
-                     end
-              formatted << {
-                role: role,
-                parts: [{ text: msg["content"] }]
-              }
-            end
+            formatted << format_single_message(msg)
           end
 
           formatted
+        end
+
+        def format_single_message(msg)
+          if msg["tool_result"]
+            format_tool_result_message(msg)
+          elsif msg["tool_calls"]
+            format_tool_call_message(msg)
+          else
+            format_text_message(msg)
+          end
+        end
+
+        def format_tool_result_message(msg)
+          {
+            role: "function",
+            parts: [{
+              functionResponse: {
+                name: msg["tool_result"]["name"],
+                response: msg["tool_result"]["result"]
+              }
+            }]
+          }
+        end
+
+        def format_tool_call_message(msg)
+          parts = []
+          parts << { text: msg["content"] } if msg["content"] && !msg["content"].empty?
+
+          msg["tool_calls"].each do |tc|
+            parts << {
+              functionCall: {
+                name: tc["name"],
+                args: tc["arguments"]
+              }
+            }
+          end
+
+          {
+            role: "model",
+            parts: parts
+          }
+        end
+
+        def format_text_message(msg)
+          # Translate our domain model to Gemini's format
+          # Our 'assistant' becomes 'model', 'tool' becomes 'function'
+          role = case msg["role"]
+                 when "assistant" then "model"
+                 when "tool" then "function"
+                 else msg["role"]
+                 end
+
+          {
+            role: role,
+            parts: [{ text: msg["content"] }]
+          }
         end
       end
     end
