@@ -9,70 +9,12 @@ module Nu
                   :operation_mutex
 
       def initialize(options:)
-        $stdout.sync = true
-        @session_start_time = Time.now
-        @options = options
-        @user_actor = ENV["USER"] || "user"
-        @shutdown = false
-        @critical_sections = 0
-        @critical_mutex = Mutex.new
-        @operation_mutex = Mutex.new
-        @history = History.new
-        @input_processor = InputProcessor.new(application: self, user_actor: @user_actor)
-        # Load configuration (models and settings)
-        config = ConfigurationLoader.load(history: @history, options: @options)
-        @orchestrator = config.orchestrator
-        @spellchecker = config.spellchecker
-        @summarizer = config.summarizer
-        @debug = config.debug
-        @verbosity = config.verbosity
-        @redact = config.redact
-        @summarizer_enabled = config.summarizer_enabled
-        @spell_check_enabled = config.spell_check_enabled
-
-        # Initialize ConsoleIO (new unified console system)
-        @console = ConsoleIO.new(db_history: @history, debug: @debug)
-        @conversation_id = @history.create_conversation
-        @formatter = Formatter.new(
-          history: @history,
-          session_start_time: @session_start_time,
-          conversation_id: @conversation_id,
-          orchestrator: @orchestrator,
-          debug: @debug,
-          console: @console,
-          application: self
-        )
-        @active_threads = []
-        @summarizer_status = {
-          "running" => false,
-          "total" => 0,
-          "completed" => 0,
-          "failed" => 0,
-          "current_conversation_id" => nil,
-          "last_summary" => nil,
-          "spend" => 0.0
-        }
-        @man_indexer_status = {
-          "running" => false,
-          "total" => 0,
-          "completed" => 0,
-          "failed" => 0,
-          "skipped" => 0,
-          "current_batch" => nil,
-          "session_spend" => 0.0,
-          "session_tokens" => 0
-        }
-        @status_mutex = Mutex.new
-
-        # Initialize index_man_enabled to false on startup
-        @history.set_config("index_man_enabled", "false")
-
-        # Initialize command registry
-        @command_registry = Commands::CommandRegistry.new
-        register_commands
-
-        # Start background summarization worker
-        start_summarization_worker
+        initialize_state(options)
+        load_and_apply_configuration
+        initialize_console_system
+        initialize_status_tracking
+        initialize_commands
+        start_background_workers
       end
 
       def run
@@ -131,6 +73,87 @@ module Nu
       end
 
       private
+
+      def initialize_state(options)
+        $stdout.sync = true
+        @session_start_time = Time.now
+        @options = options
+        @user_actor = ENV["USER"] || "user"
+        @shutdown = false
+        @critical_sections = 0
+        @critical_mutex = Mutex.new
+        @operation_mutex = Mutex.new
+        @history = History.new
+        @input_processor = InputProcessor.new(application: self, user_actor: @user_actor)
+      end
+
+      def load_and_apply_configuration
+        config = ConfigurationLoader.load(history: @history, options: @options)
+        @orchestrator = config.orchestrator
+        @spellchecker = config.spellchecker
+        @summarizer = config.summarizer
+        @debug = config.debug
+        @verbosity = config.verbosity
+        @redact = config.redact
+        @summarizer_enabled = config.summarizer_enabled
+        @spell_check_enabled = config.spell_check_enabled
+      end
+
+      def initialize_console_system
+        @console = ConsoleIO.new(db_history: @history, debug: @debug)
+        @conversation_id = @history.create_conversation
+        @formatter = Formatter.new(
+          history: @history,
+          session_start_time: @session_start_time,
+          conversation_id: @conversation_id,
+          orchestrator: @orchestrator,
+          debug: @debug,
+          console: @console,
+          application: self
+        )
+      end
+
+      def initialize_status_tracking
+        @active_threads = []
+        @summarizer_status = build_summarizer_status
+        @man_indexer_status = build_man_indexer_status
+        @status_mutex = Mutex.new
+      end
+
+      def build_summarizer_status
+        {
+          "running" => false,
+          "total" => 0,
+          "completed" => 0,
+          "failed" => 0,
+          "current_conversation_id" => nil,
+          "last_summary" => nil,
+          "spend" => 0.0
+        }
+      end
+
+      def build_man_indexer_status
+        {
+          "running" => false,
+          "total" => 0,
+          "completed" => 0,
+          "failed" => 0,
+          "skipped" => 0,
+          "current_batch" => nil,
+          "session_spend" => 0.0,
+          "session_tokens" => 0
+        }
+      end
+
+      def initialize_commands
+        @history.set_config("index_man_enabled", "false")
+        @command_registry = Commands::CommandRegistry.new
+        register_commands
+      end
+
+      def start_background_workers
+        start_summarization_worker
+      end
 
       def register_commands
         @command_registry.register("/help", Commands::HelpCommand)
