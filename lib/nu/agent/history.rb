@@ -9,6 +9,18 @@ module Nu
         @db_path = db_path
         @connection_mutex = Mutex.new # Only for managing connection pool
         ensure_db_directory(db_path)
+
+        # Check for leftover WAL file (indicates unclean shutdown)
+        wal_path = "#{db_path}.wal"
+        wal_existed = File.exist?(wal_path)
+        wal_size = wal_existed ? File.size(wal_path) : 0
+
+        if wal_existed && wal_size > 0
+          warn "⚠️  WAL file detected (#{format_bytes(wal_size)}): Previous shutdown may have been unclean"
+          warn "   Database will automatically recover on connect..."
+        end
+
+        # Open database (triggers automatic WAL replay if needed)
         @db = DuckDB::Database.open(db_path)
         @connections = {}
         @schema_manager = SchemaManager.new(connection)
@@ -22,6 +34,16 @@ module Nu
 
         # Setup schema using main thread's connection
         @schema_manager.setup_schema
+
+        # If WAL was present, confirm recovery (WAL should be truncated/removed now)
+        if wal_existed && wal_size > 0
+          current_wal_size = File.exist?(wal_path) ? File.size(wal_path) : 0
+          if current_wal_size == 0 || !File.exist?(wal_path)
+            warn "✅ Database recovery completed successfully"
+          else
+            warn "⚠️  WAL file still present (#{format_bytes(current_wal_size)}) - this is normal during active use"
+          end
+        end
       end
 
       # Get connection for current thread
@@ -302,6 +324,16 @@ module Nu
       end
 
       def close
+        # Explicitly checkpoint before closing to ensure WAL is flushed
+        # Do this BEFORE synchronizing to avoid deadlock
+        begin
+          conn = @connection_mutex.synchronize { @connections[Thread.current.object_id] }
+          conn&.query("CHECKPOINT")
+        rescue StandardError => e
+          # Log but don't fail - db.close will checkpoint anyway
+          warn "Warning: Checkpoint failed during shutdown: #{e.message}"
+        end
+
         @connection_mutex.synchronize do
           @connections.each_value(&:close)
           @connections.clear
@@ -318,6 +350,16 @@ module Nu
 
       def escape_sql(string)
         string.to_s.gsub("'", "''")
+      end
+
+      def format_bytes(bytes)
+        if bytes < 1024
+          "#{bytes}B"
+        elsif bytes < 1024 * 1024
+          "#{(bytes / 1024.0).round(1)}KB"
+        else
+          "#{(bytes / (1024.0 * 1024)).round(1)}MB"
+        end
       end
     end
   end
