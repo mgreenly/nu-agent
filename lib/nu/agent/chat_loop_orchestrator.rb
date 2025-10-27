@@ -19,49 +19,51 @@ module Nu
         user_input = context[:user_input]
 
         history.transaction do
-          # Create exchange and add user message
-          exchange_id = create_user_message(conversation_id, user_input)
-
-          # Get conversation history (only unredacted messages from previous exchanges)
-          history_messages, redacted_message_ranges = prepare_history_messages(
-            conversation_id,
-            exchange_id,
-            session_start_time
-          )
-
-          # Prepare LLM request with context, messages, and tools
-          messages, tools = prepare_llm_request(
-            user_input,
-            history_messages,
-            redacted_message_ranges,
-            tool_registry,
-            conversation_id,
-            client
-          )
-
-          # Call inner tool calling loop
-          result = tool_calling_loop(
-            messages: messages,
-            tools: tools,
-            client: client,
-            history: history,
-            conversation_id: conversation_id,
-            exchange_id: exchange_id,
-            tool_registry: tool_registry,
-            application: application
-          )
-
-          # Handle result (success or error)
-          if result[:error]
-            handle_error_result(exchange_id, result)
-          else
-            handle_success_result(conversation_id, exchange_id, result)
-          end
+          execute_exchange(conversation_id, user_input, session_start_time, client, tool_registry)
         end
         # Transaction commits here on success, rolls back on exception
       end
 
       private
+
+      def execute_exchange(conversation_id, user_input, session_start_time, client, tool_registry)
+        # Create exchange and add user message
+        exchange_id = create_user_message(conversation_id, user_input)
+
+        # Get conversation history (only unredacted messages from previous exchanges)
+        history_messages, redacted_message_ranges = prepare_history_messages(
+          conversation_id,
+          exchange_id,
+          session_start_time
+        )
+
+        # Prepare LLM request with context, messages, and tools
+        request_context = {
+          user_query: user_input,
+          history_messages: history_messages,
+          redacted_ranges: redacted_message_ranges
+        }
+        messages, tools = prepare_llm_request(request_context, tool_registry, conversation_id, client)
+
+        # Call inner tool calling loop
+        result = tool_calling_loop(
+          messages: messages,
+          tools: tools,
+          client: client,
+          history: history,
+          conversation_id: conversation_id,
+          exchange_id: exchange_id,
+          tool_registry: tool_registry,
+          application: application
+        )
+
+        # Handle result (success or error)
+        if result[:error]
+          handle_error_result(exchange_id, result)
+        else
+          handle_success_result(conversation_id, exchange_id, result)
+        end
+      end
 
       def create_user_message(conversation_id, user_input)
         # Create exchange and add user message (atomic with rest of exchange)
@@ -99,7 +101,12 @@ module Nu
         [history_messages, redacted_message_ranges]
       end
 
-      def prepare_llm_request(user_query, history_messages, redacted_ranges, tool_registry, conversation_id, client)
+      def prepare_llm_request(request_context, tool_registry, conversation_id, client)
+        # Extract request context
+        user_query = request_context[:user_query]
+        history_messages = request_context[:history_messages]
+        redacted_ranges = request_context[:redacted_ranges]
+
         # Build context document (markdown) with RAG, tools, and user query
         markdown_document = build_context_document(
           user_query: user_query,
@@ -137,8 +144,23 @@ module Nu
       end
 
       def handle_success_result(conversation_id, exchange_id, result)
-        # Save final assistant response (unredacted)
         final_response = result[:response]
+
+        # Save final assistant response (unredacted)
+        save_final_response(conversation_id, exchange_id, final_response)
+
+        # Update metrics to include final response (with nil protection)
+        metrics = accumulate_final_metrics(result[:metrics], final_response)
+
+        # Complete the exchange
+        history.complete_exchange(
+          exchange_id: exchange_id,
+          assistant_message: final_response["content"],
+          metrics: metrics
+        )
+      end
+
+      def save_final_response(conversation_id, exchange_id, final_response)
         history.add_message(
           conversation_id: conversation_id,
           exchange_id: exchange_id,
@@ -157,20 +179,14 @@ module Nu
           content: final_response["content"],
           redacted: false
         )
+      end
 
-        # Update metrics to include final response (with nil protection)
-        metrics = result[:metrics]
+      def accumulate_final_metrics(metrics, final_response)
         metrics[:tokens_input] = [metrics[:tokens_input], final_response["tokens"]["input"] || 0].max
         metrics[:tokens_output] += final_response["tokens"]["output"] || 0
         metrics[:spend] += final_response["spend"] || 0.0
         metrics[:message_count] += 1
-
-        # Complete the exchange
-        history.complete_exchange(
-          exchange_id: exchange_id,
-          assistant_message: final_response["content"],
-          metrics: metrics
-        )
+        metrics
       end
 
       def tool_calling_loop(messages:, client:, conversation_id:, **context)
@@ -200,6 +216,21 @@ module Nu
         builder = DocumentBuilder.new
 
         # Context section (RAG - Retrieval Augmented Generation)
+        rag_content = build_rag_content(user_query, redacted_message_ranges, conversation_id)
+        builder.add_section("Context", rag_content.join("\n\n"))
+
+        # Available Tools section
+        tool_names = tool_registry.available.map(&:name)
+        tools_list = tool_names.join(", ")
+        builder.add_section("Available Tools", tools_list)
+
+        # User Query section (final section - ends the document)
+        builder.add_section("User Query", user_query)
+
+        builder.build
+      end
+
+      def build_rag_content(user_query, redacted_message_ranges, conversation_id)
         # Multiple RAG sub-processes will be added here in the future
         rag_content = []
 
@@ -223,17 +254,7 @@ module Nu
         # If no RAG content was generated, indicate that
         rag_content << "No Augmented Information Generated" if rag_content.empty?
 
-        builder.add_section("Context", rag_content.join("\n\n"))
-
-        # Available Tools section
-        tool_names = tool_registry.available.map(&:name)
-        tools_list = tool_names.join(", ")
-        builder.add_section("Available Tools", tools_list)
-
-        # User Query section (final section - ends the document)
-        builder.add_section("User Query", user_query)
-
-        builder.build
+        rag_content
       end
 
       def format_id_ranges(ids)

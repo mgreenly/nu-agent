@@ -131,4 +131,46 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
       expect(exchanges[0]["message_count"]).to eq(2)
     end
   end
+
+  describe "#calculate_exchange_metrics" do
+    it "calculates metrics from message list" do
+      messages = [
+        { "tokens_input" => 100, "tokens_output" => 20, "spend" => 0.01, "tool_calls" => [{ "id" => "1" }] },
+        { "tokens_input" => 50, "tokens_output" => 30, "spend" => 0.02, "tool_calls" => nil },
+        { "tokens_input" => nil, "tokens_output" => nil, "spend" => nil, "tool_calls" => [] }
+      ]
+
+      metrics = migrator.send(:calculate_exchange_metrics, messages)
+
+      expect(metrics[:tokens_input]).to eq(100) # max
+      expect(metrics[:tokens_output]).to eq(50) # sum
+      expect(metrics[:spend]).to be_within(0.001).of(0.03) # sum
+      expect(metrics[:tool_call_count]).to eq(1) # count with tool_calls
+    end
+  end
+
+  describe "#find_final_assistant_message" do
+    it "finds last assistant message with content, no tool_calls" do
+      messages = [
+        { "role" => "user", "content" => "Question" },
+        { "role" => "assistant", "content" => "Thinking", "tool_calls" => [{ "id" => "1" }] },
+        { "role" => "assistant", "content" => "Final answer", "tool_calls" => nil }
+      ]
+
+      result = migrator.send(:find_final_assistant_message, messages)
+
+      expect(result["content"]).to eq("Final answer")
+    end
+
+    it "returns nil when no qualifying message exists" do
+      messages = [
+        { "role" => "user", "content" => "Question" },
+        { "role" => "assistant", "content" => "", "tool_calls" => nil }
+      ]
+
+      result = migrator.send(:find_final_assistant_message, messages)
+
+      expect(result).to be_nil
+    end
+  end
 end

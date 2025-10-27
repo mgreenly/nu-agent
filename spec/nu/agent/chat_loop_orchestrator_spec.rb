@@ -279,9 +279,9 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         )
 
         expect(history_msgs).to eq([
-          { "id" => 1, "redacted" => false, "exchange_id" => 100 },
-          { "id" => 2, "redacted" => false, "exchange_id" => 100 }
-        ])
+                                     { "id" => 1, "redacted" => false, "exchange_id" => 100 },
+                                     { "id" => 2, "redacted" => false, "exchange_id" => 100 }
+                                   ])
         expect(redacted_ranges).to be_nil
       end
     end
@@ -305,8 +305,8 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         )
 
         expect(history_msgs).to eq([
-          { "id" => 7, "redacted" => false, "exchange_id" => 101 }
-        ])
+                                     { "id" => 7, "redacted" => false, "exchange_id" => 101 }
+                                   ])
         expect(redacted_ranges).to eq("5-6")
       end
     end
@@ -338,11 +338,15 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         conversation_id: conversation_id
       ).and_return(markdown_doc)
 
+      request_context = {
+        user_query: user_input,
+        history_messages: history_messages,
+        redacted_ranges: redacted_ranges
+      }
+
       messages, tools = orchestrator.send(
         :prepare_llm_request,
-        user_input,
-        history_messages,
-        redacted_ranges,
+        request_context,
         tool_registry,
         conversation_id,
         client
@@ -459,6 +463,145 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
           tool_call_count: 2
         )
       )
+    end
+  end
+
+  describe "#save_final_response" do
+    let(:final_response) do
+      {
+        "content" => "Test response",
+        "model" => "claude-sonnet-4-5",
+        "tokens" => { "input" => 15, "output" => 25 },
+        "spend" => 0.003
+      }
+    end
+
+    it "saves final message to history and displays it" do
+      allow(history).to receive(:add_message)
+      allow(formatter).to receive(:display_message_created)
+
+      orchestrator.send(:save_final_response, conversation_id, exchange_id, final_response)
+
+      expect(history).to have_received(:add_message).with(
+        conversation_id: conversation_id,
+        exchange_id: exchange_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "Test response",
+        model: "claude-sonnet-4-5",
+        tokens_input: 15,
+        tokens_output: 25,
+        spend: 0.003,
+        redacted: false
+      )
+
+      expect(formatter).to have_received(:display_message_created).with(
+        actor: "orchestrator",
+        role: "assistant",
+        content: "Test response",
+        redacted: false
+      )
+    end
+  end
+
+  describe "#accumulate_final_metrics" do
+    it "accumulates metrics from final response into existing metrics" do
+      metrics = {
+        tokens_input: 10,
+        tokens_output: 15,
+        spend: 0.002,
+        message_count: 1,
+        tool_call_count: 2
+      }
+
+      final_response = {
+        "tokens" => { "input" => 20, "output" => 30 },
+        "spend" => 0.005
+      }
+
+      result = orchestrator.send(:accumulate_final_metrics, metrics, final_response)
+
+      expect(result).to eq({
+                             tokens_input: 20, # max(10, 20)
+                             tokens_output: 45,     # 15 + 30
+                             spend: 0.007,          # 0.002 + 0.005
+                             message_count: 2,      # 1 + 1
+                             tool_call_count: 2     # unchanged
+                           })
+    end
+
+    it "handles nil token values gracefully" do
+      metrics = {
+        tokens_input: 10,
+        tokens_output: 15,
+        spend: 0.002,
+        message_count: 1
+      }
+
+      final_response = {
+        "tokens" => {},
+        "spend" => nil
+      }
+
+      result = orchestrator.send(:accumulate_final_metrics, metrics, final_response)
+
+      expect(result).to eq({
+                             tokens_input: 10, # max(10, 0)
+                             tokens_output: 15,     # 15 + 0
+                             spend: 0.002,          # 0.002 + 0.0
+                             message_count: 2       # 1 + 1
+                           })
+    end
+  end
+
+  describe "#build_rag_content" do
+    context "when redaction is enabled" do
+      it "includes redacted message ranges in RAG content" do
+        rag_content = orchestrator.send(
+          :build_rag_content,
+          user_input,
+          "5-6",
+          conversation_id
+        )
+
+        expect(rag_content).to include("Redacted messages: 5-6")
+      end
+    end
+
+    context "when spell check is enabled" do
+      let(:spellchecker) { instance_double(Nu::Agent::Clients::Anthropic) }
+      let(:spell_checker) { instance_double(Nu::Agent::SpellChecker) }
+
+      before do
+        allow(application).to receive(:spell_check_enabled).and_return(true)
+        allow(application).to receive(:spellchecker).and_return(spellchecker)
+        allow(Nu::Agent::SpellChecker).to receive(:new).and_return(spell_checker)
+        allow(spell_checker).to receive(:check_spelling).with("teh test").and_return("the test")
+      end
+
+      it "includes spell correction in RAG content" do
+        rag_content = orchestrator.send(
+          :build_rag_content,
+          "teh test",
+          nil,
+          conversation_id
+        )
+
+        expect(rag_content).to include("The user said 'teh test' but means 'the test'")
+      end
+    end
+
+    context "when no RAG content is generated" do
+      it "returns default message" do
+        rag_content = orchestrator.send(
+          :build_rag_content,
+          user_input,
+          nil,
+          conversation_id
+        )
+
+        expect(rag_content).to eq(["No Augmented Information Generated"])
+      end
     end
   end
 end
