@@ -10,29 +10,39 @@ module Nu
         def execute(input)
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            app.console.puts("")
-            app.output_line("Usage: /redaction <on|off>", type: :debug)
-            app.output_line("Current: redaction=#{app.redact ? 'on' : 'off'}", type: :debug)
+            show_usage
             return :continue
           end
 
-          setting = parts[1].strip.downcase
-          if setting == "on"
-            app.redact = true
-            app.history.set_config("redaction", "true")
-            app.console.puts("")
-            app.output_line("redaction=on", type: :debug)
-          elsif setting == "off"
-            app.redact = false
-            app.history.set_config("redaction", "false")
-            app.console.puts("")
-            app.output_line("redaction=off", type: :debug)
+          update_redaction(parts[1].strip.downcase)
+          :continue
+        end
+
+        private
+
+        def show_usage
+          app.console.puts("")
+          app.output_line("Usage: /redaction <on|off>", type: :debug)
+          app.output_line("Current: redaction=#{app.redact ? 'on' : 'off'}", type: :debug)
+        end
+
+        def update_redaction(setting)
+          case setting
+          when "on"
+            apply_redaction_setting(true, "true", "on")
+          when "off"
+            apply_redaction_setting(false, "false", "off")
           else
             app.console.puts("")
             app.output_line("Invalid option. Use: /redaction <on|off>", type: :debug)
           end
+        end
 
-          :continue
+        def apply_redaction_setting(enabled, config_value, display_value)
+          app.redact = enabled
+          app.history.set_config("redaction", config_value)
+          app.console.puts("")
+          app.output_line("redaction=#{display_value}", type: :debug)
         end
       end
     end

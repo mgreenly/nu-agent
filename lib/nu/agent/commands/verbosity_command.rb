@@ -10,12 +10,22 @@ module Nu
         def execute(input)
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            app.console.puts("\e[90mUsage: /verbosity <number>\e[0m")
-            app.console.puts("\e[90mCurrent: verbosity=#{app.verbosity}\e[0m")
+            show_usage
             return :continue
           end
 
-          value = parts[1].strip
+          update_verbosity(parts[1].strip)
+          :continue
+        end
+
+        private
+
+        def show_usage
+          app.console.puts("\e[90mUsage: /verbosity <number>\e[0m")
+          app.console.puts("\e[90mCurrent: verbosity=#{app.verbosity}\e[0m")
+        end
+
+        def update_verbosity(value)
           if value =~ /^\d+$/
             app.verbosity = value.to_i
             app.history.set_config("verbosity", value)
@@ -23,8 +33,6 @@ module Nu
           else
             app.console.puts("\e[90mInvalid option. Use: /verbosity <number>\e[0m")
           end
-
-          :continue
         end
       end
     end

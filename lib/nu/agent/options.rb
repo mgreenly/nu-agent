@@ -52,17 +52,15 @@ module Nu
         openai_default = Nu::Agent::Clients::OpenAI::DEFAULT_MODEL
         xai_default = Nu::Agent::Clients::XAI::DEFAULT_MODEL
 
-        # Mark defaults with asterisk
-        anthropic_list = models[:anthropic].map { |m| m == anthropic_default ? "#{m}*" : m }.join(", ")
-        google_list = models[:google].map { |m| m == google_default ? "#{m}*" : m }.join(", ")
-        openai_list = models[:openai].map { |m| m == openai_default ? "#{m}*" : m }.join(", ")
-        xai_list = models[:xai].map { |m| m == xai_default ? "#{m}*" : m }.join(", ")
-
         puts "\nAvailable Models (* = default):"
-        puts "  Anthropic: #{anthropic_list}"
-        puts "  Google:    #{google_list}"
-        puts "  OpenAI:    #{openai_list}"
-        puts "  X.AI:      #{xai_list}"
+        puts "  Anthropic: #{format_model_list(models[:anthropic], anthropic_default)}"
+        puts "  Google:    #{format_model_list(models[:google], google_default)}"
+        puts "  OpenAI:    #{format_model_list(models[:openai], openai_default)}"
+        puts "  X.AI:      #{format_model_list(models[:xai], xai_default)}"
+      end
+
+      def format_model_list(models, default)
+        models.map { |m| m == default ? "#{m}*" : m }.join(", ")
       end
     end
   end

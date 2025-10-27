@@ -61,37 +61,41 @@ module Nu
         end
 
         def switch_orchestrator(new_model_name)
-          # Switch model under mutex (blocks if thread is running)
           app.operation_mutex.synchronize do
-            # Wait for active threads to complete
-            unless app.active_threads.empty?
-              still_running = app.active_threads.any? do |thread|
-                !thread.join(0.05)
-              end
+            wait_for_active_threads
+            new_client = create_client_safely(new_model_name)
+            return unless new_client
 
-              if still_running
-                app.output_line("Waiting for current operation to complete...", type: :debug)
-                app.active_threads.each(&:join)
-              end
-            end
-
-            # Try to create new client
-            begin
-              new_client = ClientFactory.create(new_model_name)
-            rescue Error => e
-              app.output_line("Error: #{e.message}", type: :error)
-              return
-            end
-
-            # Switch both orchestrator and formatter
-            app.orchestrator = new_client
-            app.formatter.orchestrator = new_client
-            app.history.set_config("model_orchestrator", new_model_name)
-
-            app.console.puts("")
-            app.output_line("Switched orchestrator to: #{app.orchestrator.name} (#{app.orchestrator.model})",
-                            type: :debug)
+            apply_orchestrator_switch(new_client, new_model_name)
           end
+        end
+
+        def wait_for_active_threads
+          return if app.active_threads.empty?
+
+          still_running = app.active_threads.any? { |thread| !thread.join(0.05) }
+
+          return unless still_running
+
+          app.output_line("Waiting for current operation to complete...", type: :debug)
+          app.active_threads.each(&:join)
+        end
+
+        def create_client_safely(model_name)
+          ClientFactory.create(model_name)
+        rescue Error => e
+          app.output_line("Error: #{e.message}", type: :error)
+          nil
+        end
+
+        def apply_orchestrator_switch(new_client, model_name)
+          app.orchestrator = new_client
+          app.formatter.orchestrator = new_client
+          app.history.set_config("model_orchestrator", model_name)
+
+          app.console.puts("")
+          app.output_line("Switched orchestrator to: #{app.orchestrator.name} (#{app.orchestrator.model})",
+                          type: :debug)
         end
 
         def switch_spellchecker(new_model_name)

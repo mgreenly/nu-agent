@@ -10,27 +10,37 @@ module Nu
         def execute(input)
           parts = input.split(" ", 2)
           if parts.length < 2 || parts[1].strip.empty?
-            app.console.puts("\e[90mUsage: /debug <on|off>\e[0m")
-            app.console.puts("\e[90mCurrent: debug=#{app.debug ? 'on' : 'off'}\e[0m")
+            show_usage
             return :continue
           end
 
-          setting = parts[1].strip.downcase
-          if setting == "on"
-            app.debug = true
-            app.formatter.debug = true
-            app.history.set_config("debug", "true")
-            app.console.puts("\e[90mdebug=on\e[0m")
-          elsif setting == "off"
-            app.debug = false
-            app.formatter.debug = false
-            app.history.set_config("debug", "false")
-            app.console.puts("\e[90mdebug=off\e[0m")
+          update_debug(parts[1].strip.downcase)
+          :continue
+        end
+
+        private
+
+        def show_usage
+          app.console.puts("\e[90mUsage: /debug <on|off>\e[0m")
+          app.console.puts("\e[90mCurrent: debug=#{app.debug ? 'on' : 'off'}\e[0m")
+        end
+
+        def update_debug(setting)
+          case setting
+          when "on"
+            apply_debug_setting(true, "true", "on")
+          when "off"
+            apply_debug_setting(false, "false", "off")
           else
             app.console.puts("\e[90mInvalid option. Use: /debug <on|off>\e[0m")
           end
+        end
 
-          :continue
+        def apply_debug_setting(enabled, config_value, display_value)
+          app.debug = enabled
+          app.formatter.debug = enabled
+          app.history.set_config("debug", config_value)
+          app.console.puts("\e[90mdebug=#{display_value}\e[0m")
         end
       end
     end

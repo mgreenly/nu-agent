@@ -213,40 +213,45 @@ module Nu
       end
 
       def execute_query(sql)
-        # Strip trailing semicolon if present
         sql = sql.strip.chomp(";")
+        validate_readonly_query(sql)
 
-        # Validate it's a read-only query
+        result = connection.query(sql)
+        rows = result.to_a
+        return [] if rows.empty?
+
+        columns = extract_column_names(result, rows)
+        rows = rows.take(500)
+
+        convert_rows_to_hashes(rows, columns)
+      end
+
+      private
+
+      def validate_readonly_query(sql)
         normalized_sql = sql.upcase.strip
         readonly_commands = %w[SELECT SHOW DESCRIBE EXPLAIN WITH]
         is_readonly = readonly_commands.any? { |cmd| normalized_sql.start_with?(cmd) }
 
-        unless is_readonly
-          raise ArgumentError, "Only read-only queries (SELECT, SHOW, DESCRIBE, EXPLAIN, WITH) are allowed"
-        end
+        return if is_readonly
 
-        # Execute query on read-only connection
-        result = connection.query(sql)
+        raise ArgumentError, "Only read-only queries (SELECT, SHOW, DESCRIBE, EXPLAIN, WITH) are allowed"
+      end
 
-        # Convert to array of hashes
-        rows = result.to_a
-        return [] if rows.empty?
-
-        # Get column names from first row
+      def extract_column_names(result, rows)
         column_count = rows.first.length
         columns = (0...column_count).map { |i| "column_#{i}" }
 
-        # Try to get actual column names if available
         begin
           columns = result.columns.map(&:name) if result.respond_to?(:columns)
         rescue StandardError
           # Use default column names if we can't get real ones
         end
 
-        # Cap at 500 rows
-        rows = rows.take(500)
+        columns
+      end
 
-        # Map to array of hashes
+      def convert_rows_to_hashes(rows, columns)
         rows.map do |row|
           hash = {}
           columns.each_with_index do |col, i|
@@ -255,6 +260,8 @@ module Nu
           hash
         end
       end
+
+      public
 
       def find_corrupted_messages
         # Find messages with redacted tool call arguments
