@@ -81,7 +81,7 @@ RSpec.describe Nu::Agent::WorkerCounter do
     it "returns true when active_workers is not set" do
       # Initially active_workers is set to 0 by schema setup
       # but let's test the edge case explicitly
-      result = connection.query("DELETE FROM appconfig WHERE key = 'active_workers'")
+      connection.query("DELETE FROM appconfig WHERE key = 'active_workers'")
 
       expect(worker_counter.workers_idle?).to be true
     end

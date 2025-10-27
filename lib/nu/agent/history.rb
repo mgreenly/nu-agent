@@ -54,11 +54,13 @@ module Nu
       end
 
       def add_message(conversation_id:, actor:, role:, content:, **attributes)
-        @message_repo.add_message(conversation_id: conversation_id, actor: actor, role: role, content: content, **attributes)
+        @message_repo.add_message(conversation_id: conversation_id, actor: actor, role: role, content: content,
+                                  **attributes)
       end
 
       def messages(conversation_id:, include_in_context_only: true, since: nil)
-        @message_repo.messages(conversation_id: conversation_id, include_in_context_only: include_in_context_only, since: since)
+        @message_repo.messages(conversation_id: conversation_id, include_in_context_only: include_in_context_only,
+                               since: since)
       end
 
       def messages_since(conversation_id:, message_id:)
@@ -82,7 +84,8 @@ module Nu
       end
 
       def update_conversation_summary(conversation_id:, summary:, model:, cost: nil)
-        @conversation_repo.update_conversation_summary(conversation_id: conversation_id, summary: summary, model: model, cost: cost)
+        @conversation_repo.update_conversation_summary(conversation_id: conversation_id, summary: summary,
+                                                       model: model, cost: cost)
       end
 
       def create_exchange(conversation_id:, user_message:)
@@ -94,7 +97,8 @@ module Nu
       end
 
       def complete_exchange(exchange_id:, summary: nil, assistant_message: nil, metrics: {})
-        @exchange_repo.complete_exchange(exchange_id: exchange_id, summary: summary, assistant_message: assistant_message, metrics: metrics)
+        @exchange_repo.complete_exchange(exchange_id: exchange_id, summary: summary,
+                                         assistant_message: assistant_message, metrics: metrics)
       end
 
       def get_exchange_messages(exchange_id:)

@@ -90,7 +90,10 @@ RSpec.describe Nu::Agent::ExchangeRepository do
         }
       )
 
-      result = connection.query("SELECT tokens_input, tokens_output, spend, message_count, tool_call_count FROM exchanges WHERE id = #{exchange_id}")
+      result = connection.query(
+        "SELECT tokens_input, tokens_output, spend, message_count, tool_call_count " \
+        "FROM exchanges WHERE id = #{exchange_id}"
+      )
       row = result.to_a.first
 
       expect(row[0]).to eq(100)
@@ -133,7 +136,10 @@ RSpec.describe Nu::Agent::ExchangeRepository do
         metrics: { tokens_input: 100, tokens_output: 50 }
       )
 
-      result = connection.query("SELECT status, summary, assistant_message, tokens_input, tokens_output FROM exchanges WHERE id = #{exchange_id}")
+      result = connection.query(
+        "SELECT status, summary, assistant_message, tokens_input, tokens_output " \
+        "FROM exchanges WHERE id = #{exchange_id}"
+      )
       row = result.to_a.first
 
       expect(row[0]).to eq("completed")
@@ -168,9 +174,9 @@ RSpec.describe Nu::Agent::ExchangeRepository do
     end
 
     it "returns exchanges in order by exchange_number" do
-      ex1 = exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "One")
-      ex2 = exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "Two")
-      ex3 = exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "Three")
+      exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "One")
+      exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "Two")
+      exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "Three")
 
       exchanges = exchange_repo.get_conversation_exchanges(conversation_id: conversation_id)
 

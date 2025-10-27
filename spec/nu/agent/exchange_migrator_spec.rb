@@ -41,7 +41,8 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
       message_repo.add_message(conversation_id: conv_id, actor: "user", role: "user", content: "Hello")
       message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant", content: "Hi there")
       message_repo.add_message(conversation_id: conv_id, actor: "user", role: "user", content: "How are you?")
-      message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant", content: "I'm doing well")
+      message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant",
+                               content: "I'm doing well")
 
       stats = migrator.migrate_exchanges
 
@@ -84,7 +85,8 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
       message_repo.add_message(conversation_id: conv_id, actor: "user", role: "user", content: "First question")
       message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant", content: "First answer")
       message_repo.add_message(conversation_id: conv_id, actor: "user", role: "user", content: "Second question")
-      message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant", content: "Second answer")
+      message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant",
+                               content: "Second answer")
 
       migrator.migrate_exchanges
 

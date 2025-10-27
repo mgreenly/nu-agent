@@ -25,7 +25,8 @@ module Nu
         }.merge(attributes)
 
         tool_calls_json = attributes[:tool_calls] ? "'#{escape_sql(JSON.generate(attributes[:tool_calls]))}'" : "NULL"
-        tool_result_json = attributes[:tool_result] ? "'#{escape_sql(JSON.generate(attributes[:tool_result]))}'" : "NULL"
+        tool_result = attributes[:tool_result]
+        tool_result_json = tool_result ? "'#{escape_sql(JSON.generate(tool_result))}'" : "NULL"
         error_json = attributes[:error] ? "'#{escape_sql(JSON.generate(attributes[:error]))}'" : "NULL"
 
         @connection.query(<<~SQL)

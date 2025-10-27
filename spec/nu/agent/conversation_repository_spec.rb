@@ -52,7 +52,9 @@ RSpec.describe Nu::Agent::ConversationRepository do
         cost: 0.05
       )
 
-      result = connection.query("SELECT summary, summary_model, summary_cost FROM conversations WHERE id = #{conversation_id}")
+      result = connection.query(
+        "SELECT summary, summary_model, summary_cost FROM conversations WHERE id = #{conversation_id}"
+      )
       row = result.to_a.first
 
       expect(row[0]).to eq("Test summary")
@@ -67,7 +69,9 @@ RSpec.describe Nu::Agent::ConversationRepository do
         model: "claude-opus"
       )
 
-      result = connection.query("SELECT summary, summary_model, summary_cost FROM conversations WHERE id = #{conversation_id}")
+      result = connection.query(
+        "SELECT summary, summary_model, summary_cost FROM conversations WHERE id = #{conversation_id}"
+      )
       row = result.to_a.first
 
       expect(row[0]).to eq("Another summary")

@@ -53,7 +53,9 @@ RSpec.describe Nu::Agent::MessageRepository do
         spend: 0.005
       )
 
-      result = connection.query("SELECT model, tokens_input, tokens_output, spend FROM messages WHERE conversation_id = #{conversation_id}")
+      result = connection.query(
+        "SELECT model, tokens_input, tokens_output, spend FROM messages WHERE conversation_id = #{conversation_id}"
+      )
       row = result.to_a.first
       expect(row[0]).to eq("claude-3-5-sonnet-20241022")
       expect(row[1]).to eq(100)
@@ -89,7 +91,9 @@ RSpec.describe Nu::Agent::MessageRepository do
         tool_result: tool_result
       )
 
-      result = connection.query("SELECT tool_call_id, tool_result FROM messages WHERE conversation_id = #{conversation_id}")
+      result = connection.query(
+        "SELECT tool_call_id, tool_result FROM messages WHERE conversation_id = #{conversation_id}"
+      )
       row = result.to_a.first
       expect(row[0]).to eq("call_123")
       expect(JSON.parse(row[1])).to eq(tool_result)
@@ -100,9 +104,12 @@ RSpec.describe Nu::Agent::MessageRepository do
     let(:conversation_id) { 1 }
 
     before do
-      message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "First", include_in_context: true)
-      message_repo.add_message(conversation_id: conversation_id, actor: "assistant", role: "assistant", content: "Second", include_in_context: true)
-      message_repo.add_message(conversation_id: conversation_id, actor: "tool", role: "tool", content: "Third", include_in_context: false)
+      message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "First",
+                               include_in_context: true)
+      message_repo.add_message(conversation_id: conversation_id, actor: "assistant", role: "assistant",
+                               content: "Second", include_in_context: true)
+      message_repo.add_message(conversation_id: conversation_id, actor: "tool", role: "tool", content: "Third",
+                               include_in_context: false)
     end
 
     it "retrieves all messages in order" do
@@ -223,7 +230,8 @@ RSpec.describe Nu::Agent::MessageRepository do
     it "returns 0 when no matching messages found" do
       since_time = Time.now
 
-      size = message_repo.current_context_size(conversation_id: conversation_id, since: since_time, model: "nonexistent")
+      size = message_repo.current_context_size(conversation_id: conversation_id, since: since_time,
+                                               model: "nonexistent")
 
       expect(size).to eq(0)
     end
@@ -246,7 +254,7 @@ RSpec.describe Nu::Agent::MessageRepository do
     end
 
     it "returns nil for non-existent message" do
-      msg = message_repo.get_message_by_id(99999, conversation_id: conversation_id)
+      msg = message_repo.get_message_by_id(99_999, conversation_id: conversation_id)
 
       expect(msg).to be_nil
     end
@@ -275,9 +283,13 @@ RSpec.describe Nu::Agent::MessageRepository do
     let(:exchange_id) { 10 }
 
     it "retrieves all messages for a specific exchange" do
-      message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "First", exchange_id: exchange_id)
-      message_repo.add_message(conversation_id: conversation_id, actor: "assistant", role: "assistant", content: "Second", exchange_id: exchange_id)
-      message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Third", exchange_id: 99) # different exchange
+      message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "First",
+                               exchange_id: exchange_id)
+      message_repo.add_message(conversation_id: conversation_id, actor: "assistant", role: "assistant",
+                               content: "Second", exchange_id: exchange_id)
+      # different exchange
+      message_repo.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Third",
+                               exchange_id: 99)
 
       msgs = message_repo.get_exchange_messages(exchange_id: exchange_id)
 
