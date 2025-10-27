@@ -69,13 +69,7 @@ module Nu
 
         def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
           formatted_messages = format_messages(messages, system_prompt: system_prompt)
-
-          parameters = {
-            model: model,
-            messages: formatted_messages
-          }
-
-          parameters[:tools] = tools if tools && !tools.empty?
+          parameters = build_request_parameters(formatted_messages, tools)
 
           begin
             response = @client.chat(parameters: parameters)
@@ -83,31 +77,7 @@ module Nu
             return format_error_response(e)
           end
 
-          # Extract content and tool calls
-          message = response.dig("choices", 0, "message") || {}
-          text_content = message["content"]
-          tool_calls = message["tool_calls"]&.map do |tc|
-            {
-              "id" => tc["id"],
-              "name" => tc.dig("function", "name"),
-              "arguments" => JSON.parse(tc.dig("function", "arguments"))
-            }
-          end
-
-          input_tokens = response.dig("usage", "prompt_tokens")
-          output_tokens = response.dig("usage", "completion_tokens")
-
-          {
-            "content" => text_content,
-            "tool_calls" => tool_calls&.empty? ? nil : tool_calls,
-            "model" => model,
-            "tokens" => {
-              "input" => input_tokens,
-              "output" => output_tokens
-            },
-            "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
-            "finish_reason" => response.dig("choices", 0, "finish_reason")
-          }
+          extract_response_data(response)
         end
 
         # Generate embeddings for text input
@@ -176,6 +146,46 @@ module Nu
           input_cost + output_cost
         end
 
+        def build_request_parameters(formatted_messages, tools)
+          parameters = {
+            model: model,
+            messages: formatted_messages
+          }
+
+          parameters[:tools] = tools if tools && !tools.empty?
+          parameters
+        end
+
+        def extract_response_data(response)
+          message = response.dig("choices", 0, "message") || {}
+          text_content = message["content"]
+          tool_calls = extract_tool_calls(message)
+          input_tokens = response.dig("usage", "prompt_tokens")
+          output_tokens = response.dig("usage", "completion_tokens")
+
+          {
+            "content" => text_content,
+            "tool_calls" => tool_calls&.empty? ? nil : tool_calls,
+            "model" => model,
+            "tokens" => {
+              "input" => input_tokens,
+              "output" => output_tokens
+            },
+            "spend" => calculate_cost(input_tokens: input_tokens, output_tokens: output_tokens),
+            "finish_reason" => response.dig("choices", 0, "finish_reason")
+          }
+        end
+
+        def extract_tool_calls(message)
+          message["tool_calls"]&.map do |tc|
+            {
+              "id" => tc["id"],
+              "name" => tc.dig("function", "name"),
+              "arguments" => JSON.parse(tc.dig("function", "arguments"))
+            }
+          end
+        end
+
         private
 
         def format_error_response(error)
@@ -228,42 +238,52 @@ module Nu
           # OpenAI uses a system message at the beginning
           formatted << { role: "system", content: system_prompt } if system_prompt && !system_prompt.empty?
 
-          # rubocop:disable Metrics/BlockLength
           messages.each do |msg|
-            # Handle tool result messages
-            if msg["tool_result"]
-              formatted << {
-                role: "tool",
-                tool_call_id: msg["tool_call_id"],
-                content: JSON.generate(msg["tool_result"]["result"])
-              }
-            # Handle messages with tool calls
-            elsif msg["tool_calls"]
-              # Build message with text and tool_calls
-              formatted_msg = { role: "assistant" }
-              formatted_msg[:content] = msg["content"] if msg["content"] && !msg["content"].empty?
-              formatted_msg[:tool_calls] = msg["tool_calls"].map do |tc|
-                {
-                  id: tc["id"],
-                  type: "function",
-                  function: {
-                    name: tc["name"],
-                    arguments: JSON.generate(tc["arguments"])
-                  }
-                }
-              end
-              formatted << formatted_msg
-            # Regular text message
-            else
-              formatted << {
-                role: msg["role"],
-                content: msg["content"]
-              }
-            end
+            formatted << format_single_message(msg)
           end
-          # rubocop:enable Metrics/BlockLength
 
           formatted
+        end
+
+        def format_single_message(msg)
+          if msg["tool_result"]
+            format_tool_result_message(msg)
+          elsif msg["tool_calls"]
+            format_tool_call_message(msg)
+          else
+            format_text_message(msg)
+          end
+        end
+
+        def format_tool_result_message(msg)
+          {
+            role: "tool",
+            tool_call_id: msg["tool_call_id"],
+            content: JSON.generate(msg["tool_result"]["result"])
+          }
+        end
+
+        def format_tool_call_message(msg)
+          formatted_msg = { role: "assistant" }
+          formatted_msg[:content] = msg["content"] if msg["content"] && !msg["content"].empty?
+          formatted_msg[:tool_calls] = msg["tool_calls"].map do |tc|
+            {
+              id: tc["id"],
+              type: "function",
+              function: {
+                name: tc["name"],
+                arguments: JSON.generate(tc["arguments"])
+              }
+            }
+          end
+          formatted_msg
+        end
+
+        def format_text_message(msg)
+          {
+            role: msg["role"],
+            content: msg["content"]
+          }
         end
       end
     end
