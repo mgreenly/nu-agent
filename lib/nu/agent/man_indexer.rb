@@ -34,33 +34,45 @@ module Nu
       # Extract NAME, SYNOPSIS, and DESCRIPTION sections from a man page
       # Returns a formatted document combining these sections
       def extract_description(source)
-        # Parse source: "grep.1" -> name="grep", section="1"
+        name, section = parse_source_name(source)
+        return nil unless name && section
+
+        output = fetch_man_page(name, section, source)
+        return nil unless output
+
+        sections = extract_sections(output, %w[NAME SYNOPSIS DESCRIPTION])
+        document = build_document_from_sections(sections, source)
+        return nil unless document
+
+        truncate_if_needed(document, source)
+      rescue StandardError => e
+        log_error(source, e)
+        nil
+      end
+
+      def parse_source_name(source)
         name, section = source.split(".")
         unless name && section
           @application&.output_line("[Man Indexer] Skipping #{source}: invalid source format", type: :debug)
-          return nil
         end
+        [name, section]
+      end
 
-        # Get man page content
+      def fetch_man_page(name, section, source)
         output = `man #{section} #{name} 2>/dev/null`
         if output.nil? || output.empty?
           @application&.output_line("[Man Indexer] Skipping #{source}: man page not accessible", type: :debug)
           return nil
         end
+        output
+      end
 
-        # Extract sections using all-caps headers
-        sections = extract_sections(output, %w[NAME SYNOPSIS DESCRIPTION])
-
-        # Build combined document
+      def build_document_from_sections(sections, source)
         doc_parts = []
-
         doc_parts << "NAME\n#{sections['NAME']}" if sections["NAME"]
-
         doc_parts << "SYNOPSIS\n#{sections['SYNOPSIS']}" if sections["SYNOPSIS"]
-
         doc_parts << "DESCRIPTION\n#{sections['DESCRIPTION']}" if sections["DESCRIPTION"]
 
-        # Return nil if we didn't get any sections
         if doc_parts.empty?
           @application&.output_line(
             "[Man Indexer] Skipping #{source}: no NAME/SYNOPSIS/DESCRIPTION sections found",
@@ -69,22 +81,24 @@ module Nu
           return nil
         end
 
-        document = doc_parts.join("\n\n")
+        doc_parts.join("\n\n")
+      end
 
-        # Truncate if too long (8000 tokens ~ 32000 chars rough estimate)
-        if document.length > 32_000
-          @application&.output_line(
-            "[Man Indexer] Truncating #{source}: content too long (#{document.length} chars)",
-            type: :debug
-          )
-          document = document[0, 32_000]
-        end
+      def truncate_if_needed(document, source)
+        return document if document.length <= 32_000
 
-        document
-      rescue StandardError => e
-        @application&.output_line("[Man Indexer] Error processing #{source}: #{e.class}: #{e.message}",
-                                  type: :debug)
-        nil
+        @application&.output_line(
+          "[Man Indexer] Truncating #{source}: content too long (#{document.length} chars)",
+          type: :debug
+        )
+        document[0, 32_000]
+      end
+
+      def log_error(source, error)
+        @application&.output_line(
+          "[Man Indexer] Error processing #{source}: #{error.class}: #{error.message}",
+          type: :debug
+        )
       end
 
       private
