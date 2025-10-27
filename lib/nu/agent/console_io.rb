@@ -35,12 +35,10 @@ module Nu
         @db_history = db_history
         load_history_from_db if @db_history
 
-        # Spinner state
-        @spinner_running = false
+        # Spinner state (encapsulated)
+        @spinner_state = SpinnerState.new
         @spinner_thread = nil
-        @spinner_frame = 0
         @spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        @spinner_message = String.new("")
 
         # Mode tracking
         @mode = :input # :input or :spinner
@@ -60,25 +58,32 @@ module Nu
       # Spinner mode - show animated spinner
       def show_spinner(message)
         @mode = :spinner
-        @spinner_message = message
-        @spinner_frame = 0
-        @spinner_running = true
+        @spinner_state.start(message, Thread.current) # Use encapsulated state
 
         # Flush stdin before starting spinner
         flush_stdin
 
         @spinner_thread = Thread.new do
+          Thread.current.report_on_exception = false
           spinner_loop
         rescue Interrupt
-          hide_spinner
-          raise
+          # Clean up spinner display
+          @mutex.synchronize do
+            @stdout.write("\e[2K\r") # Clear spinner line
+            @stdout.flush
+          end
+          @spinner_state.interrupt_requested = true
+          # Raise interrupt to parent thread
+          @spinner_state.parent_thread&.raise(Interrupt)
         end
       end
 
       # Hide spinner and return to ready state
       def hide_spinner
-        @spinner_running = false
-        @spinner_thread&.join
+        @spinner_state.stop
+
+        # Only join if we're not already in the spinner thread
+        @spinner_thread&.join unless Thread.current == @spinner_thread
 
         @mutex.synchronize do
           @stdout.write("\e[2K\r") # Clear spinner line
@@ -87,6 +92,11 @@ module Nu
 
         # Flush stdin when returning to input mode
         flush_stdin
+      end
+
+      # Check if user requested interrupt via Ctrl-C
+      def interrupt_requested?
+        @spinner_state.interrupt_requested
       end
 
       # Blocking read with interruption support
@@ -101,7 +111,7 @@ module Nu
 
         loop do
           result = handle_readline_select(prompt)
-          return result if result
+          return result unless result == :continue
         end
       end
 
@@ -125,11 +135,11 @@ module Nu
           elsif io == @stdin
             # User input arrived
             result = handle_stdin_input(prompt)
-            return result if result
+            return result unless result == :continue
           end
         end
 
-        nil
+        :continue
       end
 
       def handle_stdin_input(prompt)
@@ -143,10 +153,10 @@ module Nu
           handle_eof
         when :clear_screen
           clear_screen(prompt)
-          nil
+          :continue
         else
           redraw_input_line(prompt)
-          nil
+          :continue
         end
       end
 
@@ -223,7 +233,7 @@ module Nu
             raise Interrupt
 
           when "\x04" # Ctrl-D
-            return :eof if @input_buffer.empty?
+            delete_forward
 
           when "\x7F", "\b" # Backspace
             delete_backward
@@ -544,7 +554,7 @@ module Nu
 
       def spinner_loop
         loop do
-          break unless @spinner_running
+          break unless @spinner_state.running
 
           # Check for output or Ctrl-C with 100ms timeout
           readable, = IO.select([@stdin, @output_pipe_read], nil, nil, 0.1)
@@ -558,7 +568,7 @@ module Nu
                 # Check for Ctrl-C
                 char = @stdin.read_nonblock(1)
                 if char == "\x03"
-                  @spinner_running = false
+                  @spinner_state.stop
                   flush_stdin
                   raise Interrupt
                 end
@@ -590,24 +600,24 @@ module Nu
           end
 
           # Redraw spinner at new bottom
-          frame = @spinner_frames[@spinner_frame]
-          @stdout.write("#{frame} #{@spinner_message}")
+          frame = @spinner_frames[@spinner_state.frame]
+          @stdout.write("#{frame} #{@spinner_state.message}")
 
           @stdout.flush
         end
       end
 
       def animate_spinner
-        @spinner_frame = (@spinner_frame + 1) % @spinner_frames.length
+        @spinner_state.frame = (@spinner_state.frame + 1) % @spinner_frames.length
         redraw_spinner
       end
 
       def redraw_spinner
         @mutex.synchronize do
           @stdout.write("\e[2K\r")
-          frame = @spinner_frames[@spinner_frame]
+          frame = @spinner_frames[@spinner_state.frame]
           # Soft blue color (256-color palette: 81)
-          @stdout.write("\e[38;5;81m#{frame} #{@spinner_message}\e[0m")
+          @stdout.write("\e[38;5;81m#{frame} #{@spinner_state.message}\e[0m")
           @stdout.flush
         end
       end

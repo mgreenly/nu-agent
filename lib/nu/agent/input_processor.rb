@@ -14,21 +14,19 @@ module Nu
         return application.handle_command(input) if input.start_with?("/")
 
         setup_exchange_tracking
+        worker_token = WorkerToken.new(application.history)
         thread = nil
-        workers_incremented = false
 
         begin
-          workers_incremented = true
-          application.history.increment_workers
-
-          thread = spawn_orchestrator_thread(input)
+          worker_token.activate
+          thread = spawn_orchestrator_thread(input, worker_token)
           application.active_threads << thread
 
           wait_for_thread_completion
         rescue Interrupt
-          handle_interrupt_cleanup(thread, workers_incremented)
+          handle_interrupt_cleanup(thread, worker_token)
         ensure
-          cleanup_resources(thread)
+          cleanup_resources(thread, worker_token)
         end
 
         :continue
@@ -45,13 +43,13 @@ module Nu
         application.console.show_spinner("Thinking...")
       end
 
-      def spawn_orchestrator_thread(input)
+      def spawn_orchestrator_thread(input, worker_token)
         application.operation_mutex.synchronize do
           state = capture_application_state(input)
           formatter.display_thread_event("Orchestrator", "Starting")
 
           orchestrator = create_chat_orchestrator(state[:hist], state[:fmt], state[:app])
-          create_orchestrator_thread(state, orchestrator)
+          create_orchestrator_thread(state, orchestrator, worker_token)
         end
       end
 
@@ -76,24 +74,26 @@ module Nu
         )
       end
 
-      def create_orchestrator_thread(state, orchestrator)
+      def create_orchestrator_thread(state, orchestrator, worker_token)
         context = {
           session_start_time: state[:session_start],
           user_input: state[:user_in],
           application: state[:app]
         }
 
-        Thread.new(state[:conv_id], state[:hist], state[:cli], context,
-                   orchestrator) do |conversation_id, history, client, ctx, orch|
+        Thread.new(state[:conv_id], state[:cli], context, orchestrator,
+                   worker_token) do |conv_id, client, ctx, orch, token|
+          Thread.current.report_on_exception = false
+
           tool_registry = ToolRegistry.new
           orch.execute(
-            conversation_id: conversation_id,
+            conversation_id: conv_id,
             client: client,
             tool_registry: tool_registry,
             **ctx
           )
         ensure
-          history.decrement_workers
+          token.release # Thread always releases its token
         end
       end
 
@@ -102,26 +102,26 @@ module Nu
         formatter.display_thread_event("Orchestrator", "Finished")
       end
 
-      def handle_interrupt_cleanup(thread, workers_incremented)
-        application.console.hide_spinner
+      def handle_interrupt_cleanup(_thread, worker_token)
+        # Spinner already cleaned up its display in rescue block
+        # Just output the abort message
         application.output_line("(Ctrl-C) Operation aborted by user.", type: :debug)
 
-        # Kill all active threads (orchestrator, summarizer, etc.)
+        # Kill all active threads immediately (orchestrator, summarizer, etc.)
         application.active_threads.each do |t|
           t.kill if t.alive?
         end
         application.active_threads.clear
 
-        # Clean up worker count if needed
-        return unless thread&.alive? || workers_incremented
-
-        # Decrement if thread is alive or workers were incremented but thread wasn't created yet
-        application.history.decrement_workers
+        # Release worker token if still active
+        worker_token.release
       end
 
-      def cleanup_resources(thread)
+      def cleanup_resources(thread, worker_token)
         application.console.hide_spinner
         application.active_threads.delete(thread) if thread
+        # Final safety net - release token if somehow still active
+        worker_token.release
       end
     end
   end

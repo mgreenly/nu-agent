@@ -26,10 +26,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
       c.instance_variable_set(:@history_pos, nil)
       c.instance_variable_set(:@saved_input, String.new(""))
       c.instance_variable_set(:@kill_ring, String.new(""))
-      c.instance_variable_set(:@spinner_running, false)
+      c.instance_variable_set(:@spinner_state, Nu::Agent::SpinnerState.new)
       c.instance_variable_set(:@spinner_frames, ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
-      c.instance_variable_set(:@spinner_frame, 0)
-      c.instance_variable_set(:@spinner_message, String.new(""))
     end
   end
 
@@ -142,16 +140,18 @@ RSpec.describe Nu::Agent::ConsoleIO do
     end
 
     context "with Ctrl-D" do
-      it "returns :eof when buffer is empty" do
-        console.instance_variable_set(:@input_buffer, "")
-        result = console.send(:parse_input, "\x04")
-        expect(result).to eq(:eof)
-      end
-
-      it "returns nil when buffer is not empty" do
-        console.instance_variable_set(:@input_buffer, "text")
+      it "does nothing when buffer is empty" do
+        console.instance_variable_set(:@input_buffer, String.new(""))
         result = console.send(:parse_input, "\x04")
         expect(result).to be_nil
+      end
+
+      it "deletes forward when buffer is not empty" do
+        console.instance_variable_set(:@input_buffer, String.new("text"))
+        console.instance_variable_set(:@cursor_pos, 0)
+        result = console.send(:parse_input, "\x04")
+        expect(result).to be_nil
+        expect(console.instance_variable_get(:@input_buffer)).to eq("ext")
       end
     end
 
@@ -222,8 +222,9 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
       console.show_spinner("Thinking...")
       expect(console.instance_variable_get(:@mode)).to eq(:spinner)
-      expect(console.instance_variable_get(:@spinner_message)).to eq("Thinking...")
-      expect(console.instance_variable_get(:@spinner_running)).to be true
+      spinner_state = console.instance_variable_get(:@spinner_state)
+      expect(spinner_state.message).to eq("Thinking...")
+      expect(spinner_state.running).to be true
 
       # Clean up
       console.hide_spinner
@@ -233,14 +234,42 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "#hide_spinner" do
     it "stops spinner and clears line" do
       allow(stdin).to receive(:wait_readable).and_return(nil)
-      console.instance_variable_set(:@spinner_running, true)
+      spinner_state = console.instance_variable_get(:@spinner_state)
+      spinner_state.running = true
       console.instance_variable_set(:@spinner_thread, Thread.new { sleep 0.1 })
 
       console.hide_spinner
 
-      expect(console.instance_variable_get(:@spinner_running)).to be false
+      expect(spinner_state.running).to be false
       output = stdout.string
       expect(output).to include("\e[2K\r") # Clear line
+    end
+  end
+
+  describe "#interrupt_requested?" do
+    it "returns false initially" do
+      expect(console.interrupt_requested?).to be false
+    end
+
+    it "returns true after interrupt flag is set" do
+      spinner_state = console.instance_variable_get(:@spinner_state)
+      spinner_state.interrupt_requested = true
+      expect(console.interrupt_requested?).to be true
+    end
+
+    it "resets to false when show_spinner is called" do
+      spinner_state = console.instance_variable_get(:@spinner_state)
+      spinner_state.interrupt_requested = true
+      allow(stdin).to receive(:wait_readable).and_return(nil)
+      allow(stdin).to receive(:read_nonblock).and_raise(Errno::EAGAIN)
+      allow(IO).to receive(:select).and_return(nil)
+
+      console.show_spinner("Testing...")
+
+      expect(console.interrupt_requested?).to be false
+
+      # Clean up
+      console.hide_spinner
     end
   end
 

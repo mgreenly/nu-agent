@@ -20,7 +20,8 @@ RSpec.describe Nu::Agent::InputProcessor do
       active_threads: active_threads,
       conversation_id: 1,
       session_start_time: Time.now - 3600,
-      output_line: nil
+      output_line: nil,
+      debug: false
     )
   end
   let(:user_actor) { "testuser" }
