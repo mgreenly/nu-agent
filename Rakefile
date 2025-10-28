@@ -20,3 +20,20 @@ desc "Run the nu-agent application"
 task :run do
   sh "clear && ./exe/nu-agent"
 end
+
+# Coverage tasks
+namespace :coverage do
+  desc "Run tests with coverage enforcement (fails if coverage drops below baseline)"
+  task :enforce do
+    ENV["COVERAGE_ENFORCE"] = "true"
+    Rake::Task["spec"].invoke
+  end
+end
+
+desc "Run tests with coverage reporting"
+task :coverage do
+  # Coverage is automatically enabled via spec_helper.rb
+  Rake::Task["spec"].invoke
+  puts "\n📊 Coverage report generated at coverage/index.html"
+  puts "   Open it with: open coverage/index.html (macOS) or xdg-open coverage/index.html (Linux)"
+end

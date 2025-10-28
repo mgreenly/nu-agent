@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# SimpleCov must be loaded before application code
+require "simplecov"
+
+SimpleCov.start do
+  enable_coverage :branch
+  add_filter "/spec/"
+  add_filter "/vendor/"
+
+  # Only enforce minimum coverage when COVERAGE_ENFORCE is set
+  if ENV["COVERAGE_ENFORCE"] == "true"
+    # Current baseline coverage (as of 2025-10-28)
+    # Goal: gradually increase to 100%
+    minimum_coverage line: 74, branch: 46
+  end
+end
+
 require "nu/agent"
 
 RSpec.configure do |config|

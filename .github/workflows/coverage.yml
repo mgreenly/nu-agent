@@ -1,0 +1,62 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Install DuckDB
+        run: |
+          mkdir -p $HOME/duckdb/include $HOME/duckdb/lib
+          wget https://github.com/duckdb/duckdb/releases/download/v1.4.1/libduckdb-linux-amd64.zip
+          unzip libduckdb-linux-amd64.zip
+          mv duckdb.h $HOME/duckdb/include/
+          mv libduckdb.so $HOME/duckdb/lib/
+          echo "DUCKDB_DIR=$HOME/duckdb" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          bundle config build.duckdb --with-duckdb-dir=$HOME/duckdb
+          bundle install
+
+      - name: Setup test API keys
+        run: |
+          mkdir -p $HOME/.secrets
+          echo "test-anthropic-key" > $HOME/.secrets/ANTHROPIC_API_KEY
+          echo "test-openai-key" > $HOME/.secrets/OPENAI_API_KEY
+          echo "test-gemini-key" > $HOME/.secrets/GEMINI_API_KEY
+          echo "test-xai-key" > $HOME/.secrets/XAI_API_KEY
+
+      - name: Run tests with coverage enforcement
+        run: bundle exec rake coverage:enforce
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
