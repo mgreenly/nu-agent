@@ -71,7 +71,7 @@ task :foreign_key_migration do
 
     total_orphans = orphaned_exchanges.length + orphaned_messages_conv.length + orphaned_messages_exch.length
 
-    if total_orphans > 0
+    if total_orphans.positive?
       puts "❌ ORPHANED DATA FOUND:"
       puts "  - #{orphaned_exchanges.length} orphaned exchanges"
       puts "  - #{orphaned_messages_conv.length} messages with invalid conversation_id"
@@ -188,11 +188,11 @@ task :foreign_key_migration do
         INSERT INTO conversations VALUES (
           #{row[0]},
           #{format_timestamp(row[1])},
-          #{row[2] ? "'#{escape_sql(row[2])}'" : "NULL"},
-          #{row[3] ? "'#{row[3]}'" : "NULL"},
-          #{row[4] ? "'#{escape_sql(row[4])}'" : "NULL"},
-          #{row[5] ? "'#{row[5]}'" : "NULL"},
-          #{row[6] || "NULL"}
+          #{row[2] ? "'#{escape_sql(row[2])}'" : 'NULL'},
+          #{row[3] ? "'#{row[3]}'" : 'NULL'},
+          #{row[4] ? "'#{escape_sql(row[4])}'" : 'NULL'},
+          #{row[5] ? "'#{row[5]}'" : 'NULL'},
+          #{row[6] || 'NULL'}
         )
       SQL
     end
@@ -205,14 +205,14 @@ task :foreign_key_migration do
           #{row[0]}, #{row[1]}, #{row[2]},
           #{format_timestamp(row[3])},
           #{format_timestamp(row[4])},
-          #{row[5] ? "'#{escape_sql(row[5])}'" : "NULL"},
-          #{row[6] ? "'#{row[6]}'" : "NULL"},
-          #{row[7] ? "'#{row[7]}'" : "NULL"},
-          #{row[8] ? "'#{escape_sql(row[8])}'" : "NULL"},
-          #{row[9] ? "'#{escape_sql(row[9])}'" : "NULL"},
-          #{row[10] ? "'#{escape_sql(row[10])}'" : "NULL"},
-          #{row[11] || "NULL"}, #{row[12] || "NULL"},
-          #{row[13] || "NULL"}, #{row[14] || "NULL"}, #{row[15] || "NULL"}
+          #{row[5] ? "'#{escape_sql(row[5])}'" : 'NULL'},
+          #{row[6] ? "'#{row[6]}'" : 'NULL'},
+          #{row[7] ? "'#{row[7]}'" : 'NULL'},
+          #{row[8] ? "'#{escape_sql(row[8])}'" : 'NULL'},
+          #{row[9] ? "'#{escape_sql(row[9])}'" : 'NULL'},
+          #{row[10] ? "'#{escape_sql(row[10])}'" : 'NULL'},
+          #{row[11] || 'NULL'}, #{row[12] || 'NULL'},
+          #{row[13] || 'NULL'}, #{row[14] || 'NULL'}, #{row[15] || 'NULL'}
         )
       SQL
     end
@@ -232,21 +232,21 @@ task :foreign_key_migration do
           error, redacted, exchange_id, created_at
         ) VALUES (
           #{id},
-          #{conversation_id || "NULL"},
-          #{actor ? "'#{escape_sql(actor)}'" : "NULL"},
-          #{role ? "'#{role}'" : "NULL"},
-          #{content ? "'#{escape_sql(content)}'" : "NULL"},
-          #{model ? "'#{model}'" : "NULL"},
-          #{include_in_context.nil? ? "true" : include_in_context},
-          #{tokens_input || "NULL"},
-          #{tokens_output || "NULL"},
-          #{spend || "NULL"},
-          #{tool_calls ? "'#{escape_sql(tool_calls)}'" : "NULL"},
-          #{tool_call_id ? "'#{tool_call_id}'" : "NULL"},
-          #{tool_result ? "'#{escape_sql(tool_result)}'" : "NULL"},
-          #{error ? "'#{escape_sql(error)}'" : "NULL"},
-          #{redacted.nil? ? "false" : redacted},
-          #{exchange_id || "NULL"},
+          #{conversation_id || 'NULL'},
+          #{actor ? "'#{escape_sql(actor)}'" : 'NULL'},
+          #{role ? "'#{role}'" : 'NULL'},
+          #{content ? "'#{escape_sql(content)}'" : 'NULL'},
+          #{model ? "'#{model}'" : 'NULL'},
+          #{include_in_context.nil? ? 'true' : include_in_context},
+          #{tokens_input || 'NULL'},
+          #{tokens_output || 'NULL'},
+          #{spend || 'NULL'},
+          #{tool_calls ? "'#{escape_sql(tool_calls)}'" : 'NULL'},
+          #{tool_call_id ? "'#{tool_call_id}'" : 'NULL'},
+          #{tool_result ? "'#{escape_sql(tool_result)}'" : 'NULL'},
+          #{error ? "'#{escape_sql(error)}'" : 'NULL'},
+          #{redacted.nil? ? 'false' : redacted},
+          #{exchange_id || 'NULL'},
           #{format_timestamp(created_at)}
         )
       SQL
@@ -292,7 +292,6 @@ task :foreign_key_migration do
     puts "  cp ./db/memory-rollback.db ./db/memory.db"
     puts "  git reset --hard rollback-target"
     puts
-
   rescue StandardError => e
     puts
     puts "=" * 80

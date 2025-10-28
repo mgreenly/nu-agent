@@ -25,6 +25,7 @@ Metrics/MethodLength:
   Max: 25
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Complex input parsing requires longer methods
+    - 'lib/nu/agent/history.rb'  # Database initialization with WAL recovery detection
 
 Metrics/ClassLength:
   Max: 250
@@ -34,6 +35,7 @@ Metrics/ClassLength:
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
+    - 'rakelib/**/*'  # Migration scripts may require long blocks
 
 # Disable some overly strict cops
 Style/Documentation:
@@ -43,6 +45,7 @@ Metrics/AbcSize:
   Max: 25
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Complex input parsing
+    - 'lib/nu/agent/history.rb'  # Database initialization with WAL recovery detection
 
 Metrics/CyclomaticComplexity:
   Max: 10
@@ -53,3 +56,8 @@ Metrics/PerceivedComplexity:
   Max: 10
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Escape sequence parsing complexity
+
+# Lint - acceptable patterns
+Lint/HashCompareByIdentity:
+  Exclude:
+    - 'lib/nu/agent/history.rb'  # Thread-local connection pool uses object_id intentionally

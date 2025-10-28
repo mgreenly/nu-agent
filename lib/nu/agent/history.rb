@@ -15,7 +15,7 @@ module Nu
         wal_existed = File.exist?(wal_path)
         wal_size = wal_existed ? File.size(wal_path) : 0
 
-        if wal_existed && wal_size > 0
+        if wal_existed && wal_size.positive?
           warn "⚠️  WAL file detected (#{format_bytes(wal_size)}): Previous shutdown may have been unclean"
           warn "   Database will automatically recover on connect..."
         end
@@ -36,13 +36,13 @@ module Nu
         @schema_manager.setup_schema
 
         # If WAL was present, confirm recovery (WAL should be truncated/removed now)
-        if wal_existed && wal_size > 0
-          current_wal_size = File.exist?(wal_path) ? File.size(wal_path) : 0
-          if current_wal_size == 0 || !File.exist?(wal_path)
-            warn "✅ Database recovery completed successfully"
-          else
-            warn "⚠️  WAL file still present (#{format_bytes(current_wal_size)}) - this is normal during active use"
-          end
+        return unless wal_existed && wal_size.positive?
+
+        current_wal_size = File.exist?(wal_path) ? File.size(wal_path) : 0
+        if current_wal_size.zero? || !File.exist?(wal_path)
+          warn "✅ Database recovery completed successfully"
+        else
+          warn "⚠️  WAL file still present (#{format_bytes(current_wal_size)}) - this is normal during active use"
         end
       end
 
