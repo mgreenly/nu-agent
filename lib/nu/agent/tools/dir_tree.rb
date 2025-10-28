@@ -4,6 +4,30 @@ module Nu
   module Agent
     module Tools
       class DirTree
+        PARAMETERS = {
+          path: {
+            type: "string",
+            description: "Directory to start from (relative to project root or absolute within project). " \
+                         "Defaults to current directory.",
+            required: false
+          },
+          max_depth: {
+            type: "integer",
+            description: "Maximum depth to traverse. If not specified, traverses all levels.",
+            required: false
+          },
+          show_hidden: {
+            type: "boolean",
+            description: "Include hidden directories (those starting with .). Default: false",
+            required: false
+          },
+          limit: {
+            type: "integer",
+            description: "Maximum number of directories to return. Default: 1000",
+            required: false
+          }
+        }.freeze
+
         def name
           "dir_tree"
         end
@@ -15,29 +39,7 @@ module Nu
         end
 
         def parameters
-          {
-            path: {
-              type: "string",
-              description: "Directory to start from (relative to project root or absolute within project). " \
-                           "Defaults to current directory.",
-              required: false
-            },
-            max_depth: {
-              type: "integer",
-              description: "Maximum depth to traverse. If not specified, traverses all levels.",
-              required: false
-            },
-            show_hidden: {
-              type: "boolean",
-              description: "Include hidden directories (those starting with .). Default: false",
-              required: false
-            },
-            limit: {
-              type: "integer",
-              description: "Maximum number of directories to return. Default: 1000",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

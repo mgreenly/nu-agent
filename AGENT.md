@@ -11,6 +11,7 @@
 - All code must pass RuboCop (`bundle exec rubocop -a`), NO exceptions.
 - Line length: 120 chars max
 - Run tests before committing (`bundle exec rspec`)
+- **Unused parameters**: Remove them entirely - don't just prefix with `_` to silence RuboCop
 
 ## Code Smells to Avoid
 - Using `@` sigils when `attr_accessor/reader/writer` exists

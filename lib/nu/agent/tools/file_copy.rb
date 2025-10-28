@@ -4,6 +4,19 @@ module Nu
   module Agent
     module Tools
       class FileCopy
+        PARAMETERS = {
+          source: {
+            type: "string",
+            description: "Path to the source file (relative to project root or absolute within project)",
+            required: true
+          },
+          destination: {
+            type: "string",
+            description: "Path to the destination (relative to project root or absolute within project)",
+            required: true
+          }
+        }.freeze
+
         def name
           "file_copy"
         end
@@ -15,18 +28,7 @@ module Nu
         end
 
         def parameters
-          {
-            source: {
-              type: "string",
-              description: "Path to the source file (relative to project root or absolute within project)",
-              required: true
-            },
-            destination: {
-              type: "string",
-              description: "Path to the destination (relative to project root or absolute within project)",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

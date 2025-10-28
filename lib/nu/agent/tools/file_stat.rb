@@ -4,6 +4,14 @@ module Nu
   module Agent
     module Tools
       class FileStat
+        PARAMETERS = {
+          path: {
+            type: "string",
+            description: "Path to the file or directory (relative to project root or absolute within project)",
+            required: true
+          }
+        }.freeze
+
         def name
           "file_stat"
         end
@@ -15,13 +23,7 @@ module Nu
         end
 
         def parameters
-          {
-            path: {
-              type: "string",
-              description: "Path to the file or directory (relative to project root or absolute within project)",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

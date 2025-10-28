@@ -5,7 +5,7 @@ module Nu
     class Application
       attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :verbosity, :redact,
                     :summarizer_enabled, :spell_check_enabled, :conversation_id, :session_start_time
-      attr_reader :history, :formatter, :status_mutex, :console, :tui, :operation_mutex, :worker_manager
+      attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager
 
       def active_threads
         @worker_manager&.active_threads || []
@@ -36,9 +36,6 @@ module Nu
       ensure
         # Signal threads to shutdown
         @shutdown = true
-
-        # Close TUI before waiting for threads
-        @tui&.close
 
         # Wait for any critical sections (database writes) to complete
         timeout = 5.0
@@ -76,11 +73,7 @@ module Nu
 
       # Clear the screen
       def clear_screen
-        if @tui&.active
-          @tui.clear_output
-        else
-          system("clear")
-        end
+        system("clear")
       end
 
       private
@@ -260,15 +253,10 @@ module Nu
 
       def setup_signal_handlers
         # Don't trap INT - let it raise Interrupt exception so we can handle it gracefully
-        # Signal.trap("INT") do
-        #   @shutdown = true
-        #   print_goodbye
-        #   exit(0)
-        # end
       end
 
       def print_welcome
-        print "\033[2J\033[H" unless @tui&.active
+        print "\033[2J\033[H"
         output_lines(
           "Nu Agent REPL",
           "Database: #{File.expand_path(@history.db_path)}",

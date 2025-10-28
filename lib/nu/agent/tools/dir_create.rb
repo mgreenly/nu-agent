@@ -4,6 +4,14 @@ module Nu
   module Agent
     module Tools
       class DirCreate
+        PARAMETERS = {
+          path: {
+            type: "string",
+            description: "Path to the directory to create (relative to project root or absolute within project)",
+            required: true
+          }
+        }.freeze
+
         def name
           "dir_create"
         end
@@ -16,13 +24,7 @@ module Nu
         end
 
         def parameters
-          {
-            path: {
-              type: "string",
-              description: "Path to the directory to create (relative to project root or absolute within project)",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, _context:, **)

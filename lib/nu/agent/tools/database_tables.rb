@@ -4,6 +4,8 @@ module Nu
   module Agent
     module Tools
       class DatabaseTables
+        PARAMETERS = {}.freeze
+
         def name
           "database_tables"
         end
@@ -16,7 +18,7 @@ module Nu
         end
 
         def parameters
-          {}
+          PARAMETERS
         end
 
         def execute(history:, context:, **)

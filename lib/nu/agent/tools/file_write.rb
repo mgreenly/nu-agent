@@ -4,6 +4,19 @@ module Nu
   module Agent
     module Tools
       class FileWrite
+        PARAMETERS = {
+          file: {
+            type: "string",
+            description: "Path to the file (relative to project root or absolute within project)",
+            required: true
+          },
+          content: {
+            type: "string",
+            description: "Complete content to write to the file",
+            required: true
+          }
+        }.freeze
+
         def name
           "file_write"
         end
@@ -15,18 +28,7 @@ module Nu
         end
 
         def parameters
-          {
-            file: {
-              type: "string",
-              description: "Path to the file (relative to project root or absolute within project)",
-              required: true
-            },
-            content: {
-              type: "string",
-              description: "Complete content to write to the file",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

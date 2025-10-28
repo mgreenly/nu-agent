@@ -8,6 +8,19 @@ module Nu
   module Agent
     module Tools
       class SearchInternet
+        PARAMETERS = {
+          query: {
+            type: "string",
+            description: "The search query string",
+            required: true
+          },
+          num_results: {
+            type: "integer",
+            description: "Number of results to return (1-10, default: 5)",
+            required: false
+          }
+        }.freeze
+
         def name
           "search_internet"
         end
@@ -26,18 +39,7 @@ module Nu
         end
 
         def parameters
-          {
-            query: {
-              type: "string",
-              description: "The search query string",
-              required: true
-            },
-            num_results: {
-              type: "integer",
-              description: "Number of results to return (1-10, default: 5)",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

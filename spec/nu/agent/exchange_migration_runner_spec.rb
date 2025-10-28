@@ -6,12 +6,10 @@ require "nu/agent/exchange_migration_runner"
 RSpec.describe Nu::Agent::ExchangeMigrationRunner do
   let(:history) { double("history") }
   let(:console) { double("console") }
-  let(:tui) { nil }
   let(:application) do
     double("application",
            history: history,
            console: console,
-           tui: tui,
            output_line: nil)
   end
 
@@ -71,22 +69,6 @@ RSpec.describe Nu::Agent::ExchangeMigrationRunner do
         expect(application).to have_received(:output_line)
           .with("Existing exchanges will NOT be affected.", type: :debug)
         expect(application).not_to have_received(:output_line).with("Migrating exchanges...", type: :debug)
-      end
-    end
-
-    context "when using TUI" do
-      let(:tui) { double("tui", active: true, readline: "y") }
-      let(:migration_stats) { { conversations: 5, exchanges_created: 10, messages_updated: 20 } }
-
-      before do
-        allow(history).to receive(:migrate_exchanges).and_return(migration_stats)
-      end
-
-      it "uses TUI for prompting" do
-        described_class.run(application)
-
-        expect(tui).to have_received(:readline).with("Continue with migration? [y/N] ")
-        expect(history).to have_received(:migrate_exchanges)
       end
     end
   end

@@ -18,11 +18,7 @@ module Nu
         private
 
         def clear_display
-          if app.tui&.active
-            app.tui.clear_output
-          else
-            app.clear_screen
-          end
+          app.clear_screen
         end
 
         def setup_new_conversation

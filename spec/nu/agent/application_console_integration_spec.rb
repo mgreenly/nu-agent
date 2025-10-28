@@ -10,8 +10,7 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
     instance_double(
       Nu::Agent::Options,
       debug: false,
-      reset_model: nil,
-      tui: false
+      reset_model: nil
     )
   end
 
@@ -59,7 +58,7 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
   end
 
   describe "#initialize" do
-    it "creates a ConsoleIO instance instead of TUI/OutputManager" do
+    it "creates a ConsoleIO instance" do
       expect(Nu::Agent::ConsoleIO).to receive(:new).with(
         db_history: mock_history,
         debug: false
@@ -70,10 +69,7 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
       # Should have @console set
       expect(app.instance_variable_get(:@console)).to eq(mock_console)
 
-      # Should NOT have @tui set
-      expect(app.instance_variable_get(:@tui)).to be_nil
-
-      # Should NOT have @output set (OutputManager should be removed)
+      # Should NOT have @output set (OutputManager was removed)
       expect(app.instance_variable_get(:@output)).to be_nil
     end
 

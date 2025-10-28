@@ -4,6 +4,14 @@ module Nu
   module Agent
     module Tools
       class DatabaseSchema
+        PARAMETERS = {
+          table_name: {
+            type: "string",
+            description: "The name of the table to describe (e.g., 'messages', 'conversations', 'appconfig')",
+            required: true
+          }
+        }.freeze
+
         def name
           "database_schema"
         end
@@ -16,13 +24,7 @@ module Nu
         end
 
         def parameters
-          {
-            table_name: {
-              type: "string",
-              description: "The name of the table to describe (e.g., 'messages', 'conversations', 'appconfig')",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, history:, context:)

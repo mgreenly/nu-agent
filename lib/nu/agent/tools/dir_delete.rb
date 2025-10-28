@@ -4,6 +4,20 @@ module Nu
   module Agent
     module Tools
       class DirDelete
+        PARAMETERS = {
+          path: {
+            type: "string",
+            description: "Path to the directory to delete (relative to project root or absolute within project)",
+            required: true
+          },
+          confirm_delete: {
+            type: "boolean",
+            description: "Set to true to confirm deletion after reviewing what will be deleted. " \
+                         "Required for actual deletion.",
+            required: false
+          }
+        }.freeze
+
         def name
           "dir_delete"
         end
@@ -17,19 +31,7 @@ module Nu
         end
 
         def parameters
-          {
-            path: {
-              type: "string",
-              description: "Path to the directory to delete (relative to project root or absolute within project)",
-              required: true
-            },
-            confirm_delete: {
-              type: "boolean",
-              description: "Set to true to confirm deletion after reviewing what will be deleted. " \
-                           "Required for actual deletion.",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

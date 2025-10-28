@@ -6,6 +6,19 @@ module Nu
   module Agent
     module Tools
       class ExecuteBash
+        PARAMETERS = {
+          command: {
+            type: "string",
+            description: "The bash command to execute",
+            required: true
+          },
+          timeout: {
+            type: "integer",
+            description: "Command timeout in seconds (default: 30, max: 300)",
+            required: false
+          }
+        }.freeze
+
         def name
           "execute_bash"
         end
@@ -18,18 +31,7 @@ module Nu
         end
 
         def parameters
-          {
-            command: {
-              type: "string",
-              description: "The bash command to execute",
-              required: true
-            },
-            timeout: {
-              type: "integer",
-              description: "Command timeout in seconds (default: 30, max: 300)",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

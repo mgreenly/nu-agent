@@ -4,6 +4,14 @@ module Nu
   module Agent
     module Tools
       class DatabaseMessage
+        PARAMETERS = {
+          message_id: {
+            type: "integer",
+            description: "The database ID of the message to retrieve",
+            required: true
+          }
+        }.freeze
+
         def name
           "database_message"
         end
@@ -15,13 +23,7 @@ module Nu
         end
 
         def parameters
-          {
-            message_id: {
-              type: "integer",
-              description: "The database ID of the message to retrieve",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, history:, context:)

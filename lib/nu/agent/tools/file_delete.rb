@@ -4,6 +4,14 @@ module Nu
   module Agent
     module Tools
       class FileDelete
+        PARAMETERS = {
+          file: {
+            type: "string",
+            description: "Path to the file to delete (relative to project root or absolute within project)",
+            required: true
+          }
+        }.freeze
+
         def name
           "file_delete"
         end
@@ -14,13 +22,7 @@ module Nu
         end
 
         def parameters
-          {
-            file: {
-              type: "string",
-              description: "Path to the file to delete (relative to project root or absolute within project)",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

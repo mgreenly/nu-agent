@@ -9,7 +9,7 @@ module Nu
         application.output_line("This will analyze all messages and group them into exchanges.", type: :debug)
         application.output_line("Existing exchanges will NOT be affected.", type: :debug)
 
-        response = prompt_user(application)
+        response = prompt_user
 
         return unless response == "y"
 
@@ -26,13 +26,9 @@ module Nu
         application.output_line("  Time elapsed: #{format('%.2f', elapsed)}s", type: :debug)
       end
 
-      def self.prompt_user(application)
-        if application.tui&.active
-          application.tui.readline("Continue with migration? [y/N] ").chomp.downcase
-        else
-          print "Continue with migration? [y/N] "
-          gets.chomp.downcase
-        end
+      def self.prompt_user
+        print "Continue with migration? [y/N] "
+        gets.chomp.downcase
       end
       private_class_method :prompt_user
     end

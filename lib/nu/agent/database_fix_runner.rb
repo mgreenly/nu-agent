@@ -21,7 +21,7 @@ module Nu
                                   "(#{msg['created_at']})", type: :debug)
         end
 
-        response = prompt_user(application)
+        response = prompt_user
 
         if response == "y"
           ids = corrupted.map { |m| m["id"] }
@@ -32,13 +32,9 @@ module Nu
         end
       end
 
-      def self.prompt_user(application)
-        if application.tui&.active
-          application.tui.readline("Delete these messages? [y/N] ").chomp.downcase
-        else
-          print "\nDelete these messages? [y/N] "
-          gets.chomp.downcase
-        end
+      def self.prompt_user
+        print "\nDelete these messages? [y/N] "
+        gets.chomp.downcase
       end
       private_class_method :prompt_user
     end

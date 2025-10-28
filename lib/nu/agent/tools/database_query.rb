@@ -4,6 +4,17 @@ module Nu
   module Agent
     module Tools
       class DatabaseQuery
+        PARAMETERS = {
+          sql: {
+            type: "string",
+            description: "The read-only SQL query to execute. Do not include a semicolon. " \
+                         "MUST include LIMIT clause (100 or less recommended). " \
+                         "Results capped at 500 rows maximum. " \
+                         "Example: 'SELECT * FROM messages WHERE role = \"user\" ORDER BY created_at DESC LIMIT 50'",
+            required: true
+          }
+        }.freeze
+
         def name
           "database_query"
         end
@@ -19,16 +30,7 @@ module Nu
         end
 
         def parameters
-          {
-            sql: {
-              type: "string",
-              description: "The read-only SQL query to execute. Do not include a semicolon. " \
-                           "MUST include LIMIT clause (100 or less recommended). " \
-                           "Results capped at 500 rows maximum. " \
-                           "Example: 'SELECT * FROM messages WHERE role = \"user\" ORDER BY created_at DESC LIMIT 50'",
-              required: true
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, history:, **)

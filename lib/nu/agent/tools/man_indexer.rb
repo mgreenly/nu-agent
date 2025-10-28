@@ -4,6 +4,8 @@ module Nu
   module Agent
     module Tools
       class ManIndexer
+        PARAMETERS = {}.freeze
+
         def name
           "man_indexer"
         end
@@ -15,7 +17,7 @@ module Nu
         end
 
         def parameters
-          {} # No parameters needed
+          PARAMETERS
         end
 
         def execute(context:, **)

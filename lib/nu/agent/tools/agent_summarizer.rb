@@ -4,6 +4,8 @@ module Nu
   module Agent
     module Tools
       class AgentSummarizer
+        PARAMETERS = {}.freeze
+
         def name
           "agent_summarizer"
         end
@@ -15,7 +17,7 @@ module Nu
         end
 
         def parameters
-          {} # No parameters needed
+          PARAMETERS
         end
 
         def execute(context:, **)

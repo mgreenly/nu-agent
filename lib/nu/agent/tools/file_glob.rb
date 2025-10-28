@@ -4,6 +4,30 @@ module Nu
   module Agent
     module Tools
       class FileGlob
+        PARAMETERS = {
+          pattern: {
+            type: "string",
+            description: "Glob pattern to match files (e.g., '**/*.rb', 'lib/**/*.{rb,rake}', '*.json')",
+            required: true
+          },
+          path: {
+            type: "string",
+            description: "Base directory to search from (defaults to current directory '.')",
+            required: false
+          },
+          limit: {
+            type: "integer",
+            description: "Maximum number of results to return (defaults to 100)",
+            required: false
+          },
+          sort_by: {
+            type: "string",
+            description: "How to sort results: 'mtime' (modification time, newest first), " \
+                         "'name' (alphabetical), or 'none' (default: 'mtime')",
+            required: false
+          }
+        }.freeze
+
         def name
           "file_glob"
         end
@@ -25,29 +49,7 @@ module Nu
         end
 
         def parameters
-          {
-            pattern: {
-              type: "string",
-              description: "Glob pattern to match files (e.g., '**/*.rb', 'lib/**/*.{rb,rake}', '*.json')",
-              required: true
-            },
-            path: {
-              type: "string",
-              description: "Base directory to search from (defaults to current directory '.')",
-              required: false
-            },
-            limit: {
-              type: "integer",
-              description: "Maximum number of results to return (defaults to 100)",
-              required: false
-            },
-            sort_by: {
-              type: "string",
-              description: "How to sort results: 'mtime' (modification time, newest first), " \
-                           "'name' (alphabetical), or 'none' (default: 'mtime')",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)

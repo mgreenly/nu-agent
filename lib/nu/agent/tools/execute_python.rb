@@ -6,6 +6,19 @@ module Nu
   module Agent
     module Tools
       class ExecutePython
+        PARAMETERS = {
+          code: {
+            type: "string",
+            description: "The Python code to execute",
+            required: true
+          },
+          timeout: {
+            type: "integer",
+            description: "Code timeout in seconds (default: 30, max: 300)",
+            required: false
+          }
+        }.freeze
+
         def name
           "execute_python"
         end
@@ -22,18 +35,7 @@ module Nu
         end
 
         def parameters
-          {
-            code: {
-              type: "string",
-              description: "The Python code to execute",
-              required: true
-            },
-            timeout: {
-              type: "integer",
-              description: "Code timeout in seconds (default: 30, max: 300)",
-              required: false
-            }
-          }
+          PARAMETERS
         end
 
         def execute(arguments:, **)
