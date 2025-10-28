@@ -16,6 +16,7 @@ module Nu
       # Start the background worker thread
       def start_worker
         Thread.new do
+          Thread.current.report_on_exception = false
           summarize_conversations
         rescue StandardError
           @status_mutex.synchronize do
@@ -138,6 +139,7 @@ module Nu
       def make_llm_call_with_shutdown_check(prompt)
         # Make LLM call in a separate thread so we can check shutdown while waiting
         llm_thread = Thread.new do
+          Thread.current.report_on_exception = false
           @summarizer.send_message(
             messages: [{ "role" => "user", "content" => prompt }],
             tools: nil

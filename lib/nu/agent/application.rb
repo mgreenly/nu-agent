@@ -271,7 +271,8 @@ module Nu
         print "\033[2J\033[H" unless @tui&.active
         output_lines(
           "Nu Agent REPL",
-          "Type your prompts below. Press Ctrl-C, Ctrl-D, or /exit to quit.",
+          "Database: #{File.expand_path(@history.db_path)}",
+          "Type your prompts below. Press Ctrl-C or /exit to quit.",
           "(Ctrl-C during processing aborts operation)",
           "Type /help for available commands",
           "=" * 60

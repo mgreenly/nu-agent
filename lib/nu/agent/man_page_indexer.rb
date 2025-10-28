@@ -15,6 +15,7 @@ module Nu
       # Start the background worker thread
       def start_worker
         Thread.new do
+          Thread.current.report_on_exception = false
           index_pages
         rescue StandardError => e
           @application.output_line("[Man Indexer] Worker thread error: #{e.class}: #{e.message}", type: :error)
