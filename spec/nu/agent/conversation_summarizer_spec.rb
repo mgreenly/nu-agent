@@ -61,6 +61,20 @@ RSpec.describe Nu::Agent::ConversationSummarizer do
       thread.kill
       thread.join
     end
+
+    it "handles StandardError and sets running to false" do
+      # Mock summarize_conversations to raise an error
+      allow(summarizer_worker).to receive(:summarize_conversations).and_raise(StandardError.new("Test error"))
+
+      # Start worker and let it crash
+      thread = summarizer_worker.start_worker
+      sleep(0.05) # Give thread time to crash
+
+      # Verify status was updated
+      expect(summarizer_status["running"]).to be false
+
+      thread.join(1) # Clean up
+    end
   end
 
   describe "#summarize_conversations" do
@@ -166,6 +180,54 @@ RSpec.describe Nu::Agent::ConversationSummarizer do
       expect(captured_prompt).to include("user: Hello")
       expect(captured_prompt).to include("assistant: Hi there!")
       expect(captured_prompt).not_to include("Tool call")
+    end
+
+    it "handles exceptions during conversation processing" do
+      conv = { "id" => 2 }
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).and_raise(StandardError.new("Database error"))
+
+      summarizer_worker.summarize_conversations
+
+      expect(summarizer_status["failed"]).to eq(1)
+    end
+
+    it "handles empty summary response" do
+      conv = { "id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+      allow(summarizer).to receive(:send_message).and_return({ "content" => "", "spend" => 0.001 })
+
+      summarizer_worker.summarize_conversations
+
+      expect(summarizer_status["failed"]).to eq(1)
+      expect(summarizer_status["completed"]).to eq(0)
+    end
+
+    it "handles shutdown during LLM call" do
+      conv = { "id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+
+      # Mock a slow LLM call that takes longer than the shutdown check
+      call_count = 0
+      allow(application).to receive(:instance_variable_get).with(:@shutdown) do
+        call_count += 1
+        call_count > 2 # Return false initially, then true to trigger shutdown
+      end
+
+      # Mock a slow send_message call
+      allow(summarizer).to receive(:send_message) do
+        sleep(0.3) # Simulate slow API call
+        { "content" => "Summary", "spend" => 0.001 }
+      end
+
+      summarizer_worker.summarize_conversations
+
+      # No summary should be saved due to shutdown
+      expect(summarizer_status["completed"]).to eq(0)
     end
   end
 end
