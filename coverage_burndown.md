@@ -44,7 +44,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  66.67% |             49 |         147 | `lib/nu/agent/application.rb` |
 |  72.78% |             46 |         169 | `lib/nu/agent/history.rb` |
 |  73.11% |             32 |         119 | `lib/nu/agent/man_page_indexer.rb` |
-|  73.47% |             26 |          98 | `lib/nu/agent/clients/openai.rb` |
+|  ~~73.47%~~ 100% |             ~~26~~ 0 |          ~~98~~ 98 | ~~`lib/nu/agent/clients/openai.rb`~~ ✓ |
 |  ~~76.32%~~ 100% |              ~~9~~ 0 |          ~~38~~ 38 | ~~`lib/nu/agent/tools/agent_summarizer.rb`~~ ✓ |
 |  ~~76.92%~~ 100% |              ~~3~~ 0 |          ~~13~~ 13 | ~~`lib/nu/agent/api_key.rb`~~ ✓ |
 |  79.07% |             18 |          86 | `lib/nu/agent/clients/anthropic.rb` |
@@ -89,10 +89,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/tools/agent_summarizer.rb` ✓
 - [x] `lib/nu/agent/api_key.rb` ✓
 - [x] `lib/nu/agent/formatter.rb` ✓
+- [x] `lib/nu/agent/clients/openai.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/console_io.rb` (skipping man_indexer.rb - scheduled for removal)
-**Current Line Coverage:** 64.84%
-**Lines to Cover:** 109
+**File:** `lib/nu/agent/history.rb` (skipping console_io.rb and man_indexer.rb)
+**Current Line Coverage:** 72.78%
+**Lines to Cover:** 46
 **Goal:** 100% line coverage + 100% branch coverage
