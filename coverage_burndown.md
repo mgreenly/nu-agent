@@ -4,12 +4,12 @@ Files that need **both line AND branch coverage** brought to 100%.
 
 Listed in order from worst to best coverage.
 
-**Current Project Coverage:** 75.32% line, 47.43% branch
+**Current Project Coverage:** 89.29% line, 71.04% branch
 **Goal:** 100% line coverage AND 100% branch coverage on all files
 
 ---
 
-## Files to Fix (40 files)
+## Files to Fix (15 files)
 
 Each file needs to achieve 100% line coverage AND 100% branch coverage.
 
@@ -27,26 +27,26 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  ~~39.29%~~ 100% |             ~~17~~ 0 |          ~~28~~ 28 | ~~`lib/nu/agent/tools/execute_bash.rb`~~ ✓ |
 |   ~~40.0%~~ 100% |             ~~18~~ 0 |          ~~30~~ 30 | ~~`lib/nu/agent/tools/execute_python.rb`~~ ✓ |
 |   ~~40.0%~~ 100% |             ~~24~~ 0 |          ~~40~~ 40 | ~~`lib/nu/agent/tools/database_message.rb`~~ ✓ |
-|  40.48% |             25 |          42 | `lib/nu/agent/tools/file_delete.rb` |
-|  41.03% |             23 |          39 | `lib/nu/agent/tools/file_write.rb` |
-|  41.67% |             21 |          36 | `lib/nu/agent/clients/openai_embeddings.rb` |
-|  42.31% |             15 |          26 | `lib/nu/agent/spell_checker.rb` |
-|  43.59% |             22 |          39 | `lib/nu/agent/tools/dir_create.rb` |
-|  45.71% |             19 |          35 | `lib/nu/agent/tools/file_glob.rb` |
-|  46.34% |             22 |          41 | `lib/nu/agent/tools/man_indexer.rb` |
-|  48.89% |             23 |          45 | `lib/nu/agent/tools/file_edit.rb` |
-|   52.5% |             19 |          40 | `lib/nu/agent/tool_registry.rb` |
-|  52.63% |              9 |          19 | `lib/nu/agent/tools/database_schema.rb` |
-|  52.63% |              9 |          19 | `lib/nu/agent/tools/database_query.rb` |
+|  ~~40.48%~~ 100% |             ~~25~~ 0 |          ~~42~~ 42 | ~~`lib/nu/agent/tools/file_delete.rb`~~ ✓ |
+|  ~~41.03%~~ 100% |             ~~23~~ 0 |          ~~39~~ 39 | ~~`lib/nu/agent/tools/file_write.rb`~~ ✓ |
+|  ~~41.67%~~ 100% |             ~~21~~ 0 |          ~~36~~ 36 | ~~`lib/nu/agent/clients/openai_embeddings.rb`~~ ✓ |
+|  ~~42.31%~~ 100% |             ~~15~~ 0 |          ~~26~~ 26 | ~~`lib/nu/agent/spell_checker.rb`~~ ✓ |
+|  ~~43.59%~~ 100% |             ~~22~~ 0 |          ~~39~~ 39 | ~~`lib/nu/agent/tools/dir_create.rb`~~ ✓ |
+|  ~~45.71%~~ 100% |             ~~19~~ 0 |          ~~35~~ 35 | ~~`lib/nu/agent/tools/file_glob.rb`~~ ✓ |
+|  ~~46.34%~~ 100% |             ~~22~~ 0 |          ~~41~~ 41 | ~~`lib/nu/agent/tools/man_indexer.rb`~~ ✓ |
+|  ~~48.89%~~ 100% |             ~~23~~ 0 |          ~~45~~ 45 | ~~`lib/nu/agent/tools/file_edit.rb`~~ ✓ |
+|   ~~52.5%~~ 100% |             ~~19~~ 0 |          ~~40~~ 40 | ~~`lib/nu/agent/tool_registry.rb`~~ ✓ |
+|  ~~52.63%~~ 100% |              ~~9~~ 0 |          ~~19~~ 19 | ~~`lib/nu/agent/tools/database_schema.rb`~~ ✓ |
+|  ~~52.63%~~ 100% |              ~~9~~ 0 |          ~~19~~ 19 | ~~`lib/nu/agent/tools/database_query.rb`~~ ✓ |
 |  64.21% |             68 |         190 | `lib/nu/agent/formatter.rb` |
 |  64.84% |            109 |         310 | `lib/nu/agent/console_io.rb` |
-|  66.67% |              5 |          15 | `lib/nu/agent/tools/database_tables.rb` |
+|  ~~66.67%~~ 100% |              ~~5~~ 0 |          ~~15~~ 15 | ~~`lib/nu/agent/tools/database_tables.rb`~~ ✓ |
 |  66.67% |             49 |         147 | `lib/nu/agent/application.rb` |
 |  72.78% |             46 |         169 | `lib/nu/agent/history.rb` |
 |  73.11% |             32 |         119 | `lib/nu/agent/man_page_indexer.rb` |
 |  73.47% |             26 |          98 | `lib/nu/agent/clients/openai.rb` |
-|  76.32% |              9 |          38 | `lib/nu/agent/tools/agent_summarizer.rb` |
-|  76.92% |              3 |          13 | `lib/nu/agent/api_key.rb` |
+|  ~~76.32%~~ 100% |              ~~9~~ 0 |          ~~38~~ 38 | ~~`lib/nu/agent/tools/agent_summarizer.rb`~~ ✓ |
+|  ~~76.92%~~ 100% |              ~~3~~ 0 |          ~~13~~ 13 | ~~`lib/nu/agent/api_key.rb`~~ ✓ |
 |  79.07% |             18 |          86 | `lib/nu/agent/clients/anthropic.rb` |
 |  79.12% |             19 |          91 | `lib/nu/agent/clients/google.rb` |
 |  80.85% |             18 |          94 | `lib/nu/agent/tools/dir_list.rb` |
@@ -74,10 +74,24 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/tools/execute_bash.rb` ✓
 - [x] `lib/nu/agent/tools/execute_python.rb` ✓
 - [x] `lib/nu/agent/tools/database_message.rb` ✓
+- [x] `lib/nu/agent/tools/file_delete.rb` ✓
+- [x] `lib/nu/agent/tools/file_write.rb` ✓
+- [x] `lib/nu/agent/clients/openai_embeddings.rb` ✓
+- [x] `lib/nu/agent/spell_checker.rb` ✓
+- [x] `lib/nu/agent/tools/dir_create.rb` ✓
+- [x] `lib/nu/agent/tools/file_glob.rb` ✓
+- [x] `lib/nu/agent/tools/man_indexer.rb` ✓
+- [x] `lib/nu/agent/tools/file_edit.rb` ✓
+- [x] `lib/nu/agent/tool_registry.rb` ✓
+- [x] `lib/nu/agent/tools/database_schema.rb` ✓
+- [x] `lib/nu/agent/tools/database_query.rb` ✓
+- [x] `lib/nu/agent/tools/database_tables.rb` ✓
+- [x] `lib/nu/agent/tools/agent_summarizer.rb` ✓
+- [x] `lib/nu/agent/api_key.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/tools/file_delete.rb`
-**Current Line Coverage:** 40.48%
-**Lines to Cover:** 25
+**File:** `lib/nu/agent/formatter.rb` (skipping man_indexer.rb - scheduled for removal)
+**Current Line Coverage:** 64.21%
+**Lines to Cover:** 68
 **Goal:** 100% line coverage + 100% branch coverage

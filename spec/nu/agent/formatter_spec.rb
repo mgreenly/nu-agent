@@ -576,4 +576,936 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
   end
+
+  describe "#reset_session" do
+    it "resets conversation_id and session_start_time" do
+      new_conversation_id = 42
+
+      formatter.reset_session(conversation_id: new_conversation_id)
+
+      # Verify by checking the formatter uses new conversation_id
+      expect(history).to receive(:messages_since).with(
+        conversation_id: new_conversation_id,
+        message_id: 0
+      ).and_return([])
+
+      formatter.display_new_messages(conversation_id: new_conversation_id)
+    end
+  end
+
+  describe "#display_llm_request" do
+    it "delegates to llm_request_formatter" do
+      messages = [{ "role" => "user", "content" => "Hello" }]
+      tools = [{ "name" => "file_read" }]
+      markdown_doc = "# Test"
+
+      llm_formatter = instance_double(Nu::Agent::Formatters::LlmRequestFormatter)
+      allow(Nu::Agent::Formatters::LlmRequestFormatter).to receive(:new).and_return(llm_formatter)
+
+      formatter_with_llm = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: false,
+        console: mock_console,
+        application: nil
+      )
+
+      expect(llm_formatter).to receive(:display).with(messages, tools, markdown_doc)
+
+      formatter_with_llm.display_llm_request(messages, tools, markdown_doc)
+    end
+  end
+
+  describe "error message display" do
+    let(:error_message) do
+      {
+        "id" => 1,
+        "role" => "assistant",
+        "content" => "API Error Occurred",
+        "error" => {
+          "status" => 401,
+          "headers" => { "content-type" => "application/json" },
+          "body" => '{"error": {"message": "Invalid API key"}}',
+          "raw_error" => "Full error details"
+        }
+      }
+    end
+
+    it "displays formatted error with JSON body" do
+      expect(mock_console).to receive(:puts).with("\e[31mAPI Error Occurred\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mStatus: 401\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mHeaders:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m  content-type: application/json\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mBody:\e[0m")
+      expect(mock_console).to receive(:puts).with(a_string_matching(/Invalid API key/))
+
+      formatter.display_message(error_message)
+    end
+
+    it "displays error with non-JSON body" do
+      error_message["error"]["body"] = "Plain text error"
+
+      expect(mock_console).to receive(:puts).with("\e[31mAPI Error Occurred\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mStatus: 401\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mHeaders:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m  content-type: application/json\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mBody:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mPlain text error\e[0m")
+
+      formatter.display_message(error_message)
+    end
+
+    it "displays error with empty body" do
+      error_message["error"]["body"] = nil
+
+      expect(mock_console).to receive(:puts).with("\e[31mAPI Error Occurred\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mStatus: 401\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mHeaders:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m  content-type: application/json\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mBody:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m(empty)\e[0m")
+
+      formatter.display_message(error_message)
+    end
+
+    it "displays error with Hash body" do
+      error_message["error"]["body"] = { "error" => "Something went wrong" }
+
+      expect(mock_console).to receive(:puts).with("\e[31mAPI Error Occurred\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mStatus: 401\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mHeaders:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m  content-type: application/json\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mBody:\e[0m")
+      expect(mock_console).to receive(:puts).with(/Something went wrong/)
+
+      formatter.display_message(error_message)
+    end
+
+    it "displays raw_error when body is empty string" do
+      error_message["error"]["body"] = ""
+
+      expect(mock_console).to receive(:puts).with("\e[31mAPI Error Occurred\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mStatus: 401\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mHeaders:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m  content-type: application/json\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mBody:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mRaw Error (for debugging):\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mFull error details\e[0m")
+
+      formatter.display_message(error_message)
+    end
+
+    it "displays raw_error when body is nil" do
+      error_message["error"]["body"] = nil
+
+      expect(mock_console).to receive(:puts).with("\e[31mAPI Error Occurred\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mStatus: 401\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mHeaders:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m  content-type: application/json\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mBody:\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31m(empty)\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mRaw Error (for debugging):\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[31mFull error details\e[0m")
+
+      formatter.display_message(error_message)
+    end
+  end
+
+  describe "system message normalization" do
+    it "normalizes system messages by collapsing consecutive blank lines" do
+      message = {
+        "id" => 1,
+        "role" => "system",
+        "content" => "Line 1\n\n\n\nLine 2\n\n\nLine 3"
+      }
+
+      expect(mock_console).to receive(:puts).with("\e[90m[System] Line 1\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90mLine 2\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90mLine 3\e[0m")
+
+      formatter.display_message(message)
+    end
+
+    it "handles system messages with only whitespace" do
+      message = {
+        "id" => 1,
+        "role" => "system",
+        "content" => "   \n\n   "
+      }
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_message(message)
+    end
+  end
+
+  describe "empty LLM response warning" do
+    it "shows warning in debug mode when LLM returns empty content with tokens" do
+      formatter.debug = true
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "",
+        "tokens_input" => 10,
+        "tokens_output" => 5,
+        "tool_calls" => nil
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 5,
+                                                              "total" => 15,
+                                                              "spend" => 0.000150
+                                                            })
+
+      debug_warning = "\e[90m(LLM returned empty response - this may be an API/model issue)\e[0m"
+      expect(mock_console).to receive(:puts).with(debug_warning)
+
+      formatter.display_message(message)
+    end
+  end
+
+  describe "spell checker message when not in debug mode" do
+    it "does not display spell_checker messages when debug is false" do
+      message = {
+        "id" => 1,
+        "actor" => "spell_checker",
+        "role" => "user",
+        "content" => "Fix this text"
+      }
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_message(message)
+    end
+
+    it "displays spell_checker message with empty content in debug mode" do
+      formatter.debug = true
+
+      message = {
+        "id" => 1,
+        "actor" => "spell_checker",
+        "role" => "user",
+        "content" => "   "
+      }
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Spell Check Request]\e[0m")
+
+      formatter.display_message(message)
+    end
+  end
+
+  describe "#display_message_created" do
+    let(:application) { instance_double("Application", verbosity: 2) }
+    let(:formatter_with_app) do
+      described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+    end
+
+    before do
+      allow(history).to receive(:workers_idle?).and_return(true)
+    end
+
+    context "when debug is false" do
+      it "does not display anything" do
+        formatter.debug = false
+
+        expect(mock_console).not_to receive(:puts)
+
+        formatter.display_message_created(actor: "orchestrator", role: "assistant")
+      end
+    end
+
+    context "when verbosity is less than 2" do
+      it "does not display anything" do
+        allow(application).to receive(:verbosity).and_return(1)
+
+        expect(mock_console).not_to receive(:puts)
+
+        formatter_with_app.display_message_created(actor: "orchestrator", role: "assistant")
+      end
+    end
+
+    context "when verbosity is 2" do
+      it "displays basic message info for user message" do
+        allow(application).to receive(:verbosity).and_return(2)
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+
+        formatter_with_app.display_message_created(actor: "orchestrator", role: "user")
+      end
+
+      it "displays basic message info for assistant message" do
+        allow(application).to receive(:verbosity).and_return(2)
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message In] Created message\e[0m")
+
+        formatter_with_app.display_message_created(actor: "orchestrator", role: "assistant")
+      end
+
+      it "displays basic message info for system message" do
+        allow(application).to receive(:verbosity).and_return(2)
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+
+        formatter_with_app.display_message_created(actor: "system", role: "system")
+      end
+
+      it "displays redacted message indicator" do
+        allow(application).to receive(:verbosity).and_return(2)
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created redacted message\e[0m")
+
+        formatter_with_app.display_message_created(actor: "orchestrator", role: "user", redacted: true)
+      end
+    end
+
+    context "when verbosity is 3 or higher" do
+      it "displays detailed message info including role and actor" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+
+        formatter_with_app.display_message_created(actor: "orchestrator", role: "user")
+      end
+
+      it "displays tool_calls preview" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        tool_calls = [
+          { "name" => "file_read", "arguments" => { "path" => "/tmp/test.txt" } },
+          { "name" => "file_write", "arguments" => {} }
+        ]
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message In] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: assistant\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_calls: file_read, file_write\e[0m")
+        expect(mock_console).to receive(:puts).with(a_string_matching(/file_read:/))
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "assistant",
+          tool_calls: tool_calls
+        )
+      end
+
+      it "displays tool_result preview" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        tool_result = {
+          "name" => "file_read",
+          "result" => { "content" => "File contents here" }
+        }
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_result: file_read\e[0m")
+        expect(mock_console).to receive(:puts).with(a_string_matching(/result:/))
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "user",
+          tool_result: tool_result
+        )
+      end
+
+      it "displays content preview" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        content = "This is some message content"
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  content: #{content}\e[0m")
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "user",
+          content: content
+        )
+      end
+
+      it "truncates tool call arguments at verbosity 3" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        long_arg = "a" * 100
+        tool_calls = [{ "name" => "test", "arguments" => { "data" => long_arg } }]
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message In] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: assistant\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_calls: test\e[0m")
+        expect(mock_console).to receive(:puts).with(a_string_matching(/\.\.\./))
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "assistant",
+          tool_calls: tool_calls
+        )
+      end
+
+      it "shows longer preview at verbosity 6" do
+        allow(application).to receive(:verbosity).and_return(6)
+
+        long_arg = "a" * 150
+        tool_calls = [{ "name" => "test", "arguments" => { "data" => long_arg } }]
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message In] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: assistant\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_calls: test\e[0m")
+        expect(mock_console).to receive(:puts).with(a_string_matching(/.{100}/))
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "assistant",
+          tool_calls: tool_calls
+        )
+      end
+
+      it "displays tool_result without result field" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        tool_result = { "name" => "file_read", "result" => nil }
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_result: file_read\e[0m")
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "user",
+          tool_result: tool_result
+        )
+      end
+
+      it "handles tool result with Hash result" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        tool_result = {
+          "name" => "test",
+          "result" => { "status" => "ok", "value" => 123 }
+        }
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_result: test\e[0m")
+        expect(mock_console).to receive(:puts).with(a_string_matching(/result:/))
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "user",
+          tool_result: tool_result
+        )
+      end
+
+      it "handles tool result with String result" do
+        allow(application).to receive(:verbosity).and_return(3)
+
+        tool_result = { "name" => "test", "result" => "simple string" }
+
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+        expect(mock_console).to receive(:puts).with("\e[90m  tool_result: test\e[0m")
+        expect(mock_console).to receive(:puts).with(a_string_matching(/simple string/))
+
+        formatter_with_app.display_message_created(
+          actor: "orchestrator",
+          role: "user",
+          tool_result: tool_result
+        )
+      end
+    end
+  end
+
+  describe "#debug=" do
+    it "sets debug on llm_request_formatter when it exists" do
+      formatter.debug = true
+      formatter.debug = false
+
+      # Verify it doesn't crash when llm_request_formatter exists
+      expect { formatter.debug = true }.not_to raise_error
+    end
+  end
+
+  describe "spinner behavior with workers" do
+    before do
+      allow(history).to receive(:messages_since).and_return([])
+    end
+
+    it "restarts spinner after displaying messages if workers are not idle" do
+      messages = [
+        {
+          "id" => 1,
+          "actor" => "orchestrator",
+          "role" => "assistant",
+          "content" => "Working...",
+          "tokens_input" => 5,
+          "tokens_output" => 3
+        }
+      ]
+
+      allow(history).to receive_messages(messages_since: messages, session_tokens: {
+                                           "input" => 5,
+                                           "output" => 3,
+                                           "total" => 8,
+                                           "spend" => 0.000080
+                                         })
+
+      # Workers are busy after displaying messages
+      allow(history).to receive(:workers_idle?).and_return(false)
+
+      expect(mock_console).to receive(:hide_spinner).ordered
+      expect(mock_console).to receive(:show_spinner).with("Thinking...").ordered
+
+      formatter.display_new_messages(conversation_id: conversation_id)
+    end
+  end
+
+  describe "edge cases and additional branches" do
+    it "handles messages with unknown role" do
+      message = {
+        "id" => 1,
+        "role" => "unknown_role",
+        "content" => "Some content"
+      }
+
+      # Should not crash, just not display anything
+      expect { formatter.display_message(message) }.not_to raise_error
+    end
+
+    it "handles display_message_created without application" do
+      formatter.debug = true
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_message_created(actor: "test", role: "user")
+    end
+
+    it "handles tool result preview with very long content at verbosity 6" do
+      application = instance_double("Application", verbosity: 6)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      tool_result = {
+        "name" => "test",
+        "result" => "a" * 150
+      }
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  tool_result: test\e[0m")
+      expect(mock_console).to receive(:puts).with(a_string_matching(/.{100}/))
+
+      formatter_with_app.display_message_created(
+        actor: "orchestrator",
+        role: "user",
+        tool_result: tool_result
+      )
+    end
+
+    it "handles content preview with long content at verbosity 6" do
+      application = instance_double("Application", verbosity: 6)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      content = "a" * 150
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  actor: orchestrator\e[0m")
+      expect(mock_console).to receive(:puts).with(a_string_matching(/.{100}/))
+
+      formatter_with_app.display_message_created(
+        actor: "orchestrator",
+        role: "user",
+        content: content
+      )
+    end
+
+    it "handles assistant message without tokens_output" do
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "Response",
+        "tokens_input" => 10,
+        "tokens_output" => nil,
+        "tool_calls" => nil
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 0,
+                                                              "total" => 10,
+                                                              "spend" => 0.000100
+                                                            })
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("Response")
+
+      formatter.display_message(message)
+    end
+
+    it "handles debug setter when llm_request_formatter is not initialized" do
+      # Create formatter but immediately set debug before @llm_request_formatter is accessed
+      new_formatter = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: false,
+        console: mock_console,
+        application: nil
+      )
+
+      # This should not crash
+      expect { new_formatter.debug = false }.not_to raise_error
+    end
+
+    it "handles display_message_created with verbosity 3 but workers idle (no spinner restart)" do
+      application = instance_double("Application", verbosity: 3)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  actor: test\e[0m")
+      expect(mock_console).not_to receive(:show_spinner)
+
+      formatter_with_app.display_message_created(
+        actor: "test",
+        role: "user"
+      )
+    end
+
+    it "handles tool result display in debug mode" do
+      formatter.debug = true
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "user",
+        "tool_result" => {
+          "name" => "file_read",
+          "result" => { "content" => "test" }
+        }
+      }
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
+
+      formatter.display_message(message)
+    end
+
+    it "does not display thread event when debug is false" do
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_thread_event("Test", "started")
+    end
+
+    it "normalizes system message with leading/trailing whitespace" do
+      message = {
+        "id" => 1,
+        "role" => "system",
+        "content" => "\n\n\nActual content\n\n\n"
+      }
+
+      expect(mock_console).to receive(:puts).with("\e[90m[System] Actual content\e[0m")
+
+      formatter.display_message(message)
+    end
+
+    it "handles display_message_created with unknown role type" do
+      application = instance_double("Application", verbosity: 2)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message ] Created message\e[0m")
+
+      formatter_with_app.display_message_created(actor: "test", role: "unknown")
+    end
+
+    it "handles tool result not in debug mode" do
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "user",
+        "tool_result" => {
+          "name" => "file_read",
+          "result" => { "content" => "test" }
+        }
+      }
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_message(message)
+    end
+
+    it "handles display_message_created when workers are not idle" do
+      application = instance_double("Application", verbosity: 3)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(false)
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
+      expect(mock_console).to receive(:puts).with("\e[90m  actor: test\e[0m")
+      expect(mock_console).to receive(:show_spinner).with("Thinking...")
+
+      formatter_with_app.display_message_created(actor: "test", role: "user")
+    end
+
+    it "handles assistant message with nil tokens_output and no tool_calls in debug mode" do
+      formatter.debug = true
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "Response",
+        "tokens_input" => 10,
+        "tokens_output" => nil,
+        "tool_calls" => nil
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 0,
+                                                              "total" => 10,
+                                                              "spend" => 0.000100
+                                                            })
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("Response")
+
+      formatter.display_message(message)
+    end
+
+    it "handles display_message_created with verbosity 2 (no detailed info)" do
+      application = instance_double("Application", verbosity: 2)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      tool_calls = [{ "name" => "test", "arguments" => { "data" => "value" } }]
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message In] Created message\e[0m")
+      expect(mock_console).not_to receive(:puts).with(/role:/)
+
+      formatter_with_app.display_message_created(
+        actor: "test",
+        role: "assistant",
+        tool_calls: tool_calls
+      )
+    end
+
+    it "handles system message that becomes empty after normalization" do
+      message = {
+        "id" => 1,
+        "role" => "system",
+        "content" => ""
+      }
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_message(message)
+    end
+
+    it "handles debug setter when @llm_request_formatter is nil (defensive code)" do
+      # This tests the defensive "if @llm_request_formatter" check
+      # We need to bypass normal initialization to make formatter nil
+      formatter_raw = described_class.allocate
+      formatter_raw.instance_variable_set(:@debug, false)
+      formatter_raw.instance_variable_set(:@llm_request_formatter, nil)
+
+      # Should not crash when formatter is nil
+      expect { formatter_raw.debug = true }.not_to raise_error
+    end
+
+    it "handles thread event display when workers become idle" do
+      formatter.debug = true
+
+      # Workers are idle, so no spinner restart
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      expect(mock_console).to receive(:hide_spinner)
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Thread] Test started\e[0m")
+      expect(mock_console).not_to receive(:show_spinner)
+
+      formatter.display_thread_event("Test", "started")
+    end
+
+    it "handles display_message_created at verbosity 2 (does not display detailed info)" do
+      application = instance_double("Application", verbosity: 2)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+      expect(mock_console).not_to receive(:puts).with(/role:/)
+      expect(mock_console).not_to receive(:show_spinner)
+
+      formatter_with_app.display_message_created(actor: "test", role: "user")
+    end
+
+    it "handles assistant message with tool_calls and no content (no empty warning)" do
+      formatter.debug = true
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "",
+        "tokens_input" => 10,
+        "tokens_output" => 5,
+        "tool_calls" => [{ "name" => "test_tool", "arguments" => {} }]
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 5,
+                                                              "total" => 15,
+                                                              "spend" => 0.000150
+                                                            })
+
+      # Should not show empty response warning because tool_calls exist
+      expect(mock_console).not_to receive(:puts).with(a_string_matching(/LLM returned empty response/))
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] test_tool\e[0m")
+
+      formatter.display_message(message)
+    end
+
+    it "handles assistant message with zero tokens_output" do
+      formatter.debug = true
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "",
+        "tokens_input" => 10,
+        "tokens_output" => 0,
+        "tool_calls" => nil
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 0,
+                                                              "total" => 10,
+                                                              "spend" => 0.000100
+                                                            })
+
+      # tokens_output is 0 (not positive), so no warning
+      expect(mock_console).not_to receive(:puts).with(a_string_matching(/LLM returned empty response/))
+
+      formatter.display_message(message)
+    end
+  end
 end
