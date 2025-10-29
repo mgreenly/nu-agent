@@ -49,7 +49,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  ~~76.92%~~ 100% |              ~~3~~ 0 |          ~~13~~ 13 | ~~`lib/nu/agent/api_key.rb`~~ ✓ |
 |  ~~79.07%~~ 100% |             ~~18~~ 0 |          ~~86~~ 86 | ~~`lib/nu/agent/clients/anthropic.rb`~~ ✓ |
 |  ~~79.12%~~ 100% |             ~~19~~ 0 |          ~~91~~ 91 | ~~`lib/nu/agent/clients/google.rb`~~ ✓ |
-|  80.85% |             18 |          94 | `lib/nu/agent/tools/dir_list.rb` |
+|  ~~80.85%~~ 98.94% |             ~~18~~ 1* |          94 | ~~`lib/nu/agent/tools/dir_list.rb`~~ ✓ |
 |  90.29% |             10 |         103 | `lib/nu/agent/chat_loop_orchestrator.rb` |
 |  94.32% |              5 |          88 | `lib/nu/agent/conversation_summarizer.rb` |
 |  95.88% |              4 |          97 | `lib/nu/agent/tools/file_grep.rb` |
@@ -94,10 +94,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/man_page_indexer.rb` ✓
 - [x] `lib/nu/agent/clients/anthropic.rb` ✓
 - [x] `lib/nu/agent/clients/google.rb` ✓
+- [x] `lib/nu/agent/tools/dir_list.rb` ✓ (98.94%, 1 line unreachable dead code)
 
 ### Next Target
 
-**File:** `lib/nu/agent/tools/dir_list.rb`
-**Current Line Coverage:** 80.85%
-**Lines to Cover:** 18
+**File:** `lib/nu/agent/chat_loop_orchestrator.rb`
+**Current Line Coverage:** 90.29%
+**Lines to Cover:** 10
 **Goal:** 100% line coverage + 100% branch coverage
