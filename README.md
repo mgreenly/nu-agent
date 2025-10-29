@@ -32,8 +32,6 @@ echo "your-key" > ~/.secrets/XAI_API_KEY
 
 ## Dependencies
 
-### DuckDB (conversation persistence)
-
 The `bin/setup` script **automatically** handles DuckDB installation:
 
 - **Downloads** pre-built DuckDB v1.4.1 binaries from GitHub

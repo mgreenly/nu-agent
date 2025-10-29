@@ -17,7 +17,7 @@ Table of Contents
 - Setup
   - setup-duckdb.md — DuckDB setup, VSS extension, and troubleshooting
 - Standards
-  - naming-conventions.md — Project naming conventions and patterns (consolidated)
+  - Naming conventions (see below)
 
 Naming conventions (consolidated)
 - Use plan-*, design-*, setup-*, standards-*, and tools-* prefixes to group by purpose
