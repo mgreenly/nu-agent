@@ -38,7 +38,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |   ~~52.5%~~ 100% |             ~~19~~ 0 |          ~~40~~ 40 | ~~`lib/nu/agent/tool_registry.rb`~~ ✓ |
 |  ~~52.63%~~ 100% |              ~~9~~ 0 |          ~~19~~ 19 | ~~`lib/nu/agent/tools/database_schema.rb`~~ ✓ |
 |  ~~52.63%~~ 100% |              ~~9~~ 0 |          ~~19~~ 19 | ~~`lib/nu/agent/tools/database_query.rb`~~ ✓ |
-|  64.21% |             68 |         190 | `lib/nu/agent/formatter.rb` |
+|  ~~64.21%~~ 100% |             ~~68~~ 0 |         ~~190~~ 190 | ~~`lib/nu/agent/formatter.rb`~~ ✓ |
 |  64.84% |            109 |         310 | `lib/nu/agent/console_io.rb` |
 |  ~~66.67%~~ 100% |              ~~5~~ 0 |          ~~15~~ 15 | ~~`lib/nu/agent/tools/database_tables.rb`~~ ✓ |
 |  66.67% |             49 |         147 | `lib/nu/agent/application.rb` |
@@ -88,10 +88,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/tools/database_tables.rb` ✓
 - [x] `lib/nu/agent/tools/agent_summarizer.rb` ✓
 - [x] `lib/nu/agent/api_key.rb` ✓
+- [x] `lib/nu/agent/formatter.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/formatter.rb` (skipping man_indexer.rb - scheduled for removal)
-**Current Line Coverage:** 64.21%
-**Lines to Cover:** 68
+**File:** `lib/nu/agent/console_io.rb` (skipping man_indexer.rb - scheduled for removal)
+**Current Line Coverage:** 64.84%
+**Lines to Cover:** 109
 **Goal:** 100% line coverage + 100% branch coverage
