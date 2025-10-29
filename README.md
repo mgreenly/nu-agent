@@ -9,7 +9,7 @@ A toy AI Agent with multi-model orchestration, rich tooling, and persistent memo
 
 ## Development Status
 
-> **Note**: This project uses trunk-based development. The `master` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/releases).
+> **Note**: This project uses trunk-based development. The `main` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/releases).
 
 **Roadmap**: See [GitHub Issues](https://github.com/mgreenly/nu-agent/issues) for planned features and ongoing work.
 
