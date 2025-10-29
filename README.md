@@ -55,7 +55,7 @@ If you see errors like "Failed to execute prepared statement" or similar DuckDB 
    gem uninstall duckdb --force
    bundle install
 
-For more detailed troubleshooting, see [docs/duckdb-setup.md](docs/duckdb-setup.md).
+For more detailed troubleshooting, see [docs/setup-duckdb.md](docs/setup-duckdb.md).
 
 ### ripgrep (code search)
 

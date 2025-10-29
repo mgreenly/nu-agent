@@ -142,7 +142,7 @@ Success criteria
 - Tests: Per-phase unit tests plus end-to-end retriever integration; VSS-gated tests pass or are skipped appropriately.
 
 Risks and mitigations
-- VSS unavailable: Fallback linear scan with caps, prominent warning, and docs in docs/duckdb-setup.md.
+- VSS unavailable: Fallback linear scan with caps, prominent warning, and docs in docs/setup-duckdb.md.
 - Cost variance: Use provider-reported usage; document price config.
 - Worker dead jobs: Stretch failed_jobs; otherwise expose metrics and logs for manual triage.
 

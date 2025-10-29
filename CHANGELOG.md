@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pattern recommendations (Observer/Event, State, Chain of Responsibility, Decorator, Mediator)
   - Overall maturity grade: A- (Strong, with clear path forward)
 - **Future Planning**: Created `docs/plan-0.11.md` with detailed v0.11 refactoring roadmap
-- **Database Design Documentation**: Added `docs/design.md` documenting database schema and relationships
+- **Database Design Documentation**: Added `docs/design-overview.md` documenting database schema and relationships
 - **DuckDB Safety Guide**: Added `DUCKDB_SAFETY.md` with comprehensive safety improvements:
   - Explicit CHECKPOINT before close to prevent corruption
   - WAL file detection on startup for unclean shutdown detection
@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Details
 - **Test Coverage**: 680 specs passing with full coverage maintained
 - **Files Reorganized**:
-  - Moved `design.md` to `docs/design.md`
+  - Moved `design.md` to `docs/design-overview.md`
   - Created `docs/architecture-analysis.md`
   - Created `docs/plan-0.11.md`
 - **Patterns Implemented**: WorkerToken (Token/Guard), SpinnerState (Value Object)

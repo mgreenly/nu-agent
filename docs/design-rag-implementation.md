@@ -2336,9 +2336,9 @@ end
 - **OpenAI Embeddings API:** https://platform.openai.com/docs/guides/embeddings
 - **HNSW Algorithm:** Hierarchical Navigable Small Worlds for approximate nearest neighbor search
 - **Related Documents:**
-  - `docs/rag.md` - Generic RAG JSON payload examples (from other AI conversation)
+  - `docs/design-rag-overview.md` - Generic RAG JSON payload examples (from other AI conversation)
   - `docs/architecture-analysis.md` - Current nu-agent architecture
-  - `docs/design.md` - Database schema design
+  - `docs/design-overview.md` - Database schema design
 
 ---
 
