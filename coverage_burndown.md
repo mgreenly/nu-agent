@@ -1,16 +1,20 @@
 # Test Coverage Burndown List
 
-Files without 100% test coverage, ordered from worst to best.
+Files that need **both line AND branch coverage** brought to 100%.
+
+Listed in order from worst to best coverage.
 
 **Current Project Coverage:** 75.32% line, 47.43% branch
-**Goal:** 100% coverage on all files
+**Goal:** 100% line coverage AND 100% branch coverage on all files
 
 ---
 
 ## Files to Fix (41 files)
 
-| Coverage | Uncovered Lines | Total Lines | File |
-|----------|----------------|-------------|------|
+Each file needs to achieve 100% line coverage AND 100% branch coverage.
+
+| Line Coverage | Uncovered Lines | Total Lines | File |
+|---------------|----------------|-------------|------|
 |  17.95% |             64 |          78 | `lib/nu/agent/man_indexer.rb` |
 |   25.0% |             27 |          36 | `lib/nu/agent/options.rb` |
 |  33.33% |             44 |          66 | `lib/nu/agent/tools/file_read.rb` |
@@ -57,10 +61,13 @@ Files without 100% test coverage, ordered from worst to best.
 
 ## Progress Tracking
 
-- [x] `lib/nu/agent/spinner.rb` - 100% ✓
+### Completed (100% line + 100% branch)
+- [x] `lib/nu/agent/spinner.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/man_indexer.rb`
-**Current Coverage:** 17.95%
-**Lines to Cover:** 64
+**File:** `lib/nu/agent/man_indexer.rb` (scheduled for removal - skip)
+**File:** `lib/nu/agent/options.rb`
+**Current Line Coverage:** 25.0%
+**Lines to Cover:** 27
+**Goal:** 100% line coverage + 100% branch coverage
