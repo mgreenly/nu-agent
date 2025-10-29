@@ -88,14 +88,17 @@ Testing
 Phase 2: Exchange summarization worker (1.5–2 hrs)
 Goal: Summarize each completed exchange and store summary + cost.
 Tasks
+- Migration: Add summary_text TEXT column to exchanges table to store the generated summaries.
 - Implement ExchangeSummarizer worker (or adapt existing) with injected dependencies; no instance_variable_get or send hacks.
 - Use client abstraction to obtain normalized text and token usage; compute and store actual cost.
+- Store generated summary in exchanges.summary_text column for each completed exchange.
 - Respect critical sections via public methods; keep DB writes minimal; add jittered backoff and simple rate limiting.
 - Optional redaction hook (no-op by default) to enable later privacy features.
 Metrics/Status
 - Track processed, failed, retries, last_batch_latency; expose via /summarizer.
 Testing
 - Unit tests: idle loop, signal handling, error/retry, cost accounting, redaction hook pass-through.
+- Verify summary_text column is populated after summarization.
 
 Phase 3: Embedding pipeline worker (2–3 hrs)
 Goal: Generate embeddings for conversation and exchange summaries and upsert into store.

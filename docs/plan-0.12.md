@@ -32,7 +32,7 @@ Scope (in)
 - ConsoleIO State Pattern refactor to clarify input/streaming/command handling.
 - Operability: failed_jobs storage and commands; richer metrics; environment-aware worker defaults.
 - Privacy: optional redaction pipeline and purge command.
-- RAG refinements: filters (namespace/tags), recency weighting parameter, lightweight caching for common queries.
+- RAG refinements: filters (namespace/tags/time-range), recency weighting parameter, lightweight caching for common queries, and simple retrieval logging for observability.
 - Migrations: finalize the minimal framework started in v0.11 and document workflow.
 
 Scope (out)
@@ -46,7 +46,8 @@ Key technical decisions and hints
 - Metrics: Counters and timers collected in-memory with periodic snapshot to DB for inspection; expose via commands. Track processed/failed/retried, queue depth, batch latencies, API rate limit backoffs, and RAG retrieval latencies (p50/p90/p99).
 - Privacy: Redaction hook in summarization/embedding paths. Start with regex-based scrub for common secrets (tokens, emails, keys) and allow custom patterns via config. Purge command must delete summaries/embeddings for a scope and rebuild as needed. Provide dry-run.
 - Caching: Small in-memory LRU for RAG retrieval keyed by rounded query embeddings and config knobs; include TTL and invalidate on new writes to relevant conversations. Keep it opt-in and bounded to avoid stale/bloated context.
-- RAG parameters: Support namespace/tag filters and a tunable recency weight alpha; preserve token budget and global caps from v0.11.
+- RAG parameters: Support namespace/tag/time-range filters and a tunable recency weight alpha; preserve token budget and global caps from v0.11.
+- RAG logging: Add rag_retrieval_logs table to capture query characteristics, candidate counts, scores, filtering applied, cache hits, and retrieval latency; enables validation of automatic RAG effectiveness without the complexity of v0.13's deep search logging.
 - Migrations: Keep versioned files in migrations/. Ensure schema_version monotonic progression, idempotency, and rollback guidance for risky steps. Do not rely on IF NOT EXISTS for structural changes.
 
 Implementation phases
@@ -109,17 +110,26 @@ Validation
 Testing
 - Unit tests for redaction and purge flows, including dry-run.
 
-Phase 6: RAG refinements and caching (2–3 hrs)
-Goal: Improve relevance and latency further.
+Phase 6: RAG refinements and caching (2.5–3.5 hrs)
+Goal: Improve relevance, latency, and observability of automatic RAG.
 Tasks
 - Add namespace/tag filters to retrieval processors and commands.
+- Add basic time-range filtering: recent (last N days), older (before N days ago), between dates; make configurable via commands.
 - Implement recency weight parameter alpha; default small tie-break; make configurable.
 - Introduce opt-in LRU cache keyed by rounded query embedding + config; TTL and invalidation on writes to involved conversations.
+- Add simple RAG retrieval logging to rag_retrieval_logs table:
+  - id, query_hash (for grouping similar queries), timestamp
+  - conversation_candidates, exchange_candidates, retrieval_duration_ms
+  - top_conversation_score, top_exchange_score
+  - filtered_by (time_range, namespace, tags if applicable)
+  - cache_hit boolean
 - Maintain token budget and global caps; verify cache respects them.
 Validation
 - p90 retrieval improves with cache on repeated queries; relevance remains good.
+- Time filters correctly limit candidate pool; logs enable validation of automatic RAG effectiveness.
 Testing
-- Unit tests for filters and cache hit/miss behavior; integration test for invalidation on new summaries.
+- Unit tests for filters (namespace/tag/time), cache hit/miss behavior; integration test for invalidation on new summaries.
+- Verify rag_retrieval_logs captures expected metrics.
 
 Phase 7: Migrations and developer workflow polish (1 hr)
 Goal: Solidify migration ergonomics and documentation.
@@ -144,4 +154,5 @@ Risks and mitigations
 
 Notes
 - Preserve the ethos: tests accompany each phase; no instance_variable_get hacks; parameterized SQL; explicit types.
+- RAG retrieval logging provides lightweight observability of automatic RAG performance without the complexity of v0.13's deep search logging; helps validate that automatic retrieval is working effectively and informs tuning decisions.
 - Defer tool decorators and broader telemetry integrations to v0.13 to keep v0.12 focused on UX and operability.
