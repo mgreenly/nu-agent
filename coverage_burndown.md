@@ -25,7 +25,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  ~~36.17%~~ 100% |             ~~30~~ 0 |          ~~47~~ 48 | ~~`lib/nu/agent/tools/file_copy.rb`~~ ✓ |
 |  ~~36.67%~~ 100% |             ~~38~~ 0 |          ~~60~~ 60 | ~~`lib/nu/agent/tools/search_internet.rb`~~ ✓ |
 |  ~~39.29%~~ 100% |             ~~17~~ 0 |          ~~28~~ 28 | ~~`lib/nu/agent/tools/execute_bash.rb`~~ ✓ |
-|   40.0% |             18 |          30 | `lib/nu/agent/tools/execute_python.rb` |
+|   ~~40.0%~~ 100% |             ~~18~~ 0 |          ~~30~~ 30 | ~~`lib/nu/agent/tools/execute_python.rb`~~ ✓ |
 |   40.0% |             24 |          40 | `lib/nu/agent/tools/database_message.rb` |
 |  40.48% |             25 |          42 | `lib/nu/agent/tools/file_delete.rb` |
 |  41.03% |             23 |          39 | `lib/nu/agent/tools/file_write.rb` |
@@ -72,10 +72,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/tools/file_copy.rb` ✓
 - [x] `lib/nu/agent/tools/search_internet.rb` ✓
 - [x] `lib/nu/agent/tools/execute_bash.rb` ✓
+- [x] `lib/nu/agent/tools/execute_python.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/tools/execute_python.rb`
+**File:** `lib/nu/agent/tools/database_message.rb`
 **Current Line Coverage:** 40.0%
-**Lines to Cover:** 18
+**Lines to Cover:** 24
 **Goal:** 100% line coverage + 100% branch coverage
