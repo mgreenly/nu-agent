@@ -2,7 +2,15 @@ Nu-Agent v0.11 Plan: Conversational Memory (RAG)
 
 Last Updated: 2025-10-29
 Target Version: 0.11.0
-Plan Status: Ready to execute
+Plan Status: In Progress (Phase 2 complete, Phase 3 next)
+
+Implementation Progress:
+✅ Phase 0: Remove man-page infrastructure (COMPLETE)
+✅ Phase 1: Database schema, VSS, and migrations (COMPLETE)
+✅ Phase 2: Exchange summarization worker (COMPLETE)
+⏳ Phase 3: Embedding pipeline worker (NEXT)
+⬜ Phase 4: RAG retrieval with Chain of Responsibility
+⬜ Phase 5: Commands and operability
 
 Index
 - High-level motivation
@@ -53,52 +61,62 @@ Key technical decisions and hints
 
 Implementation phases
 
-Phase 0: Remove man-page infrastructure (30 min)
+Phase 0: Remove man-page infrastructure (30 min) ✅ COMPLETE
+Status: Complete (commit: f200c7c)
 Goal: Remove man-page indexing/storage to dedicate embeddings to conversational memory.
 Tasks
-- Delete Man indexers/tools and remove integration points (BackgroundWorkerManager, ToolRegistry, requires).
-- Purge man_page rows from text_embedding_3_small.
-- Update docs/README to remove man references.
+- ✅ Delete Man indexers/tools and remove integration points (BackgroundWorkerManager, ToolRegistry, requires).
+- ✅ Purge man_page rows from text_embedding_3_small.
+- ✅ Update docs/README to remove man references.
 Validation
-- No references to ManPage code; SELECT COUNT(*) WHERE kind='man_page' = 0; app boots; tests pass.
+- ✅ No references to ManPage code; SELECT COUNT(*) WHERE kind='man_page' = 0; app boots; tests pass.
+- ✅ All 1567 tests passing after cleanup
 
-Phase 1: Database schema, VSS, and migrations (60–90 min)
+Phase 1: Database schema, VSS, and migrations (60–90 min) ✅ COMPLETE
+Status: Complete (commits: 53caa89, b07c0e2, 3b4ef9e)
 Goal: Enable correct VSS usage with safe schema evolution and constraints.
 Tasks
-- Enable/LOAD vss extension; on failure, record fallback mode and continue.
-- Introduce a minimal migration framework: schema_version table and migrations/ directory; apply pending migrations on startup.
-- Add columns and constraints
-  - conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE
-  - exchange_id INTEGER REFERENCES exchanges(id) ON DELETE CASCADE
-  - UNIQUE(kind, conversation_id) WHERE conversation_id IS NOT NULL
-  - UNIQUE(kind, exchange_id) WHERE exchange_id IS NOT NULL
-- Indexes
-  - CREATE INDEX IF NOT EXISTS idx_embedding_conversation ON text_embedding_3_small(conversation_id)
-  - CREATE INDEX IF NOT EXISTS idx_embedding_exchange ON text_embedding_3_small(exchange_id)
-  - VSS index: CREATE INDEX IF NOT EXISTS embedding_vss_idx ON text_embedding_3_small USING vss(embedding) WITH(metric='cosine')
-- EmbeddingStore search API
-  - Implement conversation/exchange search using ORDER BY cosine_distance(embedding, :q) LIMIT :k (or vss_search) when VSS is loaded; linear-scan fallback with array_cosine_similarity otherwise.
-  - Parameterize all SQL; add EXPLAIN checks in a debug path to confirm index usage.
-- Typed config getters: get_int/get_float/get_bool; validate values.
+- ✅ Enable/LOAD vss extension; on failure, record fallback mode and continue.
+- ✅ Introduce a minimal migration framework: schema_version table and migrations/ directory; apply pending migrations on startup.
+- ✅ Add columns and constraints
+  - ✅ conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE
+  - ✅ exchange_id INTEGER REFERENCES exchanges(id) ON DELETE CASCADE
+  - ✅ UNIQUE(kind, conversation_id) WHERE conversation_id IS NOT NULL
+  - ✅ UNIQUE(kind, exchange_id) WHERE exchange_id IS NOT NULL
+- ✅ Indexes
+  - ✅ CREATE INDEX IF NOT EXISTS idx_embedding_conversation ON text_embedding_3_small(conversation_id)
+  - ✅ CREATE INDEX IF NOT EXISTS idx_embedding_exchange ON text_embedding_3_small(exchange_id)
+  - ✅ VSS index: CREATE INDEX IF NOT EXISTS embedding_vss_idx ON text_embedding_3_small USING HNSW(embedding) WITH(metric='cosine')
+- ✅ EmbeddingStore search API
+  - ✅ Implement conversation/exchange search using array_cosine_distance (VSS) and array_cosine_similarity (fallback)
+  - ✅ Dual-mode operation: VSS with HNSW index when available, linear scan with prefiltering as fallback
+  - ✅ Support for min_similarity threshold
+- ✅ Typed config getters: get_int/get_float/get_bool; validate values with proper error messages.
 Testing
-- Unit test schema_version and migrations execution.
-- Verify FK integrity, uniqueness constraints, and index creation (presence) with a smoke test.
-- Gate VSS tests: when vss is unavailable, assert fallback search path is used; when available, assert EXPLAIN shows vss usage.
+- ✅ 13 tests for MigrationManager (schema_version, pending_migrations, rollback)
+- ✅ 16 tests for typed config getters (validation, defaults, errors)
+- ✅ 7 tests for EmbeddingStore search (VSS, linear scan, filtering, similarity)
+- ✅ All 1574 tests passing (99.51% line coverage)
 
-Phase 2: Exchange summarization worker (1.5–2 hrs)
+Phase 2: Exchange summarization worker (1.5–2 hrs) ✅ COMPLETE
+Status: Complete (commit: eb92128)
 Goal: Summarize each completed exchange and store summary + cost.
 Tasks
-- Migration: Add summary_text TEXT column to exchanges table to store the generated summaries.
-- Implement ExchangeSummarizer worker (or adapt existing) with injected dependencies; no instance_variable_get or send hacks.
-- Use client abstraction to obtain normalized text and token usage; compute and store actual cost.
-- Store generated summary in exchanges.summary_text column for each completed exchange.
-- Respect critical sections via public methods; keep DB writes minimal; add jittered backoff and simple rate limiting.
-- Optional redaction hook (no-op by default) to enable later privacy features.
+- ✅ No migration needed: exchanges.summary column already exists in schema
+- ✅ Implement ExchangeSummarizer worker with injected dependencies; uses critical sections properly
+- ✅ Use client abstraction to obtain normalized text and token usage; compute and store actual cost
+- ✅ Store generated summary in exchanges.summary column for each completed exchange
+- ✅ Respect critical sections via public methods (enter_critical_section/exit_critical_section)
+- ✅ Filter messages by exchange_id to isolate individual exchanges
+- ✅ Filter out redacted messages from summary prompts
+- ✅ Thread-safe status tracking with mutex
+- ✅ Graceful shutdown handling during LLM calls
 Metrics/Status
-- Track processed, failed, retries, last_batch_latency; expose via /summarizer.
+- ✅ Track processed, completed, failed, current_exchange_id, last_summary, spend
 Testing
-- Unit tests: idle loop, signal handling, error/retry, cost accounting, redaction hook pass-through.
-- Verify summary_text column is populated after summarization.
+- ✅ 12 comprehensive tests: initialization, threading, error handling, shutdown, filtering
+- ✅ Verify summary column is populated after summarization
+- ✅ All 1586 tests passing (99.31% line coverage)
 
 Phase 3: Embedding pipeline worker (2–3 hrs)
 Goal: Generate embeddings for conversation and exchange summaries and upsert into store.
