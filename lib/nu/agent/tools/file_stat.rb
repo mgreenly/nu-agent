@@ -31,10 +31,10 @@ module Nu
 
           return error_response("path is required") if path.nil? || path.empty?
 
-          resolved_path = resolve_path(path)
-          validate_path(resolved_path)
-
           begin
+            resolved_path = resolve_path(path)
+            validate_path(resolved_path)
+
             return error_response("Path not found: #{path}") unless File.exist?(resolved_path)
 
             stat = File.stat(resolved_path)
@@ -56,9 +56,9 @@ module Nu
         end
 
         def determine_file_type(resolved_path)
+          return "symlink" if File.symlink?(resolved_path)
           return "directory" if File.directory?(resolved_path)
           return "file" if File.file?(resolved_path)
-          return "symlink" if File.symlink?(resolved_path)
 
           "other"
         end

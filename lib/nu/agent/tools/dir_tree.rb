@@ -44,10 +44,11 @@ module Nu
 
         def execute(arguments:, **)
           args = parse_arguments(arguments)
-          resolved_path = resolve_path(args[:dir_path])
-          validate_path(resolved_path)
 
           begin
+            resolved_path = resolve_path(args[:dir_path])
+            validate_path(resolved_path)
+
             error = validate_directory(resolved_path, args[:dir_path])
             return error if error
 
