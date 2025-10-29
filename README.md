@@ -7,7 +7,7 @@
 
 A toy AI Agent with multi-model orchestration and RAG-powered hierarchical memory using HNSW indexing.
 
-> **Note**: This project uses trunk-based development. The `main` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/releases).
+> **Note**: This project uses trunk-based development. The `main` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/tags).
 
 **Roadmap**: See [GitHub Issues](https://github.com/mgreenly/nu-agent/issues) for planned features and ongoing work.
 
