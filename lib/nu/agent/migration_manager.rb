@@ -4,8 +4,9 @@ module Nu
   module Agent
     # Manages database schema migrations
     class MigrationManager
-      def initialize(connection)
+      def initialize(connection, migrations_dir: nil)
         @connection = connection
+        @migrations_dir = migrations_dir || File.join(Dir.pwd, "migrations")
       end
 
       # Get the current schema version from the database
@@ -40,11 +41,10 @@ module Nu
 
       # Get list of pending migrations that need to be applied
       def pending_migrations
-        migrations_dir = File.join(Dir.pwd, "migrations")
-        return [] unless File.directory?(migrations_dir)
+        return [] unless File.directory?(@migrations_dir)
 
         current = current_version
-        migration_files = Dir.glob(File.join(migrations_dir, "*.rb"))
+        migration_files = Dir.glob(File.join(@migrations_dir, "*.rb"))
 
         migrations = migration_files.map do |file|
           basename = File.basename(file, ".rb")

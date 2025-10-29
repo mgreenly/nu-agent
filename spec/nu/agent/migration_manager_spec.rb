@@ -5,7 +5,8 @@ require "spec_helper"
 RSpec.describe Nu::Agent::MigrationManager do
   let(:connection) { DuckDB::Database.open.connect }
   let(:schema_manager) { Nu::Agent::SchemaManager.new(connection) }
-  let(:migration_manager) { described_class.new(connection) }
+  let(:migrations_dir) { File.join(Dir.pwd, "tmp", "test_migrations") }
+  let(:migration_manager) { described_class.new(connection, migrations_dir: migrations_dir) }
 
   before do
     schema_manager.setup_schema
@@ -66,8 +67,6 @@ RSpec.describe Nu::Agent::MigrationManager do
   end
 
   describe "#pending_migrations" do
-    let(:migrations_dir) { File.join(Dir.pwd, "migrations") }
-
     before do
       FileUtils.mkdir_p(migrations_dir)
     end

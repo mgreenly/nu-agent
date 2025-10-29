@@ -24,6 +24,7 @@ module Nu
         @db = DuckDB::Database.open(db_path)
         @connections = {}
         @schema_manager = SchemaManager.new(connection)
+        @migration_manager = MigrationManager.new(connection)
         @embedding_store = EmbeddingStore.new(connection)
         @config_store = ConfigStore.new(connection)
         @worker_counter = WorkerCounter.new(@config_store)
@@ -34,6 +35,9 @@ module Nu
 
         # Setup schema using main thread's connection
         @schema_manager.setup_schema
+
+        # Run any pending migrations
+        @migration_manager.run_pending_migrations
 
         # If WAL was present, confirm recovery (WAL should be truncated/removed now)
         return unless wal_existed && wal_size.positive?

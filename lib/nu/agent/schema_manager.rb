@@ -12,7 +12,6 @@ module Nu
         create_sequences
         create_tables
         add_missing_columns
-        setup_vector_search
         initialize_config
       end
 
@@ -189,19 +188,6 @@ module Nu
         add_column_if_not_exists("conversations", "summary", "TEXT")
         add_column_if_not_exists("conversations", "summary_model", "TEXT")
         add_column_if_not_exists("conversations", "summary_cost", "FLOAT")
-      end
-
-      def setup_vector_search
-        # Install and load VSS extension for vector similarity search
-        @connection.query("INSTALL vss")
-        @connection.query("LOAD vss")
-
-        # Create HNSW index for vector similarity search
-        @connection.query(<<~SQL)
-          CREATE INDEX IF NOT EXISTS idx_embedding_hnsw ON text_embedding_3_small USING HNSW(embedding)
-        SQL
-      rescue StandardError
-        # VSS extension might not be available or already loaded, that's OK
       end
 
       def initialize_config
