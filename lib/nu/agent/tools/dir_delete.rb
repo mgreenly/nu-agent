@@ -40,17 +40,21 @@ module Nu
 
           return validation_error("path is required") if dir_path.nil? || dir_path.empty?
 
-          resolved_path = resolve_path(dir_path)
-          validate_path(resolved_path)
+          begin
+            resolved_path = resolve_path(dir_path)
+            validate_path(resolved_path)
 
-          error = validate_directory_exists(resolved_path, dir_path)
-          return error if error
+            error = validate_directory_exists(resolved_path, dir_path)
+            return error if error
 
-          stats = calculate_deletion_stats(resolved_path)
+            stats = calculate_deletion_stats(resolved_path)
 
-          return preview_deletion(dir_path, stats) unless confirm
+            return preview_deletion(dir_path, stats) unless confirm
 
-          perform_deletion(dir_path, resolved_path, stats)
+            perform_deletion(dir_path, resolved_path, stats)
+          rescue StandardError => e
+            validation_error("Failed to process directory: #{e.message}")
+          end
         end
 
         private
