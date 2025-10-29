@@ -53,6 +53,8 @@ module Nu
             return error_response("Google Search API credentials not found at #{credentials_path}") unless credentials
 
             response = make_search_request(query, num_results, credentials)
+            return response if response.is_a?(Hash) && response.key?(:error)
+
             parse_search_response(response, query)
           rescue JSON::ParserError => e
             error_response("Failed to parse API response: #{e.message}")
