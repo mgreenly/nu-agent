@@ -5,112 +5,57 @@
 [![Coverage](https://github.com/mgreenly/nu-agent/actions/workflows/coverage.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/coverage.yml)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](https://github.com/mgreenly/nu-agent/blob/main/.github/dependabot.yml)
 
-A toy AI Agent!
+A toy AI Agent with multi-model orchestration, rich tooling, and persistent memory.
 
 ## Development Status
 
 > **Note**: This project uses trunk-based development. The `master` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/releases).
 
-**Roadmap & Planning**: See [GitHub Issues](https://github.com/mgreenly/nu-agent/issues) for planned features, enhancements, and ongoing work.
+**Roadmap**: See [GitHub Issues](https://github.com/mgreenly/nu-agent/issues) for planned features and ongoing work.
+
+## Quick Start
+
+```bash
+# Clone and install
+git clone https://github.com/yourusername/nu-agent.git
+cd nu-agent
+bundle install
+
+# Configure API keys
+mkdir -p ~/.secrets
+echo "your-key" > ~/.secrets/ANTHROPIC_API_KEY
+echo "your-key" > ~/.secrets/OPENAI_API_KEY
+echo "your-key" > ~/.secrets/GEMINI_API_KEY
+
+# Run
+./exe/nu-agent
+```
+
+## Dependencies
+
+**DuckDB** (conversation persistence)
+```bash
+# Debian/Ubuntu
+sudo apt-get install libduckdb-dev
+
+# macOS
+brew install duckdb
+```
+
+If installing manually, configure bundler before `bundle install`:
+```bash
+bundle config build.duckdb --with-duckdb-dir=$HOME/.local
+```
+
+**ripgrep** (code search)
+```bash
+# Debian/Ubuntu
+sudo apt-get install ripgrep
+
+# macOS
+brew install ripgrep
+```
 
 ## Features
 
-- **Learning Friendly** - Debug modes, model switching, configurable verbosity, and conversation reset.
-- **Multi-Model Orchestration** - Uses Claude, GPT, Gemini, and Grok models. Routes specific tasks to specialized models.
-- **Rich Tool Library** - File operations, shell execution, Python REPL, database queries, directory traversal, and semantic grep.
-- **Google Search API** - Faster internet searhces vs using curl.
-- **Persistent Memory** - Conversations stored in DuckDB with message/exchange/session hierarchy.
-
-## Setup
-
-### Prerequisites
-
-**Required System Dependencies**
-
-1. **DuckDB** - Required for conversation persistence
-
-   **Option 1: System Package Manager** (Recommended)
-   ```bash
-   # Debian/Ubuntu
-   sudo apt-get install libduckdb-dev
-
-   # macOS with Homebrew
-   brew install duckdb
-   ```
-
-   **Option 2: Manual Installation**
-
-   Download pre-built binaries from [DuckDB releases](https://github.com/duckdb/duckdb/releases) and extract to a local directory (e.g., `~/.local`):
-
-   ```bash
-   # Example structure:
-   ~/.local/lib/libduckdb.so       # Library file
-   ~/.local/include/duckdb.h       # Header file
-   ```
-
-2. **ripgrep** - Required for code search functionality
-
-   ```bash
-   # Debian/Ubuntu
-   sudo apt-get install ripgrep
-
-   # macOS with Homebrew
-   brew install ripgrep
-
-   # Or download from: https://github.com/BurntSushi/ripgrep/releases
-   ```
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/nu-agent.git
-   cd nu-agent
-   ```
-
-2. **Configure Bundler for DuckDB**
-
-   If you installed DuckDB to a custom location (Option 2), configure bundler:
-   ```bash
-   bundle config build.duckdb --with-duckdb-dir=/path/to/duckdb
-
-   # Example for ~/.local installation:
-   bundle config build.duckdb --with-duckdb-dir=$HOME/.local
-   ```
-
-3. **Install dependencies**
-   ```bash
-   bundle install
-   ```
-
-4. **Configure API keys**
-
-   Create API key files in `~/.secrets/`:
-   ```bash
-   mkdir -p ~/.secrets
-   echo "your-api-key-here" > ~/.secrets/ANTHROPIC_API_KEY
-   echo "your-api-key-here" > ~/.secrets/OPENAI_API_KEY
-   echo "your-api-key-here" > ~/.secrets/GEMINI_API_KEY
-   # Optional: X.AI uses OpenAI-compatible format
-   ```
-
-5. **Run the agent**
-   ```bash
-   ./exe/nu-agent
-
-   # Or with options:
-   ./exe/nu-agent --model gpt-5-nano-2025-08-07
-   ./exe/nu-agent --debug
-   ```
-
-### Troubleshooting
-
-**"cannot load such file -- duckdb" error:**
-- Verify DuckDB is installed and headers are accessible
-- Check your `.bundle/config` has the correct `--with-duckdb-dir` path
-- Try re-running `bundle install` after configuring bundler
-
-**"API key not found" error:**
-- Ensure API key files exist in `~/.secrets/` directory
-- Verify file permissions allow reading
-- Check there are no extra spaces or newlines in the key files
+Multi-model orchestration (Claude, GPT, Gemini, Grok) with task-specific routing. Rich tooling includes file operations, shell execution, Python REPL, database queries, directory traversal, and semantic grep. Persistent conversation memory stored in DuckDB with message/exchange/session hierarchy. Developer-friendly with debug modes, model switching, and configurable verbosity.
