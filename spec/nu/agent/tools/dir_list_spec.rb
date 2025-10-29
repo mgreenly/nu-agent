@@ -106,5 +106,101 @@ RSpec.describe Nu::Agent::Tools::DirList do
         end.to raise_error(ArgumentError, /Access denied/)
       end
     end
+
+    context "with sorting options" do
+      before do
+        # Create files with different sizes and mtimes
+        File.write(File.join(test_dir, "large.txt"), "x" * 1000)
+        File.write(File.join(test_dir, "small.txt"), "x")
+        sleep(0.01)
+        FileUtils.touch(File.join(test_dir, "newer.txt"))
+      end
+
+      it "sorts by mtime without details" do
+        result = tool.execute(arguments: { path: test_dir, sort_by: "mtime" })
+        expect(result[:status]).to eq("success")
+        expect(result[:entries]).to be_an(Array)
+      end
+
+      it "sorts by mtime with details" do
+        result = tool.execute(arguments: { path: test_dir, sort_by: "mtime", details: true })
+        expect(result[:status]).to eq("success")
+        expect(result[:entries].first).to have_key(:modified_at)
+      end
+
+      it "sorts by size without details" do
+        result = tool.execute(arguments: { path: test_dir, sort_by: "size" })
+        expect(result[:status]).to eq("success")
+        expect(result[:entries]).to be_an(Array)
+      end
+
+      it "sorts by size with details" do
+        result = tool.execute(arguments: { path: test_dir, sort_by: "size", details: true })
+        expect(result[:status]).to eq("success")
+        entries = result[:entries]
+        expect(entries.first[:size]).to be >= entries.last[:size]
+      end
+
+      it "does not sort when sort_by is none" do
+        result = tool.execute(arguments: { path: test_dir, sort_by: "none" })
+        expect(result[:status]).to eq("success")
+        expect(result[:entries]).to be_an(Array)
+      end
+    end
+
+    context "with symlinks" do
+      before do
+        target_file = File.join(test_dir, "target.txt")
+        FileUtils.touch(target_file)
+        File.symlink(target_file, File.join(test_dir, "link.txt"))
+      end
+
+      it "detects symlink type with details" do
+        result = tool.execute(arguments: { path: test_dir, details: true })
+        symlink_entry = result[:entries].find { |e| e[:name] == "link.txt" }
+        expect(symlink_entry[:type]).to eq("symlink")
+      end
+    end
+
+    context "with broken symlink" do
+      before do
+        broken_link = File.join(test_dir, "broken.txt")
+        File.symlink("/nonexistent/target", broken_link)
+      end
+
+      it "handles broken symlink with unknown type" do
+        result = tool.execute(arguments: { path: test_dir, details: true })
+        broken_entry = result[:entries].find { |e| e[:name] == "broken.txt" }
+        expect(broken_entry[:type]).to eq("unknown")
+        expect(broken_entry[:size]).to eq(0)
+        expect(broken_entry[:modified_at]).to be_nil
+      end
+    end
+
+    context "with special file types" do
+      it "detects other file type for named pipe" do
+        pipe_path = File.join(test_dir, "mypipe")
+        begin
+          require "fileutils"
+          system("mkfifo", pipe_path)
+          skip "mkfifo not available" unless File.exist?(pipe_path)
+
+          result = tool.execute(arguments: { path: test_dir, details: true })
+          pipe_entry = result[:entries].find { |e| e[:name] == "mypipe" }
+          expect(pipe_entry[:type]).to eq("other")
+        ensure
+          FileUtils.rm_f(pipe_path)
+        end
+      end
+    end
+
+    context "with StandardError during execution" do
+      it "catches and returns error" do
+        allow(File).to receive(:directory?).and_raise(StandardError.new("Simulated error"))
+        result = tool.execute(arguments: { path: test_dir })
+        expect(result[:status]).to eq("error")
+        expect(result[:error]).to include("Failed to list directory")
+      end
+    end
   end
 end
