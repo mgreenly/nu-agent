@@ -5,6 +5,8 @@ Purpose
 - Establish consistent naming and grouping conventions for docs
 
 Table of Contents
+- Overview
+  - [Project README](../README.md) — Project overview and quick start
 - Plans
   - plan-0.11.md — Conversational Memory (RAG) delivery plan
   - plan-0.12.md — UX, Observability, and Maintainability plan
