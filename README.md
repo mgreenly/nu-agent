@@ -26,7 +26,6 @@ echo "your-key" > ~/.secrets/OPENAI_API_KEY
 echo "your-key" > ~/.secrets/GEMINI_API_KEY
 echo "your-key" > ~/.secrets/XAI_API_KEY
 
-# Run
 # See available models and provider defaults
 ./exe/nu-agent --help
 
