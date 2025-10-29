@@ -19,7 +19,7 @@ git clone https://github.com/yourusername/nu-agent.git
 cd nu-agent
 bin/setup  # Automatically installs DuckDB and dependencies
 
-# Configure at least one API key
+# Configure at least one API key (only one is required; choose the provider that matches your model)
 mkdir -p ~/.secrets
 echo "your-key" > ~/.secrets/ANTHROPIC_API_KEY
 echo "your-key" > ~/.secrets/OPENAI_API_KEY
@@ -27,6 +27,13 @@ echo "your-key" > ~/.secrets/GEMINI_API_KEY
 echo "your-key" > ~/.secrets/XAI_API_KEY
 
 # Run
+# See available models and provider defaults
+./exe/nu-agent --help
+
+# Initialize models on first run (choose a model you have an API key for)
+./exe/nu-agent --reset-models gpt-5-mini
+
+# Then run normally
 ./exe/nu-agent
 ```
 
