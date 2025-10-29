@@ -38,16 +38,20 @@ module Nu
           return validation_error("source path is required") if source_path.nil? || source_path.empty?
           return validation_error("destination path is required") if dest_path.nil? || dest_path.empty?
 
-          resolved_source = resolve_path(source_path)
-          resolved_dest = resolve_path(dest_path)
+          begin
+            resolved_source = resolve_path(source_path)
+            resolved_dest = resolve_path(dest_path)
 
-          validate_path(resolved_source)
-          validate_path(resolved_dest)
+            validate_path(resolved_source)
+            validate_path(resolved_dest)
 
-          error = validate_source_file(resolved_source, source_path)
-          return error if error
+            error = validate_source_file(resolved_source, source_path)
+            return error if error
 
-          perform_move(source_path, dest_path, resolved_source, resolved_dest)
+            perform_move(source_path, dest_path, resolved_source, resolved_dest)
+          rescue StandardError => e
+            validation_error("Failed to move file: #{e.message}")
+          end
         end
 
         private

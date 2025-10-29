@@ -21,7 +21,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  ~~33.87%~~ 100% |             ~~41~~ 0 |          ~~62~~ 62 | ~~`lib/nu/agent/tools/dir_tree.rb`~~ ✓ |
 |  ~~34.38%~~ 100% |             ~~42~~ 0 |          ~~64~~ 65 | ~~`lib/nu/agent/tools/dir_delete.rb`~~ ✓ |
 |  ~~34.43%~~ 100% |             ~~40~~ 0 |          ~~61~~ 61 | ~~`lib/nu/agent/tools/file_tree.rb`~~ ✓ |
-|  36.17% |             30 |          47 | `lib/nu/agent/tools/file_move.rb` |
+|  ~~36.17%~~ 100% |             ~~30~~ 0 |          ~~47~~ 48 | ~~`lib/nu/agent/tools/file_move.rb`~~ ✓ |
 |  36.17% |             30 |          47 | `lib/nu/agent/tools/file_copy.rb` |
 |  36.67% |             38 |          60 | `lib/nu/agent/tools/search_internet.rb` |
 |  39.29% |             17 |          28 | `lib/nu/agent/tools/execute_bash.rb` |
@@ -68,10 +68,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/tools/dir_tree.rb` ✓
 - [x] `lib/nu/agent/tools/dir_delete.rb` ✓
 - [x] `lib/nu/agent/tools/file_tree.rb` ✓
+- [x] `lib/nu/agent/tools/file_move.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/tools/file_move.rb`
+**File:** `lib/nu/agent/tools/file_copy.rb`
 **Current Line Coverage:** 36.17%
 **Lines to Cover:** 30
 **Goal:** 100% line coverage + 100% branch coverage
