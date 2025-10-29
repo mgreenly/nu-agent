@@ -3,6 +3,7 @@
 [![Specs](https://github.com/mgreenly/nu-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/ci.yml)
 [![Lint](https://github.com/mgreenly/nu-agent/actions/workflows/lint.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/lint.yml)
 [![Coverage](https://github.com/mgreenly/nu-agent/actions/workflows/coverage.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/coverage.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](https://github.com/mgreenly/nu-agent/blob/main/.github/dependabot.yml)
 
 A toy AI Agent!
 
