@@ -14,10 +14,10 @@ A toy AI Agent with multi-model orchestration and RAG-powered hierarchical memor
 ## Quick Start
 
 ```bash
-# Clone and install
+# Clone and setup
 git clone https://github.com/yourusername/nu-agent.git
 cd nu-agent
-bundle install
+bin/setup  # Automatically installs DuckDB and dependencies
 
 # Configure at least one API key
 mkdir -p ~/.secrets
@@ -32,21 +32,33 @@ echo "your-key" > ~/.secrets/XAI_API_KEY
 
 ## Dependencies
 
-**DuckDB** (conversation persistence)
-```bash
-# Debian/Ubuntu
-sudo apt-get install libduckdb-dev
+### DuckDB (conversation persistence)
 
-# macOS
-brew install duckdb
-```
+The `bin/setup` script **automatically** handles DuckDB installation:
 
-If installing manually, configure bundler before `bundle install`:
-```bash
-bundle config build.duckdb --with-duckdb-dir=$HOME/.local
-```
+- **Downloads** pre-built DuckDB v1.4.1 binaries from GitHub
+- **Installs locally** to `vendor/duckdb/` (project-specific, not system-wide)
+- **Configures bundler** to compile the Ruby gem against the local library
+- **Works on Linux and macOS** (x86_64 and ARM64)
+- **No sudo required** - perfect for sandboxed environments
 
-**ripgrep** (code search)
+If you see errors like "Failed to execute prepared statement" or similar DuckDB errors:
+
+1. **Reinstall DuckDB locally**:
+   ```bash
+   rm -rf vendor/duckdb
+   bin/setup
+   ```
+
+2. **Force gem recompilation**:
+   ```bash
+   gem uninstall duckdb --force
+   bundle install
+
+For more detailed troubleshooting, see [docs/duckdb-setup.md](docs/duckdb-setup.md).
+
+### ripgrep (code search)
+
 ```bash
 # Debian/Ubuntu
 sudo apt-get install ripgrep
