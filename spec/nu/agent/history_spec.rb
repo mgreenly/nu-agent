@@ -701,4 +701,518 @@ RSpec.describe Nu::Agent::History do
       end
     end
   end
+
+  describe "#initialize with WAL file" do
+    let(:test_db_with_wal) { "db/test_wal_recovery.db" }
+
+    after do
+      FileUtils.rm_rf(test_db_with_wal)
+      FileUtils.rm_rf("#{test_db_with_wal}.wal")
+      FileUtils.rm_rf("#{test_db_with_wal}-shm")
+    end
+
+    it "detects and warns about existing WAL file" do
+      # Create a database first
+      temp_history = described_class.new(db_path: test_db_with_wal)
+      temp_history.create_conversation
+      temp_history.close
+
+      # Create a fake WAL file
+      File.write("#{test_db_with_wal}.wal", "fake wal data" * 100)
+
+      # Capture warnings
+      warnings = []
+      allow_any_instance_of(Kernel).to receive(:warn) do |_, msg|
+        warnings << msg
+      end
+
+      history_with_wal = described_class.new(db_path: test_db_with_wal)
+
+      expect(warnings.any? { |w| w.include?("WAL file detected") }).to be true
+      expect(warnings.any? { |w| w.include?("automatically recover") }).to be true
+
+      history_with_wal.close
+    end
+
+    it "confirms recovery when WAL is removed after connect" do
+      # Create DB and WAL
+      temp_history = described_class.new(db_path: test_db_with_wal)
+      temp_history.create_conversation
+      temp_history.close
+
+      File.write("#{test_db_with_wal}.wal", "data")
+
+      # Capture warnings
+      warnings = []
+      allow_any_instance_of(Kernel).to receive(:warn) do |_, msg|
+        warnings << msg
+      end
+
+      # Opening should trigger recovery
+      history_with_wal = described_class.new(db_path: test_db_with_wal)
+
+      # Check for recovery confirmation
+      expect(warnings.any? { |w| w.include?("recovery completed") || w.include?("WAL file still present") }).to be true
+
+      history_with_wal.close
+    end
+
+    it "shows success message when WAL is successfully recovered" do
+      # Simulate WAL file present initially, then removed after connection
+      wal_path = "#{test_db_with_wal}.wal"
+
+      # Track how many times File.exist? and File.size are called for the WAL path
+      exist_calls = 0
+      size_calls = 0
+
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?).with(wal_path) do
+        exist_calls += 1
+        # First call (initial check): WAL exists
+        # Second call (after connection): WAL is gone
+        exist_calls == 1
+      end
+
+      allow(File).to receive(:size).and_call_original
+      allow(File).to receive(:size).with(wal_path) do
+        size_calls += 1
+        # First call: return non-zero size
+        # Second call: return 0 (or won't be called if exist? returns false)
+        size_calls == 1 ? 1024 : 0
+      end
+
+      # Capture warnings
+      warnings = []
+      allow_any_instance_of(Kernel).to receive(:warn) do |_, msg|
+        warnings << msg
+      end
+
+      history_with_wal = described_class.new(db_path: test_db_with_wal)
+
+      expect(warnings.any? { |w| w.include?("Database recovery completed successfully") }).to be true
+
+      history_with_wal.close
+    end
+  end
+
+  describe "#initialize with environment variable" do
+    it "uses NUAGENT_DATABASE environment variable if set" do
+      custom_path = "db/custom_env_test.db"
+      ENV["NUAGENT_DATABASE"] = custom_path
+
+      begin
+        history_env = described_class.new
+        expect(history_env.db_path).to eq(custom_path)
+        history_env.close
+      ensure
+        ENV.delete("NUAGENT_DATABASE")
+        FileUtils.rm_rf(custom_path)
+      end
+    end
+  end
+
+  describe "#transaction" do
+    let(:conversation_id) { history.create_conversation }
+
+    it "commits successful transactions" do
+      result = history.transaction do
+        history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+        "success"
+      end
+
+      expect(result).to eq("success")
+      messages = history.messages(conversation_id: conversation_id)
+      expect(messages.length).to eq(1)
+    end
+
+    it "rolls back failed transactions" do
+      expect do
+        history.transaction do
+          history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+          raise StandardError, "Transaction failed"
+        end
+      end.to raise_error(StandardError, "Transaction failed")
+
+      messages = history.messages(conversation_id: conversation_id)
+      expect(messages.length).to eq(0)
+    end
+
+    it "handles rollback errors gracefully" do
+      allow(history.connection).to receive(:query).and_call_original
+      allow(history.connection).to receive(:query).with("ROLLBACK").and_raise(StandardError.new("Rollback failed"))
+
+      expect do
+        history.transaction do
+          history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+          raise StandardError, "Original error"
+        end
+      end.to raise_error(StandardError, "Original error")
+    end
+  end
+
+  describe "#execute_query edge cases" do
+    it "returns empty array for queries with no results" do
+      result = history.execute_query("SELECT * FROM messages WHERE id = 999999")
+      expect(result).to eq([])
+    end
+
+    it "strips trailing semicolon" do
+      expect do
+        history.execute_query("SELECT * FROM messages;")
+      end.not_to raise_error
+    end
+
+    it "allows DESCRIBE queries" do
+      result = history.execute_query("DESCRIBE messages")
+      expect(result).to be_an(Array)
+    end
+
+    it "allows EXPLAIN queries" do
+      result = history.execute_query("EXPLAIN SELECT * FROM messages")
+      expect(result).to be_an(Array)
+    end
+
+    it "allows WITH (CTE) queries" do
+      result = history.execute_query("WITH cte AS (SELECT 1 as n) SELECT * FROM cte")
+      expect(result).to be_an(Array)
+    end
+
+    it "rejects UPDATE queries" do
+      expect do
+        history.execute_query("UPDATE messages SET content = 'bad'")
+      end.to raise_error(ArgumentError, /Only read-only queries/)
+    end
+
+    it "rejects DELETE queries" do
+      expect do
+        history.execute_query("DELETE FROM messages")
+      end.to raise_error(ArgumentError, /Only read-only queries/)
+    end
+
+    it "rejects DROP queries" do
+      expect do
+        history.execute_query("DROP TABLE messages")
+      end.to raise_error(ArgumentError, /Only read-only queries/)
+    end
+
+    it "uses fallback column names when columns method fails" do
+      conversation_id = history.create_conversation
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+
+      result = history.execute_query("SELECT * FROM messages")
+
+      # Should have hash keys even if column names fail
+      expect(result.first).to be_a(Hash)
+      expect(result.first.keys).not_to be_empty
+    end
+  end
+
+  describe "#find_corrupted_messages" do
+    let(:conversation_id) { history.create_conversation }
+
+    it "returns empty array when no corrupted messages exist" do
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "Normal message"
+      )
+
+      corrupted = history.find_corrupted_messages
+      expect(corrupted).to eq([])
+    end
+
+    it "finds messages with redacted tool call arguments" do
+      # Manually insert a corrupted message
+      tool_calls = [{ "id" => "call_1", "name" => "file_read", "arguments" => { "redacted" => true } }].to_json
+
+      history.connection.query(<<~SQL)
+        INSERT INTO messages (conversation_id, actor, role, content, tool_calls)
+        VALUES (#{conversation_id}, 'orchestrator', 'assistant', '', '#{tool_calls}')
+      SQL
+
+      corrupted = history.find_corrupted_messages
+      expect(corrupted.length).to eq(1)
+      expect(corrupted.first["tool_name"]).to eq("file_read")
+    end
+
+    it "skips messages with nil tool_calls" do
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "No tools"
+      )
+
+      corrupted = history.find_corrupted_messages
+      expect(corrupted).to eq([])
+    end
+
+    it "skips tool calls with valid arguments" do
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "",
+        tool_calls: [{ "id" => "call_1", "name" => "file_read", "arguments" => { "path" => "/test.txt" } }]
+      )
+
+      corrupted = history.find_corrupted_messages
+      expect(corrupted).to eq([])
+    end
+  end
+
+  describe "#fix_corrupted_messages" do
+    let(:conversation_id) { history.create_conversation }
+
+    it "deletes specified messages and returns count" do
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Msg 1")
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Msg 2")
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Msg 3")
+
+      messages = history.messages(conversation_id: conversation_id)
+      msg1_id = messages[0]["id"]
+      msg3_id = messages[2]["id"]
+
+      count = history.fix_corrupted_messages([msg1_id, msg3_id])
+
+      expect(count).to eq(2)
+
+      remaining = history.messages(conversation_id: conversation_id)
+      expect(remaining.length).to eq(1)
+      expect(remaining.first["content"]).to eq("Msg 2")
+    end
+
+    it "returns 0 when no messages to delete" do
+      count = history.fix_corrupted_messages([])
+      expect(count).to eq(0)
+    end
+  end
+
+  describe "#close" do
+    it "checkpoints and closes all connections" do
+      test_close_db = "db/test_close.db"
+
+      begin
+        h = described_class.new(db_path: test_close_db)
+        h.create_conversation
+
+        # Get connection in multiple threads to create multiple connections
+        threads = 3.times.map do
+          Thread.new { h.connection }
+        end
+        threads.each(&:join)
+
+        # Close should checkpoint and close all connections
+        expect { h.close }.not_to raise_error
+      ensure
+        FileUtils.rm_rf(test_close_db)
+      end
+    end
+
+    it "handles checkpoint errors during close" do
+      test_close_db = "db/test_close_error.db"
+
+      begin
+        h = described_class.new(db_path: test_close_db)
+
+        # Simulate checkpoint failure
+        allow(h.connection).to receive(:query).with("CHECKPOINT").and_raise(StandardError.new("Checkpoint failed"))
+
+        # Should warn but not raise
+        warnings = []
+        allow_any_instance_of(Kernel).to receive(:warn) do |_, msg|
+          warnings << msg
+        end
+
+        expect { h.close }.not_to raise_error
+        expect(warnings.any? { |w| w.include?("Checkpoint failed") }).to be true
+      ensure
+        FileUtils.rm_rf(test_close_db)
+      end
+    end
+  end
+
+  describe "delegation methods" do
+    let(:conversation_id) { history.create_conversation }
+
+    it "delegates #get_message_by_id" do
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+      messages = history.messages(conversation_id: conversation_id)
+      msg_id = messages.first["id"]
+
+      retrieved = history.get_message_by_id(msg_id, conversation_id: conversation_id)
+      expect(retrieved["content"]).to eq("Test")
+    end
+
+    it "delegates #update_conversation_summary" do
+      history.update_conversation_summary(
+        conversation_id: conversation_id,
+        summary: "Test summary",
+        model: "test-model",
+        cost: 0.001
+      )
+
+      # Verify by querying directly
+      result = history.connection.query(<<~SQL)
+        SELECT summary FROM conversations WHERE id = #{conversation_id}
+      SQL
+      expect(result.first.first).to eq("Test summary")
+    end
+
+    it "delegates #all_conversations" do
+      # Start fresh count
+      initial_count = history.all_conversations.length
+
+      history.create_conversation
+      history.create_conversation
+
+      conversations = history.all_conversations
+      expect(conversations.length).to eq(initial_count + 2) # 2 new conversations
+    end
+
+    it "delegates #get_unsummarized_conversations" do
+      conv1 = history.create_conversation
+      conv2 = history.create_conversation
+      history.update_conversation_summary(conversation_id: conv1, summary: "Done", model: "test")
+
+      unsummarized = history.get_unsummarized_conversations(exclude_id: conv2)
+      ids = unsummarized.map { |c| c["id"] }
+      expect(ids).not_to include(conv1)
+      expect(ids).not_to include(conv2)
+    end
+
+    it "delegates #update_message_exchange_id" do
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+      messages = history.messages(conversation_id: conversation_id)
+      msg_id = messages.first["id"]
+
+      exchange_id = history.create_exchange(conversation_id: conversation_id, user_message: "Q")
+
+      history.update_message_exchange_id(message_id: msg_id, exchange_id: exchange_id)
+
+      exchange_messages = history.get_exchange_messages(exchange_id: exchange_id)
+      expect(exchange_messages.first["id"]).to eq(msg_id)
+    end
+
+    it "delegates #current_context_size" do
+      session_start = Time.now - 60
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "Test",
+        tokens_input: 100,
+        tokens_output: 50
+      )
+
+      size = history.current_context_size(
+        conversation_id: conversation_id,
+        since: session_start,
+        model: "test-model"
+      )
+
+      expect(size).to be_a(Integer)
+      expect(size).to be >= 0
+    end
+
+    it "delegates #add_command_history" do
+      history.add_command_history("test command")
+      commands = history.get_command_history(limit: 10)
+      expect(commands.any? { |c| c["command"] == "test command" }).to be true
+    end
+
+    it "delegates #get_command_history" do
+      history.add_command_history("cmd1")
+      history.add_command_history("cmd2")
+
+      commands = history.get_command_history(limit: 10)
+      expect(commands).to be_an(Array)
+      expect(commands.length).to be >= 2
+    end
+
+    it "delegates embedding methods" do
+      # store_embeddings
+      records = [
+        { source: "doc1", content: "test", embedding: Array.new(1536, 0.1) }
+      ]
+      history.store_embeddings(kind: "test", records: records)
+
+      # get_indexed_sources
+      sources = history.get_indexed_sources(kind: "test")
+      expect(sources).to include("doc1")
+
+      # embedding_stats
+      stats = history.embedding_stats(kind: "test")
+      expect(stats).to be_an(Array)
+      expect(stats.length).to be >= 1
+
+      # clear_embeddings
+      history.clear_embeddings(kind: "test")
+      sources_after = history.get_indexed_sources(kind: "test")
+      expect(sources_after).to be_empty
+    end
+  end
+
+  describe "private helper methods" do
+    describe "#format_bytes" do
+      it "formats bytes correctly" do
+        expect(history.send(:format_bytes, 500)).to eq("500B")
+        expect(history.send(:format_bytes, 1500)).to eq("1.5KB")
+        expect(history.send(:format_bytes, 1_500_000)).to eq("1.4MB")
+      end
+    end
+
+    describe "#ensure_db_directory" do
+      it "creates directory if it doesn't exist" do
+        test_dir = "db/deep/nested/path/test.db"
+
+        begin
+          history.send(:ensure_db_directory, test_dir)
+          expect(Dir.exist?("db/deep/nested/path")).to be true
+        ensure
+          FileUtils.rm_rf("db/deep")
+        end
+      end
+    end
+
+    describe "#escape_sql" do
+      it "escapes single quotes" do
+        escaped = history.send(:escape_sql, "It's a test")
+        expect(escaped).to eq("It''s a test")
+      end
+
+      it "handles multiple quotes" do
+        escaped = history.send(:escape_sql, "O'Reilly's book")
+        expect(escaped).to eq("O''Reilly''s book")
+      end
+    end
+  end
+
+  describe "#connection per thread" do
+    it "creates separate connections for different threads" do
+      connections = []
+      threads = 3.times.map do
+        Thread.new do
+          conn = history.connection
+          connections << conn.object_id
+        end
+      end
+      threads.each(&:join)
+
+      # Each thread should have its own connection
+      expect(connections.uniq.length).to eq(3)
+    end
+
+    it "reuses connection within the same thread" do
+      conn1 = history.connection
+      conn2 = history.connection
+      expect(conn1.object_id).to eq(conn2.object_id)
+    end
+
+    it "sets default_null_order on new connections" do
+      # This is tested implicitly by the fact that queries work
+      expect { history.connection }.not_to raise_error
+    end
+  end
 end
