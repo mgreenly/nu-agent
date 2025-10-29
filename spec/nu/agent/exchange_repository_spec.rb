@@ -117,6 +117,19 @@ RSpec.describe Nu::Agent::ExchangeRepository do
       expect(completed_at.to_s).to match(/\d{4}-\d{2}-\d{2}/)
     end
 
+    it "updates completed_at with CURRENT_TIMESTAMP when not given Time" do
+      exchange_repo.update_exchange(
+        exchange_id: exchange_id,
+        updates: { completed_at: true }
+      )
+
+      result = connection.query("SELECT completed_at FROM exchanges WHERE id = #{exchange_id}")
+      completed_at = result.to_a.first[0]
+
+      expect(completed_at).not_to be_nil
+      expect(completed_at.to_s).to match(/\d{4}-\d{2}-\d{2}/)
+    end
+
     it "does nothing with empty updates" do
       # Should not raise error when given empty updates
       expect do
