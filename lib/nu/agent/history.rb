@@ -180,6 +180,14 @@ module Nu
         @conversation_repo.get_unsummarized_conversations(exclude_id: exclude_id)
       end
 
+      def get_unsummarized_exchanges(exclude_conversation_id:)
+        @exchange_repo.get_unsummarized_exchanges(exclude_conversation_id: exclude_conversation_id)
+      end
+
+      def update_exchange_summary(exchange_id:, summary:, model:, cost: nil)
+        @exchange_repo.update_exchange_summary(exchange_id: exchange_id, summary: summary, model: model, cost: cost)
+      end
+
       def set_config(key, value)
         @config_store.set_config(key, value)
       end

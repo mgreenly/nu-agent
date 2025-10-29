@@ -92,6 +92,40 @@ module Nu
         result.map { |row| row_to_exchange_hash(row) }
       end
 
+      def get_unsummarized_exchanges(exclude_conversation_id:)
+        result = @connection.query(<<~SQL)
+          SELECT id, conversation_id, exchange_number, started_at
+          FROM exchanges
+          WHERE summary IS NULL
+            AND status = 'completed'
+            AND conversation_id != #{exclude_conversation_id}
+          ORDER BY started_at ASC
+        SQL
+
+        result.map do |row|
+          {
+            "id" => row[0],
+            "conversation_id" => row[1],
+            "exchange_number" => row[2],
+            "started_at" => row[3]
+          }
+        end
+      end
+
+      def update_exchange_summary(exchange_id:, summary:, model:, cost: nil)
+        set_clauses = [
+          "summary = '#{escape_sql(summary)}'",
+          "summary_model = '#{escape_sql(model)}'"
+        ]
+        set_clauses << "spend = #{cost}" if cost
+
+        @connection.query(<<~SQL)
+          UPDATE exchanges
+          SET #{set_clauses.join(', ')}
+          WHERE id = #{exchange_id}
+        SQL
+      end
+
       def row_to_exchange_hash(row)
         {
           "id" => row[0],
