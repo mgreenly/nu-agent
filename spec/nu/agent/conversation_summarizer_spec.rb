@@ -110,11 +110,10 @@ RSpec.describe Nu::Agent::ConversationSummarizer do
       ]
       allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
       allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
-      allow(summarizer).to receive(:model).and_return("claude-sonnet-4-5")
-      allow(summarizer).to receive(:send_message).and_return({
-                                                               "content" => "User greeted the assistant.",
-                                                               "spend" => 0.001
-                                                             })
+      allow(summarizer).to receive_messages(model: "claude-sonnet-4-5", send_message: {
+                                              "content" => "User greeted the assistant.",
+                                              "spend" => 0.001
+                                            })
       allow(application).to receive(:send).with(:enter_critical_section)
       allow(application).to receive(:send).with(:exit_critical_section)
       allow(history).to receive(:update_conversation_summary)

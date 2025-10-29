@@ -4,11 +4,6 @@ require "spec_helper"
 require "stringio"
 
 RSpec.describe Nu::Agent::ConsoleIO do
-  let(:stdin) { instance_double(IO, "stdin") }
-  let(:stdout) { StringIO.new }
-  let(:pipe_read) { instance_double(IO, "pipe_read") }
-  let(:pipe_write) { instance_double(IO, "pipe_write") }
-
   subject(:console) do
     # Create console without setting up terminal (for testing)
     described_class.allocate.tap do |c|
@@ -30,6 +25,11 @@ RSpec.describe Nu::Agent::ConsoleIO do
       c.instance_variable_set(:@spinner_frames, ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
     end
   end
+
+  let(:stdin) { instance_double(IO, "stdin") }
+  let(:stdout) { StringIO.new }
+  let(:pipe_read) { instance_double(IO, "pipe_read") }
+  let(:pipe_write) { instance_double(IO, "pipe_write") }
 
   describe "#initialize" do
     it "initializes @input_buffer as mutable string to prevent FrozenError" do

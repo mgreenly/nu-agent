@@ -3,6 +3,7 @@
 **Version:** 1.0 (Draft)
 **Created:** 2025-10-28
 **Status:** Planning - Awaiting refinement
+**GitHub Issue:** #17
 
 ---
 

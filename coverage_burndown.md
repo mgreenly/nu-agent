@@ -16,7 +16,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 | Line Coverage | Uncovered Lines | Total Lines | File |
 |---------------|----------------|-------------|------|
 |  17.95% |             64 |          78 | `lib/nu/agent/man_indexer.rb` (skip - scheduled for removal) |
-|  33.33% |             44 |          66 | `lib/nu/agent/tools/file_read.rb` |
+|  ~~33.33%~~ 100% |             ~~44~~ 0 |          ~~66~~ 68 | ~~`lib/nu/agent/tools/file_read.rb`~~ ✓ |
 |  33.33% |             36 |          54 | `lib/nu/agent/tools/file_stat.rb` |
 |  33.87% |             41 |          62 | `lib/nu/agent/tools/dir_tree.rb` |
 |  34.38% |             42 |          64 | `lib/nu/agent/tools/dir_delete.rb` |
@@ -63,10 +63,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 ### Completed (100% line + 100% branch)
 - [x] `lib/nu/agent/spinner.rb` ✓
 - [x] `lib/nu/agent/options.rb` ✓
+- [x] `lib/nu/agent/tools/file_read.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/tools/file_read.rb`
+**File:** `lib/nu/agent/tools/file_stat.rb`
 **Current Line Coverage:** 33.33%
 **Lines to Cover:** 44
 **Goal:** 100% line coverage + 100% branch coverage

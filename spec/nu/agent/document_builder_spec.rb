@@ -6,7 +6,7 @@ RSpec.describe Nu::Agent::DocumentBuilder do
   describe "#initialize" do
     it "creates a new DocumentBuilder instance" do
       builder = described_class.new
-      expect(builder).to be_a(Nu::Agent::DocumentBuilder)
+      expect(builder).to be_a(described_class)
     end
   end
 

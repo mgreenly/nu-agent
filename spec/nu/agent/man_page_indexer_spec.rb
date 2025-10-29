@@ -105,9 +105,8 @@ RSpec.describe Nu::Agent::ManPageIndexer do
     it "processes man pages in batches" do
       allow(Nu::Agent::ManIndexer).to receive(:new).and_return(man_indexer)
       allow(history).to receive(:get_config).with("index_man_enabled").and_return("true", "false")
-      allow(man_indexer).to receive(:all_man_pages).and_return(["grep.1", "ls.1"])
       allow(history).to receive(:get_indexed_sources).with(kind: "man_page").and_return([])
-      allow(man_indexer).to receive(:extract_description).and_return("test description")
+      allow(man_indexer).to receive_messages(all_man_pages: ["grep.1", "ls.1"], extract_description: "test description")
       allow(embeddings_client).to receive(:generate_embedding).and_return({
                                                                             "embeddings" => [[0.1, 0.2], [0.3, 0.4]],
                                                                             "spend" => 0.001,

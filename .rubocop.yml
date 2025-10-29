@@ -4,10 +4,14 @@
 AllCops:
   TargetRubyVersion: 3.1
   NewCops: enable
+  SuggestExtensions: false
   Exclude:
     - 'vendor/**/*'
     - 'bin/**/*'
     - 'db/**/*'
+
+plugins:
+  - rubocop-rspec
 
 # Style preferences
 Style/StringLiterals:
@@ -61,3 +65,49 @@ Metrics/PerceivedComplexity:
 Lint/HashCompareByIdentity:
   Exclude:
     - 'lib/nu/agent/history.rb'  # Thread-local connection pool uses object_id intentionally
+
+# RSpec configuration
+RSpec/MultipleExpectations:
+  Max: 20  # Allow comprehensive tests with multiple related assertions
+
+RSpec/ExampleLength:
+  Max: 45  # Allow setup, execution, and verification within examples
+
+RSpec/ContextWording:
+  Enabled: false  # Allow descriptive context names
+
+RSpec/NoExpectationExample:
+  Enabled: false  # Allow examples that test side effects or setup
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 15  # Allow sufficient test setup helpers
+
+RSpec/MessageSpies:
+  Enabled: false  # Allow both receive and have_received patterns
+
+RSpec/VerifiedDoubles:
+  Enabled: false  # Allow both double and instance_double
+
+RSpec/DescribeMethod:
+  Enabled: false  # Allow flexible describe block descriptions
+
+RSpec/SpecFilePathFormat:
+  Enabled: false  # Allow flexible spec file naming
+
+RSpec/StubbedMock:
+  Enabled: false  # Allow both allow and expect patterns for mocking
+
+RSpec/InstanceVariable:
+  Enabled: false  # Allow instance variables in tests when appropriate
+
+RSpec/NestedGroups:
+  Max: 5  # Allow reasonable nesting of describe/context blocks
+
+RSpec/IndexedLet:
+  Enabled: false  # Allow tool1, tool2 etc when testing collections
+
+RSpec/AnyInstance:
+  Enabled: false  # Allow any_instance stubbing when necessary
+
+RSpec/VerifiedDoubleReference:
+  Enabled: false  # Allow string references in instance_double when class constant not available

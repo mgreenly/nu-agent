@@ -51,14 +51,12 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       before do
-        allow(history).to receive(:messages_since).and_return(messages)
-        allow(history).to receive(:workers_idle?).and_return(true)
-        allow(history).to receive(:session_tokens).and_return({
-                                                                "input" => 10,
-                                                                "output" => 5,
-                                                                "total" => 15,
-                                                                "spend" => 0.000150
-                                                              })
+        allow(history).to receive_messages(messages_since: messages, workers_idle?: true, session_tokens: {
+                                             "input" => 10,
+                                             "output" => 5,
+                                             "total" => 15,
+                                             "spend" => 0.000150
+                                           })
       end
 
       it "displays assistant messages" do
@@ -317,13 +315,12 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     before do
-      allow(history).to receive(:session_tokens).and_return({
-                                                              "input" => 20,
-                                                              "output" => 10,
-                                                              "total" => 30,
-                                                              "spend" => 0.000300
-                                                            })
-      allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive_messages(session_tokens: {
+                                           "input" => 20,
+                                           "output" => 10,
+                                           "total" => 30,
+                                           "spend" => 0.000300
+                                         }, workers_idle?: true)
     end
 
     describe "level 0: tool name only" do

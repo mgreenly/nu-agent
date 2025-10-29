@@ -10,8 +10,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive(:history).and_return(history)
-    allow(application).to receive(:console).and_return(console)
+    allow(application).to receive_messages(history: history, console: console)
     allow(application).to receive(:verbosity=)
     allow(history).to receive(:set_config)
     allow(console).to receive(:puts)

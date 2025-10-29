@@ -28,8 +28,7 @@ RSpec.describe Nu::Agent::Clients::XAI do
 
     context "when no API key is provided" do
       it "loads from the XAI_API_KEY secrets file" do
-        allow(File).to receive(:exist?).and_return(true)
-        allow(File).to receive(:read).and_return("file_api_key")
+        allow(File).to receive_messages(exist?: true, read: "file_api_key")
 
         expect(OpenAI::Client).to receive(:new).with(
           access_token: "file_api_key",

@@ -45,7 +45,7 @@ RSpec.describe Nu::Agent::Tools::FileEdit::ReplaceOperation do
         expect(result[:status]).to eq("success")
         expect(result[:replacements]).to eq(1)
         expect(result[:total_occurrences]).to eq(2)
-        expect(result[:replaced_all]).to eq(false)
+        expect(result[:replaced_all]).to be(false)
         expect(File.read(file_path)).to eq("qux bar foo baz")
       end
     end
@@ -60,7 +60,7 @@ RSpec.describe Nu::Agent::Tools::FileEdit::ReplaceOperation do
         expect(result[:status]).to eq("success")
         expect(result[:replacements]).to eq(3)
         expect(result[:total_occurrences]).to eq(3)
-        expect(result[:replaced_all]).to eq(true)
+        expect(result[:replaced_all]).to be(true)
         expect(File.read(file_path)).to eq("qux bar qux baz qux")
       end
     end

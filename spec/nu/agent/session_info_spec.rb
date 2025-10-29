@@ -63,9 +63,12 @@ RSpec.describe Nu::Agent::SessionInfo do
     end
 
     it "shows running status for summarizer" do
-      allow(application).to receive(:summarizer_enabled).and_return(true)
-      allow(application).to receive(:summarizer_status).and_return(
-        { "running" => true, "completed" => 5, "total" => 10, "failed" => 0, "spend" => 0.001 }
+      allow(application).to receive_messages(
+        summarizer_enabled: true,
+        summarizer_status: {
+          "running" => true, "completed" => 5, "total" => 10,
+          "failed" => 0, "spend" => 0.001
+        }
       )
 
       info_text = described_class.build(application)
@@ -75,9 +78,12 @@ RSpec.describe Nu::Agent::SessionInfo do
     end
 
     it "shows completed status for summarizer" do
-      allow(application).to receive(:summarizer_enabled).and_return(true)
-      allow(application).to receive(:summarizer_status).and_return(
-        { "running" => false, "completed" => 10, "total" => 10, "failed" => 1, "spend" => 0.005 }
+      allow(application).to receive_messages(
+        summarizer_enabled: true,
+        summarizer_status: {
+          "running" => false, "completed" => 10, "total" => 10,
+          "failed" => 1, "spend" => 0.005
+        }
       )
 
       info_text = described_class.build(application)

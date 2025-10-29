@@ -11,11 +11,9 @@ RSpec.describe Nu::Agent::Commands::ResetCommand do
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive(:history).and_return(history)
-    allow(application).to receive(:formatter).and_return(formatter)
-    allow(application).to receive(:console).and_return(console)
     allow(application).to receive(:conversation_id=)
-    allow(application).to receive(:conversation_id).and_return(123)
+    allow(application).to receive_messages(history: history, formatter: formatter, console: console,
+                                           conversation_id: 123)
     allow(application).to receive(:session_start_time=)
     allow(application).to receive(:output_line)
     allow(application).to receive(:start_summarization_worker)

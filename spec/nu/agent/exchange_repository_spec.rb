@@ -118,10 +118,10 @@ RSpec.describe Nu::Agent::ExchangeRepository do
     end
 
     it "does nothing with empty updates" do
-      exchange_repo.update_exchange(exchange_id: exchange_id, updates: {})
-
-      # Should not raise error, just return nil
-      expect(true).to be true
+      # Should not raise error when given empty updates
+      expect do
+        exchange_repo.update_exchange(exchange_id: exchange_id, updates: {})
+      end.not_to raise_error
     end
   end
 

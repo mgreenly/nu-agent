@@ -38,11 +38,11 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       expect(config.orchestrator).to eq(orchestrator)
       expect(config.spellchecker).to eq(spellchecker)
       expect(config.summarizer).to eq(summarizer)
-      expect(config.debug).to eq(false)
+      expect(config.debug).to be(false)
       expect(config.verbosity).to eq(0)
-      expect(config.redact).to eq(true)
-      expect(config.summarizer_enabled).to eq(true)
-      expect(config.spell_check_enabled).to eq(true)
+      expect(config.redact).to be(true)
+      expect(config.summarizer_enabled).to be(true)
+      expect(config.spell_check_enabled).to be(true)
     end
 
     context "when reset_model option is provided" do
@@ -86,7 +86,7 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       it "overrides database debug setting" do
         config = described_class.load(history: history, options: options)
 
-        expect(config.debug).to eq(true)
+        expect(config.debug).to be(true)
       end
     end
 
@@ -98,7 +98,7 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       it "loads debug as true" do
         config = described_class.load(history: history, options: options)
 
-        expect(config.debug).to eq(true)
+        expect(config.debug).to be(true)
       end
     end
 
@@ -122,7 +122,7 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       it "loads redact as false" do
         config = described_class.load(history: history, options: options)
 
-        expect(config.redact).to eq(false)
+        expect(config.redact).to be(false)
       end
     end
   end

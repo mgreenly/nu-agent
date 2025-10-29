@@ -22,10 +22,8 @@ RSpec.describe Nu::Agent::Commands::IndexManCommand do
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive(:console).and_return(console)
-    allow(application).to receive(:history).and_return(history)
-    allow(application).to receive(:status_mutex).and_return(status_mutex)
-    allow(application).to receive(:man_indexer_status).and_return(man_indexer_status)
+    allow(application).to receive_messages(console: console, history: history, status_mutex: status_mutex,
+                                           man_indexer_status: man_indexer_status)
     allow(application).to receive(:output_line)
     allow(console).to receive(:puts)
   end

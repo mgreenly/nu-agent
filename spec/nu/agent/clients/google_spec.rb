@@ -26,8 +26,7 @@ RSpec.describe Nu::Agent::Clients::Google do
 
     context "when no API key is provided" do
       it "loads from the secrets file" do
-        allow(File).to receive(:exist?).and_return(true)
-        allow(File).to receive(:read).and_return("file_api_key")
+        allow(File).to receive_messages(exist?: true, read: "file_api_key")
 
         expect(Gemini).to receive(:new).with(
           credentials: hash_including(api_key: "file_api_key"),

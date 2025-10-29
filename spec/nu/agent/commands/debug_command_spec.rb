@@ -11,9 +11,7 @@ RSpec.describe Nu::Agent::Commands::DebugCommand do
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive(:history).and_return(history)
-    allow(application).to receive(:formatter).and_return(formatter)
-    allow(application).to receive(:console).and_return(console)
+    allow(application).to receive_messages(history: history, formatter: formatter, console: console)
     allow(application).to receive(:debug=)
     allow(formatter).to receive(:debug=)
     allow(history).to receive(:set_config)

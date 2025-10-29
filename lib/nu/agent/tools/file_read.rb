@@ -84,13 +84,20 @@ module Nu
         private
 
         def parse_arguments(arguments)
+          show_line_nums = if arguments.key?(:show_line_numbers)
+                             arguments[:show_line_numbers]
+                           else
+                             arguments["show_line_numbers"]
+                           end
+          show_line_nums = true if show_line_nums.nil?
+
           {
             file_path: arguments[:file] || arguments["file"],
             start_line: arguments[:start_line] || arguments["start_line"],
             end_line: arguments[:end_line] || arguments["end_line"],
             offset: arguments[:offset] || arguments["offset"],
             limit: arguments[:limit] || arguments["limit"] || 2000,
-            show_line_numbers: arguments[:show_line_numbers] || arguments["show_line_numbers"] || true
+            show_line_numbers: show_line_nums
           }
         end
 

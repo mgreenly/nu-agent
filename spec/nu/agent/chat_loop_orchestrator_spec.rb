@@ -45,12 +45,11 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       allow(history).to receive(:transaction).and_yield
 
       # Mock exchange creation
-      allow(history).to receive(:create_exchange).and_return(exchange_id)
       allow(history).to receive(:add_message)
       allow(formatter).to receive(:display_message_created)
 
       # Mock conversation history
-      allow(history).to receive(:messages).and_return([])
+      allow(history).to receive_messages(create_exchange: exchange_id, messages: [])
 
       # Mock tool registry
       allow(tool_registry).to receive(:available).and_return([])
@@ -573,8 +572,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       let(:spell_checker) { instance_double(Nu::Agent::SpellChecker) }
 
       before do
-        allow(application).to receive(:spell_check_enabled).and_return(true)
-        allow(application).to receive(:spellchecker).and_return(spellchecker)
+        allow(application).to receive_messages(spell_check_enabled: true, spellchecker: spellchecker)
         allow(Nu::Agent::SpellChecker).to receive(:new).and_return(spell_checker)
         allow(spell_checker).to receive(:check_spelling).with("teh test").and_return("the test")
       end

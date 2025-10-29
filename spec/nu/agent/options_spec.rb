@@ -76,7 +76,7 @@ RSpec.describe Nu::Agent::Options do
         anthropic: ["claude-haiku-4-5", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
         google: ["gemini-2.5-flash-lite", "gemini-2.0-flash-exp", "gemini-1.5-pro"],
         openai: ["gpt-5-mini", "gpt-4o", "gpt-4-turbo"],
-        xai: ["grok-code-fast-1", "grok-beta"]
+        xai: %w[grok-code-fast-1 grok-beta]
       )
     end
 
@@ -136,7 +136,7 @@ RSpec.describe Nu::Agent::Options do
         anthropic: ["claude-haiku-4-5", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
         google: ["gemini-2.5-flash-lite", "gemini-2.0-flash-exp", "gemini-1.5-pro"],
         openai: ["gpt-5-mini", "gpt-4o", "gpt-4-turbo"],
-        xai: ["grok-code-fast-1", "grok-beta"]
+        xai: %w[grok-code-fast-1 grok-beta]
       )
     end
 
@@ -178,13 +178,13 @@ RSpec.describe Nu::Agent::Options do
   describe "#format_model_list" do
     it "marks the default model with asterisk" do
       options = described_class.new([])
-      result = options.send(:format_model_list, ["model-a", "model-b", "model-c"], "model-b")
+      result = options.send(:format_model_list, %w[model-a model-b model-c], "model-b")
       expect(result).to eq("model-a, model-b*, model-c")
     end
 
     it "does not mark non-default models" do
       options = described_class.new([])
-      result = options.send(:format_model_list, ["model-a", "model-b"], "model-c")
+      result = options.send(:format_model_list, %w[model-a model-b], "model-c")
       expect(result).to eq("model-a, model-b")
     end
 
@@ -202,13 +202,13 @@ RSpec.describe Nu::Agent::Options do
 
     it "handles list where default is first" do
       options = described_class.new([])
-      result = options.send(:format_model_list, ["default", "model-b", "model-c"], "default")
+      result = options.send(:format_model_list, %w[default model-b model-c], "default")
       expect(result).to eq("default*, model-b, model-c")
     end
 
     it "handles list where default is last" do
       options = described_class.new([])
-      result = options.send(:format_model_list, ["model-a", "model-b", "default"], "default")
+      result = options.send(:format_model_list, %w[model-a model-b default], "default")
       expect(result).to eq("model-a, model-b, default*")
     end
   end

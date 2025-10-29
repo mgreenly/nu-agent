@@ -3,8 +3,9 @@
 require "spec_helper"
 
 RSpec.describe Nu::Agent::WorkerToken do
-  let(:history) { instance_double(Nu::Agent::History) }
   subject(:token) { described_class.new(history) }
+
+  let(:history) { instance_double(Nu::Agent::History) }
 
   describe "#initialize" do
     it "starts in inactive state" do

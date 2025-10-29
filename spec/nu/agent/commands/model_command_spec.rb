@@ -15,11 +15,8 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive(:console).and_return(console)
-    allow(application).to receive(:history).and_return(history)
-    allow(application).to receive(:formatter).and_return(formatter)
-    allow(application).to receive(:operation_mutex).and_return(operation_mutex)
-    allow(application).to receive(:active_threads).and_return([])
+    allow(application).to receive_messages(console: console, history: history, formatter: formatter,
+                                           operation_mutex: operation_mutex, active_threads: [])
     allow(application).to receive(:output_line)
     allow(console).to receive(:puts)
 
