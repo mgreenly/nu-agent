@@ -17,7 +17,7 @@ A toy AI Agent with multi-model orchestration and RAG-powered hierarchical memor
 # Clone and setup
 git clone https://github.com/yourusername/nu-agent.git
 cd nu-agent
-bin/setup  # Automatically installs DuckDB and dependencies
+bin/setup  # Installs [DuckDB](https://duckdb.org/) library and headers in /vendor.
 
 # Configure at least one API key (only one is required; choose the provider that matches your model)
 mkdir -p ~/.secrets
