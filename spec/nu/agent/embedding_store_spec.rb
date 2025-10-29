@@ -148,4 +148,110 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       expect(doc_sources).to eq(["doc:readme"])
     end
   end
+
+  describe "#search_similar" do
+    let(:query_embedding) { Array.new(1536) { |i| i < 100 ? 0.5 : 0.0 } }
+
+    before do
+      # Store some test embeddings with different similarity to query
+      embedding_store.store_embeddings(
+        kind: "test",
+        records: [
+          { source: "doc1", content: "very similar", embedding: Array.new(1536) { |i| i < 100 ? 0.51 : 0.0 } },
+          { source: "doc2", content: "somewhat similar", embedding: Array.new(1536) { |i| i < 50 ? 0.5 : 0.0 } },
+          { source: "doc3", content: "not similar", embedding: Array.new(1536) { |i| i > 1000 ? 0.5 : 0.0 } }
+        ]
+      )
+    end
+
+    it "returns results sorted by similarity (most similar first)" do
+      results = embedding_store.search_similar(
+        kind: "test",
+        query_embedding: query_embedding,
+        limit: 3
+      )
+
+      expect(results.length).to eq(3)
+      expect(results[0][:source]).to eq("doc1") # Most similar
+      expect(results[1][:source]).to eq("doc2") # Somewhat similar
+      expect(results[2][:source]).to eq("doc3") # Least similar
+    end
+
+    it "respects the limit parameter" do
+      results = embedding_store.search_similar(
+        kind: "test",
+        query_embedding: query_embedding,
+        limit: 2
+      )
+
+      expect(results.length).to eq(2)
+      expect(results[0][:source]).to eq("doc1")
+      expect(results[1][:source]).to eq("doc2")
+    end
+
+    it "filters by kind" do
+      embedding_store.store_embeddings(
+        kind: "other",
+        records: [
+          { source: "other_doc", content: "other content", embedding: query_embedding }
+        ]
+      )
+
+      results = embedding_store.search_similar(
+        kind: "test",
+        query_embedding: query_embedding,
+        limit: 10
+      )
+
+      expect(results.length).to eq(3)
+      expect(results.map { |r| r[:source] }).not_to include("other_doc")
+    end
+
+    it "returns content and similarity score" do
+      results = embedding_store.search_similar(
+        kind: "test",
+        query_embedding: query_embedding,
+        limit: 1
+      )
+
+      expect(results[0]).to have_key(:source)
+      expect(results[0]).to have_key(:content)
+      expect(results[0]).to have_key(:similarity)
+      expect(results[0][:similarity]).to be_a(Float)
+      expect(results[0][:similarity]).to be_between(0.0, 1.0)
+    end
+
+    it "handles empty result set" do
+      results = embedding_store.search_similar(
+        kind: "nonexistent",
+        query_embedding: query_embedding,
+        limit: 10
+      )
+
+      expect(results).to eq([])
+    end
+
+    it "supports min_similarity threshold" do
+      results = embedding_store.search_similar(
+        kind: "test",
+        query_embedding: query_embedding,
+        limit: 10,
+        min_similarity: 0.8
+      )
+
+      # Only very similar documents should be returned
+      expect(results.length).to be <= 2
+      results.each do |result|
+        expect(result[:similarity]).to be >= 0.8
+      end
+    end
+  end
+
+  describe "#vss_available?" do
+    it "returns boolean based on config" do
+      # Default should be false or true depending on system
+      result = embedding_store.vss_available?
+      expect(result).to be(true).or be(false)
+    end
+  end
 end

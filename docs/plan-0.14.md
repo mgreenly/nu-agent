@@ -152,7 +152,9 @@ Success criteria
 - No regressions: All existing tests pass; behavior is identical except for improved ergonomics.
 
 Risks and mitigations
-- Type detection ambiguity: Leading zeros ("007") become integer 7; document this behavior; unlikely to affect config usage in practice.
+- Type detection ambiguity: Leading zeros ("007") become integer 7; "TRUE" becomes boolean true not string; document this behavior clearly with examples.
+- Boolean edge cases: Strings like "True1", "trueish", "yes" stay as strings (not booleans); only exact "true"/"false" case-insensitive match.
+- nil vs missing key: Both return nil; use key?(key) to distinguish if needed; document this behavior.
 - Cache invalidation bugs: Keep caching opt-in and conservative; invalidate entire cache on any write to be safe initially.
 - Breaking changes: Provide deprecated ConfigStore wrapper if needed for gradual migration; ensure compatibility layer is tested.
 - Migration scope: Search comprehensively for all ConfigStore usage; use grep/tooling to ensure nothing is missed.
@@ -171,8 +173,28 @@ Future enhancements
 
 Notes
 - AppConfig builds on existing appconfig table schema; no database migrations required for core functionality.
-- Type detection is pragmatic: optimized for common config use cases (counters, flags as "true"/"false" strings, numeric thresholds).
+- Type detection is pragmatic: optimized for common config use cases (counters, flags, numeric thresholds, nil for unset).
 - Hash-like interface makes configuration feel like a natural Ruby object rather than a database wrapper.
 - Caching is optional and conservative; start without it and enable for high-frequency reads if profiling shows benefit.
 - Command history separation improves clarity: History delegates to specialized components rather than mixing concerns.
 - Consider this a quality-of-life improvement: makes codebase more maintainable and pleasant to work with, no major feature additions.
+
+Example usage comparison:
+```ruby
+# Before (ConfigStore)
+config_store.set_config("debug", "true")
+config_store.set_config("max_workers", "8")
+config_store.set_config("timeout", "30.5")
+value = config_store.get_config("debug")  # returns "true" string
+count = config_store.get_config("max_workers").to_i  # manual conversion
+
+# After (AppConfig)
+config["debug"] = true
+config["max_workers"] = 8
+config["timeout"] = 30.5
+config["unset_key"] = nil
+value = config["debug"]  # returns true (boolean)
+count = config["max_workers"]  # returns 8 (integer)
+timeout = config["timeout"]  # returns 30.5 (float)
+missing = config["unset_key"]  # returns nil
+```
