@@ -23,6 +23,41 @@ module Nu
         row ? row[0] : default
       end
 
+      # Get configuration value as integer
+      def get_int(key, default: nil)
+        value = get_config(key)
+        return default if value.nil?
+
+        Integer(value)
+      rescue ArgumentError
+        raise ArgumentError, "Invalid integer value for key '#{key}': #{value}"
+      end
+
+      # Get configuration value as float
+      def get_float(key, default: nil)
+        value = get_config(key)
+        return default if value.nil?
+
+        Float(value)
+      rescue ArgumentError
+        raise ArgumentError, "Invalid float value for key '#{key}': #{value}"
+      end
+
+      # Get configuration value as boolean
+      def get_bool(key, default: nil)
+        value = get_config(key)
+        return default if value.nil?
+
+        case value.downcase
+        when "true"
+          true
+        when "false"
+          false
+        else
+          raise ArgumentError, "Invalid boolean value for key '#{key}': #{value}"
+        end
+      end
+
       # Add command to command history
       def add_command_history(command)
         return if command.nil? || command.strip.empty?

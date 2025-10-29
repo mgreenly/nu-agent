@@ -128,4 +128,114 @@ RSpec.describe Nu::Agent::ConfigStore do
       expect(history.first["created_at"]).not_to be_nil
     end
   end
+
+  describe "#get_int" do
+    it "converts string values to integers" do
+      config_store.set_config("batch_size", "10")
+
+      value = config_store.get_int("batch_size")
+      expect(value).to eq(10)
+      expect(value).to be_a(Integer)
+    end
+
+    it "returns default when key does not exist" do
+      value = config_store.get_int("nonexistent", default: 42)
+      expect(value).to eq(42)
+    end
+
+    it "returns nil when key does not exist and no default provided" do
+      value = config_store.get_int("nonexistent")
+      expect(value).to be_nil
+    end
+
+    it "handles negative integers" do
+      config_store.set_config("offset", "-5")
+
+      value = config_store.get_int("offset")
+      expect(value).to eq(-5)
+    end
+
+    it "raises error for invalid integer strings" do
+      config_store.set_config("invalid", "not_a_number")
+
+      expect { config_store.get_int("invalid") }.to raise_error(ArgumentError)
+    end
+  end
+
+  describe "#get_float" do
+    it "converts string values to floats" do
+      config_store.set_config("threshold", "0.75")
+
+      value = config_store.get_float("threshold")
+      expect(value).to eq(0.75)
+      expect(value).to be_a(Float)
+    end
+
+    it "returns default when key does not exist" do
+      value = config_store.get_float("nonexistent", default: 3.14)
+      expect(value).to eq(3.14)
+    end
+
+    it "returns nil when key does not exist and no default provided" do
+      value = config_store.get_float("nonexistent")
+      expect(value).to be_nil
+    end
+
+    it "handles negative floats" do
+      config_store.set_config("temp", "-1.5")
+
+      value = config_store.get_float("temp")
+      expect(value).to eq(-1.5)
+    end
+
+    it "raises error for invalid float strings" do
+      config_store.set_config("invalid", "not_a_number")
+
+      expect { config_store.get_float("invalid") }.to raise_error(ArgumentError)
+    end
+  end
+
+  describe "#get_bool" do
+    it "returns true for 'true' string" do
+      config_store.set_config("enabled", "true")
+
+      value = config_store.get_bool("enabled")
+      expect(value).to be true
+    end
+
+    it "returns false for 'false' string" do
+      config_store.set_config("enabled", "false")
+
+      value = config_store.get_bool("enabled")
+      expect(value).to be false
+    end
+
+    it "returns default when key does not exist" do
+      value = config_store.get_bool("nonexistent", default: true)
+      expect(value).to be true
+    end
+
+    it "returns nil when key does not exist and no default provided" do
+      value = config_store.get_bool("nonexistent")
+      expect(value).to be_nil
+    end
+
+    it "is case-insensitive" do
+      config_store.set_config("flag1", "TRUE")
+      config_store.set_config("flag2", "True")
+      config_store.set_config("flag3", "FALSE")
+      config_store.set_config("flag4", "False")
+
+      expect(config_store.get_bool("flag1")).to be true
+      expect(config_store.get_bool("flag2")).to be true
+      expect(config_store.get_bool("flag3")).to be false
+      expect(config_store.get_bool("flag4")).to be false
+    end
+
+    it "raises error for invalid boolean strings" do
+      config_store.set_config("invalid", "yes")
+
+      expect { config_store.get_bool("invalid") }.to raise_error(ArgumentError)
+    end
+  end
 end
