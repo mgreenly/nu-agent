@@ -192,5 +192,52 @@ RSpec.describe Nu::Agent::Tools::FileGrep do
         expect(result[:count]).to eq(0)
       end
     end
+
+    context "with debug mode enabled" do
+      it "logs debug output when application.debug is true" do
+        output = instance_double("Output")
+        application = instance_double("Application", debug: true, output: output)
+
+        expect(output).to receive(:debug).with(match(/\[file_grep\] command:/))
+        expect(output).to receive(:debug).with(match(/\[file_grep\] output_mode:/))
+
+        tool.execute(arguments: { pattern: "execute", path: test_dir }, application: application)
+      end
+
+      it "does not log when application.debug is false" do
+        application = instance_double("Application", debug: false)
+
+        # Should not raise any errors and not call output.debug
+        result = tool.execute(arguments: { pattern: "execute", path: test_dir }, application: application)
+
+        expect(result).to have_key(:files)
+      end
+    end
+
+    context "when ripgrep fails" do
+      it "returns error when ripgrep exits with code > 1" do
+        # Mock Open3.capture3 to simulate ripgrep error
+        allow(Open3).to receive(:capture3).and_return(
+          ["", "ripgrep error: invalid regex", double(exitstatus: 2)]
+        )
+
+        result = tool.execute(arguments: { pattern: "test", path: test_dir })
+
+        expect(result[:error]).to include("ripgrep failed: ripgrep error: invalid regex")
+        expect(result[:matches]).to eq([])
+      end
+    end
+
+    context "when StandardError is raised" do
+      it "handles exceptions during ripgrep execution" do
+        # Mock Open3.capture3 to raise an error
+        allow(Open3).to receive(:capture3).and_raise(StandardError.new("Command execution failed"))
+
+        result = tool.execute(arguments: { pattern: "test", path: test_dir })
+
+        expect(result[:error]).to include("Search failed: Command execution failed")
+        expect(result[:matches]).to eq([])
+      end
+    end
   end
 end
