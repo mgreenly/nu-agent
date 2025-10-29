@@ -5,9 +5,7 @@
 [![Coverage](https://github.com/mgreenly/nu-agent/actions/workflows/coverage.yml/badge.svg)](https://github.com/mgreenly/nu-agent/actions/workflows/coverage.yml)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](https://github.com/mgreenly/nu-agent/blob/main/.github/dependabot.yml)
 
-A toy AI Agent with multi-model orchestration, rich tooling, and persistent memory.
-
-## Development Status
+A toy AI Agent with multi-model orchestration and RAG-powered hierarchical memory using HNSW indexing.
 
 > **Note**: This project uses trunk-based development. The `main` branch may contain unstable or experimental changes. For stable experimentation, please use the [latest release tag](https://github.com/mgreenly/nu-agent/releases).
 
