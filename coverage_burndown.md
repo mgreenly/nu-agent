@@ -47,7 +47,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  ~~73.47%~~ 100% |             ~~26~~ 0 |          ~~98~~ 98 | ~~`lib/nu/agent/clients/openai.rb`~~ ✓ |
 |  ~~76.32%~~ 100% |              ~~9~~ 0 |          ~~38~~ 38 | ~~`lib/nu/agent/tools/agent_summarizer.rb`~~ ✓ |
 |  ~~76.92%~~ 100% |              ~~3~~ 0 |          ~~13~~ 13 | ~~`lib/nu/agent/api_key.rb`~~ ✓ |
-|  79.07% |             18 |          86 | `lib/nu/agent/clients/anthropic.rb` |
+|  ~~79.07%~~ 100% |             ~~18~~ 0 |          ~~86~~ 86 | ~~`lib/nu/agent/clients/anthropic.rb`~~ ✓ |
 |  79.12% |             19 |          91 | `lib/nu/agent/clients/google.rb` |
 |  80.85% |             18 |          94 | `lib/nu/agent/tools/dir_list.rb` |
 |  90.29% |             10 |         103 | `lib/nu/agent/chat_loop_orchestrator.rb` |
@@ -92,10 +92,11 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/clients/openai.rb` ✓
 - [x] `lib/nu/agent/history.rb` ✓
 - [x] `lib/nu/agent/man_page_indexer.rb` ✓
+- [x] `lib/nu/agent/clients/anthropic.rb` ✓
 
 ### Next Target
 
-**File:** `lib/nu/agent/clients/anthropic.rb`
-**Current Line Coverage:** 79.07%
-**Lines to Cover:** 18
+**File:** `lib/nu/agent/clients/google.rb`
+**Current Line Coverage:** 79.12%
+**Lines to Cover:** 19
 **Goal:** 100% line coverage + 100% branch coverage
