@@ -21,11 +21,12 @@ git clone https://github.com/yourusername/nu-agent.git
 cd nu-agent
 bundle install
 
-# Configure API keys
+# Configure at least one API key
 mkdir -p ~/.secrets
 echo "your-key" > ~/.secrets/ANTHROPIC_API_KEY
 echo "your-key" > ~/.secrets/OPENAI_API_KEY
 echo "your-key" > ~/.secrets/GEMINI_API_KEY
+echo "your-key" > ~/.secrets/XAI_API_KEY
 
 # Run
 ./exe/nu-agent
@@ -55,7 +56,3 @@ sudo apt-get install ripgrep
 # macOS
 brew install ripgrep
 ```
-
-## Features
-
-Multi-model orchestration (Claude, GPT, Gemini, Grok) with task-specific routing. Rich tooling includes file operations, shell execution, Python REPL, database queries, directory traversal, and semantic grep. Persistent conversation memory stored in DuckDB with message/exchange/session hierarchy. Developer-friendly with debug modes, model switching, and configurable verbosity.
