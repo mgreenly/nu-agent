@@ -15,10 +15,6 @@ module Nu
         @worker_manager&.summarizer_status
       end
 
-      def man_indexer_status
-        @worker_manager&.man_indexer_status
-      end
-
       def initialize(options:)
         initialize_state(options)
         load_and_apply_configuration
@@ -129,7 +125,6 @@ module Nu
       end
 
       def initialize_commands
-        @history.set_config("index_man_enabled", "false")
         @command_registry = Commands::CommandRegistry.new
         register_commands
       end
@@ -154,7 +149,6 @@ module Nu
         @command_registry.register("/spellcheck", Commands::SpellcheckCommand)
         @command_registry.register("/reset", Commands::ResetCommand)
         @command_registry.register("/model", Commands::ModelCommand)
-        @command_registry.register("/index-man", Commands::IndexManCommand)
       end
 
       def enter_critical_section
@@ -243,10 +237,6 @@ module Nu
 
       def start_summarization_worker
         @worker_manager.start_summarization_worker if @summarizer_enabled
-      end
-
-      def start_man_indexer_worker
-        @worker_manager.start_man_indexer_worker
       end
 
       private

@@ -32,19 +32,6 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       expect(status["spend"]).to eq(0.0)
     end
 
-    it "initializes man_indexer status with default values" do
-      status = worker_manager.man_indexer_status
-
-      expect(status["running"]).to be false
-      expect(status["total"]).to eq(0)
-      expect(status["completed"]).to eq(0)
-      expect(status["failed"]).to eq(0)
-      expect(status["skipped"]).to eq(0)
-      expect(status["current_batch"]).to be_nil
-      expect(status["session_spend"]).to eq(0.0)
-      expect(status["session_tokens"]).to eq(0)
-    end
-
     it "initializes active_threads as empty array" do
       expect(worker_manager.active_threads).to eq([])
     end
@@ -69,60 +56,6 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       worker_manager.start_summarization_worker
 
       expect(worker_manager.active_threads).to include(mock_thread)
-    end
-  end
-
-  describe "#start_man_indexer_worker" do
-    context "when OpenAI embeddings client can be created" do
-      it "creates a ManPageIndexer and starts worker thread" do
-        mock_thread = instance_double(Thread)
-        mock_embeddings_client = instance_double(Nu::Agent::Clients::OpenAIEmbeddings)
-        mock_indexer = instance_double(
-          Nu::Agent::ManPageIndexer,
-          start_worker: mock_thread
-        )
-
-        expect(Nu::Agent::Clients::OpenAIEmbeddings).to receive(:new).and_return(mock_embeddings_client)
-
-        expect(Nu::Agent::ManPageIndexer).to receive(:new).with(
-          history: history,
-          embeddings_client: mock_embeddings_client,
-          application: application,
-          status: worker_manager.man_indexer_status,
-          status_mutex: status_mutex
-        ).and_return(mock_indexer)
-
-        worker_manager.start_man_indexer_worker
-
-        expect(worker_manager.active_threads).to include(mock_thread)
-      end
-    end
-
-    context "when OpenAI embeddings client creation fails" do
-      it "displays error message and sets status to not running" do
-        allow(Nu::Agent::Clients::OpenAIEmbeddings).to receive(:new).and_raise(
-          StandardError.new("API key missing")
-        )
-
-        expect(application).to receive(:output_line).with(
-          "[Man Indexer] ERROR: Failed to create OpenAI Embeddings client",
-          type: :error
-        )
-        expect(application).to receive(:output_line).with("  API key missing", type: :error)
-        expect(application).to receive(:output_line).with(
-          "Man page indexing requires OpenAI embeddings API access.",
-          type: :error
-        )
-        expect(application).to receive(:output_line).with(
-          "Please ensure your OpenAI API key has access to text-embedding-3-small.",
-          type: :error
-        )
-
-        worker_manager.start_man_indexer_worker
-
-        expect(worker_manager.man_indexer_status["running"]).to be false
-        expect(worker_manager.active_threads).to be_empty
-      end
     end
   end
 

@@ -79,7 +79,6 @@ module Nu
       def default_tool_classes
         [
           Tools::AgentSummarizer,
-          Tools::ManIndexer,
           Tools::DatabaseMessage,
           Tools::DatabaseQuery,
           Tools::DatabaseSchema,

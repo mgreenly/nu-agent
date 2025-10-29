@@ -38,9 +38,7 @@ RSpec.describe Nu::Agent::Application do
       Nu::Agent::BackgroundWorkerManager,
       active_threads: [],
       summarizer_status: "idle",
-      man_indexer_status: "idle",
-      start_summarization_worker: nil,
-      start_man_indexer_worker: nil
+      start_summarization_worker: nil
     )
   end
 
@@ -67,7 +65,6 @@ RSpec.describe Nu::Agent::Application do
     allow(mock_history).to receive(:get_config).with("redaction", default: "true").and_return("true")
     allow(mock_history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("false")
     allow(mock_history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
-    allow(mock_history).to receive(:get_config).with("index_man_enabled").and_return(nil)
 
     # Mock stdout.sync
     allow($stdout).to receive(:sync=)
@@ -98,11 +95,6 @@ RSpec.describe Nu::Agent::Application do
       expect(mock_history).to receive(:create_conversation).and_return(42)
       app = described_class.new(options: options)
       expect(app.conversation_id).to eq(42)
-    end
-
-    it "sets index_man_enabled config to false" do
-      expect(mock_history).to receive(:set_config).with("index_man_enabled", "false")
-      described_class.new(options: options)
     end
   end
 
@@ -139,22 +131,6 @@ RSpec.describe Nu::Agent::Application do
       app.instance_variable_set(:@worker_manager, nil)
 
       expect(app.summarizer_status).to be_nil
-    end
-  end
-
-  describe "#man_indexer_status" do
-    it "returns status from worker_manager" do
-      app = described_class.new(options: options)
-      allow(mock_worker_manager).to receive(:man_indexer_status).and_return("indexing")
-
-      expect(app.man_indexer_status).to eq("indexing")
-    end
-
-    it "returns nil when worker_manager is nil" do
-      app = described_class.new(options: options)
-      app.instance_variable_set(:@worker_manager, nil)
-
-      expect(app.man_indexer_status).to be_nil
     end
   end
 
@@ -291,16 +267,6 @@ RSpec.describe Nu::Agent::Application do
       expect(mock_worker_manager).not_to receive(:start_summarization_worker)
 
       app.start_summarization_worker
-    end
-  end
-
-  describe "#start_man_indexer_worker" do
-    it "delegates to worker_manager" do
-      app = described_class.new(options: options)
-
-      expect(mock_worker_manager).to receive(:start_man_indexer_worker)
-
-      app.start_man_indexer_worker
     end
   end
 
