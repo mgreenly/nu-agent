@@ -602,4 +602,76 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       end
     end
   end
+
+  describe "#tool_calling_loop" do
+    let(:messages) { [{ "role" => "user", "content" => "test" }] }
+    let(:tools) { [{ "name" => "test_tool" }] }
+    let(:tool_call_orchestrator) { instance_double(Nu::Agent::ToolCallOrchestrator) }
+    let(:loop_result) do
+      {
+        error: false,
+        response: { "content" => "result" },
+        metrics: { tokens_input: 10 }
+      }
+    end
+
+    it "creates ToolCallOrchestrator and executes with context parameters" do
+      allow(Nu::Agent::ToolCallOrchestrator).to receive(:new).and_return(tool_call_orchestrator)
+      allow(tool_call_orchestrator).to receive(:execute).and_return(loop_result)
+
+      result = orchestrator.send(
+        :tool_calling_loop,
+        messages: messages,
+        client: client,
+        conversation_id: conversation_id,
+        tools: tools,
+        history: history,
+        exchange_id: exchange_id,
+        tool_registry: tool_registry,
+        application: application
+      )
+
+      expect(Nu::Agent::ToolCallOrchestrator).to have_received(:new).with(
+        client: client,
+        history: history,
+        exchange_info: { conversation_id: conversation_id, exchange_id: exchange_id },
+        tool_registry: tool_registry,
+        application: application
+      )
+
+      expect(tool_call_orchestrator).to have_received(:execute).with(
+        messages: messages,
+        tools: tools
+      )
+
+      expect(result).to eq(loop_result)
+    end
+  end
+
+  describe "#format_id_ranges" do
+    it "formats consecutive IDs as ranges" do
+      result = orchestrator.send(:format_id_ranges, [5, 6, 7])
+      expect(result).to eq("5-7")
+    end
+
+    it "formats non-consecutive IDs with multiple ranges" do
+      result = orchestrator.send(:format_id_ranges, [5, 6, 10, 11, 15])
+      expect(result).to eq("5-6, 10-11, 15")
+    end
+
+    it "formats single ID without range notation" do
+      result = orchestrator.send(:format_id_ranges, [5])
+      expect(result).to eq("5")
+    end
+
+    it "returns empty string for empty array" do
+      result = orchestrator.send(:format_id_ranges, [])
+      expect(result).to eq("")
+    end
+
+    it "handles all non-consecutive IDs" do
+      result = orchestrator.send(:format_id_ranges, [1, 3, 5, 7])
+      expect(result).to eq("1, 3, 5, 7")
+    end
+  end
 end
