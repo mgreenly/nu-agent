@@ -17,7 +17,7 @@ A toy AI Agent with multi-model orchestration and RAG-powered hierarchical memor
 # Clone and setup
 git clone https://github.com/yourusername/nu-agent.git
 cd nu-agent
-bin/setup  # Installs [DuckDB](https://duckdb.org/) library and headers in /vendor.
+bin/setup  # Installs DuckDB library and headers in /vendor.
 
 # Configure at least one API key (only one is required; choose the provider that matches your model)
 mkdir -p ~/.secrets
@@ -41,7 +41,7 @@ echo "your-key" > ~/.secrets/XAI_API_KEY
 
 The `bin/setup` script **automatically** handles DuckDB installation:
 
-- **Downloads** pre-built DuckDB v1.4.1 binaries from GitHub
+- **Downloads** pre-built [DuckDB](https://duckdb.org/) v1.4.1 binaries from GitHub
 - **Installs locally** to `vendor/duckdb/` (project-specific, not system-wide)
 - **Configures bundler** to compile the Ruby gem against the local library
 - **Works on Linux and macOS** (x86_64 and ARM64)
