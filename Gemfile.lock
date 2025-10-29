@@ -5,7 +5,7 @@ PATH
       duckdb (~> 1.1)
       gemini-ai (~> 4.0)
       ruby-anthropic (~> 0.4.2)
-      ruby-openai (~> 7.0)
+      ruby-openai (>= 7, < 9)
 
 GEM
   remote: https://rubygems.org/
@@ -127,7 +127,7 @@ GEM
       event_stream_parser (>= 0.3.0, < 2.0.0)
       faraday (>= 1)
       faraday-multipart (>= 1)
-    ruby-openai (7.4.0)
+    ruby-openai (8.3.0)
       event_stream_parser (>= 0.3.0, < 2.0.0)
       faraday (>= 1)
       faraday-multipart (>= 1)
