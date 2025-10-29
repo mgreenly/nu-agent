@@ -4,7 +4,7 @@ Files that need **both line AND branch coverage** brought to 100%.
 
 Listed in order from worst to best coverage.
 
-**Current Project Coverage:** 94.9% line, 84.74% branch
+**Current Project Coverage:** 94.92% line, 84.82% branch
 **Goal:** 100% line coverage AND 100% branch coverage on all files
 
 ---
@@ -54,7 +54,7 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 |  ~~94.32%~~ 100% |              ~~5~~ 0 |          ~~88~~ 88 | ~~`lib/nu/agent/conversation_summarizer.rb`~~ ✓ |
 |  ~~95.88%~~ 100% |              ~~4~~ 0 |          ~~97~~ 97 | ~~`lib/nu/agent/tools/file_grep.rb`~~ ✓ |
 |  ~~97.3%~~ 100% |              ~~1~~ 0 |          ~~37~~ 37 | ~~`lib/nu/agent/exchange_repository.rb`~~ ✓ |
-|  97.78% |              1 |          45 | `lib/nu/agent/session_info.rb` |
+|  ~~97.78%~~ 100% |              ~~1~~ 0 |          ~~45~~ 45 | ~~`lib/nu/agent/session_info.rb`~~ ✓ |
 
 ---
 
@@ -99,10 +99,14 @@ Each file needs to achieve 100% line coverage AND 100% branch coverage.
 - [x] `lib/nu/agent/conversation_summarizer.rb` ✓
 - [x] `lib/nu/agent/tools/file_grep.rb` ✓
 - [x] `lib/nu/agent/exchange_repository.rb` ✓
+- [x] `lib/nu/agent/session_info.rb` ✓
 
-### Next Target
+### Next Targets
 
-**File:** `lib/nu/agent/session_info.rb`
-**Current Line Coverage:** 97.78%
-**Lines to Cover:** 1
-**Goal:** 100% line coverage + 100% branch coverage
+Remaining files with <100% coverage to continue in future sessions:
+- `lib/nu/agent/console_io.rb` (64.84%, 109 lines)
+- `lib/nu/agent/application.rb` (66.67%, 49 lines)
+- `lib/nu/agent/man_indexer.rb` (17.95%, 64 lines - scheduled for removal)
+
+**Session Progress:** Completed 5 files this session (+21 lines of coverage)
+**Coverage Improvement:** 94.67% → 94.92% line (+0.25%), 84.08% → 84.82% branch (+0.74%)
