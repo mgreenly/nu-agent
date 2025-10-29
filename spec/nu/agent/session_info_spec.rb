@@ -54,6 +54,13 @@ RSpec.describe Nu::Agent::SessionInfo do
       expect(info_text).to include("Redaction:")
     end
 
+    it "shows redaction as on when enabled" do
+      allow(application).to receive(:redact).and_return(true)
+      info_text = described_class.build(application)
+
+      expect(info_text).to include("Redaction:     on")
+    end
+
     it "includes summarizer status when enabled" do
       allow(application).to receive(:summarizer_enabled).and_return(true)
       info_text = described_class.build(application)
