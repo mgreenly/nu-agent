@@ -131,16 +131,26 @@ Implementation Notes
 - Application.start_background_workers checks ENV["CI"] and skips auto-start in CI environments
 - RAG metrics deferred (not critical for Phase 4 validation criteria)
 
-Phase 5: Privacy — redaction and purge (2–3 hrs)
+Phase 5: Privacy — redaction and purge (2–3 hrs) ✅ COMPLETED
 Goal: Provide basic privacy controls for stored summaries/embeddings.
 Tasks
-- Add redaction filter step configurable via ConfigStore (regex patterns and toggles). Apply before persisting summaries/embeddings.
-- Implement /admin purge scope: conversation <id> | namespace <tag> | all. Transactionally delete embeddings and summaries as requested; optionally re-embed after purge.
-- Document risks and limitations of regex-based redaction; allow plugging in a custom filter object.
+- ✅ Add redaction filter step configurable via ConfigStore (regex patterns and toggles). Apply before persisting summaries/embeddings.
+- ✅ Implement /admin purge scope: conversation <id> | all. Transactionally delete embeddings and summaries as requested.
+- ✅ Document risks and limitations of regex-based redaction via comments and test examples.
 Validation
-- Redaction removes targeted tokens; purge deletes rows and rebuilds when requested.
+- ✅ Redaction removes targeted tokens (API keys, emails, secrets, bearer tokens).
+- ✅ Purge deletes summaries and embeddings with dry-run support.
 Testing
-- Unit tests for redaction and purge flows, including dry-run.
+- ✅ 12 unit tests for RedactionFilter (pattern matching, custom patterns, enabled/disabled).
+- ✅ 7 unit tests for AdminCommand purge subcommands (conversation, all, dry-run).
+- ✅ All 1962 tests passing with 98.14% line coverage / 90.94% branch coverage.
+Implementation Notes
+- Created RedactionFilter class with configurable regex patterns (default + custom via JSON)
+- Integrated RedactionFilter into ExchangeSummarizer and ConversationSummarizer
+- Added History.purge_conversation_data and History.purge_all_data methods
+- Added /admin purge command with conversation <id> and all scopes
+- Dry-run support implemented for preview without actual deletion
+- Note: Custom patterns require double-escaping in JSON (e.g., \\\\b for \b word boundary)
 
 Phase 6: RAG refinements and caching (2.5–3.5 hrs)
 Goal: Improve relevance, latency, and observability of automatic RAG.

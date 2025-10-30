@@ -420,6 +420,104 @@ module Nu
         @failed_job_repo.get_failed_jobs_count(job_type: job_type)
       end
 
+      # Purge data for a specific conversation (summaries and embeddings)
+      # @param conversation_id [Integer] The conversation ID to purge
+      # @return [Hash] Statistics about what was purged
+      def purge_conversation_data(conversation_id:)
+        transaction do
+          stats = {
+            conversation_summary_cleared: false,
+            exchange_summaries_cleared: 0,
+            conversation_embeddings_deleted: 0,
+            exchange_embeddings_deleted: 0
+          }
+
+          # Clear conversation summary
+          cleared = connection.query(<<~SQL).to_a.first.first
+            UPDATE conversations
+            SET summary = NULL, summary_model = NULL, summary_cost = 0.0
+            WHERE id = #{conversation_id.to_i} AND summary IS NOT NULL
+            RETURNING COUNT(*)
+          SQL
+          stats[:conversation_summary_cleared] = cleared.positive?
+
+          # Clear exchange summaries for this conversation
+          cleared = connection.query(<<~SQL).to_a.first.first
+            UPDATE exchanges
+            SET summary = NULL, summary_model = NULL, summary_cost = 0.0
+            WHERE conversation_id = #{conversation_id.to_i} AND summary IS NOT NULL
+            RETURNING COUNT(*)
+          SQL
+          stats[:exchange_summaries_cleared] = cleared
+
+          # Delete conversation embeddings
+          deleted = connection.query(<<~SQL).to_a.first.first
+            DELETE FROM vector_store
+            WHERE kind = 'conversation' AND metadata->>'conversation_id' = '#{escape_sql(conversation_id.to_s)}'
+            RETURNING COUNT(*)
+          SQL
+          stats[:conversation_embeddings_deleted] = deleted
+
+          # Delete exchange embeddings for this conversation
+          deleted = connection.query(<<~SQL).to_a.first.first
+            DELETE FROM vector_store
+            WHERE kind = 'exchange'
+              AND metadata->>'exchange_id' IN (
+                SELECT CAST(id AS VARCHAR) FROM exchanges WHERE conversation_id = #{conversation_id.to_i}
+              )
+            RETURNING COUNT(*)
+          SQL
+          stats[:exchange_embeddings_deleted] = deleted
+
+          stats
+        end
+      end
+
+      # Purge all conversation and exchange data (summaries and embeddings)
+      # @return [Hash] Statistics about what was purged
+      def purge_all_data
+        transaction do
+          stats = {
+            conversations_cleared: 0,
+            exchanges_cleared: 0,
+            conversation_embeddings_deleted: 0,
+            exchange_embeddings_deleted: 0
+          }
+
+          # Clear all conversation summaries
+          cleared = connection.query(<<~SQL).to_a.first.first
+            UPDATE conversations
+            SET summary = NULL, summary_model = NULL, summary_cost = 0.0
+            WHERE summary IS NOT NULL
+            RETURNING COUNT(*)
+          SQL
+          stats[:conversations_cleared] = cleared
+
+          # Clear all exchange summaries
+          cleared = connection.query(<<~SQL).to_a.first.first
+            UPDATE exchanges
+            SET summary = NULL, summary_model = NULL, summary_cost = 0.0
+            WHERE summary IS NOT NULL
+            RETURNING COUNT(*)
+          SQL
+          stats[:exchanges_cleared] = cleared
+
+          # Delete all conversation embeddings
+          deleted = connection.query(<<~SQL).to_a.first.first
+            DELETE FROM vector_store WHERE kind = 'conversation' RETURNING COUNT(*)
+          SQL
+          stats[:conversation_embeddings_deleted] = deleted
+
+          # Delete all exchange embeddings
+          deleted = connection.query(<<~SQL).to_a.first.first
+            DELETE FROM vector_store WHERE kind = 'exchange' RETURNING COUNT(*)
+          SQL
+          stats[:exchange_embeddings_deleted] = deleted
+
+          stats
+        end
+      end
+
       private
 
       def ensure_db_directory(db_path)

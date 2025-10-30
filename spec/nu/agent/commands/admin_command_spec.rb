@@ -247,6 +247,78 @@ RSpec.describe Nu::Agent::Commands::AdminCommand do
       end
     end
 
+    context "with 'purge' subcommand" do
+      context "purge conversation" do
+        it "purges data for a specific conversation" do
+          stats = {
+            conversation_summary_cleared: true,
+            exchange_summaries_cleared: 3,
+            conversation_embeddings_deleted: 1,
+            exchange_embeddings_deleted: 3
+          }
+
+          allow(history).to receive(:purge_conversation_data).with(conversation_id: 123).and_return(stats)
+          expect(console).to receive(:puts).at_least(:once)
+
+          result = command.execute("/admin purge conversation 123")
+          expect(result).to eq(:continue)
+        end
+
+        it "shows dry-run results without purging" do
+          expect(history).not_to receive(:purge_conversation_data)
+          expect(console).to receive(:puts).at_least(:once)
+
+          result = command.execute("/admin purge conversation 123 --dry-run")
+          expect(result).to eq(:continue)
+        end
+
+        it "shows usage when conversation ID is missing" do
+          expect(console).to receive(:puts).with("Usage: /admin purge conversation <id> [--dry-run]")
+
+          result = command.execute("/admin purge conversation")
+          expect(result).to eq(:continue)
+        end
+      end
+
+      context "purge all" do
+        it "shows warning for purge all (confirmation not implemented)" do
+          expect(history).not_to receive(:purge_all_data)
+          expect(console).to receive(:puts).at_least(:once)
+
+          result = command.execute("/admin purge all")
+          expect(result).to eq(:continue)
+        end
+
+        it "shows dry-run results for purge all" do
+          expect(history).not_to receive(:purge_all_data)
+          expect(console).to receive(:puts).at_least(:once)
+
+          result = command.execute("/admin purge all --dry-run")
+          expect(result).to eq(:continue)
+        end
+      end
+
+      context "with unknown scope" do
+        it "shows error message" do
+          expect(console).to receive(:puts).with("Unknown purge scope: invalid")
+          expect(console).to receive(:puts).with("Valid scopes: conversation <id> | all")
+
+          result = command.execute("/admin purge invalid")
+          expect(result).to eq(:continue)
+        end
+      end
+
+      context "without scope" do
+        it "shows usage" do
+          expect(console).to receive(:puts).with("Usage: /admin purge <scope> [--dry-run]")
+          expect(console).to receive(:puts).with("  Scopes: conversation <id> | all")
+
+          result = command.execute("/admin purge")
+          expect(result).to eq(:continue)
+        end
+      end
+    end
+
     context "with unknown subcommand" do
       it "shows help" do
         expect(console).to receive(:puts).at_least(:once)

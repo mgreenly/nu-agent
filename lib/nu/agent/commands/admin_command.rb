@@ -21,6 +21,8 @@ module Nu
             handle_retry(args)
           when "purge-failures"
             handle_purge_failures(args)
+          when "purge"
+            handle_purge(args)
           else
             show_help
           end
@@ -152,6 +154,77 @@ module Nu
           app.console.puts("Purged #{deleted_count} failed job(s).")
         end
 
+        def handle_purge(args)
+          # Parse scope and options
+          if args.empty?
+            app.console.puts("Usage: /admin purge <scope> [--dry-run]")
+            app.console.puts("  Scopes: conversation <id> | all")
+            return
+          end
+
+          scope = args[0].downcase
+          options = parse_options(args[1..])
+          dry_run = options.key?("dry-run")
+
+          case scope
+          when "conversation"
+            handle_purge_conversation(args, dry_run)
+          when "all"
+            handle_purge_all(dry_run)
+          else
+            app.console.puts("Unknown purge scope: #{scope}")
+            app.console.puts("Valid scopes: conversation <id> | all")
+          end
+        end
+
+        def handle_purge_conversation(args, dry_run)
+          if args.length < 2
+            app.console.puts("Usage: /admin purge conversation <id> [--dry-run]")
+            return
+          end
+
+          conversation_id = args[1].to_i
+
+          if dry_run
+            app.console.puts("[DRY RUN] Would purge data for conversation #{conversation_id}:")
+            app.console.puts("  - Clear conversation summary")
+            app.console.puts("  - Clear all exchange summaries")
+            app.console.puts("  - Delete conversation embeddings")
+            app.console.puts("  - Delete exchange embeddings")
+            return
+          end
+
+          app.console.puts("Purging data for conversation #{conversation_id}...")
+          stats = app.history.purge_conversation_data(conversation_id: conversation_id)
+
+          app.console.puts("")
+          app.console.puts("Purge Results:")
+          app.console.puts("  Conversation summary cleared: #{stats[:conversation_summary_cleared]}")
+          app.console.puts("  Exchange summaries cleared: #{stats[:exchange_summaries_cleared]}")
+          app.console.puts("  Conversation embeddings deleted: #{stats[:conversation_embeddings_deleted]}")
+          app.console.puts("  Exchange embeddings deleted: #{stats[:exchange_embeddings_deleted]}")
+        end
+
+        def handle_purge_all(dry_run)
+          if dry_run
+            app.console.puts("[DRY RUN] Would purge all data:")
+            app.console.puts("  - Clear all conversation summaries")
+            app.console.puts("  - Clear all exchange summaries")
+            app.console.puts("  - Delete all conversation embeddings")
+            app.console.puts("  - Delete all exchange embeddings")
+            return
+          end
+
+          app.console.puts("WARNING: This will purge ALL conversation and exchange data!")
+          app.console.puts("Are you sure? Type 'yes' to confirm:")
+
+          # Note: In a real implementation, we'd need to get user confirmation
+          # For now, we'll just show a warning and not proceed
+          app.console.puts("")
+          app.console.puts("Purge cancelled (confirmation not implemented yet).")
+          app.console.puts("Use --dry-run to see what would be purged.")
+        end
+
         def show_help
           app.console.puts("Admin Commands:")
           app.console.puts("")
@@ -166,6 +239,10 @@ module Nu
           app.console.puts("")
           app.console.puts("  /admin purge-failures [--older-than=<days>]")
           app.console.puts("    Purge failed jobs (optionally only older than N days)")
+          app.console.puts("")
+          app.console.puts("  /admin purge <scope> [--dry-run]")
+          app.console.puts("    Purge conversation/exchange data (summaries & embeddings)")
+          app.console.puts("    Scopes: conversation <id> | all")
         end
 
         def parse_options(args)

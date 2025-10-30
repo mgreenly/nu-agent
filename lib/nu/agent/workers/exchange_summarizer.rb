@@ -6,7 +6,7 @@ module Nu
       # Manages background exchange summarization worker thread
       class ExchangeSummarizer < PausableTask
         def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:, config_store:,
-                       metrics_collector: nil)
+                       metrics_collector: nil, redaction_filter: nil)
           # Initialize PausableTask with shutdown flag from application
           super(status_info: status_info, shutdown_flag: application)
 
@@ -16,6 +16,7 @@ module Nu
           @current_conversation_id = current_conversation_id
           @config_store = config_store
           @metrics_collector = metrics_collector
+          @redaction_filter = redaction_filter
         end
 
         def load_verbosity
@@ -222,13 +223,16 @@ module Nu
         end
 
         def save_summary(exchange_id, summary, cost)
+          # Apply redaction if filter is available
+          redacted_summary = @redaction_filter ? @redaction_filter.redact(summary) : summary
+
           # Enter critical section for database write
           @application.send(:enter_critical_section)
           begin
             # Update exchange with summary
             @history.update_exchange_summary(
               exchange_id: exchange_id,
-              summary: summary,
+              summary: redacted_summary,
               model: @summarizer.model,
               cost: cost
             )

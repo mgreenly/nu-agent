@@ -34,6 +34,10 @@ module Nu
         @conversation_summarizer_metrics = MetricsCollector.new
         @exchange_summarizer_metrics = MetricsCollector.new
         @embedding_metrics = MetricsCollector.new
+
+        # Initialize redaction filter
+        config_store = @history.instance_variable_get(:@config_store)
+        @redaction_filter = RedactionFilter.new(config_store)
       end
 
       def start_summarization_worker
@@ -46,7 +50,8 @@ module Nu
             application: @application,
             status_info: { status: @summarizer_status, mutex: @status_mutex },
             current_conversation_id: @conversation_id,
-            config_store: config_store
+            config_store: config_store,
+            redaction_filter: @redaction_filter
           )
           @workers << conversation_summarizer
 
@@ -60,7 +65,8 @@ module Nu
             application: @application,
             status_info: { status: @exchange_summarizer_status, mutex: @status_mutex },
             current_conversation_id: @conversation_id,
-            config_store: config_store
+            config_store: config_store,
+            redaction_filter: @redaction_filter
           )
           @workers << exchange_summarizer
 
@@ -259,7 +265,8 @@ module Nu
           status_info: { status: @summarizer_status, mutex: @status_mutex },
           current_conversation_id: @conversation_id,
           config_store: config_store,
-          metrics_collector: @conversation_summarizer_metrics
+          metrics_collector: @conversation_summarizer_metrics,
+          redaction_filter: @redaction_filter
         )
         [worker, worker.start_worker]
       end
@@ -273,7 +280,8 @@ module Nu
           status_info: { status: @exchange_summarizer_status, mutex: @status_mutex },
           current_conversation_id: @conversation_id,
           config_store: config_store,
-          metrics_collector: @exchange_summarizer_metrics
+          metrics_collector: @exchange_summarizer_metrics,
+          redaction_filter: @redaction_filter
         )
         [worker, worker.start_worker]
       end

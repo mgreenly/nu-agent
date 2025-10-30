@@ -61,7 +61,8 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
         application: application,
         status_info: { status: worker_manager.summarizer_status, mutex: status_mutex },
         current_conversation_id: conversation_id,
-        config_store: config_store
+        config_store: config_store,
+        redaction_filter: instance_of(Nu::Agent::RedactionFilter)
       ).and_return(mock_conversation_worker)
 
       expect(Nu::Agent::Workers::ExchangeSummarizer).to receive(:new).with(
@@ -70,7 +71,8 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
         application: application,
         status_info: { status: worker_manager.exchange_summarizer_status, mutex: status_mutex },
         current_conversation_id: conversation_id,
-        config_store: config_store
+        config_store: config_store,
+        redaction_filter: instance_of(Nu::Agent::RedactionFilter)
       ).and_return(mock_exchange_worker)
 
       worker_manager.start_summarization_worker
