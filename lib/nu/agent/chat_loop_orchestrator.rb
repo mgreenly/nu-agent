@@ -3,13 +3,14 @@
 module Nu
   module Agent
     class ChatLoopOrchestrator
-      attr_reader :history, :formatter, :application, :user_actor
+      attr_reader :history, :formatter, :application, :user_actor, :event_bus
 
-      def initialize(history:, formatter:, application:, user_actor:)
+      def initialize(history:, formatter:, application:, user_actor:, event_bus:)
         @history = history
         @formatter = formatter
         @application = application
         @user_actor = user_actor
+        @event_bus = event_bus
       end
 
       def execute(conversation_id:, client:, tool_registry:, **context)
@@ -63,6 +64,9 @@ module Nu
           content: user_input
         )
         formatter.display_message_created(actor: user_actor, role: "user", content: user_input)
+
+        # Emit user input received event
+        event_bus.publish(:user_input_received, { user_input: user_input, exchange_id: exchange_id })
 
         exchange_id
       end
@@ -141,6 +145,13 @@ module Nu
           assistant_message: final_response["content"],
           metrics: metrics
         )
+
+        # Emit exchange completed event
+        event_bus.publish(:exchange_completed, {
+                            exchange_id: exchange_id,
+                            conversation_id: conversation_id,
+                            metrics: metrics
+                          })
       end
 
       def save_final_response(conversation_id, exchange_id, final_response)

@@ -20,6 +20,7 @@ module Nu
 end
 
 require_relative "agent/api_key"
+require_relative "agent/event_bus"
 require_relative "agent/clients/anthropic"
 require_relative "agent/clients/google"
 require_relative "agent/clients/openai"

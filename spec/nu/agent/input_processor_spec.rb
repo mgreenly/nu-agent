@@ -7,6 +7,7 @@ RSpec.describe Nu::Agent::InputProcessor do
   let(:formatter) { instance_double(Nu::Agent::Formatter) }
   let(:console) { instance_double(Nu::Agent::ConsoleIO) }
   let(:orchestrator) { instance_double(Nu::Agent::Clients::Anthropic) }
+  let(:event_bus) { instance_double(Nu::Agent::EventBus) }
   let(:operation_mutex) { Mutex.new }
   let(:active_threads) { [] }
   let(:application) do
@@ -16,6 +17,7 @@ RSpec.describe Nu::Agent::InputProcessor do
       formatter: formatter,
       console: console,
       orchestrator: orchestrator,
+      event_bus: event_bus,
       operation_mutex: operation_mutex,
       active_threads: active_threads,
       conversation_id: 1,
@@ -83,7 +85,8 @@ RSpec.describe Nu::Agent::InputProcessor do
           history: history,
           formatter: formatter,
           application: application,
-          user_actor: user_actor
+          user_actor: user_actor,
+          event_bus: event_bus
         )
         expect(chat_orchestrator).to have_received(:execute)
       end

@@ -70,7 +70,8 @@ module Nu
           history: hist,
           formatter: fmt,
           application: app,
-          user_actor: user_actor
+          user_actor: user_actor,
+          event_bus: app.event_bus
         )
       end
 

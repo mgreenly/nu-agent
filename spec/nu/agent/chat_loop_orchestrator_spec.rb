@@ -7,6 +7,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
   let(:client) { instance_double(Nu::Agent::Clients::Anthropic, model: "claude-sonnet-4-5") }
   let(:formatter) { instance_double(Nu::Agent::Formatter) }
   let(:tool_registry) { instance_double(Nu::Agent::ToolRegistry) }
+  let(:event_bus) { instance_double(Nu::Agent::EventBus) }
   let(:application) do
     instance_double(
       Nu::Agent::Application,
@@ -22,7 +23,8 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       history: history,
       formatter: formatter,
       application: application,
-      user_actor: user_actor
+      user_actor: user_actor,
+      event_bus: event_bus
     )
   end
 
@@ -57,6 +59,9 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
 
       # Mock formatter methods
       allow(formatter).to receive(:display_llm_request)
+
+      # Mock event bus
+      allow(event_bus).to receive(:publish)
     end
 
     context "when tool_calling_loop succeeds" do
@@ -233,6 +238,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       allow(history).to receive(:create_exchange).and_return(exchange_id)
       allow(history).to receive(:add_message)
       allow(formatter).to receive(:display_message_created)
+      allow(event_bus).to receive(:publish)
 
       result = orchestrator.send(:create_user_message, conversation_id, user_input)
 
@@ -425,6 +431,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       allow(history).to receive(:add_message)
       allow(history).to receive(:complete_exchange)
       allow(formatter).to receive(:display_message_created)
+      allow(event_bus).to receive(:publish)
 
       orchestrator.send(:handle_success_result, conversation_id, exchange_id, success_result)
 

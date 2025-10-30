@@ -6,7 +6,7 @@ module Nu
       attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :verbosity, :redact,
                     :summarizer_enabled, :spell_check_enabled, :embedding_enabled, :conversation_id, :session_start_time
       attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager, :embedding_client,
-                  :active_persona_system_prompt
+                  :active_persona_system_prompt, :event_bus
 
       def active_threads
         @worker_manager&.active_threads || []
@@ -137,6 +137,7 @@ module Nu
       def initialize_console_system
         @console = ConsoleIO.new(db_history: @history, debug: @debug)
         @conversation_id = @history.create_conversation
+        @event_bus = EventBus.new
         @formatter = Formatter.new(
           history: @history,
           session_start_time: @session_start_time,
@@ -144,7 +145,8 @@ module Nu
           orchestrator: @orchestrator,
           debug: @debug,
           console: @console,
-          application: self
+          application: self,
+          event_bus: @event_bus
         )
       end
 

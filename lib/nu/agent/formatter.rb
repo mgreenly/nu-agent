@@ -23,19 +23,33 @@ module Nu
         @conversation_id = config[:conversation_id]
         @debug = config.fetch(:debug, false)
         @application = config[:application]
+        @event_bus = config[:event_bus]
+        initialize_state
+        initialize_formatters
+        initialize_statistics(history, orchestrator)
+        subscribe_to_events if @event_bus
+      end
+
+      def initialize_state
         @last_message_id = 0
         @exchange_start_time = nil
-        @tool_call_formatter = Formatters::ToolCallFormatter.new(console: console, application: @application)
-        @tool_result_formatter = Formatters::ToolResultFormatter.new(console: console, application: @application)
+        @exchange_completed = false
+        @exchange_mutex = Mutex.new
+      end
+
+      def initialize_formatters
+        @tool_call_formatter = Formatters::ToolCallFormatter.new(console: @console, application: @application)
+        @tool_result_formatter = Formatters::ToolResultFormatter.new(console: @console, application: @application)
         @llm_request_formatter = Formatters::LlmRequestFormatter.new(
-          console: console,
-          application: @application,
-          debug: @debug
+          console: @console, application: @application, debug: @debug
         )
+      end
+
+      def initialize_statistics(history, orchestrator)
         @session_statistics = SessionStatistics.new(
           history: history,
           orchestrator: orchestrator,
-          console: console,
+          console: @console,
           conversation_id: @conversation_id,
           session_start_time: @session_start_time
         )
@@ -66,6 +80,39 @@ module Nu
       end
 
       def wait_for_completion(conversation_id:, poll_interval: 0.1)
+        # If event bus is available, use event-driven approach
+        if @event_bus
+          wait_for_completion_event_driven(conversation_id)
+        else
+          # Fallback to polling for backward compatibility
+          wait_for_completion_polling(conversation_id, poll_interval)
+        end
+      end
+
+      def wait_for_completion_event_driven(conversation_id)
+        # Reset completion flag
+        @exchange_mutex.synchronize { @exchange_completed = false }
+
+        # Start spinner
+        @console.show_spinner("Thinking...")
+
+        # Wait for exchange_completed event
+        loop do
+          sleep 0.05 # Small sleep to avoid busy waiting
+
+          # Check if exchange is completed
+          completed = @exchange_mutex.synchronize { @exchange_completed }
+          break if completed
+        end
+
+        # Display any final messages
+        display_new_messages(conversation_id: conversation_id)
+
+        # Stop spinner when done
+        @console.hide_spinner
+      end
+
+      def wait_for_completion_polling(conversation_id, poll_interval)
         # Start spinner if output_manager is available
         @console.show_spinner("Thinking...")
 
@@ -333,6 +380,18 @@ module Nu
 
         @console.puts("\e[31mRaw Error (for debugging):\e[0m")
         @console.puts("\e[31m#{error['raw_error']}\e[0m")
+      end
+
+      def subscribe_to_events
+        # Subscribe to exchange_completed event
+        @event_bus.subscribe(:exchange_completed) do |_data|
+          @exchange_mutex.synchronize { @exchange_completed = true }
+        end
+
+        # Subscribe to user_input_received event (for future use)
+        @event_bus.subscribe(:user_input_received) do |_data|
+          # Currently no action needed, but available for future enhancements
+        end
       end
     end
   end

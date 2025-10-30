@@ -37,6 +37,7 @@ Metrics/ClassLength:
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Single-file console I/O implementation
     - 'lib/nu/agent/history.rb'  # Database management class with many methods
+    - 'lib/nu/agent/formatter.rb'  # Message formatting and event handling with many display methods
 
 Metrics/BlockLength:
   Exclude:
@@ -90,7 +91,7 @@ RSpec/NoExpectationExample:
   Enabled: false  # Allow examples that test side effects or setup
 
 RSpec/MultipleMemoizedHelpers:
-  Max: 15  # Allow sufficient test setup helpers
+  Max: 16  # Allow sufficient test setup helpers (increased for event_bus addition)
 
 RSpec/MessageSpies:
   Enabled: false  # Allow both receive and have_received patterns

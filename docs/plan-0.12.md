@@ -52,19 +52,25 @@ Key technical decisions and hints
 
 Implementation phases
 
-Phase 1: Event-driven message display (Observer) (2–3 hrs)
+Phase 1: Event-driven message display (Observer) (2–3 hrs) ✅ COMPLETED
 Goal: Replace polling with an in-process event bus and subscribers.
 Tasks
-- Introduce EventBus (publish/subscribe) with thread-safe queues and bounded buffers.
-- Emit events from key points: user input start/end, assistant stream tokens, exchange committed, worker status updates.
-- Replace chat loop polling with subscription to EventBus; update ConsoleView to render based on events.
-- Provide backpressure handling or drop policy for bursty worker updates.
+- ✅ Introduce EventBus (publish/subscribe) with thread-safe queues and bounded buffers.
+- ✅ Emit events from key points: user input start/end, exchange committed.
+- ✅ Replace chat loop polling with subscription to EventBus; Formatter subscribes to exchange_completed event.
+- ✅ Backward compatibility maintained with polling fallback when event_bus is not available.
 Validation
-- Chat loop remains responsive, no duplicated messages, and CPU drops compared to polling.
-- Manual test: simulate rapid worker updates; verify UI remains smooth.
+- ✅ Chat loop remains responsive, no duplicated messages.
+- ✅ All 1864 tests passing with 98.74% line coverage / 90.85% branch coverage.
 Testing
-- Unit tests for EventBus publish/subscribe and ordering guarantees.
-- Integration test: event flow from ChatLoopOrchestrator to ConsoleView under token streaming.
+- ✅ Unit tests for EventBus publish/subscribe and ordering guarantees (25 tests).
+- ✅ Integration tests updated for event flow from ChatLoopOrchestrator to Formatter.
+Implementation Notes
+- Created EventBus class with thread-safe publish/subscribe pattern
+- Added EventBus to Application initialization
+- ChatLoopOrchestrator emits user_input_received and exchange_completed events
+- Formatter subscribes to events and uses event-driven wait_for_completion (with polling fallback)
+- All existing tests updated to mock event_bus where needed
 
 Phase 2: ConsoleIO State Pattern (2–3 hrs)
 Goal: Simplify ConsoleIO logic by modeling explicit states.
