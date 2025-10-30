@@ -2,7 +2,7 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 7 - COMPLETE ✅ (Refactored command structure to match /worker pattern)
+Plan Status: Phase 8 - IN PROGRESS ⏳ (Manual testing of refactored command structure)
 
 ## Progress Summary
 
@@ -58,6 +58,20 @@ Plan Status: Phase 7 - COMPLETE ✅ (Refactored command structure to match /work
 - Updated all tests to reflect new behavior (1920 examples, 0 failures)
 - Maintained code quality: 98.9% line coverage, 90.63% branch coverage
 - Zero RuboCop violations
+
+**Phase 8: Manual End-to-End Testing** ⏳
+- Testing new command structure with real agent
+- Verify all commands work as expected:
+  - `/persona` shows help
+  - `/persona help` shows help (same as no args)
+  - `/persona list` lists all personas with active marked
+  - `/persona <name>` switches to persona
+  - `/persona create <name>` opens editor and creates persona
+  - `/persona <name> show` displays system prompt
+  - `/persona <name> edit` opens editor and updates persona
+  - `/persona <name> delete` deletes persona (with validations)
+  - Verify active persona is used in conversations
+  - Verify error handling for invalid inputs
 
 Index
 - Background and current state
@@ -753,7 +767,35 @@ Testing:
 - ✅ All tests pass with maintained coverage
 - ✅ Zero RuboCop violations
 
-Success criteria - ALL PHASES COMPLETE ✅
+Phase 8: Manual End-to-End Testing (30 min)
+--------------------------------------------
+Goal: Verify refactored command structure works correctly with real agent.
+
+Tasks:
+1. Start the agent and verify migration has run
+2. Test `/persona` command (should show help)
+3. Test `/persona help` (should show same help)
+4. Test `/persona list` (should list all 5 default personas with active marked)
+5. Test `/persona developer` (should switch to developer persona)
+6. Test `/persona developer show` (should display developer system prompt)
+7. Test `/persona create test-persona` (should open editor, create persona)
+8. Test `/persona test-persona edit` (should open editor, update persona)
+9. Test `/persona test-persona delete` (should delete successfully)
+10. Test `/persona default delete` (should fail - can't delete default)
+11. Test switching personas and verify active persona in new conversation
+12. Test error handling:
+    - `/persona nonexistent` (should show error)
+    - `/persona nonexistent show` (should show error)
+    - `/persona developer invalid` (should show error)
+13. Verify `/help` shows one-line description
+
+Success Criteria:
+- ⏳ All commands work as expected (testing in progress)
+- ⏳ Active persona is used in conversations
+- ⏳ Error messages are clear and helpful
+- ⏳ No crashes or unexpected behavior
+
+Success criteria - Phases 1-7 COMPLETE ✅, Phase 8 IN PROGRESS ⏳
 ================
 - ✅ Database: personas table exists with 5 default personas
 - ✅ Command: `/persona` shows help (Phase 7 complete)
