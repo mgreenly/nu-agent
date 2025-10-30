@@ -22,7 +22,7 @@ module Nu
 
           # Perform backup
           begin
-            FileUtils.cp(app.history.db_path, destination)
+            copy_with_progress(app.history.db_path, destination)
 
             # Verify backup
             if backup_valid?(destination)
@@ -94,6 +94,57 @@ module Nu
           app.output_line("  Path: #{destination}", type: :normal)
           app.output_line("  Size: #{format_bytes(file_size)}", type: :normal)
           app.output_line("  Time: #{timestamp}", type: :normal)
+        end
+
+        # Copy file with optional progress bar for large files
+        # @param source [String] source file path
+        # @param destination [String] destination file path
+        # @param threshold [Integer] file size threshold for progress bar (default: 1 MB)
+        def copy_with_progress(source, destination, threshold: 1_048_576)
+          file_size = File.size(source)
+
+          # Use simple copy for small files
+          if file_size < threshold
+            FileUtils.cp(source, destination)
+            return
+          end
+
+          # Show progress bar for large files
+          bytes_copied = 0
+          update_interval = 102_400 # 100 KB
+          last_update = 0
+
+          File.open(source, "rb") do |input|
+            File.open(destination, "wb") do |output|
+              while (chunk = input.read(8192)) # 8 KB chunks
+                output.write(chunk)
+                bytes_copied += chunk.size
+
+                if bytes_copied - last_update >= update_interval || bytes_copied == file_size
+                  display_progress(bytes_copied, file_size)
+                  last_update = bytes_copied
+                end
+              end
+            end
+          end
+
+          # Clear progress line
+          print "\r#{' ' * 80}\r"
+        end
+
+        # Display progress bar
+        # @param current [Integer] bytes copied so far
+        # @param total [Integer] total bytes to copy
+        def display_progress(current, total)
+          percent = (current.to_f / total * 100).to_i
+          bar_width = 10
+          filled = (bar_width * current / total).to_i
+          bar = "#{'=' * filled}>#{' ' * (bar_width - filled - 1)}"
+
+          current_formatted = format_bytes(current)
+          total_formatted = format_bytes(total)
+
+          print "\r[#{bar}] #{percent}% (#{current_formatted} / #{total_formatted})"
         end
 
         # Format bytes into human-readable string

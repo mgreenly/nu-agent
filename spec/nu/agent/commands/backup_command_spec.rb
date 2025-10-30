@@ -189,16 +189,14 @@ RSpec.describe Nu::Agent::Commands::BackupCommand do
         freeze_time = Time.new(2025, 10, 30, 14, 30, 22)
 
         allow(Time).to receive(:now).and_return(freeze_time)
-        allow(FileUtils).to receive(:cp)
         allow(File).to receive(:exist?).with(backup_path).and_return(true)
 
-        # Test various file sizes
+        # Test various file sizes (only small files that use FileUtils.cp)
         [
           [500, "500 B"],
-          [2048, "2.0 KB"],
-          [1_048_576, "1.0 MB"],
-          [2_147_483_648, "2.0 GB"]
+          [2048, "2.0 KB"]
         ].each do |size, expected_format|
+          allow(FileUtils).to receive(:cp)
           allow(File).to receive(:size).with(source_db_path).and_return(size)
           allow(File).to receive(:size).with(backup_path).and_return(size)
 
@@ -206,6 +204,73 @@ RSpec.describe Nu::Agent::Commands::BackupCommand do
 
           command.execute("/backup")
         end
+
+        # Test large file sizes with mocked file operations
+        [
+          [1_048_576, "1.0 MB"],
+          [2_147_483_648, "2.0 GB"]
+        ].each do |size, expected_format|
+          # Mock file I/O for large files
+          input_file = instance_double(File)
+          output_file = instance_double(File)
+
+          allow(File).to receive(:size).with(source_db_path).and_return(size)
+          allow(File).to receive(:size).with(backup_path).and_return(size)
+          allow(File).to receive(:open).with(source_db_path, "rb").and_yield(input_file)
+          allow(File).to receive(:open).with(backup_path, "wb").and_yield(output_file)
+          allow(input_file).to receive(:read).and_return(nil) # EOF
+          allow(output_file).to receive(:write)
+
+          # Mock progress display (print statements)
+          allow(command).to receive(:print)
+
+          expect(application).to receive(:output_line).with(/Size: #{Regexp.escape(expected_format)}/i, type: :normal)
+
+          command.execute("/backup")
+        end
+      end
+    end
+
+    context "progress bar" do
+      it "does not show progress bar for files < 1 MB" do
+        small_file_size = 500_000 # 500 KB
+
+        allow(FileUtils).to receive(:cp)
+        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:size).with(source_db_path).and_return(small_file_size)
+        allow(File).to receive(:size).with(%r{^\./memory-.*\.db$}).and_return(small_file_size)
+
+        # Should NOT print progress indicators
+        expect(application).not_to receive(:output_line).with(/\[.*\]/, type: :normal)
+
+        command.execute("/backup")
+      end
+
+      it "shows progress bar for files > 1 MB" do
+        large_file_size = 2_000_000 # 2 MB
+        backup_path_pattern = %r{^\./memory-.*\.db$}
+
+        # Mock file I/O for large files
+        input_file = instance_double(File)
+        output_file = instance_double(File)
+
+        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:size).with(source_db_path).and_return(large_file_size)
+        allow(File).to receive(:size).with(backup_path_pattern).and_return(large_file_size)
+        allow(File).to receive(:open).with(source_db_path, "rb").and_yield(input_file)
+        allow(File).to receive(:open).with(backup_path_pattern, "wb").and_yield(output_file)
+
+        # Simulate reading chunks
+        allow(input_file).to receive(:read).and_return(nil) # EOF
+        allow(output_file).to receive(:write)
+
+        # Mock progress display
+        allow(command).to receive(:print)
+
+        # Should use copy_with_progress instead of FileUtils.cp
+        expect(FileUtils).not_to receive(:cp)
+
+        command.execute("/backup")
       end
     end
 
