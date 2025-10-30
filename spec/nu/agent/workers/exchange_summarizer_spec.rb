@@ -6,6 +6,7 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
   let(:history) { instance_double(Nu::Agent::History) }
   let(:summarizer) { instance_double(Nu::Agent::Clients::Anthropic) }
   let(:application) { instance_double(Nu::Agent::Application) }
+  let(:config_store) { instance_double(Nu::Agent::ConfigStore) }
   let(:status_mutex) { Mutex.new }
   let(:exchange_summarizer_status) do
     {
@@ -21,26 +22,46 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
 
   describe "#initialize" do
     it "initializes with required dependencies" do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+
       summarizer_worker = described_class.new(
         history: history,
         summarizer: summarizer,
         application: application,
         status_info: { status: exchange_summarizer_status, mutex: status_mutex },
-        current_conversation_id: 1
+        current_conversation_id: 1,
+        config_store: config_store
       )
 
       expect(summarizer_worker).to be_a(described_class)
     end
-  end
 
-  describe "#start_worker" do
-    let(:summarizer_worker) do
+    it "loads verbosity from config store" do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(2)
+
       described_class.new(
         history: history,
         summarizer: summarizer,
         application: application,
         status_info: { status: exchange_summarizer_status, mutex: status_mutex },
-        current_conversation_id: 1
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+
+      expect(config_store).to have_received(:get_int).with("exchange_summarizer_verbosity", default: 0)
+    end
+  end
+
+  describe "#start_worker" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
       )
     end
 
@@ -79,18 +100,22 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
 
   describe "#summarize_exchanges" do
     let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
       described_class.new(
         history: history,
         summarizer: summarizer,
         application: application,
         status_info: { status: exchange_summarizer_status, mutex: status_mutex },
-        current_conversation_id: 1
+        current_conversation_id: 1,
+        config_store: config_store
       )
     end
 
     before do
       # Mock shutdown check
       allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      # Mock debug mode
+      allow(application).to receive(:debug).and_return(false)
     end
 
     it "returns early when no exchanges need summarization" do
@@ -280,6 +305,75 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
 
       # No summary should be saved due to shutdown
       expect(exchange_summarizer_status["completed"]).to eq(0)
+    end
+  end
+
+  describe "#debug_output" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(verbosity)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    context "when debug is disabled" do
+      let(:verbosity) { 3 }
+
+      it "does not output anything" do
+        allow(application).to receive(:debug).and_return(false)
+        expect(application).not_to receive(:output_line)
+
+        summarizer_worker.send(:debug_output, "test message", level: 0)
+      end
+    end
+
+    context "when debug is enabled" do
+      before do
+        allow(application).to receive(:debug).and_return(true)
+      end
+
+      context "with verbosity 0" do
+        let(:verbosity) { 0 }
+
+        it "outputs level 0 messages" do
+          expect(application).to receive(:output_line).with("[ExchangeSummarizer] test message", type: :debug)
+          summarizer_worker.send(:debug_output, "test message", level: 0)
+        end
+
+        it "does not output level 1 messages" do
+          expect(application).not_to receive(:output_line)
+          summarizer_worker.send(:debug_output, "test message", level: 1)
+        end
+      end
+
+      context "with verbosity 2" do
+        let(:verbosity) { 2 }
+
+        it "outputs level 0 messages" do
+          expect(application).to receive(:output_line).with("[ExchangeSummarizer] level 0", type: :debug)
+          summarizer_worker.send(:debug_output, "level 0", level: 0)
+        end
+
+        it "outputs level 1 messages" do
+          expect(application).to receive(:output_line).with("[ExchangeSummarizer] level 1", type: :debug)
+          summarizer_worker.send(:debug_output, "level 1", level: 1)
+        end
+
+        it "outputs level 2 messages" do
+          expect(application).to receive(:output_line).with("[ExchangeSummarizer] level 2", type: :debug)
+          summarizer_worker.send(:debug_output, "level 2", level: 2)
+        end
+
+        it "does not output level 3 messages" do
+          expect(application).not_to receive(:output_line)
+          summarizer_worker.send(:debug_output, "level 3", level: 3)
+        end
+      end
     end
   end
 end

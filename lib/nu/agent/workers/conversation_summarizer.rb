@@ -58,7 +58,8 @@ module Nu
             @status["current_conversation_id"] = nil
           end
 
-          debug_output("Finished summarization: #{@status['completed']} completed, #{@status['failed']} failed", level: 0)
+          debug_output("Finished summarization: #{@status['completed']} completed, #{@status['failed']} failed",
+                       level: 0)
         end
 
         protected

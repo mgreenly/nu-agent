@@ -52,7 +52,8 @@ module Nu
             summarizer: @summarizer,
             application: @application,
             status_info: { status: @exchange_summarizer_status, mutex: @status_mutex },
-            current_conversation_id: @conversation_id
+            current_conversation_id: @conversation_id,
+            config_store: config_store
           )
           @workers << exchange_summarizer
 
@@ -242,12 +243,14 @@ module Nu
       end
 
       def create_exchange_summarizer
+        config_store = @history.instance_variable_get(:@config_store)
         worker = Workers::ExchangeSummarizer.new(
           history: @history,
           summarizer: @summarizer,
           application: @application,
           status_info: { status: @exchange_summarizer_status, mutex: @status_mutex },
-          current_conversation_id: @conversation_id
+          current_conversation_id: @conversation_id,
+          config_store: config_store
         )
         [worker, worker.start_worker]
       end

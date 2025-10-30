@@ -30,6 +30,7 @@ Metrics/MethodLength:
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Complex input parsing requires longer methods
     - 'lib/nu/agent/history.rb'  # Database initialization with WAL recovery detection
+    - 'lib/nu/agent/configuration_loader.rb'  # Model configuration with reset logic requires longer method
 
 Metrics/ClassLength:
   Max: 250
@@ -52,6 +53,7 @@ Metrics/AbcSize:
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Complex input parsing
     - 'lib/nu/agent/history.rb'  # Database initialization with WAL recovery detection
+    - 'lib/nu/agent/configuration_loader.rb'  # Model configuration with reset logic has high ABC size
 
 Metrics/CyclomaticComplexity:
   Max: 10
@@ -62,6 +64,12 @@ Metrics/PerceivedComplexity:
   Max: 10
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Escape sequence parsing complexity
+
+Metrics/ParameterLists:
+  Max: 5
+  Exclude:
+    - 'lib/nu/agent/workers/conversation_summarizer.rb'  # Worker needs multiple dependencies for initialization
+    - 'lib/nu/agent/workers/exchange_summarizer.rb'  # Worker needs multiple dependencies for initialization
 
 # Lint - acceptable patterns
 Lint/HashCompareByIdentity:
