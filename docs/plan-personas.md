@@ -2,7 +2,7 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 5 - Manual Testing in Progress
+Plan Status: Phase 5 - Critical Bug Found During Manual Testing
 
 ## Progress Summary
 
@@ -29,13 +29,21 @@ Plan Status: Phase 5 - Manual Testing in Progress
 - Handles empty content, editor errors, and validation
 - All tests passing (1913 examples, 0 failures, 98.9% line coverage, 90.77% branch coverage)
 
-**Phase 5: IN PROGRESS** 🔄
+**Phase 5: BLOCKED - Critical Bug Discovered** 🚨
 - Updated help_command.rb with comprehensive /persona documentation
 - Added test for /persona help documentation
 - All tests passing (1914 examples, 0 failures, 98.9% line coverage, 90.77% branch coverage)
 - No RuboCop violations
 - Coverage enforcement passes
-- Currently performing manual end-to-end testing
+- **BLOCKER**: Manual testing revealed critical bug - `/persona` command fails with "no implicit conversion of String into Integer"
+
+**Root Cause Analysis**:
+DuckDB returns query results as **Arrays**, not Hashes. Throughout PersonaManager and the migration, code attempts to access results using string/symbol keys (e.g., `row["id"]`, `row["value"]`) when it should use numeric indices (e.g., `row[0]`, `row[1]`).
+
+**Why Tests Didn't Catch This**:
+All PersonaManager tests mock database results as Hashes instead of Arrays, so the incorrect syntax never failed in tests.
+
+**Phase 6: REQUIRED - Comprehensive DuckDB Result Access Fix**
 
 Index
 - Background and current state
@@ -542,6 +550,97 @@ Testing:
 - Test with different LLM clients (Anthropic, OpenAI, Google)
 - Test persona switching across sessions (restart agent)
 - Test migration on existing database (backward compatibility)
+
+Phase 6: Fix DuckDB Result Access Bug (3-4 hrs) - CRITICAL
+----------------------------------------------------------------
+Goal: Fix PersonaManager, migration, and tests to correctly access DuckDB array results.
+
+**Problem Summary**:
+DuckDB's Ruby gem returns query results as Arrays, not Hashes. Code throughout uses hash-style access (e.g., `row["id"]`) which fails at runtime. Tests use hash mocks so they never caught this.
+
+**Files to Fix**:
+1. lib/nu/agent/persona_manager.rb - All methods that access query results
+2. migrations/006_create_personas_table.rb - Migration result access
+3. spec/nu/agent/persona_manager_spec.rb - Update mocks to use arrays
+
+**Tasks** (TDD: Red → Green → Refactor):
+
+1. Write failing integration test (RED):
+   - Create spec/migrations/006_create_personas_table_spec.rb
+   - Test that migration correctly stores default persona ID in appconfig
+   - Test that migration is idempotent (can run multiple times)
+   - Run test, verify it FAILS with current code
+
+2. Fix PersonaManager#list (GREEN):
+   - Change: `result.to_a` returns array of arrays
+   - Need to map column names to values
+   - Consider: Create helper method to convert array rows to hashes
+   - Run tests, verify this method passes
+
+3. Fix PersonaManager#get (GREEN):
+   - Update to use array indices or helper method
+   - Run tests, verify passes
+
+4. Fix PersonaManager#get_active (GREEN):
+   - Line 107: Change `rows.first["value"]` to `rows.first[0]`
+   - Line 115-116: Fix persona result access
+   - Run tests, verify passes
+
+5. Fix PersonaManager#set_active (GREEN):
+   - Line 124: Already converts to string, should be fine
+   - Verify persona retrieval works correctly
+   - Run tests, verify passes
+
+6. Fix PersonaManager#get_default_persona (GREEN):
+   - Line 159: Fix result access
+   - Run tests, verify passes
+
+7. Fix migration 006 (GREEN):
+   - Line 165: Change `result.to_a.first[0]` - this is already CORRECT for arrays
+   - BUT: The issue is it gets the first column (id value) which is right
+   - Actually wait - need to verify what [0] returns
+   - Add idempotency check to avoid duplicate inserts
+   - Run migration tests, verify passes
+
+8. Update ALL PersonaManager tests:
+   - Change all mock returns from hashes to arrays
+   - Example: `[active_config]` where active_config = ["1"] not {"value" => "1"}
+   - Must maintain correct column order matching SQL SELECT statements
+   - Run all persona tests, verify 100% pass
+
+9. Run full test suite and verify coverage:
+   - rake test - all tests must pass
+   - rake coverage:enforce - must maintain 98.9% with 0.01% margin
+   - rake lint - zero violations
+
+10. Manual end-to-end testing:
+    - Delete db/memory.db to force fresh migration
+    - Start agent, verify migration runs successfully
+    - Run `/persona` - should list all 5 personas
+    - Run `/persona developer` - should switch
+    - Run `/persona show default` - should display prompt
+    - Verify active persona is used in conversations
+
+**Key Insights**:
+- DuckDB Result#to_a returns: `[[val1, val2], [val1, val2]]`
+- NOT: `[{col1: val1, col2: val2}]`
+- Column order matches SELECT statement order
+- Consider creating a helper to convert arrays to hashes for readability
+
+**Alternative Approach** (if above is too complex):
+- Investigate if DuckDB gem has a mode to return hashes
+- Check for Result#to_hash or similar methods
+- May be cleaner than refactoring all code
+
+**Success Criteria**:
+- Migration 006 runs successfully on fresh database
+- All 5 default personas are created
+- Default persona is set as active with correct ID
+- `/persona` command works without errors
+- All tests pass (1914+ examples, 0 failures)
+- Coverage maintained at 98.9% ± 0.01%
+- Zero RuboCop violations
+- Manual testing confirms all persona commands work
 
 Success criteria
 ================
