@@ -156,6 +156,7 @@ module Nu
         @command_registry.register("/worker", Commands::WorkerCommand)
         @command_registry.register("/rag", Commands::RagCommand)
         @command_registry.register("/migrate-exchanges", Commands::MigrateExchangesCommand)
+        @command_registry.register("/backup", Commands::BackupCommand)
         @command_registry.register("/exit", Commands::ExitCommand)
         @command_registry.register("/clear", Commands::ClearCommand)
         @command_registry.register("/debug", Commands::DebugCommand)
