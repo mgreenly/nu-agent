@@ -206,9 +206,10 @@ module Nu
             return
           end
 
-          # Show progress bar for large files
+          # Show progress updates for large files (output as regular lines via console queue)
+          app.output_line("Copying database... (#{format_bytes(file_size)})", type: :normal)
           bytes_copied = 0
-          update_interval = 102_400 # 100 KB
+          update_interval = 1_048_576 # 1 MB intervals for progress updates
           last_update = 0
 
           File.open(source, "rb") do |input|
@@ -217,7 +218,7 @@ module Nu
                 output.write(chunk)
                 bytes_copied += chunk.size
 
-                if bytes_copied - last_update >= update_interval || bytes_copied == file_size
+                if bytes_copied - last_update >= update_interval
                   display_progress(bytes_copied, file_size)
                   last_update = bytes_copied
                 end
@@ -225,23 +226,19 @@ module Nu
             end
           end
 
-          # Clear progress line
-          print "\r#{' ' * 80}\r"
+          # Show completion
+          display_progress(bytes_copied, file_size) if bytes_copied > last_update
         end
 
-        # Display progress bar
+        # Display progress update
         # @param current [Integer] bytes copied so far
         # @param total [Integer] total bytes to copy
         def display_progress(current, total)
           percent = (current.to_f / total * 100).to_i
-          bar_width = 10
-          filled = (bar_width * current / total).to_i
-          bar = "#{'=' * filled}>#{' ' * (bar_width - filled - 1)}"
-
           current_formatted = format_bytes(current)
           total_formatted = format_bytes(total)
 
-          print "\r[#{bar}] #{percent}% (#{current_formatted} / #{total_formatted})"
+          app.output_line("  Progress: #{percent}% (#{current_formatted} / #{total_formatted})", type: :normal)
         end
 
         # Format bytes into human-readable string

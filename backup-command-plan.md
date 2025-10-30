@@ -59,7 +59,10 @@ GitHub Issue: https://github.com/mgreenly/nu-agent/issues/9
 
 ### Next Steps
 - ⏳ Rebase branch on top of main
-- ⏳ Manual testing and validation
+- ✅ Manual testing and validation complete
+
+### Notes on Progress Display
+Progress updates are displayed after backup completes (buffered output). This is functional but not real-time. See [Issue #25](https://github.com/mgreenly/nu-agent/issues/25) for future enhancement to add real-time progress bars to ConsoleIO.
 
 ## Index
 - High-level motivation

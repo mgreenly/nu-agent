@@ -371,7 +371,7 @@ RSpec.describe Nu::Agent::Commands::BackupCommand do
         command.execute("/backup")
       end
 
-      it "shows progress bar for files > 1 MB" do
+      it "shows progress updates for files > 1 MB" do
         large_file_size = 2_000_000 # 2 MB
         backup_path_pattern = %r{^\./memory-.*\.db$}
 
@@ -389,11 +389,41 @@ RSpec.describe Nu::Agent::Commands::BackupCommand do
         allow(input_file).to receive(:read).and_return(nil) # EOF
         allow(output_file).to receive(:write)
 
-        # Mock progress display
-        allow(command).to receive(:print)
-
         # Should use copy_with_progress instead of FileUtils.cp
         expect(FileUtils).not_to receive(:cp)
+
+        # Should output "Copying database..." message
+        expect(application).to receive(:output_line).with(/Copying database/i, type: :normal)
+
+        command.execute("/backup")
+      end
+
+      it "displays progress percentage during copy" do
+        large_file_size = 5_000_000 # 5 MB
+        backup_path_pattern = %r{^\./memory-.*\.db$}
+
+        # Mock file I/O for large files
+        input_file = instance_double(File)
+        output_file = instance_double(File)
+
+        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:size).with(source_db_path).and_return(large_file_size)
+        allow(File).to receive(:size).with(backup_path_pattern).and_return(large_file_size)
+        allow(File).to receive(:open).with(source_db_path, "rb").and_yield(input_file)
+        allow(File).to receive(:open).with(backup_path_pattern, "wb").and_yield(output_file)
+
+        # Simulate reading complete file with progress updates every 1 MB
+        chunk = "x" * 8192
+        chunks_needed = (large_file_size / 8192.0).ceil
+        allow(input_file).to receive(:read).and_return(
+          *([chunk] * (chunks_needed - 1)),
+          "x" * (large_file_size % 8192),
+          nil
+        )
+        allow(output_file).to receive(:write)
+
+        # Should display progress updates
+        expect(application).to receive(:output_line).with(/Progress:.*%/, type: :normal).at_least(:once)
 
         command.execute("/backup")
       end
