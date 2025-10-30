@@ -2,7 +2,7 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 3 Complete - Ready for Phase 4
+Plan Status: Phase 4 Complete - Ready for Phase 5
 
 ## Progress Summary
 
@@ -22,8 +22,12 @@ Plan Status: Phase 3 Complete - Ready for Phase 4
 - Active persona's system_prompt is loaded and passed to LLM calls
 - All tests passing (1894 examples, 0 failures, 98.88% line coverage, 90.73% branch coverage)
 
-**Phase 4: TODO**
-- Editor integration for /persona create and /persona edit
+**Phase 4: COMPLETE** ✅
+- Created PersonaEditor class for editing personas in $EDITOR
+- Implemented /persona create command with template from default persona
+- Implemented /persona edit command with existing persona content
+- Handles empty content, editor errors, and validation
+- All tests passing (1913 examples, 0 failures, 98.9% line coverage, 90.77% branch coverage)
 
 **Phase 5: TODO**
 - End-to-end testing and documentation updates

@@ -8,12 +8,14 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
   let(:history) { instance_double("Nu::Agent::History") }
   let(:console) { instance_double("Nu::Agent::ConsoleIO") }
   let(:persona_manager) { instance_double("Nu::Agent::PersonaManager") }
+  let(:persona_editor) { instance_double("Nu::Agent::PersonaEditor") }
   let(:command) { described_class.new(application) }
 
   before do
     allow(application).to receive_messages(history: history, console: console)
     allow(history).to receive(:connection).and_return(double("connection"))
     allow(Nu::Agent::PersonaManager).to receive(:new).and_return(persona_manager)
+    allow(Nu::Agent::PersonaEditor).to receive(:new).and_return(persona_editor)
     allow(console).to receive(:puts)
   end
 
@@ -178,8 +180,80 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
     end
 
     context "with 'create' subcommand" do
-      it "shows placeholder message for Phase 4" do
-        expect(console).to receive(:puts).with("\e[90mEditor integration for create coming in Phase 4\e[0m")
+      it "opens editor and creates persona with edited content" do
+        allow(persona_manager).to receive(:get).with("my-persona").and_return(nil)
+        allow(persona_manager).to receive(:get).with("default").and_return({ "system_prompt" => "Default" })
+        allow(persona_editor).to receive(:edit_in_editor).and_return("New persona system prompt")
+        allow(persona_manager).to receive(:create).with(name: "my-persona", system_prompt: "New persona system prompt")
+                                                  .and_return({ "id" => 10, "name" => "my-persona" })
+
+        expect(console).to receive(:puts).with("\e[90mOpening editor to create persona 'my-persona'...\e[0m")
+        expect(console).to receive(:puts).with("\e[90mPersona 'my-persona' created successfully.\e[0m")
+
+        result = command.execute("/persona create my-persona")
+        expect(result).to eq(:continue)
+      end
+
+      it "uses template content from default persona" do
+        default_persona = { "system_prompt" => "Default prompt template" }
+        allow(persona_manager).to receive(:get).with("my-persona").and_return(nil)
+        allow(persona_manager).to receive(:get).with("default").and_return(default_persona)
+        allow(persona_editor).to receive(:edit_in_editor).with(
+          initial_content: "Default prompt template",
+          persona_name: "my-persona"
+        ).and_return("New content")
+        allow(persona_manager).to receive(:create).and_return({ "id" => 10, "name" => "my-persona" })
+        allow(console).to receive(:puts)
+
+        command.execute("/persona create my-persona")
+
+        expect(persona_editor).to have_received(:edit_in_editor).with(
+          initial_content: "Default prompt template",
+          persona_name: "my-persona"
+        )
+      end
+
+      it "does not create persona when editor returns nil (cancelled)" do
+        allow(persona_manager).to receive(:get).with("my-persona").and_return(nil)
+        allow(persona_manager).to receive(:get).with("default").and_return({ "system_prompt" => "Default" })
+        allow(persona_editor).to receive(:edit_in_editor).and_return(nil)
+
+        expect(console).to receive(:puts).with("\e[90mOpening editor to create persona 'my-persona'...\e[0m")
+        expect(console).to receive(:puts).with("\e[90mPersona creation cancelled (empty content).\e[0m")
+        expect(persona_manager).not_to receive(:create)
+
+        result = command.execute("/persona create my-persona")
+        expect(result).to eq(:continue)
+      end
+
+      it "shows error when persona name already exists" do
+        allow(persona_manager).to receive(:get).with("existing").and_return({ "id" => 5, "name" => "existing" })
+
+        expect(console).to receive(:puts).with(
+          "\e[31mPersona 'existing' already exists. Use '/persona edit existing' to modify it.\e[0m"
+        )
+        expect(persona_editor).not_to receive(:edit_in_editor)
+
+        result = command.execute("/persona create existing")
+        expect(result).to eq(:continue)
+      end
+
+      it "shows error when no persona name provided" do
+        expect(console).to receive(:puts).with("\e[31mUsage: /persona create <name>\e[0m")
+        expect(persona_editor).not_to receive(:edit_in_editor)
+
+        result = command.execute("/persona create")
+        expect(result).to eq(:continue)
+      end
+
+      it "handles editor errors gracefully" do
+        allow(persona_manager).to receive(:get).and_return(nil)
+        allow(persona_manager).to receive(:get).with("default").and_return({ "system_prompt" => "Default" })
+        allow(persona_editor).to receive(:edit_in_editor)
+          .and_raise(Nu::Agent::PersonaEditor::EditorError.new("Editor not found"))
+
+        expect(console).to receive(:puts).with("\e[90mOpening editor to create persona 'my-persona'...\e[0m")
+        expect(console).to receive(:puts).with("\e[31mEditor error: Editor not found\e[0m")
 
         result = command.execute("/persona create my-persona")
         expect(result).to eq(:continue)
@@ -187,8 +261,77 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
     end
 
     context "with 'edit' subcommand" do
-      it "shows placeholder message for Phase 4" do
-        expect(console).to receive(:puts).with("\e[90mEditor integration for edit coming in Phase 4\e[0m")
+      it "opens editor and updates persona with edited content" do
+        existing_persona = { "id" => 2, "name" => "developer", "system_prompt" => "Original prompt" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
+        allow(persona_editor).to receive(:edit_in_editor).and_return("Updated prompt")
+        allow(persona_manager).to receive(:update).with(name: "developer", system_prompt: "Updated prompt")
+                                                  .and_return({ "id" => 2, "name" => "developer" })
+
+        expect(console).to receive(:puts).with("\e[90mOpening editor to edit persona 'developer'...\e[0m")
+        expect(console).to receive(:puts).with("\e[90mPersona 'developer' updated successfully.\e[0m")
+
+        result = command.execute("/persona edit developer")
+        expect(result).to eq(:continue)
+      end
+
+      it "uses existing prompt as initial content" do
+        existing_persona = { "system_prompt" => "Existing content" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
+        allow(persona_editor).to receive(:edit_in_editor).with(
+          initial_content: "Existing content",
+          persona_name: "developer"
+        ).and_return("Updated")
+        allow(persona_manager).to receive(:update).and_return({ "id" => 2, "name" => "developer" })
+        allow(console).to receive(:puts)
+
+        command.execute("/persona edit developer")
+
+        expect(persona_editor).to have_received(:edit_in_editor).with(
+          initial_content: "Existing content",
+          persona_name: "developer"
+        )
+      end
+
+      it "does not update persona when editor returns nil (cancelled)" do
+        existing_persona = { "system_prompt" => "Original" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
+        allow(persona_editor).to receive(:edit_in_editor).and_return(nil)
+
+        expect(console).to receive(:puts).with("\e[90mOpening editor to edit persona 'developer'...\e[0m")
+        expect(console).to receive(:puts).with("\e[90mPersona edit cancelled (empty content).\e[0m")
+        expect(persona_manager).not_to receive(:update)
+
+        result = command.execute("/persona edit developer")
+        expect(result).to eq(:continue)
+      end
+
+      it "shows error when persona does not exist" do
+        allow(persona_manager).to receive(:get).with("nonexistent").and_return(nil)
+
+        expect(console).to receive(:puts).with("\e[31mPersona 'nonexistent' not found\e[0m")
+        expect(persona_editor).not_to receive(:edit_in_editor)
+
+        result = command.execute("/persona edit nonexistent")
+        expect(result).to eq(:continue)
+      end
+
+      it "shows error when no persona name provided" do
+        expect(console).to receive(:puts).with("\e[31mUsage: /persona edit <name>\e[0m")
+        expect(persona_editor).not_to receive(:edit_in_editor)
+
+        result = command.execute("/persona edit")
+        expect(result).to eq(:continue)
+      end
+
+      it "handles editor errors gracefully" do
+        existing_persona = { "system_prompt" => "Original" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
+        allow(persona_editor).to receive(:edit_in_editor)
+          .and_raise(Nu::Agent::PersonaEditor::EditorError.new("Editor crashed"))
+
+        expect(console).to receive(:puts).with("\e[90mOpening editor to edit persona 'developer'...\e[0m")
+        expect(console).to receive(:puts).with("\e[31mEditor error: Editor crashed\e[0m")
 
         result = command.execute("/persona edit developer")
         expect(result).to eq(:continue)

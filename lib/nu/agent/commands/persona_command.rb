@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../persona_manager"
+require_relative "../persona_editor"
 
 module Nu
   module Agent
@@ -11,8 +12,9 @@ module Nu
         def execute(input)
           args = input.split[1..] # Skip the command name
 
-          # Initialize PersonaManager
+          # Initialize PersonaManager and PersonaEditor
           @persona_manager = PersonaManager.new(app.history.connection)
+          @persona_editor = PersonaEditor.new
 
           # Determine subcommand
           subcommand = args.first&.downcase
@@ -25,11 +27,9 @@ module Nu
           when "delete"
             delete_persona(args[1])
           when "create"
-            # Placeholder for Phase 4
-            app.console.puts("\e[90mEditor integration for create coming in Phase 4\e[0m")
+            create_persona(args[1])
           when "edit"
-            # Placeholder for Phase 4
-            app.console.puts("\e[90mEditor integration for edit coming in Phase 4\e[0m")
+            edit_persona(args[1])
           else
             # If there are additional arguments, treat as invalid subcommand
             if args.length > 1
@@ -93,6 +93,61 @@ module Nu
 
           app.console.puts("\e[90mSwitched to persona: #{persona['name']}\e[0m")
           app.console.puts("\e[90mNote: This will apply to your next conversation.\e[0m")
+        end
+
+        def create_persona(name)
+          return show_usage("create") unless name
+
+          # Check if persona already exists
+          existing = @persona_manager.get(name)
+          if existing
+            app.console.puts("\e[31mPersona '#{name}' already exists. Use '/persona edit #{name}' to modify it.\e[0m")
+            return
+          end
+
+          # Get template from default persona
+          default_persona = @persona_manager.get("default")
+          template = default_persona ? default_persona["system_prompt"] : ""
+
+          # Open editor
+          app.console.puts("\e[90mOpening editor to create persona '#{name}'...\e[0m")
+          content = @persona_editor.edit_in_editor(initial_content: template, persona_name: name)
+
+          if content
+            @persona_manager.create(name: name, system_prompt: content)
+            app.console.puts("\e[90mPersona '#{name}' created successfully.\e[0m")
+          else
+            app.console.puts("\e[90mPersona creation cancelled (empty content).\e[0m")
+          end
+        rescue PersonaEditor::EditorError => e
+          app.console.puts("\e[31mEditor error: #{e.message}\e[0m")
+        end
+
+        def edit_persona(name)
+          return show_usage("edit") unless name
+
+          # Check if persona exists
+          persona = @persona_manager.get(name)
+          unless persona
+            app.console.puts("\e[31mPersona '#{name}' not found\e[0m")
+            return
+          end
+
+          # Open editor with existing content
+          app.console.puts("\e[90mOpening editor to edit persona '#{name}'...\e[0m")
+          content = @persona_editor.edit_in_editor(
+            initial_content: persona["system_prompt"],
+            persona_name: name
+          )
+
+          if content
+            @persona_manager.update(name: name, system_prompt: content)
+            app.console.puts("\e[90mPersona '#{name}' updated successfully.\e[0m")
+          else
+            app.console.puts("\e[90mPersona edit cancelled (empty content).\e[0m")
+          end
+        rescue PersonaEditor::EditorError => e
+          app.console.puts("\e[31mEditor error: #{e.message}\e[0m")
         end
 
         def show_usage(subcommand)
