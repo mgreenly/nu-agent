@@ -7,13 +7,15 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
     described_class.new(
       embedding_store: embedding_store,
       embedding_client: embedding_client,
-      config_store: config_store
+      config_store: config_store,
+      retrieval_logger: retrieval_logger
     )
   end
 
   let(:embedding_store) { double("embedding_store") }
   let(:embedding_client) { double("embedding_client") }
   let(:config_store) { double("config_store") }
+  let(:retrieval_logger) { nil }
 
   describe "#retrieve" do
     let(:query) { "How do I configure the database?" }
@@ -130,6 +132,43 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         expect(context.query_embedding).to be_nil
         expect(context.conversations).to be_empty
         expect(context.exchanges).to be_empty
+      end
+    end
+
+    context "with retrieval logger" do
+      let(:retrieval_logger) { instance_double(Nu::Agent::RAG::RAGRetrievalLogger) }
+
+      before do
+        allow(retrieval_logger).to receive(:generate_query_hash).and_return("abc123")
+        allow(retrieval_logger).to receive(:log_retrieval)
+      end
+
+      it "logs retrieval metrics when logger is provided" do
+        retriever.retrieve(query: query, current_conversation_id: 1)
+
+        expect(retrieval_logger).to have_received(:generate_query_hash).with(query_embedding, precision: 3)
+        expect(retrieval_logger).to have_received(:log_retrieval).with(
+          hash_including(
+            query_hash: "abc123",
+            conversation_candidates: 1,
+            exchange_candidates: 1,
+            retrieval_duration_ms: be > 0,
+            top_conversation_score: 0.85,
+            top_exchange_score: 0.78,
+            cache_hit: false
+          )
+        )
+      end
+
+      it "does not fail when logger is nil" do
+        retriever_without_logger = described_class.new(
+          embedding_store: embedding_store,
+          embedding_client: embedding_client,
+          config_store: config_store,
+          retrieval_logger: nil
+        )
+
+        expect { retriever_without_logger.retrieve(query: query) }.not_to raise_error
       end
     end
   end

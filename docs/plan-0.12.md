@@ -158,7 +158,7 @@ Tasks
 - ✅ Create migration for rag_retrieval_logs table
 - ✅ Implement search_conversations and search_exchanges methods in EmbeddingStore with JOIN support
 - ✅ Create RAGRetrievalLogger class for logging retrieval metrics
-- ⏳ Integrate RAGRetrievalLogger into RAGRetriever
+- ✅ Integrate RAGRetrievalLogger into RAGRetriever
 - ⏳ Add namespace/tag filters to retrieval processors and commands
 - ⏳ Add basic time-range filtering: recent (last N days), older (before N days ago), between dates
 - ⏳ Implement recency weight parameter alpha
@@ -170,13 +170,15 @@ Testing
 - ✅ Migration tests verify rag_retrieval_logs table creation and idempotency (3 tests)
 - ✅ EmbeddingStore tests for search_conversations and search_exchanges (11 tests)
 - ✅ RAGRetrievalLogger tests for logging, query hashing, and recent logs retrieval (10 tests)
+- ✅ RAGRetriever tests verify logger integration and metrics logging (2 tests)
 - ⏳ Unit tests for filters (namespace/tag/time), cache hit/miss behavior; integration test for invalidation on new summaries
 - ⏳ Verify rag_retrieval_logs captures expected metrics in retrieval flow
 Implementation Notes (Partial)
 - Created migration 007 for rag_retrieval_logs with indexes on timestamp, query_hash, and cache_hit
 - Added search_conversations and search_exchanges to EmbeddingStore with JOIN support for fetching conversation/exchange metadata
 - Implemented RAGRetrievalLogger with query hash generation (using rounded embeddings for cache grouping)
-- All 1986 tests passing with 98.15% line coverage / 90.85% branch coverage
+- Integrated RAGRetrievalLogger into RAGRetriever as optional parameter; logs query_hash, candidates, scores, duration, and cache_hit
+- All 1988 tests passing with 98.15% line coverage / 90.71% branch coverage
 
 Phase 7: Migrations and developer workflow polish (1 hr)
 Goal: Solidify migration ergonomics and documentation.

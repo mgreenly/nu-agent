@@ -6,12 +6,13 @@ module Nu
       # Orchestrates the RAG retrieval pipeline using Chain of Responsibility pattern
       # Builds a processor chain and executes it to retrieve relevant context
       class RAGRetriever
-        attr_reader :embedding_store, :embedding_client, :config_store
+        attr_reader :embedding_store, :embedding_client, :config_store, :retrieval_logger
 
-        def initialize(embedding_store:, embedding_client:, config_store:)
+        def initialize(embedding_store:, embedding_client:, config_store:, retrieval_logger: nil)
           @embedding_store = embedding_store
           @embedding_client = embedding_client
           @config_store = config_store
+          @retrieval_logger = retrieval_logger
         end
 
         # Retrieve relevant context for a query
@@ -31,6 +32,9 @@ module Nu
 
           # Finalize metadata
           context.finalize
+
+          # Log retrieval metrics if logger is available
+          log_retrieval(context) if @retrieval_logger
 
           context
         end
@@ -64,6 +68,26 @@ module Nu
 
           # Return the head of the chain
           query_processor
+        end
+
+        def log_retrieval(context)
+          return unless context.query_embedding
+
+          query_hash = @retrieval_logger.generate_query_hash(context.query_embedding, precision: 3)
+
+          # Extract top scores
+          top_conversation_score = context.conversations.first&.fetch(:similarity, nil)
+          top_exchange_score = context.exchanges.first&.fetch(:similarity, nil)
+
+          @retrieval_logger.log_retrieval(
+            query_hash: query_hash,
+            conversation_candidates: context.conversations.size,
+            exchange_candidates: context.exchanges.size,
+            retrieval_duration_ms: context.metadata[:duration_ms],
+            top_conversation_score: top_conversation_score,
+            top_exchange_score: top_exchange_score,
+            cache_hit: false # Will be updated when cache is implemented
+          )
         end
       end
     end
