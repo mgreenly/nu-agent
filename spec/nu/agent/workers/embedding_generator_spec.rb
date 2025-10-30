@@ -16,13 +16,18 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
 
   let(:history) { double("history") }
   let(:embedding_client) { double("embedding_client") }
-  let(:application) { double("application", instance_variable_get: false, embedding_enabled: true) }
+  let(:application) { double("application", instance_variable_get: false, embedding_enabled: true, debug: false) }
   let(:status) do
     { "running" => false, "total" => 0, "completed" => 0, "failed" => 0, "current_item" => nil, "spend" => 0.0 }
   end
   let(:status_mutex) { Mutex.new }
   let(:config_store) { double("config_store") }
   let(:status_info) { { status: status, mutex: status_mutex } }
+
+  before do
+    # Mock verbosity loading (default verbosity = 0)
+    allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(0)
+  end
 
   describe "#start_worker" do
     it "starts a background thread" do
@@ -36,11 +41,6 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
   end
 
   describe "#process_embeddings" do
-    before do
-      # Mock debug output
-      allow(application).to receive(:output_line)
-    end
-
     context "when there are no items needing embeddings" do
       it "does not process anything" do
         allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return([])
@@ -140,8 +140,6 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
 
   describe "batching behavior" do
     before do
-      # Mock debug output
-      allow(application).to receive(:output_line)
       allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
       allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
       allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
@@ -183,7 +181,7 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
 
   describe "error handling" do
     before do
-      # Mock debug output
+      allow(application).to receive(:debug).and_return(true)
       allow(application).to receive(:output_line)
       allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
       allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
@@ -200,7 +198,168 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
 
       expect(status["completed"]).to eq(0)
       expect(status["failed"]).to eq(1) # All items in failed batch are marked as failed
-      expect(application).to have_received(:output_line).with(/API error for batch of 1 items/, type: :debug)
+      expect(application).to have_received(:output_line).with(/\[EmbeddingGenerator\].*API error for batch of 1 items/,
+                                                              type: :debug)
+    end
+  end
+
+  describe "verbosity support" do
+    let(:conversations) { [{ "id" => 2, "summary" => "Test conversation" }] }
+    let(:embedding_response) do
+      {
+        "embeddings" => [Array.new(1536, 0.1)],
+        "model" => "text-embedding-3-small",
+        "tokens" => 10,
+        "spend" => 0.0002
+      }
+    end
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(embedding_client).to receive(:generate_embedding).and_return(embedding_response)
+      allow(history).to receive(:upsert_conversation_embedding)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(application).to receive(:output_line)
+    end
+
+    describe "#load_verbosity" do
+      it "loads verbosity from config store with default 0" do
+        allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(2)
+        expect(pipeline.send(:load_verbosity)).to eq(2)
+      end
+
+      it "defaults to 0 when not configured" do
+        allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(0)
+        expect(pipeline.send(:load_verbosity)).to eq(0)
+      end
+    end
+
+    describe "#debug_output" do
+      context "when debug is enabled" do
+        before { allow(application).to receive(:debug).and_return(true) }
+
+        it "outputs messages at or below verbosity level" do
+          allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(2)
+          pipeline = described_class.new(
+            history: history,
+            embedding_client: embedding_client,
+            application: application,
+            status_info: status_info,
+            current_conversation_id: 1,
+            config_store: config_store
+          )
+
+          pipeline.send(:debug_output, "Level 1 message", level: 1)
+          expect(application).to have_received(:output_line).with("[EmbeddingGenerator] Level 1 message", type: :debug)
+        end
+
+        it "does not output messages above verbosity level" do
+          allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(1)
+          pipeline = described_class.new(
+            history: history,
+            embedding_client: embedding_client,
+            application: application,
+            status_info: status_info,
+            current_conversation_id: 1,
+            config_store: config_store
+          )
+
+          pipeline.send(:debug_output, "Level 3 message", level: 3)
+          expect(application).not_to have_received(:output_line).with("[EmbeddingGenerator] Level 3 message",
+                                                                      type: :debug)
+        end
+      end
+
+      context "when debug is disabled" do
+        before { allow(application).to receive(:debug).and_return(false) }
+
+        it "does not output any messages" do
+          allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(5)
+          pipeline = described_class.new(
+            history: history,
+            embedding_client: embedding_client,
+            application: application,
+            status_info: status_info,
+            current_conversation_id: 1,
+            config_store: config_store
+          )
+
+          pipeline.send(:debug_output, "Test message", level: 0)
+          expect(application).not_to have_received(:output_line).with("[EmbeddingGenerator] Test message", type: :debug)
+        end
+      end
+    end
+
+    describe "verbosity levels during processing" do
+      before do
+        allow(application).to receive(:debug).and_return(true)
+      end
+
+      it "outputs level 0 messages (worker lifecycle) when verbosity >= 0" do
+        allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(0)
+        pipeline = described_class.new(
+          history: history,
+          embedding_client: embedding_client,
+          application: application,
+          status_info: status_info,
+          current_conversation_id: 1,
+          config_store: config_store
+        )
+
+        pipeline.send(:process_embeddings)
+        expect(application).to have_received(:output_line).with(/\[EmbeddingGenerator\].*Started/, type: :debug)
+      end
+
+      it "outputs level 1 messages (batch processing) when verbosity >= 1" do
+        allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(1)
+        pipeline = described_class.new(
+          history: history,
+          embedding_client: embedding_client,
+          application: application,
+          status_info: status_info,
+          current_conversation_id: 1,
+          config_store: config_store
+        )
+
+        pipeline.send(:process_embeddings)
+        expect(application).to have_received(:output_line).with(/\[EmbeddingGenerator\].*batch/, type: :debug)
+      end
+
+      it "outputs level 2 messages (individual items) when verbosity >= 2" do
+        allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(2)
+        pipeline = described_class.new(
+          history: history,
+          embedding_client: embedding_client,
+          application: application,
+          status_info: status_info,
+          current_conversation_id: 1,
+          config_store: config_store
+        )
+
+        pipeline.send(:process_embeddings)
+        expect(application).to have_received(:output_line).with(/\[EmbeddingGenerator\].*Processing conversation:2/,
+                                                                type: :debug)
+      end
+
+      it "outputs level 3 messages (API responses) when verbosity >= 3" do
+        allow(config_store).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(3)
+        pipeline = described_class.new(
+          history: history,
+          embedding_client: embedding_client,
+          application: application,
+          status_info: status_info,
+          current_conversation_id: 1,
+          config_store: config_store
+        )
+
+        pipeline.send(:process_embeddings)
+        expect(application).to have_received(:output_line).with(/\[EmbeddingGenerator\].*Stored embedding/,
+                                                                type: :debug)
+      end
     end
   end
 end

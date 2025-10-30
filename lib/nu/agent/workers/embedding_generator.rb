@@ -14,6 +14,18 @@ module Nu
           @application = options[:application]
           @current_conversation_id = options[:current_conversation_id]
           @config_store = options[:config_store]
+          @verbosity = load_verbosity
+        end
+
+        def load_verbosity
+          @config_store.get_int("embeddings_verbosity", default: 0)
+        end
+
+        # Output debug message if verbosity level is sufficient
+        def debug_output(message, level: 0)
+          return unless @application.debug && level <= @verbosity
+
+          @application.output_line("[EmbeddingGenerator] #{message}", type: :debug)
         end
 
         # Main processing loop - generates embeddings for conversations and exchanges
@@ -54,8 +66,7 @@ module Nu
           conv_ids = conversations.map { |c| c["id"] }.join(", ")
           exch_ids = exchanges.map { |e| e["id"] }.join(", ")
           ids_display = build_ids_display(conv_ids, exch_ids)
-          msg = "Embedding pipeline: Started, found #{queue.length} items to embed (#{ids_display.join(', ')})"
-          @application.output_line(msg, type: :debug)
+          debug_output("Started, found #{queue.length} items to embed (#{ids_display.join(', ')})", level: 0)
           Time.now
         end
 
@@ -93,8 +104,7 @@ module Nu
         def log_completion(start_time)
           completed, failed = finalize_status
           duration = Time.now - start_time
-          msg = "Embedding pipeline: Completed (#{completed} succeeded, #{failed} failed) in #{duration.round(1)}s"
-          @application.output_line(msg, type: :debug)
+          debug_output("Completed (#{completed} succeeded, #{failed} failed) in #{duration.round(1)}s", level: 0)
         end
 
         def finalize_status
@@ -135,6 +145,8 @@ module Nu
           texts = batch.map { |item| item[:content] }
           return if texts.empty?
 
+          debug_output("Processing batch of #{batch.length} items", level: 1)
+
           response = generate_embeddings_with_retry(texts)
           return if shutdown_requested? || response.nil?
 
@@ -149,8 +161,7 @@ module Nu
 
         def handle_batch_error(response, batch)
           error_info = response["error"]
-          @application.output_line("Embedding pipeline: API error for batch of #{batch.length} items - #{error_info}",
-                                   type: :debug)
+          debug_output("API error for batch of #{batch.length} items - #{error_info}", level: 0)
           @status_mutex.synchronize { @status["failed"] += batch.length }
         end
 
@@ -173,9 +184,12 @@ module Nu
         def process_item(item, embedding, _response)
           update_status_current_item(item)
 
+          debug_output("Processing #{item[:type]}:#{item[:id]}", level: 2)
+
           begin
             @application.send(:enter_critical_section)
             store_embedding(item, embedding)
+            debug_output("Stored embedding for #{item[:type]}:#{item[:id]}", level: 3)
             increment_completed_count
           rescue StandardError => e
             handle_item_error(item, e)
@@ -202,10 +216,7 @@ module Nu
         end
 
         def handle_item_error(item, error)
-          @application.output_line(
-            "Embedding pipeline: Failed to process #{item[:type]}:#{item[:id]} - #{error.class}: #{error.message}",
-            type: :debug
-          )
+          debug_output("Failed to process #{item[:type]}:#{item[:id]} - #{error.class}: #{error.message}", level: 0)
           increment_failed_count
         end
 
