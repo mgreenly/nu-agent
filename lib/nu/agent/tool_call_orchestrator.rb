@@ -17,7 +17,7 @@ module Nu
 
       # Execute the tool calling loop
       # Returns a hash with :error, :response, and :metrics keys
-      def execute(messages:, tools:)
+      def execute(messages:, tools:, system_prompt: nil)
         metrics = {
           tokens_input: 0,
           tokens_output: 0,
@@ -28,7 +28,9 @@ module Nu
 
         loop do
           # Send request to LLM
-          response = @client.send_message(messages: messages, tools: tools)
+          send_params = { messages: messages, tools: tools }
+          send_params[:system_prompt] = system_prompt if system_prompt
+          response = @client.send_message(**send_params)
 
           # Check for errors first
           if response["error"]

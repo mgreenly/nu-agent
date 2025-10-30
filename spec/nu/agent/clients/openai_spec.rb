@@ -112,6 +112,20 @@ RSpec.describe Nu::Agent::Clients::OpenAI do
 
       client.send_message(messages: messages, system_prompt: custom_prompt)
     end
+
+    it "replaces {{DATE}} placeholder with current date" do
+      prompt_with_date = "Today is {{DATE}}. You are a helpful assistant."
+      current_date = Time.now.strftime("%Y-%m-%d")
+      expected_prompt = "Today is #{current_date}. You are a helpful assistant."
+
+      expect(mock_openai_client).to receive(:chat) do |args|
+        messages = args[:parameters][:messages]
+        expect(messages.first[:role]).to eq("system")
+        expect(messages.first[:content]).to eq(expected_prompt)
+      end.and_return(openai_response)
+
+      client.send_message(messages: messages, system_prompt: prompt_with_date)
+    end
   end
 
   describe "#name" do

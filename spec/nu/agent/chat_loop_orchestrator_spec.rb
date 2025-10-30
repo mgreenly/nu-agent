@@ -641,7 +641,35 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
 
       expect(tool_call_orchestrator).to have_received(:execute).with(
         messages: messages,
-        tools: tools
+        tools: tools,
+        system_prompt: nil
+      )
+
+      expect(result).to eq(loop_result)
+    end
+
+    it "passes active persona system prompt when available" do
+      allow(Nu::Agent::ToolCallOrchestrator).to receive(:new).and_return(tool_call_orchestrator)
+      allow(tool_call_orchestrator).to receive(:execute).and_return(loop_result)
+      allow(application).to receive(:respond_to?).with(:active_persona_system_prompt).and_return(true)
+      allow(application).to receive(:active_persona_system_prompt).and_return("Custom persona prompt")
+
+      result = orchestrator.send(
+        :tool_calling_loop,
+        messages: messages,
+        client: client,
+        conversation_id: conversation_id,
+        tools: tools,
+        history: history,
+        exchange_id: exchange_id,
+        tool_registry: tool_registry,
+        application: application
+      )
+
+      expect(tool_call_orchestrator).to have_received(:execute).with(
+        messages: messages,
+        tools: tools,
+        system_prompt: "Custom persona prompt"
       )
 
       expect(result).to eq(loop_result)

@@ -130,6 +130,19 @@ RSpec.describe Nu::Agent::Clients::Google do
 
       client.send_message(messages: messages, system_prompt: custom_prompt)
     end
+
+    it "replaces {{DATE}} placeholder with current date" do
+      prompt_with_date = "Today is {{DATE}}. You are a helpful assistant."
+      current_date = Time.now.strftime("%Y-%m-%d")
+      expected_prompt = "Today is #{current_date}. You are a helpful assistant."
+
+      expect(mock_gemini_client).to receive(:generate_content) do |args|
+        contents = args[:contents]
+        expect(contents.first[:parts][0][:text]).to eq(expected_prompt)
+      end.and_return(gemini_response)
+
+      client.send_message(messages: messages, system_prompt: prompt_with_date)
+    end
   end
 
   describe "#name" do

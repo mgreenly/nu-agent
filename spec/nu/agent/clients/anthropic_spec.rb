@@ -107,6 +107,20 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
 
       client.send_message(messages: messages, system_prompt: custom_prompt)
     end
+
+    it "replaces {{DATE}} placeholder with current date" do
+      prompt_with_date = "Today is {{DATE}}. You are a helpful assistant."
+      current_date = Time.now.strftime("%Y-%m-%d")
+      expected_prompt = "Today is #{current_date}. You are a helpful assistant."
+
+      expect(mock_anthropic_client).to receive(:messages).with(
+        parameters: hash_including(
+          system: expected_prompt
+        )
+      )
+
+      client.send_message(messages: messages, system_prompt: prompt_with_date)
+    end
   end
 
   describe "#name" do

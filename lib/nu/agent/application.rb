@@ -5,7 +5,8 @@ module Nu
     class Application
       attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :verbosity, :redact,
                     :summarizer_enabled, :spell_check_enabled, :embedding_enabled, :conversation_id, :session_start_time
-      attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager, :embedding_client
+      attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager, :embedding_client,
+                  :active_persona_system_prompt
 
       def active_threads
         @worker_manager&.active_threads || []
@@ -130,6 +131,7 @@ module Nu
         @spell_check_enabled = config.spell_check_enabled
         @embedding_enabled = config.embedding_enabled
         @embedding_client = config.embedding_client
+        load_active_persona
       end
 
       def initialize_console_system
@@ -296,6 +298,16 @@ module Nu
 
       def print_goodbye
         output_line("Goodbye!", type: :debug)
+      end
+
+      def load_active_persona
+        persona_manager = PersonaManager.new(@history.connection)
+        active_persona = persona_manager.get_active
+        @active_persona_system_prompt = active_persona&.dig("system_prompt")
+      rescue StandardError => e
+        # If persona loading fails, fall back to nil (uses client default)
+        output_line("Warning: Could not load persona: #{e.message}", type: :debug) if @debug
+        @active_persona_system_prompt = nil
       end
     end
   end

@@ -14,13 +14,25 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
     )
   end
 
+  let(:mock_connection) do
+    instance_double("DuckDB::Connection")
+  end
+
+  let(:mock_persona_manager) do
+    instance_double(
+      Nu::Agent::PersonaManager,
+      get_active: { "system_prompt" => "Test persona prompt" }
+    )
+  end
+
   let(:mock_history) do
     instance_double(
       Nu::Agent::History,
       get_config: nil,
       set_config: nil,
       create_conversation: 1,
-      close: nil
+      close: nil,
+      connection: mock_connection
     )
   end
 
@@ -45,6 +57,9 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
     # Mock ClientFactory to avoid API client initialization
     mock_client = instance_double("Client", model: "test-model", max_context: 100_000)
     allow(Nu::Agent::ClientFactory).to receive(:create).and_return(mock_client)
+
+    # Mock PersonaManager.new
+    allow(Nu::Agent::PersonaManager).to receive(:new).and_return(mock_persona_manager)
 
     # Setup default config responses
     allow(mock_history).to receive(:get_config).with("model_orchestrator").and_return("test-model")

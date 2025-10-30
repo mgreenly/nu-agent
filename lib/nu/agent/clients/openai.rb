@@ -9,8 +9,8 @@ module Nu
         ApiKey = ::Nu::Agent::ApiKey
         Error = ::Nu::Agent::Error
 
-        SYSTEM_PROMPT = <<~PROMPT.freeze
-          Today is #{Time.now.strftime('%Y-%m-%d')}.
+        SYSTEM_PROMPT = <<~PROMPT
+          Today is {{DATE}}.
 
           Format all responses in raw text, do not use markdown.
 
@@ -68,7 +68,8 @@ module Nu
         end
 
         def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
-          formatted_messages = format_messages(messages, system_prompt: system_prompt)
+          processed_prompt = replace_date_placeholder(system_prompt)
+          formatted_messages = format_messages(messages, system_prompt: processed_prompt)
           parameters = build_request_parameters(formatted_messages, tools)
 
           begin
@@ -224,6 +225,13 @@ module Nu
           end
         rescue StandardError => e
           raise Error, "Error loading API key: #{e.message}"
+        end
+
+        def replace_date_placeholder(prompt)
+          return prompt unless prompt
+
+          current_date = Time.now.strftime("%Y-%m-%d")
+          prompt.gsub("{{DATE}}", current_date)
         end
 
         def format_messages(messages, system_prompt:)

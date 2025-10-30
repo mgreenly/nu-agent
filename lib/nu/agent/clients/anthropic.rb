@@ -8,8 +8,8 @@ module Nu
         ApiKey = ::Nu::Agent::ApiKey
         Error = ::Nu::Agent::Error
 
-        SYSTEM_PROMPT = <<~PROMPT.freeze
-          Today is #{Time.now.strftime('%Y-%m-%d')}.
+        SYSTEM_PROMPT = <<~PROMPT
+          Today is {{DATE}}.
 
           Format all responses in raw text, do not use markdown.
 
@@ -57,7 +57,8 @@ module Nu
 
         def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
           formatted_messages = format_messages(messages)
-          parameters = build_request_parameters(formatted_messages, system_prompt, tools)
+          processed_prompt = replace_date_placeholder(system_prompt)
+          parameters = build_request_parameters(formatted_messages, processed_prompt, tools)
 
           begin
             response = @client.messages(parameters: parameters)
@@ -110,6 +111,13 @@ module Nu
 
           parameters[:tools] = tools if tools && !tools.empty?
           parameters
+        end
+
+        def replace_date_placeholder(prompt)
+          return prompt unless prompt
+
+          current_date = Time.now.strftime("%Y-%m-%d")
+          prompt.gsub("{{DATE}}", current_date)
         end
 
         def parse_response(response)

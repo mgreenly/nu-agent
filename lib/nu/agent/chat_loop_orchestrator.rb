@@ -189,7 +189,10 @@ module Nu
           application: application
         )
 
-        orchestrator.execute(messages: messages, tools: tools)
+        system_prompt = if application.respond_to?(:active_persona_system_prompt)
+                          application.active_persona_system_prompt
+                        end
+        orchestrator.execute(messages: messages, tools: tools, system_prompt: system_prompt)
       end
 
       def build_context_document(user_query:, tool_registry:, redacted_message_ranges: nil, conversation_id: nil)
