@@ -44,7 +44,8 @@ module Nu
             min_similarity: min_similarity,
             conversation_ids: nil,
             after_date: context.after_date,
-            before_date: context.before_date
+            before_date: context.before_date,
+            recency_weight: context.recency_weight
           )
 
           context.exchanges = results
@@ -62,7 +63,8 @@ module Nu
               min_similarity: min_similarity,
               conversation_ids: [conv_id],
               after_date: context.after_date,
-              before_date: context.before_date
+              before_date: context.before_date,
+              recency_weight: context.recency_weight
             )
 
             all_exchanges.concat(exchanges)
@@ -71,9 +73,12 @@ module Nu
             break if all_exchanges.length >= global_cap
           end
 
-          # Apply global cap and re-sort by similarity
+          # Determine sort key based on whether recency weighting is enabled
+          sort_key = context.recency_weight ? :blended_score : :similarity
+
+          # Apply global cap and re-sort
           context.exchanges = all_exchanges
-                              .sort_by { |e| -e[:similarity] }
+                              .sort_by { |e| -e[sort_key] }
                               .take(global_cap)
           context.metadata[:exchange_count] = context.exchanges.length
         end

@@ -418,6 +418,70 @@ RSpec.describe Nu::Agent::EmbeddingStore do
         expect(conversation_ids).to contain_exactly(3)
       end
     end
+
+    context "with recency weighting for conversations" do
+      it "applies recency weight when alpha < 1.0" do
+        # With alpha = 0.0, should order purely by recency
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          recency_weight: 0.0
+        )
+
+        # Conversations ordered by recency: 3, 2, 1
+        conversation_ids = results.map { |r| r[:conversation_id] }
+        expect(conversation_ids).to eq([3, 2, 1])
+      end
+
+      it "uses pure similarity when alpha = 1.0" do
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          recency_weight: 1.0
+        )
+
+        # Should be ordered by similarity
+        similarities = results.map { |r| r[:similarity] }
+        expect(similarities).to eq(similarities.sort.reverse)
+      end
+
+      it "blends similarity and recency when 0 < alpha < 1" do
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          recency_weight: 0.5
+        )
+
+        expect(results.length).to eq(3)
+        expect(results).to all(have_key(:blended_score))
+      end
+
+      it "handles empty results when recency weighting is enabled" do
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.99,
+          recency_weight: 0.5
+        )
+
+        expect(results).to eq([])
+      end
+
+      it "does not apply recency weighting when parameter is nil" do
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          recency_weight: nil
+        )
+
+        expect(results.length).to eq(3)
+        expect(results.first).not_to have_key(:blended_score)
+      end
+    end
   end
 
   describe "#search_exchanges" do
@@ -602,6 +666,78 @@ RSpec.describe Nu::Agent::EmbeddingStore do
         # Should only include exchange 11 (from conversation 1, after 10:04)
         exchange_ids = results.map { |r| r[:exchange_id] }
         expect(exchange_ids).to contain_exactly(11)
+      end
+    end
+
+    context "with recency weighting for exchanges" do
+      it "applies recency weight when alpha < 1.0" do
+        # With alpha = 0.0, should order purely by recency (most recent first)
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          recency_weight: 0.0
+        )
+
+        # Exchanges ordered by recency: 21, 20, 11, 10
+        exchange_ids = results.map { |r| r[:exchange_id] }
+        expect(exchange_ids).to eq([21, 20, 11, 10])
+      end
+
+      it "uses pure similarity when alpha = 1.0" do
+        # With alpha = 1.0, should order purely by similarity (default behavior)
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          recency_weight: 1.0
+        )
+
+        # Should be ordered by similarity (same as no recency weight)
+        similarities = results.map { |r| r[:similarity] }
+        expect(similarities).to eq(similarities.sort.reverse)
+      end
+
+      it "blends similarity and recency when 0 < alpha < 1" do
+        # With alpha = 0.5, should blend similarity and recency
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          recency_weight: 0.5
+        )
+
+        # Results should be ordered by blended score
+        expect(results.length).to eq(4)
+        expect(results).to all(have_key(:blended_score))
+      end
+
+      it "handles empty results when recency weighting is enabled" do
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.99,
+          conversation_ids: nil,
+          recency_weight: 0.5
+        )
+
+        expect(results).to eq([])
+      end
+
+      it "does not apply recency weighting when parameter is nil" do
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          recency_weight: nil
+        )
+
+        expect(results.length).to eq(4)
+        expect(results.first).not_to have_key(:blended_score)
       end
     end
   end

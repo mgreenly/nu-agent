@@ -102,7 +102,8 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         min_similarity: 0.7,
         exclude_conversation_id: 10,
         after_date: nil,
-        before_date: nil
+        before_date: nil,
+        recency_weight: nil
       )
     end
 
@@ -120,7 +121,8 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
           min_similarity: 0.6,
           conversation_ids: nil,
           after_date: nil,
-          before_date: nil
+          before_date: nil,
+          recency_weight: nil
         )
       end
     end

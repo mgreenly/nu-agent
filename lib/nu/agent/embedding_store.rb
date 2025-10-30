@@ -118,8 +118,9 @@ module Nu
 
       # Search for similar conversation summaries
       # Returns array of hashes with keys: conversation_id, content, similarity, created_at
+      # When recency_weight is provided, results include blended_score
       def search_conversations(query_embedding:, limit:, min_similarity:, exclude_conversation_id: nil,
-                               after_date: nil, before_date: nil)
+                               after_date: nil, before_date: nil, recency_weight: nil)
         embedding_str = build_embedding_str(query_embedding)
         similarity_expr = build_similarity_expr(embedding_str)
 
@@ -137,16 +138,21 @@ module Nu
             #{build_time_range_filter('c.created_at', after_date, before_date)}
             #{build_min_similarity_clause(similarity_expr, min_similarity)}
           ORDER BY similarity DESC
-          LIMIT #{limit.to_i}
         SQL
 
-        map_conversation_results(result)
+        results = map_conversation_results(result)
+
+        # Apply recency weighting if requested
+        results = apply_recency_weighting(results, recency_weight, :created_at) if recency_weight
+
+        results.take(limit.to_i)
       end
 
       # Search for similar exchange summaries
       # Returns array of hashes with keys: exchange_id, conversation_id, content, similarity, started_at
+      # When recency_weight is provided, results include blended_score
       def search_exchanges(query_embedding:, limit:, min_similarity:, conversation_ids: nil,
-                           after_date: nil, before_date: nil)
+                           after_date: nil, before_date: nil, recency_weight: nil)
         embedding_str = build_embedding_str(query_embedding)
         similarity_expr = build_similarity_expr(embedding_str)
 
@@ -165,10 +171,14 @@ module Nu
             #{build_time_range_filter('ex.started_at', after_date, before_date)}
             #{build_min_similarity_clause(similarity_expr, min_similarity)}
           ORDER BY similarity DESC
-          LIMIT #{limit.to_i}
         SQL
 
-        map_exchange_results(result)
+        results = map_exchange_results(result)
+
+        # Apply recency weighting if requested
+        results = apply_recency_weighting(results, recency_weight, :started_at) if recency_weight
+
+        results.take(limit.to_i)
       end
 
       private
@@ -310,6 +320,62 @@ module Nu
 
       def escape_sql(string)
         string.to_s.gsub("'", "''")
+      end
+
+      # Apply recency weighting to search results
+      # Formula: blended_score = recency_weight * similarity + (1 - recency_weight) * recency_score
+      # where recency_score is normalized timestamp (0 = oldest, 1 = newest)
+      def apply_recency_weighting(results, recency_weight, timestamp_field)
+        return results if results.empty?
+
+        min_timestamp, max_timestamp = calculate_timestamp_range(results, timestamp_field)
+        timestamp_range = max_timestamp - min_timestamp
+
+        return handle_zero_timestamp_range(results) if timestamp_range.zero?
+
+        calculate_blended_scores(results, recency_weight, timestamp_field, min_timestamp, timestamp_range)
+      end
+
+      # Calculate min and max timestamps from results
+      def calculate_timestamp_range(results, timestamp_field)
+        timestamps = results.map { |r| parse_timestamp(r[timestamp_field]) }
+        timestamps.minmax
+      end
+
+      # Handle case where all timestamps are the same
+      def handle_zero_timestamp_range(results)
+        results.map { |r| r.merge(blended_score: r[:similarity]) }
+               .sort_by { |r| -r[:blended_score] }
+      end
+
+      # Calculate and sort by blended scores
+      def calculate_blended_scores(results, recency_weight, timestamp_field, min_timestamp, timestamp_range)
+        results_with_scores = results.map do |result|
+          blended_score = calculate_single_blended_score(
+            result, recency_weight, timestamp_field, min_timestamp, timestamp_range
+          )
+          result.merge(blended_score: blended_score)
+        end
+
+        results_with_scores.sort_by { |r| -r[:blended_score] }
+      end
+
+      # Calculate blended score for a single result
+      def calculate_single_blended_score(result, recency_weight, timestamp_field, min_timestamp, timestamp_range)
+        timestamp = parse_timestamp(result[timestamp_field])
+        recency_score = (timestamp - min_timestamp) / timestamp_range
+
+        # Blend similarity and recency
+        # recency_weight = 1.0 means pure similarity (no recency bonus)
+        # recency_weight = 0.0 means pure recency (ignore similarity)
+        (recency_weight * result[:similarity]) + ((1.0 - recency_weight) * recency_score)
+      end
+
+      # Parse timestamp to Time object, handling both Time and String types
+      def parse_timestamp(timestamp)
+        return timestamp if timestamp.is_a?(Time)
+
+        Time.parse(timestamp.to_s)
       end
     end
   end
