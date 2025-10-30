@@ -2,7 +2,7 @@
 
 Last Updated: 2025-10-30
 Target Version: 0.17.0
-Plan Status: In Progress - Phase 2 Complete
+Plan Status: In Progress - Phase 4 Complete
 GitHub Issue: https://github.com/mgreenly/nu-agent/issues/9
 
 ## Progress Status
@@ -31,19 +31,25 @@ GitHub Issue: https://github.com/mgreenly/nu-agent/issues/9
   - 1782 test cases passing
   - 98.15% line coverage, 90.05% branch coverage
 
-### In Progress
-- ⏭️ **Phase 3**: Enhanced worker integration (mostly complete)
+- ✅ **Phase 3**: Enhanced worker integration (skipped - already complete)
   - Worker coordination already functional via pause_all/resume_all
   - Database lifecycle management already in place
-  - May skip detailed implementation as requirements met
+  - All requirements met in Phase 1
+
+- ✅ **Phase 4**: Pre-flight validation and error handling
+  - Added `validate_backup` method with comprehensive checks
+  - Source file exists and readable validation
+  - Destination directory exists/creation with error handling
+  - Destination directory writable validation
+  - Disk space verification with `get_available_space` method
+  - Pre-flight checks run before pausing workers (fail fast)
+  - Workers guaranteed to resume via existing ensure blocks
+  - 6 new test cases for validation scenarios
+  - 1797 total test cases passing
+  - 98.17% line coverage, 90.2% branch coverage
+  - No RuboCop violations
 
 ### Remaining
-- 🔲 **Phase 4**: Pre-flight validation and error handling
-  - Source file validation
-  - Destination directory checks
-  - Disk space verification
-  - Permission checks
-
 - 🔲 **Phase 5**: Testing and refinement
   - Update help text
   - Add command documentation
@@ -447,41 +453,43 @@ GitHub Issue: https://github.com/mgreenly/nu-agent/issues/9
 ## Success criteria
 
 ### Functional requirements
-- ✓ `/backup` creates timestamped backup in current directory
-- ✓ `/backup /path/to/file.db` creates backup at specified location
-- ✓ Timestamp format matches `YYYY-MM-DD-HHMMSS`
-- ✓ Progress bar shows for files >1 MB
-- ✓ Progress bar updates ~every 100 KB
-- ✓ No progress bar for files ≤1 MB
-- ✓ Backup file verified (exists and correct size)
-- ✓ Workers pause before backup
-- ✓ Workers resume after backup
-- ✓ Database connections cleanly closed/reopened
-- ✓ Application remains stable after backup
+- ✅ `/backup` creates timestamped backup in current directory
+- ✅ `/backup /path/to/file.db` creates backup at specified location
+- ✅ Timestamp format matches `YYYY-MM-DD-HHMMSS`
+- ✅ Progress bar shows for files >1 MB
+- ✅ Progress bar updates ~every 100 KB
+- ✅ No progress bar for files ≤1 MB
+- ✅ Backup file verified (exists and correct size)
+- ✅ Workers pause before backup
+- ✅ Workers resume after backup
+- ✅ Database connections cleanly closed/reopened
+- ✅ Application remains stable after backup
 
 ### Error handling
-- ✓ Aborts if database file missing
-- ✓ Aborts if destination not writable
-- ✓ Aborts if insufficient disk space
-- ✓ Aborts if copy operation fails
-- ✓ Workers always resume (even on failure)
-- ✓ Clear, actionable error messages
+- ✅ Aborts if database file missing
+- ✅ Aborts if source file not readable
+- ✅ Aborts if destination not writable
+- ✅ Aborts if destination directory cannot be created
+- ✅ Aborts if insufficient disk space
+- ✅ Aborts if copy operation fails
+- ✅ Workers always resume (even on failure)
+- ✅ Clear, actionable error messages
 
 ### Code quality
-- ✓ All tests pass (`rake test`)
-- ✓ Coverage requirements met (`rake coverage:enforce`)
-- ✓ No RuboCop violations (`rake lint`)
-- ✓ Follows existing command pattern
-- ✓ Well-documented code
-- ✓ Comprehensive test coverage (11+ test cases)
+- ✅ All tests pass (`rake test`) - 1797 test cases
+- ✅ Coverage requirements met (`rake coverage:enforce`) - 98.17% line, 90.2% branch
+- ✅ No RuboCop violations (`rake lint`)
+- ✅ Follows existing command pattern
+- ✅ Well-documented code
+- ✅ Comprehensive test coverage (20 test cases for BackupCommand)
 
 ### User experience
-- ✓ Simple command syntax
-- ✓ Clear success/failure messages
-- ✓ Progress feedback for large files
-- ✓ Fast operation for small files
-- ✓ Minimal disruption to active work
-- ✓ Help text includes examples
+- ✅ Simple command syntax
+- ✅ Clear success/failure messages
+- ✅ Progress feedback for large files
+- ✅ Fast operation for small files
+- ✅ Minimal disruption to active work
+- 🔲 Help text includes examples (Phase 5)
 
 ## Future enhancements
 

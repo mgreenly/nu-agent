@@ -2,6 +2,7 @@
 
 require_relative "base_command"
 require "fileutils"
+require "shellwords"
 require "time"
 
 module Nu
@@ -15,32 +16,53 @@ module Nu
         def execute(input)
           destination = parse_destination(input)
 
-          # Pause workers and close database
-          app.worker_manager.pause_all
-          app.worker_manager.wait_until_all_paused(timeout: 5.0)
-          app.history.close
-
-          # Perform backup
-          begin
-            copy_with_progress(app.history.db_path, destination)
-
-            # Verify backup
-            if backup_valid?(destination)
-              display_success(destination)
-            else
-              app.output_line("Backup verification failed", type: :error)
-            end
-          rescue StandardError => e
-            app.output_line("Backup failed: #{e.message}", type: :error)
-          ensure
-            # Resume workers
-            app.worker_manager.resume_all
+          # Pre-flight validation before pausing workers
+          error_message = validate_backup(destination)
+          if error_message
+            app.output_line(error_message, type: :error)
+            return :continue
           end
 
+          pause_workers_and_close_database
+          perform_backup(destination)
           :continue
         end
 
         private
+
+        # Pause workers and close database connections
+        def pause_workers_and_close_database
+          app.worker_manager.pause_all
+          app.worker_manager.wait_until_all_paused(timeout: 5.0)
+          app.history.close
+        end
+
+        # Perform the backup operation with error handling
+        # @param destination [String] the backup file path
+        def perform_backup(destination)
+          copy_with_progress(app.history.db_path, destination)
+          verify_and_report(destination)
+        rescue StandardError => e
+          app.output_line("Backup failed: #{e.message}", type: :error)
+        ensure
+          reopen_database_and_resume_workers
+        end
+
+        # Verify backup and report results
+        # @param destination [String] the backup file path
+        def verify_and_report(destination)
+          if backup_valid?(destination)
+            display_success(destination)
+          else
+            app.output_line("Backup verification failed", type: :error)
+          end
+        end
+
+        # Reopen database and resume workers
+        def reopen_database_and_resume_workers
+          app.reopen_database
+          app.worker_manager.resume_all
+        end
 
         # Parse the destination path from the input string
         # @param input [String] the command input
@@ -62,6 +84,53 @@ module Nu
         def generate_default_destination
           timestamp = Time.now.strftime("%Y-%m-%d-%H%M%S")
           "./memory-#{timestamp}.db"
+        end
+
+        # Validate backup pre-flight checks
+        # @param destination [String] the backup destination path
+        # @return [String, nil] error message if validation fails, nil if all checks pass
+        def validate_backup(destination)
+          source_path = app.history.db_path
+
+          # Check source exists
+          return "Database file not found: #{source_path}" unless File.exist?(source_path)
+
+          # Check source is readable
+          return "Cannot read database file: #{source_path}" unless File.readable?(source_path)
+
+          # Check/create destination directory
+          dest_dir = File.dirname(destination)
+          unless Dir.exist?(dest_dir)
+            begin
+              FileUtils.mkdir_p(dest_dir)
+            rescue StandardError => e
+              return "Cannot create destination directory: #{e.message}"
+            end
+          end
+
+          # Check destination is writable
+          return "Destination directory is not writable: #{dest_dir}" unless File.writable?(dest_dir)
+
+          # Check disk space
+          source_size = File.size(source_path)
+          available_space = get_available_space(dest_dir)
+          if available_space && available_space < source_size
+            return "Insufficient disk space (need #{format_bytes(source_size)}, " \
+                   "have #{format_bytes(available_space)})"
+          end
+
+          nil # All checks passed
+        end
+
+        # Get available disk space for a path
+        # @param path [String] directory path to check
+        # @return [Integer, nil] available bytes, or nil if cannot be determined
+        def get_available_space(path)
+          # Use df command to check available space
+          result = `df -B1 #{Shellwords.escape(path)} 2>/dev/null | tail -1 | awk '{print $4}'`
+          result.strip.to_i
+        rescue StandardError
+          nil # Return nil if cannot determine space
         end
 
         # Check if the backup was created successfully
