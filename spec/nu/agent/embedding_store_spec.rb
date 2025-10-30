@@ -9,12 +9,15 @@ RSpec.describe Nu::Agent::EmbeddingStore do
   let(:connection) { db.connect }
   let(:embedding_store) { described_class.new(connection) }
   let(:schema_manager) { Nu::Agent::SchemaManager.new(connection) }
+  let(:migration_manager) { Nu::Agent::MigrationManager.new(connection) }
 
   before do
     FileUtils.rm_rf(test_db_path)
     FileUtils.mkdir_p("db")
     # Setup schema so tables exist
     schema_manager.setup_schema
+    # Run migrations to apply schema changes (including conversation_id/exchange_id columns)
+    migration_manager.run_pending_migrations
   end
 
   after do
@@ -23,64 +26,84 @@ RSpec.describe Nu::Agent::EmbeddingStore do
     FileUtils.rm_rf(test_db_path)
   end
 
-  describe "#store_embeddings" do
-    it "stores embedding records in the database" do
-      records = [
-        {
-          source: "man:ls",
-          content: "list directory contents",
-          embedding: Array.new(1536, 0.1)
-        },
-        {
-          source: "man:cd",
-          content: "change directory",
-          embedding: Array.new(1536, 0.2)
-        }
-      ]
+  describe "#upsert_conversation_embedding" do
+    it "stores conversation embedding in the database" do
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "conversation summary",
+        embedding: Array.new(1536, 0.1)
+      )
 
-      embedding_store.store_embeddings(kind: "man_pages", records: records)
-
-      # Verify records were stored
+      # Verify record was stored
       result = connection.query(<<~SQL)
-        SELECT kind, source, content FROM text_embedding_3_small
-        ORDER BY source
+        SELECT kind, conversation_id, content FROM text_embedding_3_small
       SQL
       rows = result.to_a
-      expect(rows.length).to eq(2)
-      expect(rows[0][1]).to eq("man:cd")
-      expect(rows[1][1]).to eq("man:ls")
+      expect(rows.length).to eq(1)
+      expect(rows[0][0]).to eq("conversation_summary")
+      expect(rows[0][1]).to eq(1)
+      expect(rows[0][2]).to eq("conversation summary")
     end
 
-    it "does not duplicate records with same kind and source" do
-      records = [
-        {
-          source: "man:ls",
-          content: "list directory contents",
-          embedding: Array.new(1536, 0.1)
-        }
-      ]
+    it "updates existing record for same conversation_id" do
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "original content",
+        embedding: Array.new(1536, 0.1)
+      )
 
-      embedding_store.store_embeddings(kind: "man_pages", records: records)
-      embedding_store.store_embeddings(kind: "man_pages", records: records)
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "updated content",
+        embedding: Array.new(1536, 0.2)
+      )
 
-      # Should still only have one record
-      result = connection.query("SELECT COUNT(*) FROM text_embedding_3_small")
-      expect(result.to_a.first.first).to eq(1)
+      # Should still only have one record with updated content
+      result = connection.query("SELECT COUNT(*), content FROM text_embedding_3_small GROUP BY content")
+      rows = result.to_a
+      expect(rows.length).to eq(1)
+      expect(rows[0][0]).to eq(1)
+      expect(rows[0][1]).to eq("updated content")
+    end
+  end
+
+  describe "#upsert_exchange_embedding" do
+    it "stores exchange embedding in the database" do
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 5,
+        content: "exchange summary",
+        embedding: Array.new(1536, 0.3)
+      )
+
+      # Verify record was stored
+      result = connection.query(<<~SQL)
+        SELECT kind, exchange_id, content FROM text_embedding_3_small
+      SQL
+      rows = result.to_a
+      expect(rows.length).to eq(1)
+      expect(rows[0][0]).to eq("exchange_summary")
+      expect(rows[0][1]).to eq(5)
+      expect(rows[0][2]).to eq("exchange summary")
     end
   end
 
   describe "#get_indexed_sources" do
     before do
-      records = [
-        { source: "man:ls", content: "list", embedding: Array.new(1536, 0.1) },
-        { source: "man:cd", content: "change", embedding: Array.new(1536, 0.2) }
-      ]
-      embedding_store.store_embeddings(kind: "man_pages", records: records)
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "first conversation",
+        embedding: Array.new(1536, 0.1)
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 2,
+        content: "second conversation",
+        embedding: Array.new(1536, 0.2)
+      )
     end
 
-    it "returns all sources for a given kind" do
-      sources = embedding_store.get_indexed_sources(kind: "man_pages")
-      expect(sources).to contain_exactly("man:ls", "man:cd")
+    it "returns all source IDs for a given kind" do
+      sources = embedding_store.get_indexed_sources(kind: "conversation_summary")
+      expect(sources).to contain_exactly(1, 2)
     end
 
     it "returns empty array when kind has no sources" do
@@ -91,61 +114,49 @@ RSpec.describe Nu::Agent::EmbeddingStore do
 
   describe "#embedding_stats" do
     before do
-      man_records = [
-        { source: "man:ls", content: "list", embedding: Array.new(1536, 0.1) },
-        { source: "man:cd", content: "change", embedding: Array.new(1536, 0.2) }
-      ]
-      doc_records = [
-        { source: "doc:readme", content: "readme", embedding: Array.new(1536, 0.3) }
-      ]
-      embedding_store.store_embeddings(kind: "man_pages", records: man_records)
-      embedding_store.store_embeddings(kind: "docs", records: doc_records)
+      embedding_store.upsert_conversation_embedding(conversation_id: 1, content: "conv 1", embedding: Array.new(1536, 0.1))
+      embedding_store.upsert_conversation_embedding(conversation_id: 2, content: "conv 2", embedding: Array.new(1536, 0.2))
+      embedding_store.upsert_exchange_embedding(exchange_id: 10, content: "exch 10", embedding: Array.new(1536, 0.3))
     end
 
     it "returns stats for all kinds when no kind specified" do
       stats = embedding_store.embedding_stats
       expect(stats.length).to eq(2)
 
-      man_stat = stats.find { |s| s["kind"] == "man_pages" }
-      doc_stat = stats.find { |s| s["kind"] == "docs" }
+      conv_stat = stats.find { |s| s["kind"] == "conversation_summary" }
+      exch_stat = stats.find { |s| s["kind"] == "exchange_summary" }
 
-      expect(man_stat["count"]).to eq(2)
-      expect(doc_stat["count"]).to eq(1)
+      expect(conv_stat["count"]).to eq(2)
+      expect(exch_stat["count"]).to eq(1)
     end
 
     it "returns stats for specific kind when specified" do
-      stats = embedding_store.embedding_stats(kind: "man_pages")
+      stats = embedding_store.embedding_stats(kind: "conversation_summary")
       expect(stats.length).to eq(1)
-      expect(stats.first["kind"]).to eq("man_pages")
+      expect(stats.first["kind"]).to eq("conversation_summary")
       expect(stats.first["count"]).to eq(2)
     end
   end
 
   describe "#clear_embeddings" do
     before do
-      man_records = [
-        { source: "man:ls", content: "list", embedding: Array.new(1536, 0.1) }
-      ]
-      doc_records = [
-        { source: "doc:readme", content: "readme", embedding: Array.new(1536, 0.3) }
-      ]
-      embedding_store.store_embeddings(kind: "man_pages", records: man_records)
-      embedding_store.store_embeddings(kind: "docs", records: doc_records)
+      embedding_store.upsert_conversation_embedding(conversation_id: 1, content: "conv 1", embedding: Array.new(1536, 0.1))
+      embedding_store.upsert_exchange_embedding(exchange_id: 10, content: "exch 10", embedding: Array.new(1536, 0.3))
     end
 
     it "clears all embeddings for a specific kind" do
-      embedding_store.clear_embeddings(kind: "man_pages")
+      embedding_store.clear_embeddings(kind: "conversation_summary")
 
       stats = embedding_store.embedding_stats
       expect(stats.length).to eq(1)
-      expect(stats.first["kind"]).to eq("docs")
+      expect(stats.first["kind"]).to eq("exchange_summary")
     end
 
     it "does not affect other kinds" do
-      embedding_store.clear_embeddings(kind: "man_pages")
+      embedding_store.clear_embeddings(kind: "conversation_summary")
 
-      doc_sources = embedding_store.get_indexed_sources(kind: "docs")
-      expect(doc_sources).to eq(["doc:readme"])
+      exchange_sources = embedding_store.get_indexed_sources(kind: "exchange_summary")
+      expect(exchange_sources).to eq([10])
     end
   end
 
@@ -154,67 +165,73 @@ RSpec.describe Nu::Agent::EmbeddingStore do
 
     before do
       # Store some test embeddings with different similarity to query
-      embedding_store.store_embeddings(
-        kind: "test",
-        records: [
-          { source: "doc1", content: "very similar", embedding: Array.new(1536) { |i| i < 100 ? 0.51 : 0.0 } },
-          { source: "doc2", content: "somewhat similar", embedding: Array.new(1536) { |i| i < 50 ? 0.5 : 0.0 } },
-          { source: "doc3", content: "not similar", embedding: Array.new(1536) { |i| i > 1000 ? 0.5 : 0.0 } }
-        ]
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "very similar",
+        embedding: Array.new(1536) { |i| i < 100 ? 0.51 : 0.0 }
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 2,
+        content: "somewhat similar",
+        embedding: Array.new(1536) { |i| i < 50 ? 0.5 : 0.0 }
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 3,
+        content: "not similar",
+        embedding: Array.new(1536) { |i| i > 1000 ? 0.5 : 0.0 }
       )
     end
 
     it "returns results sorted by similarity (most similar first)" do
       results = embedding_store.search_similar(
-        kind: "test",
+        kind: "conversation_summary",
         query_embedding: query_embedding,
         limit: 3
       )
 
       expect(results.length).to eq(3)
-      expect(results[0][:source]).to eq("doc1") # Most similar
-      expect(results[1][:source]).to eq("doc2") # Somewhat similar
-      expect(results[2][:source]).to eq("doc3") # Least similar
+      expect(results[0][:source_id]).to eq(1) # Most similar
+      expect(results[1][:source_id]).to eq(2) # Somewhat similar
+      expect(results[2][:source_id]).to eq(3) # Least similar
     end
 
     it "respects the limit parameter" do
       results = embedding_store.search_similar(
-        kind: "test",
+        kind: "conversation_summary",
         query_embedding: query_embedding,
         limit: 2
       )
 
       expect(results.length).to eq(2)
-      expect(results[0][:source]).to eq("doc1")
-      expect(results[1][:source]).to eq("doc2")
+      expect(results[0][:source_id]).to eq(1)
+      expect(results[1][:source_id]).to eq(2)
     end
 
     it "filters by kind" do
-      embedding_store.store_embeddings(
-        kind: "other",
-        records: [
-          { source: "other_doc", content: "other content", embedding: query_embedding }
-        ]
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 99,
+        content: "other content",
+        embedding: query_embedding
       )
 
       results = embedding_store.search_similar(
-        kind: "test",
+        kind: "conversation_summary",
         query_embedding: query_embedding,
         limit: 10
       )
 
       expect(results.length).to eq(3)
-      expect(results.map { |r| r[:source] }).not_to include("other_doc")
+      expect(results.map { |r| r[:source_id] }).not_to include(99)
     end
 
     it "returns content and similarity score" do
       results = embedding_store.search_similar(
-        kind: "test",
+        kind: "conversation_summary",
         query_embedding: query_embedding,
         limit: 1
       )
 
-      expect(results[0]).to have_key(:source)
+      expect(results[0]).to have_key(:source_id)
       expect(results[0]).to have_key(:content)
       expect(results[0]).to have_key(:similarity)
       expect(results[0][:similarity]).to be_a(Float)
@@ -233,7 +250,7 @@ RSpec.describe Nu::Agent::EmbeddingStore do
 
     it "supports min_similarity threshold" do
       results = embedding_store.search_similar(
-        kind: "test",
+        kind: "conversation_summary",
         query_embedding: query_embedding,
         limit: 10,
         min_similarity: 0.8

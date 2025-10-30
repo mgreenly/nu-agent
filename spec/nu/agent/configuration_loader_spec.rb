@@ -9,6 +9,7 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
   let(:orchestrator) { double("orchestrator", model: "claude-sonnet-4-5") }
   let(:spellchecker) { double("spellchecker", model: "claude-haiku-4-5") }
   let(:summarizer) { double("summarizer", model: "claude-haiku-4-5") }
+  let(:embedding_client) { double("embedding_client") }
 
   before do
     # Mock history.get_config calls for model configurations
@@ -22,12 +23,16 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
     allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
     allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
     allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
+    allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
 
     # Mock ClientFactory - return different instances for each call
     allow(Nu::Agent::ClientFactory).to receive(:create)
       .with("claude-sonnet-4-5").and_return(orchestrator)
     allow(Nu::Agent::ClientFactory).to receive(:create)
       .with("claude-haiku-4-5").and_return(spellchecker, summarizer)
+
+    # Mock OpenAI embeddings client
+    allow(Nu::Agent::Clients::OpenAIEmbeddings).to receive(:new).and_return(embedding_client)
   end
 
   describe ".load" do
@@ -43,6 +48,8 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       expect(config.redact).to be(true)
       expect(config.summarizer_enabled).to be(true)
       expect(config.spell_check_enabled).to be(true)
+      expect(config.embedding_enabled).to be(true)
+      expect(config.embedding_client).to eq(embedding_client)
     end
 
     context "when reset_model option is provided" do

@@ -14,6 +14,8 @@ module Nu
         :redact,
         :summarizer_enabled,
         :spell_check_enabled,
+        :embedding_enabled,
+        :embedding_client,
         keyword_init: true
       )
 
@@ -46,7 +48,8 @@ module Nu
         {
           orchestrator: ClientFactory.create(models[:orchestrator]),
           spellchecker: ClientFactory.create(models[:spellchecker]),
-          summarizer: ClientFactory.create(models[:summarizer])
+          summarizer: ClientFactory.create(models[:summarizer]),
+          embedding_client: Clients::OpenAIEmbeddings.new
         }
       end
 
@@ -59,7 +62,8 @@ module Nu
           verbosity: history.get_config("verbosity", default: "0").to_i,
           redact: history.get_config("redaction", default: "true") == "true",
           summarizer_enabled: history.get_config("summarizer_enabled", default: "true") == "true",
-          spell_check_enabled: history.get_config("spell_check_enabled", default: "true") == "true"
+          spell_check_enabled: history.get_config("spell_check_enabled", default: "true") == "true",
+          embedding_enabled: history.get_config("embedding_enabled", default: "true") == "true"
         }
       end
 
@@ -68,6 +72,7 @@ module Nu
           orchestrator: clients[:orchestrator],
           spellchecker: clients[:spellchecker],
           summarizer: clients[:summarizer],
+          embedding_client: clients[:embedding_client],
           **settings
         )
       end

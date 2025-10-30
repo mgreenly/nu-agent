@@ -226,6 +226,24 @@ module Nu
         @embedding_store.clear_embeddings(kind: kind)
       end
 
+      # Upsert conversation embedding
+      def upsert_conversation_embedding(conversation_id:, content:, embedding:)
+        @embedding_store.upsert_conversation_embedding(
+          conversation_id: conversation_id,
+          content: content,
+          embedding: embedding
+        )
+      end
+
+      # Upsert exchange embedding
+      def upsert_exchange_embedding(exchange_id:, content:, embedding:)
+        @embedding_store.upsert_exchange_embedding(
+          exchange_id: exchange_id,
+          content: content,
+          embedding: embedding
+        )
+      end
+
       def increment_workers
         @worker_counter.increment_workers
       end

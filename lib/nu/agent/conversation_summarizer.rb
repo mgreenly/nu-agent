@@ -3,26 +3,15 @@
 module Nu
   module Agent
     # Manages background conversation summarization worker thread
-    class ConversationSummarizer
+    class ConversationSummarizer < PausableTask
       def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:)
+        # Initialize PausableTask with shutdown flag from application
+        super(status_info: status_info, shutdown_flag: application)
+
         @history = history
         @summarizer = summarizer
         @application = application
-        @status = status_info[:status]
-        @status_mutex = status_info[:mutex]
         @current_conversation_id = current_conversation_id
-      end
-
-      # Start the background worker thread
-      def start_worker
-        Thread.new do
-          Thread.current.report_on_exception = false
-          summarize_conversations
-        rescue StandardError
-          @status_mutex.synchronize do
-            @status["running"] = false
-          end
-        end
       end
 
       # Main summarization loop - processes unsummarized conversations
@@ -52,6 +41,18 @@ module Nu
           @status["running"] = false
           @status["current_conversation_id"] = nil
         end
+      end
+
+      protected
+
+      # Called by PausableTask in the worker loop
+      def do_work
+        summarize_conversations
+      end
+
+      # Override shutdown check to use application's shutdown flag
+      def shutdown_requested?
+        @application.instance_variable_get(:@shutdown)
       end
 
       private
@@ -104,10 +105,6 @@ module Nu
 
           Summary:
         PROMPT
-      end
-
-      def shutdown_requested?
-        @application.instance_variable_get(:@shutdown)
       end
 
       def handle_summarization_response(conv_id, response)

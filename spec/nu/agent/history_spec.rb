@@ -1132,24 +1132,36 @@ RSpec.describe Nu::Agent::History do
     end
 
     it "delegates embedding methods" do
-      # store_embeddings
-      records = [
-        { source: "doc1", content: "test", embedding: Array.new(1536, 0.1) }
-      ]
-      history.store_embeddings(kind: "test", records: records)
+      # upsert_conversation_embedding
+      history.upsert_conversation_embedding(
+        conversation_id: 999,
+        content: "test conversation summary",
+        embedding: Array.new(1536, 0.1)
+      )
 
-      # get_indexed_sources
-      sources = history.get_indexed_sources(kind: "test")
-      expect(sources).to include("doc1")
+      # get_indexed_sources for conversations
+      sources = history.get_indexed_sources(kind: "conversation_summary")
+      expect(sources).to include(999)
+
+      # upsert_exchange_embedding
+      history.upsert_exchange_embedding(
+        exchange_id: 888,
+        content: "test exchange summary",
+        embedding: Array.new(1536, 0.2)
+      )
+
+      # get_indexed_sources for exchanges
+      exchange_sources = history.get_indexed_sources(kind: "exchange_summary")
+      expect(exchange_sources).to include(888)
 
       # embedding_stats
-      stats = history.embedding_stats(kind: "test")
+      stats = history.embedding_stats(kind: "conversation_summary")
       expect(stats).to be_an(Array)
       expect(stats.length).to be >= 1
 
       # clear_embeddings
-      history.clear_embeddings(kind: "test")
-      sources_after = history.get_indexed_sources(kind: "test")
+      history.clear_embeddings(kind: "conversation_summary")
+      sources_after = history.get_indexed_sources(kind: "conversation_summary")
       expect(sources_after).to be_empty
     end
   end

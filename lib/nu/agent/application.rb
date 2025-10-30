@@ -4,8 +4,8 @@ module Nu
   module Agent
     class Application
       attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :verbosity, :redact,
-                    :summarizer_enabled, :spell_check_enabled, :conversation_id, :session_start_time
-      attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager
+                    :summarizer_enabled, :spell_check_enabled, :embedding_enabled, :conversation_id, :session_start_time
+      attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager, :embedding_client
 
       def active_threads
         @worker_manager&.active_threads || []
@@ -13,6 +13,14 @@ module Nu
 
       def summarizer_status
         @worker_manager&.summarizer_status
+      end
+
+      def exchange_summarizer_status
+        @worker_manager&.exchange_summarizer_status
+      end
+
+      def embedding_status
+        @worker_manager&.embedding_status
       end
 
       def initialize(options:)
@@ -97,6 +105,8 @@ module Nu
         @redact = config.redact
         @summarizer_enabled = config.summarizer_enabled
         @spell_check_enabled = config.spell_check_enabled
+        @embedding_enabled = config.embedding_enabled
+        @embedding_client = config.embedding_client
       end
 
       def initialize_console_system
@@ -120,7 +130,8 @@ module Nu
           history: @history,
           summarizer: @summarizer,
           conversation_id: @conversation_id,
-          status_mutex: @status_mutex
+          status_mutex: @status_mutex,
+          embedding_client: @embedding_client
         )
       end
 
@@ -131,6 +142,7 @@ module Nu
 
       def start_background_workers
         @worker_manager.start_summarization_worker if @summarizer_enabled
+        @worker_manager.start_embedding_worker if @embedding_enabled && @embedding_client
       end
 
       def register_commands
