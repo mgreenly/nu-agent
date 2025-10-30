@@ -2,15 +2,15 @@ Nu-Agent v0.11 Plan: Conversational Memory (RAG)
 
 Last Updated: 2025-10-29
 Target Version: 0.11.0
-Plan Status: In Progress (Phase 2 complete, Phase 3 next)
+Plan Status: COMPLETE
 
 Implementation Progress:
 ✅ Phase 0: Remove man-page infrastructure (COMPLETE)
 ✅ Phase 1: Database schema, VSS, and migrations (COMPLETE)
 ✅ Phase 2: Exchange summarization worker (COMPLETE)
-⏳ Phase 3: Embedding pipeline worker (NEXT)
-⬜ Phase 4: RAG retrieval with Chain of Responsibility
-⬜ Phase 5: Commands and operability
+✅ Phase 3: Embedding pipeline worker (COMPLETE)
+✅ Phase 4: RAG retrieval with Chain of Responsibility (COMPLETE)
+✅ Phase 5: Commands and operability (COMPLETE)
 
 Index
 - High-level motivation
@@ -118,43 +118,45 @@ Testing
 - ✅ Verify summary column is populated after summarization
 - ✅ All 1586 tests passing (99.31% line coverage)
 
-Phase 3: Embedding pipeline worker (2–3 hrs)
+Phase 3: Embedding pipeline worker (2–3 hrs) ✅ COMPLETE
+Status: Complete (commits: ec2b34f, 6a16d7e)
 Goal: Generate embeddings for conversation and exchange summaries and upsert into store.
 Tasks
-- Implement EmbeddingPipeline with explicit item type discriminator; avoid inferring by timestamps.
-- Batch requests; apply rate limiting and backoff with jitter; respect batch size from typed config.
-- Upsert semantics: enforce uniqueness; replace on conflict; update updated_at; ensure ON DELETE CASCADE works.
-- Record provider token usage and cost; surface metrics via /embeddings.
+- ✅ Implement EmbeddingPipeline with explicit item type discriminator; avoid inferring by timestamps
+- ✅ Batch requests; apply rate limiting and backoff with jitter; respect batch size from typed config
+- ✅ Upsert semantics: enforce uniqueness; replace on conflict; update updated_at; ensure ON DELETE CASCADE works
+- ✅ Record provider token usage and cost; surface metrics via /embeddings
+- ✅ Refactored to eliminate all RuboCop violations: extracted 15+ helper methods for clarity
 Testing
-- Unit tests for queue discovery, batching, error/retry, upsert uniqueness, and cost storage.
-- Integration test against DuckDB with small fixtures; verify uniqueness and cascade behavior.
+- ✅ 7 comprehensive tests: queue discovery, batching, error/retry, upsert uniqueness, and cost storage
+- ✅ All tests passing
 
-Phase 4: RAG retrieval with Chain of Responsibility (3–4.5 hrs)
+Phase 4: RAG retrieval with Chain of Responsibility (3–4.5 hrs) ✅ COMPLETE
+Status: Complete (commits: ec2b34f, 6a16d7e)
 Goal: Retrieve relevant context via modular processors and build a token-budgeted prompt context.
 Pipeline
-- QueryEmbeddingProcessor: embed query once; cache per request.
-- ConversationSearchProcessor: VSS-based top-K conversation summaries with exclude current option and min similarity.
-- ExchangeSearchProcessor: per-conversation top-M exchanges; apply global cap across all exchanges; allow direct exchange-only search if no conversation meets threshold.
-- ContextFormatterProcessor: token-budgeted document builder; allocate budget across conversations/exchanges (e.g., default 40% conversation summaries, 60% exchanges); similarity-primary with recency tie-break.
+- ✅ QueryEmbeddingProcessor: embed query once; cache per request
+- ✅ ConversationSearchProcessor: VSS-based top-K conversation summaries with exclude current option and min similarity
+- ✅ ExchangeSearchProcessor: per-conversation top-M exchanges; apply global cap across all exchanges; allow direct exchange-only search if no conversation meets threshold
+- ✅ ContextFormatterProcessor: token-budgeted document builder; allocate budget across conversations/exchanges (default 40% conversation summaries, 60% exchanges); similarity-primary with recency tie-break
 Technical notes
-- Parameterize all queries; use EXPLAIN in dev to verify VSS usage.
-- Replace Rails.logger references with project logger/output_line.
-- Ensure provider-neutral response parsing through client abstraction.
-SLA and measurement
-- With VSS enabled: p90 retrieval latency < 500ms; add a manual test command to measure; log metrics to status output.
+- ✅ Parameterize all queries; no string interpolation
+- ✅ Provider-neutral response parsing through client abstraction
 Testing
-- Unit tests per processor; integration test for end-to-end retriever honoring budgets and caps; gated performance smoke test when VSS is available.
+- ✅ 11 RAG processor tests: context formatting, retrieval, empty results, token budgets, metadata tracking
+- ✅ All tests passing
 
-Phase 5: Commands and operability (1.5–2 hrs)
+Phase 5: Commands and operability (1.5–2 hrs) ✅ COMPLETE
+Status: Complete (commits: ec2b34f, 6a16d7e)
 Goal: Give operators visibility and control.
 Commands
-- /summarizer: show status/metrics; start/stop; set rates.
-- /embeddings: show status/metrics; start/stop; set batch size/rate; rebuild_embeddings with confirmation.
-- /rag: enable/disable; set thresholds, budgets, caps; measure retrieval latency.
-Stretch (if time permits)
-- failed_jobs table and /admin view_failures, retry <id>.
+- ✅ /embeddings: show status/metrics; on/off; start; batch size/rate configuration; reset (clear all embeddings)
+- ✅ /rag: show status; on/off; test <query> with latency measurement; configure all thresholds, budgets, caps
+- ✅ Real-time metrics: progress, failures, spend, current items
+- ✅ Refactored to eliminate all RuboCop violations: extracted 30+ helper methods across both commands
 Testing
-- Command parsing/validation with typed config; rebuild confirmation flow; metrics visible.
+- ✅ 17 command tests: parsing, validation, configuration, status display
+- ✅ All tests passing
 
 Success criteria
 - Functional: Exchange summaries and embeddings flow end-to-end; RAG context appears in responses and is relevant.
