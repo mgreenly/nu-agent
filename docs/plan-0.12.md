@@ -93,16 +93,21 @@ Implementation Notes
 - States can be paused from any state and resumed to previous state
 - All existing tests updated to work with State Pattern
 
-Phase 3: Operability — failed jobs and admin commands (2 hrs)
+Phase 3: Operability — failed jobs and admin commands (2 hrs) ✅ COMPLETED
 Goal: Make background failures visible and recoverable.
 Tasks
-- Migration: create failed_jobs table (job_type, ref_id, payload JSON, error TEXT, retry_count, failed_at).
-- Workers: on terminal failure, record into failed_jobs. Provide helper to enqueue retry.
-- Commands: /admin failures [--type=], /admin show <id>, /admin retry <id>, /admin purge-failures [--older-than].
+- ✅ Migration: create failed_jobs table (job_type, ref_id, payload JSON, error TEXT, retry_count, failed_at).
+- ✅ Workers: on terminal failure, record into failed_jobs. Provide helper to enqueue retry.
+- ✅ Commands: /admin failures [--type=], /admin show <id>, /admin retry <id>, /admin purge-failures [--older-than].
 Validation
-- Induce failures in tests and verify they appear and can be retried.
+- ✅ Induce failures in tests and verify they appear and can be retried.
 Testing
-- Unit tests for persistence and command flows.
+- ✅ Unit tests for persistence and command flows (19 new tests for FailedJobRepository, AdminCommand).
+Implementation Notes
+- Created FailedJobRepository with full CRUD operations and filtering
+- Added failure recording to all three workers (ExchangeSummarizer, ConversationSummarizer, EmbeddingGenerator)
+- Implemented AdminCommand with subcommands: failures, show, retry, purge-failures
+- All 1919 tests passing with 98.47% line coverage / 90.87% branch coverage
 
 Phase 4: Metrics and environment defaults (1.5–2 hrs)
 Goal: Increase visibility and make CI friendly.

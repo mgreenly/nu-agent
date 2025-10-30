@@ -194,6 +194,7 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
       conv = { "id" => 2 }
       allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
       allow(history).to receive(:messages).and_raise(StandardError.new("Database error"))
+      allow(history).to receive(:create_failed_job)
 
       summarizer_worker.summarize_conversations
 

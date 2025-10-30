@@ -262,6 +262,7 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
       exchange = { "id" => 100, "conversation_id" => 2 }
       allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
       allow(history).to receive(:messages).and_raise(StandardError.new("Database error"))
+      allow(history).to receive(:create_failed_job)
 
       summarizer_worker.summarize_exchanges
 

@@ -220,7 +220,26 @@ module Nu
 
         def handle_item_error(item, error)
           debug_output("Failed to process #{item[:type]}:#{item[:id]} - #{error.class}: #{error.message}", level: 0)
+          record_failure(item, error)
           increment_failed_count
+        end
+
+        def record_failure(item, error)
+          payload = {
+            item_type: item[:type],
+            item_id: item[:id],
+            worker: "embedding_generator"
+          }
+
+          @history.create_failed_job(
+            job_type: "embedding_generation",
+            ref_id: item[:id],
+            payload: payload.to_json,
+            error: "#{error.class}: #{error.message}"
+          )
+        rescue StandardError => record_error
+          # Don't let failure recording prevent the worker from continuing
+          debug_output("Failed to record failure: #{record_error.message}", level: 0)
         end
 
         def generate_embeddings_with_retry(texts, attempt: 1)

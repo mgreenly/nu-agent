@@ -31,6 +31,7 @@ module Nu
         @message_repo = MessageRepository.new(connection)
         @conversation_repo = ConversationRepository.new(connection)
         @exchange_repo = ExchangeRepository.new(connection)
+        @failed_job_repo = FailedJobRepository.new(connection)
         @exchange_migrator = ExchangeMigrator.new(connection, @conversation_repo, @message_repo, @exchange_repo)
 
         # Setup schema using main thread's connection
@@ -388,6 +389,35 @@ module Nu
           @connections.clear
         end
         @db.close
+      end
+
+      # Failed job operations
+      def create_failed_job(job_type:, error:, ref_id: nil, payload: nil)
+        @failed_job_repo.create_failed_job(job_type: job_type, error: error, ref_id: ref_id, payload: payload)
+      end
+
+      def get_failed_job(id)
+        @failed_job_repo.get_failed_job(id)
+      end
+
+      def list_failed_jobs(job_type: nil, limit: 100)
+        @failed_job_repo.list_failed_jobs(job_type: job_type, limit: limit)
+      end
+
+      def increment_failed_job_retry_count(id)
+        @failed_job_repo.increment_retry_count(id)
+      end
+
+      def delete_failed_job(id)
+        @failed_job_repo.delete_failed_job(id)
+      end
+
+      def delete_failed_jobs_older_than(days:)
+        @failed_job_repo.delete_failed_jobs_older_than(days: days)
+      end
+
+      def get_failed_jobs_count(job_type: nil)
+        @failed_job_repo.get_failed_jobs_count(job_type: job_type)
       end
 
       private

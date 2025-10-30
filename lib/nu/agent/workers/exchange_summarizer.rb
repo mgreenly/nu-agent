@@ -105,6 +105,7 @@ module Nu
           handle_summarization_response(exchange_id, response)
         rescue StandardError => e
           debug_output("Error processing exchange #{exchange_id}: #{e.message}", level: 0)
+          record_failure(exchange_id, e)
           increment_failed_count
         end
 
@@ -169,6 +170,23 @@ module Nu
 
         def increment_failed_count
           @status_mutex.synchronize { @status["failed"] += 1 }
+        end
+
+        def record_failure(exchange_id, error)
+          payload = {
+            exchange_id: exchange_id,
+            worker: "exchange_summarizer"
+          }
+
+          @history.create_failed_job(
+            job_type: "exchange_summarization",
+            ref_id: exchange_id,
+            payload: payload.to_json,
+            error: "#{error.class}: #{error.message}"
+          )
+        rescue StandardError => record_error
+          # Don't let failure recording prevent the worker from continuing
+          debug_output("Failed to record failure: #{record_error.message}", level: 0)
         end
 
         def make_llm_call_with_shutdown_check(prompt)

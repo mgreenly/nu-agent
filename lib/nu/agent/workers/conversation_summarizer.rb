@@ -98,6 +98,7 @@ module Nu
           handle_summarization_response(conv_id, response)
         rescue StandardError => e
           debug_output("Error processing conversation #{conv_id}: #{e.message}", level: 0)
+          record_failure(conv_id, e)
           increment_failed_count
         end
 
@@ -162,6 +163,23 @@ module Nu
 
         def increment_failed_count
           @status_mutex.synchronize { @status["failed"] += 1 }
+        end
+
+        def record_failure(conversation_id, error)
+          payload = {
+            conversation_id: conversation_id,
+            worker: "conversation_summarizer"
+          }
+
+          @history.create_failed_job(
+            job_type: "conversation_summarization",
+            ref_id: conversation_id,
+            payload: payload.to_json,
+            error: "#{error.class}: #{error.message}"
+          )
+        rescue StandardError => record_error
+          # Don't let failure recording prevent the worker from continuing
+          debug_output("Failed to record failure: #{record_error.message}", level: 0)
         end
 
         def make_llm_call_with_shutdown_check(prompt)
