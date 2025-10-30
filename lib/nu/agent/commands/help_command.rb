@@ -31,6 +31,13 @@ module Nu
               /model spellchecker <name>     - Switch spellchecker model
               /model summarizer <name>       - Switch summarizer model
               /models                        - List available models
+              /persona [<name>|<command>]    - Manage agent personas (use /persona for details)
+                                               - No argument: List all personas with active marked
+                                               - <name>: Switch to named persona (applies to next conversation)
+                                               - create <name>: Create new persona (opens editor)
+                                               - edit <name>: Edit existing persona (opens editor)
+                                               - delete <name>: Delete persona
+                                               - show <name>: Display persona's system prompt
               /rag <query>                   - Search conversation history using RAG
               /redaction <on|off>            - Enable/disable redaction of tool results in context
               /reset                         - Start a new conversation
