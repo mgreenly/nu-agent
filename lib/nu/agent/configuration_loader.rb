@@ -16,6 +16,8 @@ module Nu
         :spell_check_enabled,
         :embedding_enabled,
         :embedding_client,
+        :conversation_summarizer_model,
+        :exchange_summarizer_model,
         keyword_init: true
       )
 
@@ -23,6 +25,8 @@ module Nu
         models = load_or_reset_models(history, options)
         clients = create_clients(models)
         settings = load_settings(history, options)
+        settings[:conversation_summarizer_model] = models[:conversation_summarizer]
+        settings[:exchange_summarizer_model] = models[:exchange_summarizer]
 
         build_configuration(clients, settings)
       end
@@ -31,16 +35,36 @@ module Nu
         orchestrator = history.get_config("model_orchestrator")
         spellchecker = history.get_config("model_spellchecker")
         summarizer = history.get_config("model_summarizer")
+        conversation_summarizer = history.get_config("conversation_summarizer_model")
+        exchange_summarizer = history.get_config("exchange_summarizer_model")
 
         if options.reset_model
           history.set_config("model_orchestrator", options.reset_model)
           history.set_config("model_spellchecker", options.reset_model)
           history.set_config("model_summarizer", options.reset_model)
-          { orchestrator: options.reset_model, spellchecker: options.reset_model, summarizer: options.reset_model }
+          history.set_config("conversation_summarizer_model", options.reset_model)
+          history.set_config("exchange_summarizer_model", options.reset_model)
+          {
+            orchestrator: options.reset_model,
+            spellchecker: options.reset_model,
+            summarizer: options.reset_model,
+            conversation_summarizer: options.reset_model,
+            exchange_summarizer: options.reset_model
+          }
         elsif orchestrator.nil? || spellchecker.nil? || summarizer.nil?
           raise Error, "Models not configured. Run with --reset-models <model_name> to initialize."
         else
-          { orchestrator: orchestrator, spellchecker: spellchecker, summarizer: summarizer }
+          # Fall back to general summarizer model if worker-specific models not configured
+          conversation_summarizer ||= summarizer
+          exchange_summarizer ||= summarizer
+
+          {
+            orchestrator: orchestrator,
+            spellchecker: spellchecker,
+            summarizer: summarizer,
+            conversation_summarizer: conversation_summarizer,
+            exchange_summarizer: exchange_summarizer
+          }
         end
       end
 
@@ -73,7 +97,9 @@ module Nu
           spellchecker: clients[:spellchecker],
           summarizer: clients[:summarizer],
           embedding_client: clients[:embedding_client],
-          **settings
+          conversation_summarizer_model: settings[:conversation_summarizer_model],
+          exchange_summarizer_model: settings[:exchange_summarizer_model],
+          **settings.except(:conversation_summarizer_model, :exchange_summarizer_model)
         )
       end
     end
