@@ -55,6 +55,35 @@ module Nu
         # Ignore if pipe closed
       end
 
+      # Start progress bar mode - clears line and prepares for progress updates
+      def start_progress
+        @mode = :progress
+        @mutex.synchronize do
+          @stdout.write("\e[2K\r") # Clear line and return to start
+          @stdout.flush
+        end
+      end
+
+      # Update progress bar (in-place update with carriage return)
+      # Text should be a complete line (e.g., "[===>  ] 45%")
+      def update_progress(text)
+        @mutex.synchronize do
+          @stdout.write("\r#{text}")
+          @stdout.flush
+        end
+      rescue StandardError
+        # Ignore if output fails
+      end
+
+      # End progress bar mode - moves to next line and returns to normal
+      def end_progress
+        @mode = :input
+        @mutex.synchronize do
+          @stdout.write("\r\n") # Move to next line, keeping progress visible
+          @stdout.flush
+        end
+      end
+
       # Spinner mode - show animated spinner
       def show_spinner(message)
         @mode = :spinner

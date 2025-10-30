@@ -118,14 +118,12 @@ module Nu
         end
 
         def load_worker_verbosity(worker_name)
-          config_key = case worker_name
-                       when "conversation-summarizer"
-                         "conversation_summarizer_verbosity"
-                       when "exchange-summarizer"
-                         "exchange_summarizer_verbosity"
-                       when "embeddings"
-                         "embeddings_verbosity"
-                       end
+          config_keys = {
+            "conversation-summarizer" => "conversation_summarizer_verbosity",
+            "exchange-summarizer" => "exchange_summarizer_verbosity",
+            "embeddings" => "embeddings_verbosity"
+          }
+          config_key = config_keys[worker_name]
           app.history.get_int(config_key, default: 0)
         end
       end

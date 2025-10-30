@@ -91,6 +91,45 @@ RSpec.describe Nu::Agent::ConsoleIO do
     end
   end
 
+  describe "progress bar methods" do
+    describe "#start_progress" do
+      it "sets mode to :progress" do
+        console.start_progress
+        expect(console.instance_variable_get(:@mode)).to eq(:progress)
+      end
+
+      it "clears the line and writes to stdout" do
+        console.start_progress
+        expect(stdout.string).to include("\e[2K\r")
+      end
+    end
+
+    describe "#update_progress" do
+      it "writes progress text with carriage return to stdout" do
+        console.update_progress("[===>  ] 45%")
+        expect(stdout.string).to eq("\r[===>  ] 45%")
+      end
+
+      it "handles errors gracefully" do
+        allow(stdout).to receive(:write).and_raise(StandardError)
+        expect { console.update_progress("test") }.not_to raise_error
+      end
+    end
+
+    describe "#end_progress" do
+      it "sets mode back to :input" do
+        console.instance_variable_set(:@mode, :progress)
+        console.end_progress
+        expect(console.instance_variable_get(:@mode)).to eq(:input)
+      end
+
+      it "moves to next line, keeping progress visible" do
+        console.end_progress
+        expect(stdout.string).to eq("\r\n")
+      end
+    end
+  end
+
   describe "#drain_output_queue" do
     before do
       allow(pipe_write).to receive(:write)
