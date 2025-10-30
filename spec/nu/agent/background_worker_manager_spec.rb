@@ -43,15 +43,15 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       mock_conv_thread = instance_double(Thread)
       mock_exch_thread = instance_double(Thread)
       mock_conversation_worker = instance_double(
-        Nu::Agent::ConversationSummarizer,
+        Nu::Agent::Workers::ConversationSummarizer,
         start_worker: mock_conv_thread
       )
       mock_exchange_worker = instance_double(
-        Nu::Agent::ExchangeSummarizer,
+        Nu::Agent::Workers::ExchangeSummarizer,
         start_worker: mock_exch_thread
       )
 
-      expect(Nu::Agent::ConversationSummarizer).to receive(:new).with(
+      expect(Nu::Agent::Workers::ConversationSummarizer).to receive(:new).with(
         history: history,
         summarizer: summarizer,
         application: application,
@@ -59,7 +59,7 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
         current_conversation_id: conversation_id
       ).and_return(mock_conversation_worker)
 
-      expect(Nu::Agent::ExchangeSummarizer).to receive(:new).with(
+      expect(Nu::Agent::Workers::ExchangeSummarizer).to receive(:new).with(
         history: history,
         summarizer: summarizer,
         application: application,
@@ -79,16 +79,16 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       mock_conv_thread = instance_double(Thread)
       mock_exch_thread = instance_double(Thread)
       mock_conversation_worker = instance_double(
-        Nu::Agent::ConversationSummarizer,
+        Nu::Agent::Workers::ConversationSummarizer,
         start_worker: mock_conv_thread
       )
       mock_exchange_worker = instance_double(
-        Nu::Agent::ExchangeSummarizer,
+        Nu::Agent::Workers::ExchangeSummarizer,
         start_worker: mock_exch_thread
       )
 
-      allow(Nu::Agent::ConversationSummarizer).to receive(:new).and_return(mock_conversation_worker)
-      allow(Nu::Agent::ExchangeSummarizer).to receive(:new).and_return(mock_exchange_worker)
+      allow(Nu::Agent::Workers::ConversationSummarizer).to receive(:new).and_return(mock_conversation_worker)
+      allow(Nu::Agent::Workers::ExchangeSummarizer).to receive(:new).and_return(mock_exchange_worker)
 
       # Start multiple workers concurrently
       threads = 3.times.map do

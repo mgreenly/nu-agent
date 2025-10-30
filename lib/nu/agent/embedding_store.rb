@@ -25,7 +25,8 @@ module Nu
       # Store embeddings in the database (DEPRECATED - use upsert_conversation_embedding or upsert_exchange_embedding)
       # This method is kept for backward compatibility but will raise an error
       def store_embeddings(kind:, records:)
-        raise NotImplementedError, "store_embeddings is deprecated. Use upsert_conversation_embedding or upsert_exchange_embedding instead."
+        raise NotImplementedError,
+              "store_embeddings is deprecated. Use upsert_conversation_embedding or upsert_exchange_embedding instead."
       end
 
       # Get embedding statistics

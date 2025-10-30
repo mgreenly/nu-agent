@@ -24,7 +24,7 @@ module Nu
       def start_summarization_worker
         @operation_mutex.synchronize do
           # Start conversation summarizer
-          conversation_summarizer = ConversationSummarizer.new(
+          conversation_summarizer = Workers::ConversationSummarizer.new(
             history: @history,
             summarizer: @summarizer,
             application: @application,
@@ -37,7 +37,7 @@ module Nu
           @active_threads << thread
 
           # Start exchange summarizer
-          exchange_summarizer = ExchangeSummarizer.new(
+          exchange_summarizer = Workers::ExchangeSummarizer.new(
             history: @history,
             summarizer: @summarizer,
             application: @application,
@@ -55,7 +55,7 @@ module Nu
         return unless @embedding_client
 
         @operation_mutex.synchronize do
-          embedding_worker = EmbeddingPipeline.new(
+          embedding_worker = Workers::EmbeddingGenerator.new(
             history: @history,
             embedding_client: @embedding_client,
             application: @application,

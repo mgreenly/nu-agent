@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe Nu::Agent::EmbeddingPipeline do
+RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
   subject(:pipeline) do
     described_class.new(
       history: history,

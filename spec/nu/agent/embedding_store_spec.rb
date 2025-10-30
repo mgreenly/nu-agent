@@ -114,8 +114,10 @@ RSpec.describe Nu::Agent::EmbeddingStore do
 
   describe "#embedding_stats" do
     before do
-      embedding_store.upsert_conversation_embedding(conversation_id: 1, content: "conv 1", embedding: Array.new(1536, 0.1))
-      embedding_store.upsert_conversation_embedding(conversation_id: 2, content: "conv 2", embedding: Array.new(1536, 0.2))
+      embedding_store.upsert_conversation_embedding(conversation_id: 1, content: "conv 1",
+                                                    embedding: Array.new(1536, 0.1))
+      embedding_store.upsert_conversation_embedding(conversation_id: 2, content: "conv 2",
+                                                    embedding: Array.new(1536, 0.2))
       embedding_store.upsert_exchange_embedding(exchange_id: 10, content: "exch 10", embedding: Array.new(1536, 0.3))
     end
 
@@ -140,7 +142,8 @@ RSpec.describe Nu::Agent::EmbeddingStore do
 
   describe "#clear_embeddings" do
     before do
-      embedding_store.upsert_conversation_embedding(conversation_id: 1, content: "conv 1", embedding: Array.new(1536, 0.1))
+      embedding_store.upsert_conversation_embedding(conversation_id: 1, content: "conv 1",
+                                                    embedding: Array.new(1536, 0.1))
       embedding_store.upsert_exchange_embedding(exchange_id: 10, content: "exch 10", embedding: Array.new(1536, 0.3))
     end
 

@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe Nu::Agent::ConversationSummarizer do
+RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
   let(:history) { instance_double(Nu::Agent::History) }
   let(:summarizer) { instance_double(Nu::Agent::Clients::Anthropic) }
   let(:application) { instance_double(Nu::Agent::Application) }
