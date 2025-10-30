@@ -31,5 +31,37 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
     it "returns :continue" do
       expect(command.execute("/help")).to eq(:continue)
     end
+
+    it "includes /worker command documentation" do
+      expect(application).to receive(:output_lines) do |*lines, **_kwargs|
+        help_text = lines.join("\n")
+        expect(help_text).to match(%r{/worker.*Manage background workers})
+      end
+      command.execute("/help")
+    end
+
+    it "does not include deprecated /summarizer command" do
+      expect(application).to receive(:output_lines) do |*lines, **_kwargs|
+        help_text = lines.join("\n")
+        expect(help_text).not_to match(%r{/summarizer})
+      end
+      command.execute("/help")
+    end
+
+    it "does not include deprecated /fix command" do
+      expect(application).to receive(:output_lines) do |*lines, **_kwargs|
+        help_text = lines.join("\n")
+        expect(help_text).not_to match(%r{/fix.*Scan and fix database})
+      end
+      command.execute("/help")
+    end
+
+    it "does not include deprecated /index-man command" do
+      expect(application).to receive(:output_lines) do |*lines, **_kwargs|
+        help_text = lines.join("\n")
+        expect(help_text).not_to match(%r{/index-man})
+      end
+      command.execute("/help")
+    end
   end
 end

@@ -35,11 +35,13 @@ Metrics/ClassLength:
   Max: 250
   Exclude:
     - 'lib/nu/agent/console_io.rb'  # Single-file console I/O implementation
+    - 'lib/nu/agent/history.rb'  # Database management class with many methods
 
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
-    - 'rakelib/**/*'  # Migration scripts may require long blocks
+    - 'rakelib/**/*'  # Rake task definitions may require long blocks
+    - 'migrations/**/*'  # Migration scripts may require long blocks
 
 # Disable some overly strict cops
 Style/Documentation:

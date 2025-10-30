@@ -296,6 +296,31 @@ RSpec.describe Nu::Agent::Application do
     end
   end
 
+  describe "command registration" do
+    let(:app) { described_class.new(options: options) }
+    let(:command_registry) { app.instance_variable_get(:@command_registry) }
+
+    it "registers /worker command" do
+      expect(command_registry.registered?("/worker")).to be true
+    end
+
+    it "registers /rag command" do
+      expect(command_registry.registered?("/rag")).to be true
+    end
+
+    it "does not register deprecated /summarizer command" do
+      expect(command_registry.registered?("/summarizer")).to be false
+    end
+
+    it "does not register deprecated /embeddings command" do
+      expect(command_registry.registered?("/embeddings")).to be false
+    end
+
+    it "does not register deprecated /fix command" do
+      expect(command_registry.registered?("/fix")).to be false
+    end
+  end
+
   describe "#run" do
     let(:app) { described_class.new(options: options) }
 

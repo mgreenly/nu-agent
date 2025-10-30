@@ -12,7 +12,7 @@ SimpleCov.start do
   if ENV["COVERAGE_ENFORCE"] == "true"
     # Current baseline coverage (as of 2025-10-29)
     # Goal: gradually increase to 100%
-    minimum_coverage line: 98, branch: 89
+    minimum_coverage line: 98.35, branch: 90.0
   end
 end
 
