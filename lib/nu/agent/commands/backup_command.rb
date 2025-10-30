@@ -8,7 +8,35 @@ require "time"
 module Nu
   module Agent
     module Commands
-      # Command to create database backups
+      # Command to create database backups with progress tracking
+      #
+      # The BackupCommand provides a safe way to create backups of the conversation
+      # database while ensuring data integrity. It coordinates with background workers
+      # and database connections to create consistent backups.
+      #
+      # @example Default backup (timestamped in current directory)
+      #   /backup
+      #   # Creates: ./memory-2025-10-30-143022.db
+      #
+      # @example Custom destination path
+      #   /backup ~/backups/important-backup.db
+      #   # Creates: /home/user/backups/important-backup.db
+      #
+      # Features:
+      # - Automatic timestamped backups (YYYY-MM-DD-HHMMSS format)
+      # - Custom destination path support with tilde (~) expansion
+      # - Progress bar for files larger than 1 MB
+      # - Pre-flight validation (source exists, disk space, permissions)
+      # - Worker coordination (pause before backup, resume after)
+      # - Database connection management (close before, reopen after)
+      # - Backup verification (file existence and size matching)
+      # - Comprehensive error handling with clear messages
+      #
+      # Safety guarantees:
+      # - Workers are always resumed, even if backup fails
+      # - Database is always reopened, even if backup fails
+      # - Pre-flight checks run before pausing workers (fail fast)
+      #
       class BackupCommand < BaseCommand
         # Execute the backup command
         # @param input [String] the raw command input (e.g., "/backup" or "/backup /path/to/backup.db")

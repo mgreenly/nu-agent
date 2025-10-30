@@ -83,6 +83,14 @@ module Nu
         system("clear")
       end
 
+      # Reopen the database after closing it (e.g., for backup operations)
+      # This re-initializes the History object but does NOT re-initialize
+      # dependent components (console, formatter, workers) as they maintain
+      # their own references to the history object
+      def reopen_database
+        @history = History.new
+      end
+
       private
 
       def initialize_state(options)

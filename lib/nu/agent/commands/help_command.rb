@@ -18,6 +18,9 @@ module Nu
         def help_text
           <<~HELP
             Available commands:
+              /backup [<destination>]        - Create a backup of the conversation database
+                                               - No argument: Creates memory-YYYY-MM-DD-HHMMSS.db in current directory
+                                               - With path: Creates backup at specified location (supports ~ expansion)
               /clear                         - Clear the screen
               /debug <on|off>                - Enable/disable debug mode (show/hide tool calls and results)
               /exit                          - Exit the REPL
