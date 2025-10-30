@@ -116,7 +116,116 @@ module Nu
         @config_store.get_bool("vss_available", default: false)
       end
 
+      # Search for similar conversation summaries
+      # Returns array of hashes with keys: conversation_id, content, similarity, created_at
+      def search_conversations(query_embedding:, limit:, min_similarity:, exclude_conversation_id: nil)
+        embedding_str = build_embedding_str(query_embedding)
+        similarity_expr = build_similarity_expr(embedding_str)
+
+        result = @connection.query(<<~SQL)
+          SELECT
+            e.conversation_id,
+            e.content,
+            #{similarity_expr} AS similarity,
+            c.created_at
+          FROM text_embedding_3_small e
+          INNER JOIN conversations c ON e.conversation_id = c.id
+          WHERE e.kind = 'conversation_summary'
+            AND e.conversation_id IS NOT NULL
+            #{build_conversation_exclusion(exclude_conversation_id)}
+            #{build_min_similarity_clause(similarity_expr, min_similarity)}
+          ORDER BY similarity DESC
+          LIMIT #{limit.to_i}
+        SQL
+
+        map_conversation_results(result)
+      end
+
+      # Search for similar exchange summaries
+      # Returns array of hashes with keys: exchange_id, conversation_id, content, similarity, started_at
+      def search_exchanges(query_embedding:, limit:, min_similarity:, conversation_ids: nil)
+        embedding_str = build_embedding_str(query_embedding)
+        similarity_expr = build_similarity_expr(embedding_str)
+
+        result = @connection.query(<<~SQL)
+          SELECT
+            e.exchange_id,
+            ex.conversation_id,
+            e.content,
+            #{similarity_expr} AS similarity,
+            ex.started_at
+          FROM text_embedding_3_small e
+          INNER JOIN exchanges ex ON e.exchange_id = ex.id
+          WHERE e.kind = 'exchange_summary'
+            AND e.exchange_id IS NOT NULL
+            #{build_conversation_filter(conversation_ids)}
+            #{build_min_similarity_clause(similarity_expr, min_similarity)}
+          ORDER BY similarity DESC
+          LIMIT #{limit.to_i}
+        SQL
+
+        map_exchange_results(result)
+      end
+
       private
+
+      # Helper methods for search queries
+
+      def build_embedding_str(query_embedding)
+        "[#{query_embedding.join(', ')}]::FLOAT[#{query_embedding.length}]"
+      end
+
+      def build_similarity_expr(embedding_str)
+        if vss_available?
+          "(1.0 - array_cosine_distance(e.embedding, #{embedding_str}))"
+        else
+          "array_cosine_similarity(e.embedding, #{embedding_str})"
+        end
+      end
+
+      def build_min_similarity_clause(similarity_expr, min_similarity)
+        return "" unless min_similarity
+
+        "AND #{similarity_expr} >= #{min_similarity.to_f}"
+      end
+
+      def build_conversation_exclusion(exclude_conversation_id)
+        return "" unless exclude_conversation_id
+
+        "AND e.conversation_id != #{exclude_conversation_id.to_i}"
+      end
+
+      def build_conversation_filter(conversation_ids)
+        return "" unless conversation_ids && !conversation_ids.empty?
+
+        ids_str = conversation_ids.map(&:to_i).join(", ")
+        "AND ex.conversation_id IN (#{ids_str})"
+      end
+
+      def map_conversation_results(result)
+        result.map do |row|
+          {
+            conversation_id: row[0],
+            content: row[1],
+            similarity: row[2].to_f,
+            created_at: row[3]
+          }
+        end
+      end
+
+      def map_exchange_results(result)
+        result.map do |row|
+          {
+            exchange_id: row[0],
+            conversation_id: row[1],
+            content: row[2],
+            similarity: row[3].to_f,
+            started_at: row[4]
+          }
+        end
+      end
+
+      # Original search helper methods
 
       def search_with_vss(kind, embedding_str, limit, min_similarity)
         # Determine which ID column to use based on kind

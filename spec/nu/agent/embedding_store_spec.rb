@@ -267,6 +267,220 @@ RSpec.describe Nu::Agent::EmbeddingStore do
     end
   end
 
+  describe "#search_conversations" do
+    let(:query_embedding) { Array.new(1536, 0.1) }
+
+    before do
+      # Create test conversations
+      connection.query(<<~SQL)
+        INSERT INTO conversations (id, created_at, title, status)
+        VALUES (1, '2024-01-01 10:00:00', 'First', 'active'),
+               (2, '2024-01-02 10:00:00', 'Second', 'active'),
+               (3, '2024-01-03 10:00:00', 'Third', 'active')
+      SQL
+
+      # Store conversation embeddings
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "conversation one",
+        embedding: Array.new(1536, 0.1)
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 2,
+        content: "conversation two",
+        embedding: Array.new(1536, 0.2)
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 3,
+        content: "conversation three",
+        embedding: Array.new(1536, 0.3)
+      )
+    end
+
+    it "searches for similar conversations" do
+      results = embedding_store.search_conversations(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.5
+      )
+
+      expect(results).to be_an(Array)
+      expect(results.length).to be > 0
+      expect(results.first).to have_key(:conversation_id)
+      expect(results.first).to have_key(:content)
+      expect(results.first).to have_key(:similarity)
+      expect(results.first).to have_key(:created_at)
+    end
+
+    it "excludes specified conversation" do
+      results = embedding_store.search_conversations(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.5,
+        exclude_conversation_id: 1
+      )
+
+      conversation_ids = results.map { |r| r[:conversation_id] }
+      expect(conversation_ids).not_to include(1)
+    end
+
+    it "respects the limit parameter" do
+      results = embedding_store.search_conversations(
+        query_embedding: query_embedding,
+        limit: 2,
+        min_similarity: 0.0
+      )
+
+      expect(results.length).to be <= 2
+    end
+
+    it "applies min_similarity threshold" do
+      results = embedding_store.search_conversations(
+        query_embedding: query_embedding,
+        limit: 10,
+        min_similarity: 0.9
+      )
+
+      results.each do |result|
+        expect(result[:similarity]).to be >= 0.9
+      end
+    end
+
+    it "orders results by similarity descending" do
+      results = embedding_store.search_conversations(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.0
+      )
+
+      # Check that results are sorted by similarity (highest first)
+      similarities = results.map { |r| r[:similarity] }
+      expect(similarities).to eq(similarities.sort.reverse)
+    end
+  end
+
+  describe "#search_exchanges" do
+    let(:query_embedding) { Array.new(1536, 0.1) }
+
+    before do
+      # Create test conversations
+      connection.query(<<~SQL)
+        INSERT INTO conversations (id, created_at, title, status)
+        VALUES (1, '2024-01-01 10:00:00', 'First', 'active'),
+               (2, '2024-01-02 10:00:00', 'Second', 'active')
+      SQL
+
+      # Create test exchanges
+      connection.query(<<~SQL)
+        INSERT INTO exchanges (id, conversation_id, exchange_number, started_at, completed_at, status)
+        VALUES (10, 1, 1, '2024-01-01 10:00:00', '2024-01-01 10:01:00', 'completed'),
+               (11, 1, 2, '2024-01-01 10:05:00', '2024-01-01 10:06:00', 'completed'),
+               (20, 2, 1, '2024-01-02 10:00:00', '2024-01-02 10:01:00', 'completed'),
+               (21, 2, 2, '2024-01-02 10:05:00', '2024-01-02 10:06:00', 'completed')
+      SQL
+
+      # Store exchange embeddings
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 10,
+        content: "exchange ten",
+        embedding: Array.new(1536, 0.1)
+      )
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 11,
+        content: "exchange eleven",
+        embedding: Array.new(1536, 0.2)
+      )
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 20,
+        content: "exchange twenty",
+        embedding: Array.new(1536, 0.3)
+      )
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 21,
+        content: "exchange twenty-one",
+        embedding: Array.new(1536, 0.4)
+      )
+    end
+
+    it "searches for similar exchanges globally when conversation_ids is nil" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.5,
+        conversation_ids: nil
+      )
+
+      expect(results).to be_an(Array)
+      expect(results.length).to be > 0
+      expect(results.first).to have_key(:exchange_id)
+      expect(results.first).to have_key(:conversation_id)
+      expect(results.first).to have_key(:content)
+      expect(results.first).to have_key(:similarity)
+      expect(results.first).to have_key(:started_at)
+    end
+
+    it "filters by conversation_ids when provided" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 10,
+        min_similarity: 0.0,
+        conversation_ids: [1]
+      )
+
+      conversation_ids = results.map { |r| r[:conversation_id] }
+      expect(conversation_ids).to all(eq(1))
+    end
+
+    it "supports multiple conversation_ids" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 10,
+        min_similarity: 0.0,
+        conversation_ids: [1, 2]
+      )
+
+      conversation_ids = results.map { |r| r[:conversation_id] }.uniq
+      expect(conversation_ids).to contain_exactly(1, 2)
+    end
+
+    it "respects the limit parameter" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 2,
+        min_similarity: 0.0,
+        conversation_ids: nil
+      )
+
+      expect(results.length).to be <= 2
+    end
+
+    it "applies min_similarity threshold" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 10,
+        min_similarity: 0.9,
+        conversation_ids: nil
+      )
+
+      results.each do |result|
+        expect(result[:similarity]).to be >= 0.9
+      end
+    end
+
+    it "orders results by similarity descending" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.0,
+        conversation_ids: nil
+      )
+
+      # Check that results are sorted by similarity (highest first)
+      similarities = results.map { |r| r[:similarity] }
+      expect(similarities).to eq(similarities.sort.reverse)
+    end
+  end
+
   describe "#vss_available?" do
     it "returns boolean based on config" do
       # Default should be false or true depending on system
