@@ -177,5 +177,102 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         expect { retriever_without_logger.retrieve(query: query) }.not_to raise_error
       end
     end
+
+    context "with cache enabled" do
+      let(:cache) { Nu::Agent::RAG::RAGCache.new(max_size: 10, ttl_seconds: 300) }
+      let(:retriever_with_cache) do
+        described_class.new(
+          embedding_store: embedding_store,
+          embedding_client: embedding_client,
+          config_store: config_store,
+          retrieval_logger: retrieval_logger,
+          cache: cache
+        )
+      end
+      let(:retrieval_logger) { instance_double(Nu::Agent::RAG::RAGRetrievalLogger) }
+
+      before do
+        allow(retrieval_logger).to receive(:generate_query_hash).and_return("abc123")
+        allow(retrieval_logger).to receive(:log_retrieval)
+      end
+
+      it "caches retrieval results on first call" do
+        context = retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+
+        expect(context.conversations).to eq(conversation_results)
+        expect(context.exchanges).to eq(exchange_results)
+        expect(embedding_client).to have_received(:generate_embedding).once
+        expect(embedding_store).to have_received(:search_conversations).once
+      end
+
+      it "returns cached results on subsequent calls with same query and config" do
+        # First call - populates cache
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+
+        # Second call - should use cache
+        context = retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+
+        expect(context.conversations).to eq(conversation_results)
+        expect(context.exchanges).to eq(exchange_results)
+        # Should still call embedding client once more (to generate key), but not search
+        expect(embedding_client).to have_received(:generate_embedding).twice
+        expect(embedding_store).to have_received(:search_conversations).once # Still just once!
+        expect(embedding_store).to have_received(:search_exchanges).once
+      end
+
+      it "logs cache_hit: true when cache is used" do
+        # First call
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+
+        # Second call should be a cache hit
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+
+        expect(retrieval_logger).to have_received(:log_retrieval).with(
+          hash_including(cache_hit: false)
+        ).once
+
+        expect(retrieval_logger).to have_received(:log_retrieval).with(
+          hash_including(cache_hit: true)
+        ).once
+      end
+
+      it "bypasses cache for different queries" do
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+
+        different_query = "How do I set up authentication?"
+        allow(embedding_client).to receive(:generate_embedding).with(different_query)
+                                                               .and_return({ "embeddings" => Array.new(1536, 0.9) })
+
+        retriever_with_cache.retrieve(query: different_query, current_conversation_id: 1)
+
+        expect(embedding_store).to have_received(:search_conversations).twice
+      end
+
+      it "bypasses cache for different conversation IDs" do
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1)
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 2)
+
+        expect(embedding_store).to have_received(:search_conversations).twice
+      end
+
+      it "bypasses cache for different time filters" do
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1, after_date: "2025-01-01")
+        retriever_with_cache.retrieve(query: query, current_conversation_id: 1, after_date: "2025-01-15")
+
+        expect(embedding_store).to have_received(:search_conversations).twice
+      end
+
+      it "works correctly when cache is not provided (nil)" do
+        retriever_without_cache = described_class.new(
+          embedding_store: embedding_store,
+          embedding_client: embedding_client,
+          config_store: config_store,
+          cache: nil
+        )
+
+        context = retriever_without_cache.retrieve(query: query)
+        expect(context.formatted_context).not_to be_nil
+      end
+    end
   end
 end
