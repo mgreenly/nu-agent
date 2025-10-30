@@ -42,7 +42,9 @@ module Nu
             query_embedding: context.query_embedding,
             limit: limit,
             min_similarity: min_similarity,
-            conversation_ids: nil
+            conversation_ids: nil,
+            after_date: context.after_date,
+            before_date: context.before_date
           )
 
           context.exchanges = results
@@ -58,7 +60,9 @@ module Nu
               query_embedding: context.query_embedding,
               limit: per_conversation,
               min_similarity: min_similarity,
-              conversation_ids: [conv_id]
+              conversation_ids: [conv_id],
+              after_date: context.after_date,
+              before_date: context.before_date
             )
 
             all_exchanges.concat(exchanges)

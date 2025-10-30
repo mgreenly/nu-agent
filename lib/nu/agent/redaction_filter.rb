@@ -16,9 +16,9 @@ module Nu
         { pattern: /(?:SECRET|PASSWORD|PASS|PWD|KEY)[_\s]*[=:]\s*['"]?[^\s'"]{8,}['"]?/i,
           replacement: "[REDACTED_SECRET]" },
         # Bearer tokens
-        { pattern: /Bearer\s+[A-Za-z0-9\-._~+\/]+=*/i, replacement: "Bearer [REDACTED_TOKEN]" },
+        { pattern: %r{Bearer\s+[A-Za-z0-9\-._~+/]+=*}i, replacement: "Bearer [REDACTED_TOKEN]" },
         # JWT tokens
-        { pattern: /eyJ[A-Za-z0-9\-._~+\/]+=*\.eyJ[A-Za-z0-9\-._~+\/]+=*\.[A-Za-z0-9\-._~+\/]+=*/,
+        { pattern: %r{eyJ[A-Za-z0-9\-._~+/]+=*\.eyJ[A-Za-z0-9\-._~+/]+=*\.[A-Za-z0-9\-._~+/]+=*},
           replacement: "[REDACTED_TOKEN]" }
       ].freeze
 
@@ -65,7 +65,7 @@ module Nu
               replacement: pattern_def["replacement"]
             }
           end
-        rescue JSON::ParserError, RegexpError => e
+        rescue JSON::ParserError, RegexpError
           # If custom patterns are malformed, just use defaults
           # Silent failure to avoid cluttering output in tests
         end

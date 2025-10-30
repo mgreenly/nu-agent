@@ -562,7 +562,7 @@ RSpec.describe Nu::Agent::Application do
       end
 
       it "starts workers when enabled" do
-        app = described_class.new(options: options)
+        described_class.new(options: options)
         expect(mock_worker_manager).to have_received(:start_summarization_worker)
       end
     end
@@ -573,7 +573,7 @@ RSpec.describe Nu::Agent::Application do
       end
 
       it "does not auto-start workers even when enabled" do
-        app = described_class.new(options: options)
+        described_class.new(options: options)
         expect(mock_worker_manager).not_to have_received(:start_summarization_worker)
       end
     end

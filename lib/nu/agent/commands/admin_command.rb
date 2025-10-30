@@ -84,17 +84,17 @@ module Nu
           app.console.puts("  Failed At: #{job['failed_at']}")
           app.console.puts("  Created At: #{job['created_at']}")
 
-          if job["payload"] && !job["payload"].empty?
-            app.console.puts("")
-            app.console.puts("  Payload:")
-            begin
-              payload = JSON.parse(job["payload"])
-              payload.each do |key, value|
-                app.console.puts("    #{key}: #{value}")
-              end
-            rescue JSON::ParserError
-              app.console.puts("    #{job['payload']}")
+          return unless job["payload"] && !job["payload"].empty?
+
+          app.console.puts("")
+          app.console.puts("  Payload:")
+          begin
+            payload = JSON.parse(job["payload"])
+            payload.each do |key, value|
+              app.console.puts("    #{key}: #{value}")
             end
+          rescue JSON::ParserError
+            app.console.puts("    #{job['payload']}")
           end
         end
 
@@ -218,7 +218,7 @@ module Nu
           app.console.puts("WARNING: This will purge ALL conversation and exchange data!")
           app.console.puts("Are you sure? Type 'yes' to confirm:")
 
-          # Note: In a real implementation, we'd need to get user confirmation
+          # NOTE: In a real implementation, we'd need to get user confirmation
           # For now, we'll just show a warning and not proceed
           app.console.puts("")
           app.console.puts("Purge cancelled (confirmation not implemented yet).")

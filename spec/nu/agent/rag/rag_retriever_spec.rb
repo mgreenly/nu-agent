@@ -100,7 +100,9 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         query_embedding: query_embedding,
         limit: 5,
         min_similarity: 0.7,
-        exclude_conversation_id: 10
+        exclude_conversation_id: 10,
+        after_date: nil,
+        before_date: nil
       )
     end
 
@@ -116,7 +118,9 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
           query_embedding: query_embedding,
           limit: 10,
           min_similarity: 0.6,
-          conversation_ids: nil
+          conversation_ids: nil,
+          after_date: nil,
+          before_date: nil
         )
       end
     end

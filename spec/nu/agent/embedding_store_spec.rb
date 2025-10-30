@@ -357,6 +357,67 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       similarities = results.map { |r| r[:similarity] }
       expect(similarities).to eq(similarities.sort.reverse)
     end
+
+    context "with time-range filters" do
+      it "filters by after_date to include only recent conversations" do
+        after_date = Time.parse("2024-01-02 00:00:00")
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          after_date: after_date
+        )
+
+        # Should only include conversations 2 and 3 (created on or after 2024-01-02)
+        conversation_ids = results.map { |r| r[:conversation_id] }
+        expect(conversation_ids).to contain_exactly(2, 3)
+      end
+
+      it "filters by before_date to include only older conversations" do
+        before_date = Time.parse("2024-01-02 00:00:00")
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          before_date: before_date
+        )
+
+        # Should only include conversation 1 (created before 2024-01-02)
+        conversation_ids = results.map { |r| r[:conversation_id] }
+        expect(conversation_ids).to contain_exactly(1)
+      end
+
+      it "filters by date range using both after_date and before_date" do
+        after_date = Time.parse("2024-01-01 12:00:00")
+        before_date = Time.parse("2024-01-03 00:00:00")
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          after_date: after_date,
+          before_date: before_date
+        )
+
+        # Should only include conversation 2 (between the dates)
+        conversation_ids = results.map { |r| r[:conversation_id] }
+        expect(conversation_ids).to contain_exactly(2)
+      end
+
+      it "works with after_date and exclude_conversation_id together" do
+        after_date = Time.parse("2024-01-02 00:00:00")
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          after_date: after_date,
+          exclude_conversation_id: 2
+        )
+
+        # Should only include conversation 3
+        conversation_ids = results.map { |r| r[:conversation_id] }
+        expect(conversation_ids).to contain_exactly(3)
+      end
+    end
   end
 
   describe "#search_exchanges" do
@@ -478,6 +539,70 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       # Check that results are sorted by similarity (highest first)
       similarities = results.map { |r| r[:similarity] }
       expect(similarities).to eq(similarities.sort.reverse)
+    end
+
+    context "with time-range filters" do
+      it "filters by after_date to include only recent exchanges" do
+        after_date = Time.parse("2024-01-01 10:04:00")
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          after_date: after_date
+        )
+
+        # Should only include exchanges 11, 20, 21 (started after 10:04)
+        exchange_ids = results.map { |r| r[:exchange_id] }
+        expect(exchange_ids).to contain_exactly(11, 20, 21)
+      end
+
+      it "filters by before_date to include only older exchanges" do
+        before_date = Time.parse("2024-01-01 10:04:00")
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          before_date: before_date
+        )
+
+        # Should only include exchange 10 (started before 10:04)
+        exchange_ids = results.map { |r| r[:exchange_id] }
+        expect(exchange_ids).to contain_exactly(10)
+      end
+
+      it "filters by date range using both after_date and before_date" do
+        after_date = Time.parse("2024-01-01 10:04:00")
+        before_date = Time.parse("2024-01-02 10:04:00")
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: nil,
+          after_date: after_date,
+          before_date: before_date
+        )
+
+        # Should only include exchanges 11 and 20 (between the dates)
+        exchange_ids = results.map { |r| r[:exchange_id] }
+        expect(exchange_ids).to contain_exactly(11, 20)
+      end
+
+      it "works with after_date and conversation_ids filter together" do
+        after_date = Time.parse("2024-01-01 10:04:00")
+        results = embedding_store.search_exchanges(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          conversation_ids: [1],
+          after_date: after_date
+        )
+
+        # Should only include exchange 11 (from conversation 1, after 10:04)
+        exchange_ids = results.map { |r| r[:exchange_id] }
+        expect(exchange_ids).to contain_exactly(11)
+      end
     end
   end
 

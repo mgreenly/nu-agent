@@ -17,14 +17,16 @@ module Nu
 
         # Retrieve relevant context for a query
         # Returns a RAGContext object with formatted_context and metadata
-        def retrieve(query:, current_conversation_id: nil)
+        def retrieve(query:, current_conversation_id: nil, after_date: nil, before_date: nil)
           # Build processor chain
           chain = build_processor_chain
 
           # Create context
           context = RAGContext.new(
             query: query,
-            current_conversation_id: current_conversation_id
+            current_conversation_id: current_conversation_id,
+            after_date: after_date,
+            before_date: before_date
           )
 
           # Execute pipeline

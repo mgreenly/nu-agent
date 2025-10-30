@@ -118,7 +118,8 @@ module Nu
 
       # Search for similar conversation summaries
       # Returns array of hashes with keys: conversation_id, content, similarity, created_at
-      def search_conversations(query_embedding:, limit:, min_similarity:, exclude_conversation_id: nil)
+      def search_conversations(query_embedding:, limit:, min_similarity:, exclude_conversation_id: nil,
+                               after_date: nil, before_date: nil)
         embedding_str = build_embedding_str(query_embedding)
         similarity_expr = build_similarity_expr(embedding_str)
 
@@ -133,6 +134,7 @@ module Nu
           WHERE e.kind = 'conversation_summary'
             AND e.conversation_id IS NOT NULL
             #{build_conversation_exclusion(exclude_conversation_id)}
+            #{build_time_range_filter('c.created_at', after_date, before_date)}
             #{build_min_similarity_clause(similarity_expr, min_similarity)}
           ORDER BY similarity DESC
           LIMIT #{limit.to_i}
@@ -143,7 +145,8 @@ module Nu
 
       # Search for similar exchange summaries
       # Returns array of hashes with keys: exchange_id, conversation_id, content, similarity, started_at
-      def search_exchanges(query_embedding:, limit:, min_similarity:, conversation_ids: nil)
+      def search_exchanges(query_embedding:, limit:, min_similarity:, conversation_ids: nil,
+                           after_date: nil, before_date: nil)
         embedding_str = build_embedding_str(query_embedding)
         similarity_expr = build_similarity_expr(embedding_str)
 
@@ -159,6 +162,7 @@ module Nu
           WHERE e.kind = 'exchange_summary'
             AND e.exchange_id IS NOT NULL
             #{build_conversation_filter(conversation_ids)}
+            #{build_time_range_filter('ex.started_at', after_date, before_date)}
             #{build_min_similarity_clause(similarity_expr, min_similarity)}
           ORDER BY similarity DESC
           LIMIT #{limit.to_i}
@@ -200,6 +204,16 @@ module Nu
 
         ids_str = conversation_ids.map(&:to_i).join(", ")
         "AND ex.conversation_id IN (#{ids_str})"
+      end
+
+      def build_time_range_filter(timestamp_column, after_date, before_date)
+        clauses = []
+
+        clauses << "AND #{timestamp_column} >= '#{after_date.strftime('%Y-%m-%d %H:%M:%S')}'" if after_date
+
+        clauses << "AND #{timestamp_column} < '#{before_date.strftime('%Y-%m-%d %H:%M:%S')}'" if before_date
+
+        clauses.join("\n            ")
       end
 
       def map_conversation_results(result)

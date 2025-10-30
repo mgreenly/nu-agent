@@ -88,7 +88,7 @@ RSpec.describe Nu::Agent::FailedJobRepository do
     end
 
     it "returns nil for non-existent job" do
-      job = repository.get_failed_job(99999)
+      job = repository.get_failed_job(99_999)
       expect(job).to be_nil
     end
   end

@@ -26,7 +26,9 @@ module Nu
             query_embedding: context.query_embedding,
             limit: limit,
             min_similarity: min_similarity,
-            exclude_conversation_id: context.current_conversation_id
+            exclude_conversation_id: context.current_conversation_id,
+            after_date: context.after_date,
+            before_date: context.before_date
           )
 
           # Store results in context

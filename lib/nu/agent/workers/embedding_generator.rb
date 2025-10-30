@@ -238,9 +238,9 @@ module Nu
             payload: payload.to_json,
             error: "#{error.class}: #{error.message}"
           )
-        rescue StandardError => record_error
+        rescue StandardError => e
           # Don't let failure recording prevent the worker from continuing
-          debug_output("Failed to record failure: #{record_error.message}", level: 0)
+          debug_output("Failed to record failure: #{e.message}", level: 0)
         end
 
         def generate_embeddings_with_retry(texts, attempt: 1)

@@ -7,11 +7,14 @@ module Nu
       # Each processor reads from and writes to this context
       class RAGContext
         attr_accessor :query, :query_embedding, :conversations, :exchanges,
-                      :formatted_context, :metadata, :current_conversation_id
+                      :formatted_context, :metadata, :current_conversation_id,
+                      :after_date, :before_date
 
-        def initialize(query:, current_conversation_id: nil)
+        def initialize(query:, current_conversation_id: nil, after_date: nil, before_date: nil)
           @query = query
           @current_conversation_id = current_conversation_id
+          @after_date = after_date
+          @before_date = before_date
           @query_embedding = nil
           @conversations = []
           @exchanges = []

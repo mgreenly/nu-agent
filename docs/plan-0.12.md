@@ -152,15 +152,15 @@ Implementation Notes
 - Dry-run support implemented for preview without actual deletion
 - Note: Custom patterns require double-escaping in JSON (e.g., \\\\b for \b word boundary)
 
-Phase 6: RAG refinements and caching (2.5–3.5 hrs) 🚧 IN PROGRESS (50% complete - 4/8 tasks done)
+Phase 6: RAG refinements and caching (2.5–3.5 hrs) 🚧 IN PROGRESS (62% complete - 5/8 tasks done)
 Goal: Improve relevance, latency, and observability of automatic RAG.
 Tasks
 - ✅ Create migration for rag_retrieval_logs table
 - ✅ Implement search_conversations and search_exchanges methods in EmbeddingStore with JOIN support
 - ✅ Create RAGRetrievalLogger class for logging retrieval metrics
 - ✅ Integrate RAGRetrievalLogger into RAGRetriever
+- ✅ Add basic time-range filtering: after_date and before_date parameters through full RAG pipeline
 - ⏳ Add namespace/tag filters to retrieval processors and commands (PAUSED - requires schema changes)
-- ⏳ Add basic time-range filtering: recent (last N days), older (before N days ago), between dates (NOT STARTED)
 - ⏳ Implement recency weight parameter alpha (NOT STARTED)
 - ⏳ Introduce opt-in LRU cache keyed by rounded query embedding + config (NOT STARTED)
 Validation
@@ -173,14 +173,17 @@ Testing
 - ✅ RAGRetrievalLogger tests for logging, query hashing, and recent logs retrieval (10 tests)
 - ✅ RAGRetriever tests verify logger integration and metrics logging (2 tests)
 - ⏳ Unit tests for filters (namespace/tag/time), cache hit/miss behavior; integration test for invalidation on new summaries
-Implementation Notes (Partial - 4/8 tasks complete)
+Implementation Notes (Partial - 5/8 tasks complete)
 - ✅ Created migration 007 for rag_retrieval_logs with indexes on timestamp, query_hash, and cache_hit
 - ✅ Added search_conversations and search_exchanges to EmbeddingStore with JOIN support for fetching conversation/exchange metadata
 - ✅ Implemented RAGRetrievalLogger with query hash generation (using rounded embeddings for cache grouping)
 - ✅ Integrated RAGRetrievalLogger into RAGRetriever as optional parameter; logs query_hash, candidates, scores, duration, and cache_hit
+- ✅ Implemented time-range filtering with after_date and before_date parameters in EmbeddingStore search methods
+- ✅ Integrated time-range parameters through full RAG pipeline (RAGContext, RAGRetriever, search processors)
+- ✅ Added 8 new tests for time-range filtering in EmbeddingStore (both conversations and exchanges)
 - ⏳ Namespace/tag filtering requires conversations table schema changes (not yet in v0.11 baseline)
-- ⏳ Time-range filtering, recency weighting, and caching features pending
-- All 1988 tests passing with 98.15% line coverage / 90.71% branch coverage
+- ⏳ Recency weighting and caching features pending
+- All 1996 tests passing with 98.15% line coverage / 90.73% branch coverage
 
 Phase 7: Migrations and developer workflow polish (1 hr)
 Goal: Solidify migration ergonomics and documentation.

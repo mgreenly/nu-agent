@@ -71,6 +71,7 @@ Metrics/ParameterLists:
   Exclude:
     - 'lib/nu/agent/workers/conversation_summarizer.rb'  # Worker needs multiple dependencies for initialization
     - 'lib/nu/agent/workers/exchange_summarizer.rb'  # Worker needs multiple dependencies for initialization
+    - 'lib/nu/agent/embedding_store.rb'  # Search methods need multiple optional filter parameters
 
 # Lint - acceptable patterns
 Lint/HashCompareByIdentity:
