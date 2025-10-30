@@ -12,6 +12,7 @@
 
 ## Style & Code Quality
 - There are NO acceptable RuboCop violations.
+- `rake coverage:enforce` must pass before additions or changes are considered complete.
 - ALWAYS run `rake test` and `rake lint` and `rake coverage` before commits.
 - ALWAYS use good design when addressing lint or spec issues.  DON'T Cheat!
 - Concise but meaningful variable names

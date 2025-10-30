@@ -196,6 +196,10 @@ module Nu
         @config_store.get_config(key, default: default)
       end
 
+      def get_int(key, default = nil)
+        @config_store.get_int(key, default: default)
+      end
+
       # Add command to command history
       def add_command_history(command)
         @config_store.add_command_history(command)
@@ -351,6 +355,21 @@ module Nu
           connection.query("DELETE FROM messages WHERE id = #{id}")
         end
         message_ids.length
+      end
+
+      # Clear all conversation summaries
+      def clear_conversation_summaries
+        connection.query("UPDATE conversations SET summary = NULL, summary_cost = NULL")
+      end
+
+      # Clear all exchange summaries
+      def clear_exchange_summaries
+        connection.query("UPDATE exchanges SET summary = NULL, summary_cost = NULL")
+      end
+
+      # Clear all embeddings (both conversations and exchanges)
+      def clear_all_embeddings
+        connection.query("DELETE FROM embeddings")
       end
 
       def close
