@@ -7,15 +7,15 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
   let(:application) { double("Nu::Agent::Application") }
   let(:console) { instance_double("Nu::Agent::ConsoleIO") }
   let(:worker_manager) { instance_double("Nu::Agent::BackgroundWorkerManager") }
-  let(:worker_registry) { {} }
+  let(:history) { instance_double("Nu::Agent::History") }
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive_messages(console: console, worker_manager: worker_manager,
-                                           worker_registry: worker_registry)
+    allow(application).to receive_messages(console: console, worker_manager: worker_manager, history: history)
     allow(application).to receive(:output_line)
     allow(application).to receive(:output_lines)
     allow(console).to receive(:puts)
+    allow(history).to receive(:get_int).and_return(0)
   end
 
   describe "#execute" do
@@ -23,7 +23,7 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
       it "displays general help" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           help_text = lines.join("\n")
           expect(help_text).to include("Available workers:")
           expect(help_text).to include("conversation-summarizer")
@@ -43,7 +43,7 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
       it "displays general help" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           help_text = lines.join("\n")
           expect(help_text).to include("Available workers:")
         end
@@ -97,7 +97,7 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
       it "displays status for all workers" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           status_text = lines.join("\n")
           expect(status_text).to include("Workers:")
           expect(status_text).to include("conversation-summarizer")
@@ -119,7 +119,7 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
       let(:worker_handler) { instance_double("Nu::Agent::Commands::Workers::ConversationSummarizerCommand") }
 
       before do
-        worker_registry["conversation-summarizer"] = worker_handler
+        allow(command).to receive(:create_worker_handler).with("conversation-summarizer").and_return(worker_handler)
       end
 
       context "with no subcommand" do
@@ -157,11 +157,11 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with(
           "Unknown worker: invalid-worker",
-          type: :debug
+          type: :command
         )
         expect(application).to receive(:output_line).with(
           "Available workers: conversation-summarizer, exchange-summarizer, embeddings",
-          type: :debug
+          type: :command
         )
         command.execute("/worker invalid-worker")
       end
@@ -169,6 +169,49 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
       it "returns :continue" do
         expect(command.execute("/worker invalid-worker")).to eq(:continue)
       end
+    end
+  end
+
+  describe "#create_worker_handler" do
+    it "creates ConversationSummarizerCommand for conversation-summarizer" do
+      handler = command.send(:create_worker_handler, "conversation-summarizer")
+      expect(handler).to be_a(Nu::Agent::Commands::Workers::ConversationSummarizerCommand)
+    end
+
+    it "creates ExchangeSummarizerCommand for exchange-summarizer" do
+      handler = command.send(:create_worker_handler, "exchange-summarizer")
+      expect(handler).to be_a(Nu::Agent::Commands::Workers::ExchangeSummarizerCommand)
+    end
+
+    it "creates EmbeddingsCommand for embeddings" do
+      handler = command.send(:create_worker_handler, "embeddings")
+      expect(handler).to be_a(Nu::Agent::Commands::Workers::EmbeddingsCommand)
+    end
+  end
+
+  describe "#load_worker_verbosity" do
+    it "loads conversation-summarizer verbosity from config" do
+      allow(history).to receive(:get_int).with("conversation_summarizer_verbosity", default: 0).and_return(2)
+      verbosity = command.send(:load_worker_verbosity, "conversation-summarizer")
+      expect(verbosity).to eq(2)
+    end
+
+    it "loads exchange-summarizer verbosity from config" do
+      allow(history).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(3)
+      verbosity = command.send(:load_worker_verbosity, "exchange-summarizer")
+      expect(verbosity).to eq(3)
+    end
+
+    it "loads embeddings verbosity from config" do
+      allow(history).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(1)
+      verbosity = command.send(:load_worker_verbosity, "embeddings")
+      expect(verbosity).to eq(1)
+    end
+
+    it "returns 0 as default when not configured" do
+      allow(history).to receive(:get_int).and_return(0)
+      verbosity = command.send(:load_worker_verbosity, "conversation-summarizer")
+      expect(verbosity).to eq(0)
     end
   end
 end

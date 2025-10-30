@@ -47,7 +47,7 @@ RSpec.describe Nu::Agent::Commands::ResetCommand do
 
     it "outputs confirmation message" do
       expect(console).to receive(:puts).with("")
-      expect(application).to receive(:output_line).with("Conversation reset", type: :debug)
+      expect(application).to receive(:output_line).with("Conversation reset", type: :command)
       command.execute("/reset")
     end
 

@@ -58,6 +58,9 @@ module Nu
       # Helper to output text via ConsoleIO
       def output_line(text, type: :normal)
         case type
+        when :command
+          # Command output - always visible, styled in gray
+          @console.puts("\e[90m#{text}\e[0m")
         when :debug
           # Only output debug messages when debug mode is enabled
           @console.puts("\e[90m#{text}\e[0m") if @debug
@@ -234,17 +237,17 @@ module Nu
 
       def print_info
         info_text = SessionInfo.build(self)
-        output_lines(*info_text.lines.map(&:chomp), type: :debug)
+        output_lines(*info_text.lines.map(&:chomp), type: :command)
       end
 
       def print_models
         model_text = ModelDisplayFormatter.build
-        output_lines(*model_text.lines.map(&:chomp), type: :debug)
+        output_lines(*model_text.lines.map(&:chomp), type: :command)
       end
 
       def print_tools
         tools_text = ToolsDisplayFormatter.build
-        output_lines(*tools_text.lines.map(&:chomp), type: :debug)
+        output_lines(*tools_text.lines.map(&:chomp), type: :command)
       end
 
       def start_summarization_worker

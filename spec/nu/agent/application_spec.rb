@@ -174,9 +174,7 @@ RSpec.describe Nu::Agent::Application do
   end
 
   describe "#print_info" do
-    it "builds and outputs session info with debug formatting" do
-      allow(options).to receive(:debug).and_return(true)
-      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
+    it "builds and outputs session info with command formatting" do
       app = described_class.new(options: options)
       info_text = "Session Info\nLine 1\nLine 2"
       allow(Nu::Agent::SessionInfo).to receive(:build).with(app).and_return(info_text)
@@ -187,22 +185,10 @@ RSpec.describe Nu::Agent::Application do
 
       app.print_info
     end
-
-    it "does not output when debug is disabled" do
-      app = described_class.new(options: options)
-      info_text = "Session Info\nLine 1"
-      allow(Nu::Agent::SessionInfo).to receive(:build).with(app).and_return(info_text)
-
-      expect(mock_console).not_to receive(:puts)
-
-      app.print_info
-    end
   end
 
   describe "#print_models" do
-    it "builds and outputs model display with debug formatting" do
-      allow(options).to receive(:debug).and_return(true)
-      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
+    it "builds and outputs model display with command formatting" do
       app = described_class.new(options: options)
       model_text = "Available Models\nModel 1\nModel 2"
       allow(Nu::Agent::ModelDisplayFormatter).to receive(:build).and_return(model_text)
@@ -213,21 +199,10 @@ RSpec.describe Nu::Agent::Application do
 
       app.print_models
     end
-
-    it "does not output when debug is disabled" do
-      app = described_class.new(options: options)
-      allow(Nu::Agent::ModelDisplayFormatter).to receive(:build).and_return("Models\n")
-
-      expect(mock_console).not_to receive(:puts)
-
-      app.print_models
-    end
   end
 
   describe "#print_tools" do
-    it "builds and outputs tools display with debug formatting" do
-      allow(options).to receive(:debug).and_return(true)
-      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
+    it "builds and outputs tools display with command formatting" do
       app = described_class.new(options: options)
       tools_text = "Available Tools\nTool 1\nTool 2"
       allow(Nu::Agent::ToolsDisplayFormatter).to receive(:build).and_return(tools_text)
@@ -235,15 +210,6 @@ RSpec.describe Nu::Agent::Application do
       expect(mock_console).to receive(:puts).with("\e[90mAvailable Tools\e[0m")
       expect(mock_console).to receive(:puts).with("\e[90mTool 1\e[0m")
       expect(mock_console).to receive(:puts).with("\e[90mTool 2\e[0m")
-
-      app.print_tools
-    end
-
-    it "does not output when debug is disabled" do
-      app = described_class.new(options: options)
-      allow(Nu::Agent::ToolsDisplayFormatter).to receive(:build).and_return("Tools\n")
-
-      expect(mock_console).not_to receive(:puts)
 
       app.print_tools
     end

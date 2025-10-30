@@ -22,8 +22,8 @@ RSpec.describe Nu::Agent::Commands::RedactionCommand do
       it "displays usage message" do
         allow(application).to receive(:redact).and_return(false)
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Usage: /redaction <on|off>", type: :debug)
-        expect(application).to receive(:output_line).with("Current: redaction=off", type: :debug)
+        expect(application).to receive(:output_line).with("Usage: /redaction <on|off>", type: :command)
+        expect(application).to receive(:output_line).with("Current: redaction=off", type: :command)
         command.execute("/redaction")
       end
 
@@ -38,7 +38,7 @@ RSpec.describe Nu::Agent::Commands::RedactionCommand do
         expect(application).to receive(:redact=).with(true)
         expect(history).to receive(:set_config).with("redaction", "true")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("redaction=on", type: :debug)
+        expect(application).to receive(:output_line).with("redaction=on", type: :command)
         command.execute("/redaction on")
       end
 
@@ -52,7 +52,7 @@ RSpec.describe Nu::Agent::Commands::RedactionCommand do
         expect(application).to receive(:redact=).with(false)
         expect(history).to receive(:set_config).with("redaction", "false")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("redaction=off", type: :debug)
+        expect(application).to receive(:output_line).with("redaction=off", type: :command)
         command.execute("/redaction off")
       end
 
@@ -64,7 +64,7 @@ RSpec.describe Nu::Agent::Commands::RedactionCommand do
     context "when invalid argument provided" do
       it "displays error message" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Invalid option. Use: /redaction <on|off>", type: :debug)
+        expect(application).to receive(:output_line).with("Invalid option. Use: /redaction <on|off>", type: :command)
         command.execute("/redaction invalid")
       end
 

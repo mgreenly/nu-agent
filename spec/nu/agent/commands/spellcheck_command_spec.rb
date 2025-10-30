@@ -22,8 +22,8 @@ RSpec.describe Nu::Agent::Commands::SpellcheckCommand do
       it "displays usage message" do
         allow(application).to receive(:spell_check_enabled).and_return(false)
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Usage: /spellcheck <on|off>", type: :debug)
-        expect(application).to receive(:output_line).with("Current: spellcheck=off", type: :debug)
+        expect(application).to receive(:output_line).with("Usage: /spellcheck <on|off>", type: :command)
+        expect(application).to receive(:output_line).with("Current: spellcheck=off", type: :command)
         command.execute("/spellcheck")
       end
 
@@ -38,7 +38,7 @@ RSpec.describe Nu::Agent::Commands::SpellcheckCommand do
         expect(application).to receive(:spell_check_enabled=).with(true)
         expect(history).to receive(:set_config).with("spell_check_enabled", "true")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("spellcheck=on", type: :debug)
+        expect(application).to receive(:output_line).with("spellcheck=on", type: :command)
         command.execute("/spellcheck on")
       end
 
@@ -52,7 +52,7 @@ RSpec.describe Nu::Agent::Commands::SpellcheckCommand do
         expect(application).to receive(:spell_check_enabled=).with(false)
         expect(history).to receive(:set_config).with("spell_check_enabled", "false")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("spellcheck=off", type: :debug)
+        expect(application).to receive(:output_line).with("spellcheck=off", type: :command)
         command.execute("/spellcheck off")
       end
 
@@ -64,7 +64,7 @@ RSpec.describe Nu::Agent::Commands::SpellcheckCommand do
     context "when invalid argument provided" do
       it "displays error message" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Invalid option. Use: /spellcheck <on|off>", type: :debug)
+        expect(application).to receive(:output_line).with("Invalid option. Use: /spellcheck <on|off>", type: :command)
         command.execute("/spellcheck invalid")
       end
 

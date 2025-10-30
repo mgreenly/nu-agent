@@ -14,7 +14,6 @@ module Nu
           @application = application
           @current_conversation_id = current_conversation_id
           @config_store = config_store
-          @verbosity = load_verbosity
         end
 
         def load_verbosity
@@ -23,7 +22,7 @@ module Nu
 
         # Output debug message if verbosity level is sufficient
         def debug_output(message, level: 0)
-          return unless @application.debug && level <= @verbosity
+          return unless @application.debug && level <= load_verbosity
 
           @application.output_line("[ExchangeSummarizer] #{message}", type: :debug)
         end
@@ -33,7 +32,10 @@ module Nu
           # Get exchanges that need summarization
           exchanges = @history.get_unsummarized_exchanges(exclude_conversation_id: @current_conversation_id)
 
-          return if exchanges.empty?
+          if exchanges.empty?
+            debug_output("No work found (no completed exchanges need summaries)", level: 3)
+            return
+          end
 
           debug_output("Starting summarization of #{exchanges.length} exchanges", level: 0)
 

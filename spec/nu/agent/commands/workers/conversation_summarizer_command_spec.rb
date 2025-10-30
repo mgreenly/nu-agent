@@ -22,7 +22,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
       it "displays worker-specific help" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           help_text = lines.join("\n")
           expect(help_text).to include("Conversation Summarizer Worker")
           expect(help_text).to include("/worker conversation-summarizer on|off")
@@ -42,7 +42,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
         expect(history).to receive(:set_config).with("conversation_summarizer_enabled", "true")
         expect(worker_manager).to receive(:enable_worker).with("conversation-summarizer")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("conversation-summarizer=on", type: :debug)
+        expect(application).to receive(:output_line).with("conversation-summarizer=on", type: :command)
         command.execute_subcommand("on", [])
       end
 
@@ -58,7 +58,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
         expect(history).to receive(:set_config).with("conversation_summarizer_enabled", "false")
         expect(worker_manager).to receive(:disable_worker).with("conversation-summarizer")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("conversation-summarizer=off", type: :debug)
+        expect(application).to receive(:output_line).with("conversation-summarizer=off", type: :command)
         command.execute_subcommand("off", [])
       end
 
@@ -73,7 +73,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
       it "starts worker" do
         expect(worker_manager).to receive(:start_worker).with("conversation-summarizer")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Starting conversation-summarizer worker", type: :debug)
+        expect(application).to receive(:output_line).with("Starting conversation-summarizer worker", type: :command)
         command.execute_subcommand("start", [])
       end
 
@@ -87,7 +87,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
       it "stops worker" do
         expect(worker_manager).to receive(:stop_worker).with("conversation-summarizer")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Stopping conversation-summarizer worker", type: :debug)
+        expect(application).to receive(:output_line).with("Stopping conversation-summarizer worker", type: :command)
         command.execute_subcommand("stop", [])
       end
 
@@ -118,7 +118,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
       it "displays detailed worker status" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           status_text = lines.join("\n")
           expect(status_text).to include("Conversation Summarizer Status:")
           expect(status_text).to include("Enabled: yes")
@@ -145,7 +145,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "conversation-summarizer model: claude-sonnet-4-5",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("model", [])
         end
@@ -162,11 +162,11 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "conversation-summarizer model: claude-opus-4-1",
-            type: :debug
+            type: :command
           )
           expect(application).to receive(:output_line).with(
             "Model will be used on next /reset",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("model", ["claude-opus-4-1"])
         end
@@ -184,7 +184,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Usage: /worker conversation-summarizer verbosity <0-6>",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", [])
         end
@@ -200,7 +200,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "conversation-summarizer verbosity: 2",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", ["2"])
         end
@@ -216,7 +216,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid verbosity level. Use 0-6.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", ["invalid"])
         end
@@ -225,7 +225,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid verbosity level. Use 0-6.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", ["7"])
         end
@@ -242,7 +242,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with(
           "Cleared all conversation summaries",
-          type: :debug
+          type: :command
         )
         command.execute_subcommand("reset", [])
       end
@@ -258,11 +258,11 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with(
           "Unknown subcommand: unknown",
-          type: :debug
+          type: :command
         )
         expect(application).to receive(:output_line).with(
           "Use: /worker conversation-summarizer help",
-          type: :debug
+          type: :command
         )
         command.execute_subcommand("unknown", [])
       end

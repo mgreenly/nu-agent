@@ -22,8 +22,8 @@ module Nu
 
         def show_usage
           app.console.puts("")
-          app.output_line("Usage: /summarizer <on|off>", type: :debug)
-          app.output_line("Current: summarizer=#{app.summarizer_enabled ? 'on' : 'off'}", type: :debug)
+          app.output_line("Usage: /summarizer <on|off>", type: :command)
+          app.output_line("Current: summarizer=#{app.summarizer_enabled ? 'on' : 'off'}", type: :command)
         end
 
         def update_summarizer(setting)
@@ -34,7 +34,7 @@ module Nu
             apply_summarizer_setting(false, "false", "off", show_reset_note: false)
           else
             app.console.puts("")
-            app.output_line("Invalid option. Use: /summarizer <on|off>", type: :debug)
+            app.output_line("Invalid option. Use: /summarizer <on|off>", type: :command)
           end
         end
 
@@ -42,8 +42,8 @@ module Nu
           app.summarizer_enabled = enabled
           app.history.set_config("summarizer_enabled", config_value)
           app.console.puts("")
-          app.output_line("summarizer=#{display_value}", type: :debug)
-          app.output_line("Summarizer will start on next /reset", type: :debug) if show_reset_note
+          app.output_line("summarizer=#{display_value}", type: :command)
+          app.output_line("Summarizer will start on next /reset", type: :command) if show_reset_note
         end
       end
     end

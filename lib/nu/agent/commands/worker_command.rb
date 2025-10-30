@@ -30,25 +30,39 @@ module Nu
 
         def show_general_help
           app.console.puts("")
-          app.output_lines(*help_text.lines.map(&:chomp), type: :debug)
+          app.output_lines(*help_text.lines.map(&:chomp), type: :command)
         end
 
         def show_all_status
           app.console.puts("")
-          app.output_lines(*status_text.lines.map(&:chomp), type: :debug)
+          app.output_lines(*status_text.lines.map(&:chomp), type: :command)
         end
 
         def delegate_to_worker(worker_name, args)
-          handler = app.worker_registry[worker_name]
+          handler = create_worker_handler(worker_name)
           subcommand = args.empty? ? "help" : args.first
           remaining_args = args[1..] || []
           handler.execute_subcommand(subcommand, remaining_args)
         end
 
+        def create_worker_handler(worker_name)
+          case worker_name
+          when "conversation-summarizer"
+            require_relative "workers/conversation_summarizer_command"
+            Workers::ConversationSummarizerCommand.new(app)
+          when "exchange-summarizer"
+            require_relative "workers/exchange_summarizer_command"
+            Workers::ExchangeSummarizerCommand.new(app)
+          when "embeddings"
+            require_relative "workers/embeddings_command"
+            Workers::EmbeddingsCommand.new(app)
+          end
+        end
+
         def show_error(invalid_worker)
           app.console.puts("")
-          app.output_line("Unknown worker: #{invalid_worker}", type: :debug)
-          app.output_line("Available workers: #{WORKER_NAMES.join(', ')}", type: :debug)
+          app.output_line("Unknown worker: #{invalid_worker}", type: :command)
+          app.output_line("Available workers: #{WORKER_NAMES.join(', ')}", type: :command)
         end
 
         def help_text
@@ -95,11 +109,24 @@ module Nu
 
         def worker_status_lines(name, status, model)
           state = status["running"] ? "running" : "idle"
+          verbosity = load_worker_verbosity(name)
           [
-            "  #{name}: enabled, #{state}, model=#{model}, verbosity=0",
+            "  #{name}: enabled, #{state}, model=#{model}, verbosity=#{verbosity}",
             "    └─ #{status['completed']} completed, #{status['failed']} failed, " \
             "$#{format('%.2f', status['spend'])} spent"
           ]
+        end
+
+        def load_worker_verbosity(worker_name)
+          config_key = case worker_name
+                       when "conversation-summarizer"
+                         "conversation_summarizer_verbosity"
+                       when "exchange-summarizer"
+                         "exchange_summarizer_verbosity"
+                       when "embeddings"
+                         "embeddings_verbosity"
+                       end
+          app.history.get_int(config_key, default: 0)
         end
       end
     end

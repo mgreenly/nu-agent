@@ -369,7 +369,7 @@ module Nu
 
       # Clear all embeddings (both conversations and exchanges)
       def clear_all_embeddings
-        connection.query("DELETE FROM embeddings")
+        connection.query("DELETE FROM text_embedding_3_small")
       end
 
       def close

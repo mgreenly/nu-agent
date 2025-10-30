@@ -22,8 +22,8 @@ RSpec.describe Nu::Agent::Commands::SummarizerCommand do
       it "displays usage message" do
         allow(application).to receive(:summarizer_enabled).and_return(false)
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Usage: /summarizer <on|off>", type: :debug)
-        expect(application).to receive(:output_line).with("Current: summarizer=off", type: :debug)
+        expect(application).to receive(:output_line).with("Usage: /summarizer <on|off>", type: :command)
+        expect(application).to receive(:output_line).with("Current: summarizer=off", type: :command)
         command.execute("/summarizer")
       end
 
@@ -38,8 +38,8 @@ RSpec.describe Nu::Agent::Commands::SummarizerCommand do
         expect(application).to receive(:summarizer_enabled=).with(true)
         expect(history).to receive(:set_config).with("summarizer_enabled", "true")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("summarizer=on", type: :debug)
-        expect(application).to receive(:output_line).with("Summarizer will start on next /reset", type: :debug)
+        expect(application).to receive(:output_line).with("summarizer=on", type: :command)
+        expect(application).to receive(:output_line).with("Summarizer will start on next /reset", type: :command)
         command.execute("/summarizer on")
       end
 
@@ -53,7 +53,7 @@ RSpec.describe Nu::Agent::Commands::SummarizerCommand do
         expect(application).to receive(:summarizer_enabled=).with(false)
         expect(history).to receive(:set_config).with("summarizer_enabled", "false")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("summarizer=off", type: :debug)
+        expect(application).to receive(:output_line).with("summarizer=off", type: :command)
         command.execute("/summarizer off")
       end
 
@@ -65,7 +65,7 @@ RSpec.describe Nu::Agent::Commands::SummarizerCommand do
     context "when invalid argument provided" do
       it "displays error message" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Invalid option. Use: /summarizer <on|off>", type: :debug)
+        expect(application).to receive(:output_line).with("Invalid option. Use: /summarizer <on|off>", type: :command)
         command.execute("/summarizer invalid")
       end
 

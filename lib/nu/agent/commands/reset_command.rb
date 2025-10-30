@@ -26,7 +26,7 @@ module Nu
           app.session_start_time = Time.now
           app.formatter.reset_session(conversation_id: app.conversation_id)
           app.console.puts("")
-          app.output_line("Conversation reset", type: :debug)
+          app.output_line("Conversation reset", type: :command)
         end
       end
     end

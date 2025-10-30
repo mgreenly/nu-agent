@@ -42,8 +42,8 @@ RSpec.describe Nu::Agent::Commands::RagCommand do
 
         command.execute("/rag status")
 
-        expect(app).to have_received(:output_line).with(/RAG Retrieval Status:/, type: :debug)
-        expect(app).to have_received(:output_line).with(/Configuration:/, type: :debug)
+        expect(app).to have_received(:output_line).with(/RAG Retrieval Status:/, type: :command)
+        expect(app).to have_received(:output_line).with(/Configuration:/, type: :command)
       end
     end
 
@@ -89,7 +89,7 @@ RSpec.describe Nu::Agent::Commands::RagCommand do
       it "shows usage when no query provided" do
         command.execute("/rag test")
 
-        expect(app).to have_received(:output_line).with(/Usage:/, type: :debug)
+        expect(app).to have_received(:output_line).with(/Usage:/, type: :command)
       end
 
       it "shows error when embedding client not available" do

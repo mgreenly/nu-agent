@@ -22,7 +22,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
       it "displays worker-specific help" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           help_text = lines.join("\n")
           expect(help_text).to include("Embeddings Worker")
           expect(help_text).to include("/worker embeddings on|off")
@@ -42,7 +42,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         expect(history).to receive(:set_config).with("embeddings_enabled", "true")
         expect(worker_manager).to receive(:enable_worker).with("embeddings")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("embeddings=on", type: :debug)
+        expect(application).to receive(:output_line).with("embeddings=on", type: :command)
         command.execute_subcommand("on", [])
       end
 
@@ -58,7 +58,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         expect(history).to receive(:set_config).with("embeddings_enabled", "false")
         expect(worker_manager).to receive(:disable_worker).with("embeddings")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("embeddings=off", type: :debug)
+        expect(application).to receive(:output_line).with("embeddings=off", type: :command)
         command.execute_subcommand("off", [])
       end
 
@@ -73,7 +73,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
       it "starts worker" do
         expect(worker_manager).to receive(:start_worker).with("embeddings")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Starting embeddings worker", type: :debug)
+        expect(application).to receive(:output_line).with("Starting embeddings worker", type: :command)
         command.execute_subcommand("start", [])
       end
 
@@ -87,7 +87,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
       it "stops worker" do
         expect(worker_manager).to receive(:stop_worker).with("embeddings")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Stopping embeddings worker", type: :debug)
+        expect(application).to receive(:output_line).with("Stopping embeddings worker", type: :command)
         command.execute_subcommand("stop", [])
       end
 
@@ -119,7 +119,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
       it "displays detailed worker status" do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_lines) do |*lines, type:|
-          expect(type).to eq(:debug)
+          expect(type).to eq(:command)
           status_text = lines.join("\n")
           expect(status_text).to include("Embeddings Worker Status:")
           expect(status_text).to include("Enabled: yes")
@@ -146,7 +146,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with(
           "embeddings model: text-embedding-3-small (read-only)",
-          type: :debug
+          type: :command
         )
         command.execute_subcommand("model", [])
       end
@@ -162,7 +162,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Usage: /worker embeddings verbosity <0-6>",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", [])
         end
@@ -178,7 +178,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings verbosity: 3",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", ["3"])
         end
@@ -194,7 +194,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid verbosity level. Use 0-6.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", ["invalid"])
         end
@@ -203,7 +203,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid verbosity level. Use 0-6.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("verbosity", ["10"])
         end
@@ -221,7 +221,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings batch size: 15",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("batch", [])
         end
@@ -238,7 +238,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings batch size: 25",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("batch", ["25"])
         end
@@ -254,7 +254,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid batch size. Must be a positive integer.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("batch", ["invalid"])
         end
@@ -263,7 +263,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid batch size. Must be a positive integer.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("batch", ["0"])
         end
@@ -281,7 +281,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings rate limit: 200ms",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("rate", [])
         end
@@ -298,7 +298,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings rate limit: 300ms",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("rate", ["300"])
         end
@@ -314,7 +314,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid rate limit. Must be a non-negative integer.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("rate", ["invalid"])
         end
@@ -323,7 +323,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "Invalid rate limit. Must be a non-negative integer.",
-            type: :debug
+            type: :command
           )
           command.execute_subcommand("rate", ["-1"])
         end
@@ -340,7 +340,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with(
           "Cleared all embeddings",
-          type: :debug
+          type: :command
         )
         command.execute_subcommand("reset", [])
       end
@@ -356,11 +356,11 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with(
           "Unknown subcommand: unknown",
-          type: :debug
+          type: :command
         )
         expect(application).to receive(:output_line).with(
           "Use: /worker embeddings help",
-          type: :debug
+          type: :command
         )
         command.execute_subcommand("unknown", [])
       end

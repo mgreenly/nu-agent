@@ -36,10 +36,10 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
     context "when called without arguments" do
       it "shows current models" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Current Models:", type: :debug)
-        expect(application).to receive(:output_line).with("  Orchestrator:  gpt-4", type: :debug)
-        expect(application).to receive(:output_line).with("  Spellchecker:  gpt-4-mini", type: :debug)
-        expect(application).to receive(:output_line).with("  Summarizer:    claude-3-5-haiku", type: :debug)
+        expect(application).to receive(:output_line).with("Current Models:", type: :command)
+        expect(application).to receive(:output_line).with("  Orchestrator:  gpt-4", type: :command)
+        expect(application).to receive(:output_line).with("  Spellchecker:  gpt-4-mini", type: :command)
+        expect(application).to receive(:output_line).with("  Summarizer:    claude-3-5-haiku", type: :command)
 
         result = command.execute("/model")
         expect(result).to eq(:continue)
@@ -49,17 +49,17 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
     context "when called with insufficient arguments" do
       it "shows usage message" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Usage:", type: :debug)
+        expect(application).to receive(:output_line).with("Usage:", type: :command)
         expect(application).to receive(:output_line).with("  /model                        Show current models",
-                                                          type: :debug)
+                                                          type: :command)
         expect(application).to receive(:output_line).with("  /model orchestrator <name>    Set orchestrator model",
-                                                          type: :debug)
+                                                          type: :command)
         expect(application).to receive(:output_line).with("  /model spellchecker <name>    Set spellchecker model",
-                                                          type: :debug)
+                                                          type: :command)
         expect(application).to receive(:output_line).with("  /model summarizer <name>      Set summarizer model",
-                                                          type: :debug)
-        expect(application).to receive(:output_line).with("Example: /model orchestrator gpt-5", type: :debug)
-        expect(application).to receive(:output_line).with("Run /models to see available models", type: :debug)
+                                                          type: :command)
+        expect(application).to receive(:output_line).with("Example: /model orchestrator gpt-5", type: :command)
+        expect(application).to receive(:output_line).with("Run /models to see available models", type: :command)
 
         result = command.execute("/model orchestrator")
         expect(result).to eq(:continue)
@@ -82,7 +82,7 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         expect(formatter).to receive(:orchestrator=).with(new_client)
         expect(history).to receive(:set_config).with("model_orchestrator", "gpt-5")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Switched orchestrator to: OpenAI (gpt-5)", type: :debug)
+        expect(application).to receive(:output_line).with("Switched orchestrator to: OpenAI (gpt-5)", type: :command)
 
         result = command.execute("/model orchestrator gpt-5")
         expect(result).to eq(:continue)
@@ -97,7 +97,7 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
 
         it "waits for active threads to complete" do
           expect(application).to receive(:output_line).with("Waiting for current operation to complete...",
-                                                            type: :debug)
+                                                            type: :command)
           command.execute("/model orchestrator gpt-5")
           expect(active_thread.status).to be_falsey
         end
@@ -131,7 +131,7 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         expect(application).to receive(:spellchecker=).with(new_client)
         expect(history).to receive(:set_config).with("model_spellchecker", "gpt-5")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Switched spellchecker to: gpt-5", type: :debug)
+        expect(application).to receive(:output_line).with("Switched spellchecker to: gpt-5", type: :command)
 
         result = command.execute("/model spellchecker gpt-5")
         expect(result).to eq(:continue)
@@ -166,9 +166,9 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         expect(application).to receive(:summarizer=).with(new_client)
         expect(history).to receive(:set_config).with("model_summarizer", "claude-3-5-sonnet")
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Switched summarizer to: claude-3-5-sonnet", type: :debug)
+        expect(application).to receive(:output_line).with("Switched summarizer to: claude-3-5-sonnet", type: :command)
         expect(application).to receive(:output_line)
-          .with("Note: Change takes effect at the start of the next session (/reset)", type: :debug)
+          .with("Note: Change takes effect at the start of the next session (/reset)", type: :command)
 
         result = command.execute("/model summarizer claude-3-5-sonnet")
         expect(result).to eq(:continue)
@@ -192,9 +192,9 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
     context "when using unknown subcommand" do
       it "shows error message" do
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Unknown subcommand: unknown", type: :debug)
+        expect(application).to receive(:output_line).with("Unknown subcommand: unknown", type: :command)
         expect(application).to receive(:output_line)
-          .with("Valid subcommands: orchestrator, spellchecker, summarizer", type: :debug)
+          .with("Valid subcommands: orchestrator, spellchecker, summarizer", type: :command)
 
         result = command.execute("/model unknown some-model")
         expect(result).to eq(:continue)

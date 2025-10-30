@@ -14,7 +14,6 @@ module Nu
           @application = options[:application]
           @current_conversation_id = options[:current_conversation_id]
           @config_store = options[:config_store]
-          @verbosity = load_verbosity
         end
 
         def load_verbosity
@@ -23,7 +22,7 @@ module Nu
 
         # Output debug message if verbosity level is sufficient
         def debug_output(message, level: 0)
-          return unless @application.debug && level <= @verbosity
+          return unless @application.debug && level <= load_verbosity
 
           @application.output_line("[EmbeddingGenerator] #{message}", type: :debug)
         end
@@ -33,7 +32,11 @@ module Nu
           return unless @application.embedding_enabled
 
           conversations, exchanges, queue = discover_work
-          return if queue.empty?
+
+          if queue.empty?
+            debug_output("No work found (no summaries need embeddings)", level: 3)
+            return
+          end
 
           start_time = log_start(conversations, exchanges, queue)
           initialize_status(queue)

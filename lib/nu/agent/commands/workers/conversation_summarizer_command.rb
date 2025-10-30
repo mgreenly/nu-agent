@@ -45,38 +45,38 @@ module Nu
 
           def show_help
             app.console.puts("")
-            app.output_lines(*help_text.lines.map(&:chomp), type: :debug)
+            app.output_lines(*help_text.lines.map(&:chomp), type: :command)
           end
 
           def enable_worker
             app.history.set_config("conversation_summarizer_enabled", "true")
             app.worker_manager.enable_worker(WORKER_NAME)
             app.console.puts("")
-            app.output_line("#{WORKER_NAME}=on", type: :debug)
+            app.output_line("#{WORKER_NAME}=on", type: :command)
           end
 
           def disable_worker
             app.history.set_config("conversation_summarizer_enabled", "false")
             app.worker_manager.disable_worker(WORKER_NAME)
             app.console.puts("")
-            app.output_line("#{WORKER_NAME}=off", type: :debug)
+            app.output_line("#{WORKER_NAME}=off", type: :command)
           end
 
           def start_worker
             app.worker_manager.start_worker(WORKER_NAME)
             app.console.puts("")
-            app.output_line("Starting #{WORKER_NAME} worker", type: :debug)
+            app.output_line("Starting #{WORKER_NAME} worker", type: :command)
           end
 
           def stop_worker
             app.worker_manager.stop_worker(WORKER_NAME)
             app.console.puts("")
-            app.output_line("Stopping #{WORKER_NAME} worker", type: :debug)
+            app.output_line("Stopping #{WORKER_NAME} worker", type: :command)
           end
 
           def show_status
             app.console.puts("")
-            app.output_lines(*status_text.lines.map(&:chomp), type: :debug)
+            app.output_lines(*status_text.lines.map(&:chomp), type: :command)
           end
 
           def handle_model(args)
@@ -90,14 +90,14 @@ module Nu
           def show_current_model
             model = app.history.get_config("conversation_summarizer_model")
             app.console.puts("")
-            app.output_line("#{WORKER_NAME} model: #{model}", type: :debug)
+            app.output_line("#{WORKER_NAME} model: #{model}", type: :command)
           end
 
           def change_model(new_model)
             app.history.set_config("conversation_summarizer_model", new_model)
             app.console.puts("")
-            app.output_line("#{WORKER_NAME} model: #{new_model}", type: :debug)
-            app.output_line("Model will be used on next /reset", type: :debug)
+            app.output_line("#{WORKER_NAME} model: #{new_model}", type: :command)
+            app.output_line("Model will be used on next /reset", type: :command)
           end
 
           def handle_verbosity(args)
@@ -110,7 +110,7 @@ module Nu
 
           def show_verbosity_usage
             app.console.puts("")
-            app.output_line("Usage: /worker #{WORKER_NAME} verbosity <0-6>", type: :debug)
+            app.output_line("Usage: /worker #{WORKER_NAME} verbosity <0-6>", type: :command)
           end
 
           def change_verbosity(level)
@@ -122,26 +122,26 @@ module Nu
 
             app.history.set_config("conversation_summarizer_verbosity", level)
             app.console.puts("")
-            app.output_line("#{WORKER_NAME} verbosity: #{level}", type: :debug)
+            app.output_line("#{WORKER_NAME} verbosity: #{level}", type: :command)
           rescue ArgumentError
             show_verbosity_error
           end
 
           def show_verbosity_error
             app.console.puts("")
-            app.output_line("Invalid verbosity level. Use 0-6.", type: :debug)
+            app.output_line("Invalid verbosity level. Use 0-6.", type: :command)
           end
 
           def reset_worker
             app.history.clear_conversation_summaries
             app.console.puts("")
-            app.output_line("Cleared all conversation summaries", type: :debug)
+            app.output_line("Cleared all conversation summaries", type: :command)
           end
 
           def show_error(subcommand)
             app.console.puts("")
-            app.output_line("Unknown subcommand: #{subcommand}", type: :debug)
-            app.output_line("Use: /worker #{WORKER_NAME} help", type: :debug)
+            app.output_line("Unknown subcommand: #{subcommand}", type: :command)
+            app.output_line("Use: /worker #{WORKER_NAME} help", type: :command)
           end
 
           def help_text

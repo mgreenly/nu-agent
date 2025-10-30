@@ -22,8 +22,8 @@ module Nu
 
         def show_usage
           app.console.puts("")
-          app.output_line("Usage: /spellcheck <on|off>", type: :debug)
-          app.output_line("Current: spellcheck=#{app.spell_check_enabled ? 'on' : 'off'}", type: :debug)
+          app.output_line("Usage: /spellcheck <on|off>", type: :command)
+          app.output_line("Current: spellcheck=#{app.spell_check_enabled ? 'on' : 'off'}", type: :command)
         end
 
         def update_spellcheck(setting)
@@ -34,7 +34,7 @@ module Nu
             apply_spellcheck_setting(false, "false", "off")
           else
             app.console.puts("")
-            app.output_line("Invalid option. Use: /spellcheck <on|off>", type: :debug)
+            app.output_line("Invalid option. Use: /spellcheck <on|off>", type: :command)
           end
         end
 
@@ -42,7 +42,7 @@ module Nu
           app.spell_check_enabled = enabled
           app.history.set_config("spell_check_enabled", config_value)
           app.console.puts("")
-          app.output_line("spellcheck=#{display_value}", type: :debug)
+          app.output_line("spellcheck=#{display_value}", type: :command)
         end
       end
     end

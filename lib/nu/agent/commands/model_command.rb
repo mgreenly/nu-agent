@@ -43,21 +43,21 @@ module Nu
 
         def show_current_models
           app.console.puts("")
-          app.output_line("Current Models:", type: :debug)
-          app.output_line("  Orchestrator:  #{app.orchestrator.model}", type: :debug)
-          app.output_line("  Spellchecker:  #{app.spellchecker.model}", type: :debug)
-          app.output_line("  Summarizer:    #{app.summarizer.model}", type: :debug)
+          app.output_line("Current Models:", type: :command)
+          app.output_line("  Orchestrator:  #{app.orchestrator.model}", type: :command)
+          app.output_line("  Spellchecker:  #{app.spellchecker.model}", type: :command)
+          app.output_line("  Summarizer:    #{app.summarizer.model}", type: :command)
         end
 
         def show_usage
           app.console.puts("")
-          app.output_line("Usage:", type: :debug)
-          app.output_line("  /model                        Show current models", type: :debug)
-          app.output_line("  /model orchestrator <name>    Set orchestrator model", type: :debug)
-          app.output_line("  /model spellchecker <name>    Set spellchecker model", type: :debug)
-          app.output_line("  /model summarizer <name>      Set summarizer model", type: :debug)
-          app.output_line("Example: /model orchestrator gpt-5", type: :debug)
-          app.output_line("Run /models to see available models", type: :debug)
+          app.output_line("Usage:", type: :command)
+          app.output_line("  /model                        Show current models", type: :command)
+          app.output_line("  /model orchestrator <name>    Set orchestrator model", type: :command)
+          app.output_line("  /model spellchecker <name>    Set spellchecker model", type: :command)
+          app.output_line("  /model summarizer <name>      Set summarizer model", type: :command)
+          app.output_line("Example: /model orchestrator gpt-5", type: :command)
+          app.output_line("Run /models to see available models", type: :command)
         end
 
         def switch_orchestrator(new_model_name)
@@ -77,7 +77,7 @@ module Nu
 
           return unless still_running
 
-          app.output_line("Waiting for current operation to complete...", type: :debug)
+          app.output_line("Waiting for current operation to complete...", type: :command)
           app.active_threads.each(&:join)
         end
 
@@ -95,7 +95,7 @@ module Nu
 
           app.console.puts("")
           app.output_line("Switched orchestrator to: #{app.orchestrator.name} (#{app.orchestrator.model})",
-                          type: :debug)
+                          type: :command)
         end
 
         def switch_spellchecker(new_model_name)
@@ -104,7 +104,7 @@ module Nu
           app.spellchecker = new_client
           app.history.set_config("model_spellchecker", new_model_name)
           app.console.puts("")
-          app.output_line("Switched spellchecker to: #{new_model_name}", type: :debug)
+          app.output_line("Switched spellchecker to: #{new_model_name}", type: :command)
         rescue Error => e
           app.console.puts("")
           app.output_line("Error: #{e.message}", type: :error)
@@ -116,8 +116,8 @@ module Nu
           app.summarizer = new_client
           app.history.set_config("model_summarizer", new_model_name)
           app.console.puts("")
-          app.output_line("Switched summarizer to: #{new_model_name}", type: :debug)
-          app.output_line("Note: Change takes effect at the start of the next session (/reset)", type: :debug)
+          app.output_line("Switched summarizer to: #{new_model_name}", type: :command)
+          app.output_line("Note: Change takes effect at the start of the next session (/reset)", type: :command)
         rescue Error => e
           app.console.puts("")
           app.output_line("Error: #{e.message}", type: :error)
@@ -125,8 +125,8 @@ module Nu
 
         def show_unknown_subcommand(subcommand)
           app.console.puts("")
-          app.output_line("Unknown subcommand: #{subcommand}", type: :debug)
-          app.output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :debug)
+          app.output_line("Unknown subcommand: #{subcommand}", type: :command)
+          app.output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :command)
         end
       end
     end

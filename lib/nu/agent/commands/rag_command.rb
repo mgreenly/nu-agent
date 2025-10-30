@@ -51,7 +51,7 @@ module Nu
 
         def show_usage
           app.console.puts("")
-          usage_lines.each { |line| app.output_line(line, type: :debug) }
+          usage_lines.each { |line| app.output_line(line, type: :command) }
         end
 
         def usage_lines
@@ -82,14 +82,14 @@ module Nu
           enabled = app.history.get_config("rag_enabled", default: "true") == "true"
           vss_available = app.history.get_config("vss_available", default: "false")
 
-          app.output_line("RAG Retrieval Status:", type: :debug)
-          app.output_line("  Enabled: #{enabled ? 'yes' : 'no'}", type: :debug)
-          app.output_line("  VSS available: #{vss_available}", type: :debug)
+          app.output_line("RAG Retrieval Status:", type: :command)
+          app.output_line("  Enabled: #{enabled ? 'yes' : 'no'}", type: :command)
+          app.output_line("  VSS available: #{vss_available}", type: :command)
         end
 
         def show_rag_configuration
-          app.output_line("Configuration:", type: :debug)
-          rag_config_lines.each { |line| app.output_line(line, type: :debug) }
+          app.output_line("Configuration:", type: :command)
+          rag_config_lines.each { |line| app.output_line(line, type: :command) }
         end
 
         def rag_config_lines
@@ -113,11 +113,11 @@ module Nu
           app.history.set_config("rag_enabled", enabled ? "true" : "false")
 
           app.console.puts("")
-          app.output_line("rag=#{setting}", type: :debug)
+          app.output_line("rag=#{setting}", type: :command)
           if enabled
-            app.output_line("RAG retrieval will be used in conversations", type: :debug)
+            app.output_line("RAG retrieval will be used in conversations", type: :command)
           else
-            app.output_line("RAG retrieval is disabled", type: :debug)
+            app.output_line("RAG retrieval is disabled", type: :command)
           end
         end
 
@@ -130,8 +130,8 @@ module Nu
 
         def show_test_usage
           app.console.puts("")
-          app.output_line("Usage: /rag test <query>", type: :debug)
-          app.output_line("Example: /rag test How do I configure the database?", type: :debug)
+          app.output_line("Usage: /rag test <query>", type: :command)
+          app.output_line("Example: /rag test How do I configure the database?", type: :command)
         end
 
         def show_no_embedding_client_error
@@ -141,8 +141,8 @@ module Nu
 
         def perform_test_retrieval(query)
           app.console.puts("")
-          app.output_line("Testing RAG retrieval for: \"#{query}\"", type: :debug)
-          app.output_line("", type: :debug)
+          app.output_line("Testing RAG retrieval for: \"#{query}\"", type: :command)
+          app.output_line("", type: :command)
 
           begin
             context = execute_rag_retrieval(query)
@@ -172,20 +172,20 @@ module Nu
         end
 
         def display_rag_metadata(metadata)
-          app.output_line("Results:", type: :debug)
-          app.output_line("  Duration: #{metadata[:duration_ms]}ms", type: :debug)
-          app.output_line("  Conversations found: #{metadata[:conversation_count]}", type: :debug)
-          app.output_line("  Exchanges found: #{metadata[:exchange_count]}", type: :debug)
-          app.output_line("  Estimated tokens: #{metadata[:total_tokens]}", type: :debug)
+          app.output_line("Results:", type: :command)
+          app.output_line("  Duration: #{metadata[:duration_ms]}ms", type: :command)
+          app.output_line("  Conversations found: #{metadata[:conversation_count]}", type: :command)
+          app.output_line("  Exchanges found: #{metadata[:exchange_count]}", type: :command)
+          app.output_line("  Estimated tokens: #{metadata[:total_tokens]}", type: :command)
         end
 
         def display_rag_context(formatted_context)
           if formatted_context && !formatted_context.empty?
-            app.output_line("Formatted Context:", type: :debug)
+            app.output_line("Formatted Context:", type: :command)
             app.console.puts("")
             app.console.puts(formatted_context)
           else
-            app.output_line("No relevant context found.", type: :debug)
+            app.output_line("No relevant context found.", type: :command)
           end
         end
 
@@ -212,7 +212,7 @@ module Nu
 
         def show_current_config(key, display)
           app.console.puts("")
-          app.output_line("Current #{display}: #{app.history.get_config(key, default: 'not set')}", type: :debug)
+          app.output_line("Current #{display}: #{app.history.get_config(key, default: 'not set')}", type: :command)
         end
 
         def valid_range?(value, min, max)
@@ -231,7 +231,7 @@ module Nu
         def save_and_confirm_config(key, value, display, parsed_value)
           app.history.set_config(key, value)
           app.console.puts("")
-          app.output_line("#{display} set to #{parsed_value}", type: :debug)
+          app.output_line("#{display} set to #{parsed_value}", type: :command)
         end
       end
     end

@@ -36,10 +36,12 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
       expect(summarizer_worker).to be_a(described_class)
     end
 
-    it "loads verbosity from config store" do
+    it "loads verbosity from config store dynamically on each debug_output call" do
       allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(2)
+      allow(application).to receive(:debug).and_return(true)
+      allow(application).to receive(:output_line)
 
-      described_class.new(
+      summarizer_worker = described_class.new(
         history: history,
         summarizer: summarizer,
         application: application,
@@ -47,6 +49,9 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
         current_conversation_id: 1,
         config_store: config_store
       )
+
+      # Call debug_output to trigger verbosity loading
+      summarizer_worker.send(:debug_output, "test message", level: 1)
 
       expect(config_store).to have_received(:get_int).with("exchange_summarizer_verbosity", default: 0)
     end

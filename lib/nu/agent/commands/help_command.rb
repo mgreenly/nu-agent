@@ -9,7 +9,7 @@ module Nu
       class HelpCommand < BaseCommand
         def execute(_input)
           app.console.puts("")
-          app.output_lines(*help_text.lines.map(&:chomp), type: :debug)
+          app.output_lines(*help_text.lines.map(&:chomp), type: :command)
           :continue
         end
 

@@ -22,8 +22,8 @@ module Nu
 
         def show_usage
           app.console.puts("")
-          app.output_line("Usage: /redaction <on|off>", type: :debug)
-          app.output_line("Current: redaction=#{app.redact ? 'on' : 'off'}", type: :debug)
+          app.output_line("Usage: /redaction <on|off>", type: :command)
+          app.output_line("Current: redaction=#{app.redact ? 'on' : 'off'}", type: :command)
         end
 
         def update_redaction(setting)
@@ -34,7 +34,7 @@ module Nu
             apply_redaction_setting(false, "false", "off")
           else
             app.console.puts("")
-            app.output_line("Invalid option. Use: /redaction <on|off>", type: :debug)
+            app.output_line("Invalid option. Use: /redaction <on|off>", type: :command)
           end
         end
 
@@ -42,7 +42,7 @@ module Nu
           app.redact = enabled
           app.history.set_config("redaction", config_value)
           app.console.puts("")
-          app.output_line("redaction=#{display_value}", type: :debug)
+          app.output_line("redaction=#{display_value}", type: :command)
         end
       end
     end
