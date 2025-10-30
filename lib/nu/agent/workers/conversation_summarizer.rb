@@ -5,7 +5,8 @@ module Nu
     module Workers
       # Manages background conversation summarization worker thread
       class ConversationSummarizer < PausableTask
-        def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:, config_store:)
+        def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:, config_store:,
+                       metrics_collector: nil)
           # Initialize PausableTask with shutdown flag from application
           super(status_info: status_info, shutdown_flag: application)
 
@@ -14,6 +15,7 @@ module Nu
           @application = application
           @current_conversation_id = current_conversation_id
           @config_store = config_store
+          @metrics_collector = metrics_collector
         end
 
         def load_verbosity

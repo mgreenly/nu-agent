@@ -5,7 +5,8 @@ module Nu
     module Workers
       # Manages background exchange summarization worker thread
       class ExchangeSummarizer < PausableTask
-        def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:, config_store:)
+        def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:, config_store:,
+                       metrics_collector: nil)
           # Initialize PausableTask with shutdown flag from application
           super(status_info: status_info, shutdown_flag: application)
 
@@ -14,6 +15,7 @@ module Nu
           @application = application
           @current_conversation_id = current_conversation_id
           @config_store = config_store
+          @metrics_collector = metrics_collector
         end
 
         def load_verbosity
@@ -79,6 +81,8 @@ module Nu
         private
 
         def process_exchange(exchange)
+          start_time = Time.now if @metrics_collector
+
           exchange_id = exchange["id"]
           conversation_id = exchange["conversation_id"]
           update_status_current_exchange(exchange_id)
@@ -107,6 +111,9 @@ module Nu
           debug_output("Error processing exchange #{exchange_id}: #{e.message}", level: 0)
           record_failure(exchange_id, e)
           increment_failed_count
+        ensure
+          # Record metrics if collector is available and we started timing
+          record_duration_metric(start_time) if @metrics_collector && start_time
         end
 
         def update_status_current_exchange(exchange_id)
@@ -229,6 +236,11 @@ module Nu
             # Exit critical section
             @application.send(:exit_critical_section)
           end
+        end
+
+        def record_duration_metric(start_time)
+          duration_ms = ((Time.now - start_time) * 1000).round(2)
+          @metrics_collector.record_duration(:exchange_processing, duration_ms)
         end
       end
     end

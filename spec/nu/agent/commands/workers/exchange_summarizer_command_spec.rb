@@ -111,6 +111,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ExchangeSummarizerCommand do
       before do
         allow(worker_manager).to receive(:worker_status).with("exchange-summarizer").and_return(status)
         allow(worker_manager).to receive(:worker_enabled?).with("exchange-summarizer").and_return(true)
+        allow(worker_manager).to receive(:worker_metrics).with("exchange-summarizer").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return("claude-sonnet-4-5")
         allow(history).to receive(:get_int).with("exchange_summarizer_verbosity", 0).and_return(1)
       end
@@ -135,6 +136,48 @@ RSpec.describe Nu::Agent::Commands::Workers::ExchangeSummarizerCommand do
 
       it "returns :continue" do
         expect(command.execute_subcommand("status", [])).to eq(:continue)
+      end
+
+      context "with metrics" do
+        let(:metrics_collector) { instance_double(Nu::Agent::MetricsCollector) }
+
+        before do
+          allow(worker_manager).to receive(:worker_metrics).with("exchange-summarizer").and_return(metrics_collector)
+          allow(metrics_collector).to receive(:get_timer_stats).with(:exchange_processing).and_return(
+            { count: 40, p50: 125.5, p90: 250.2, p99: 450.8 }
+          )
+        end
+
+        it "includes metrics in status output" do
+          expect(console).to receive(:puts).with("")
+          expect(application).to receive(:output_lines) do |*lines, type:|
+            expect(type).to eq(:command)
+            status_text = lines.join("\n")
+            expect(status_text).to include("Performance Metrics:")
+            expect(status_text).to include("Processing latency (p50): 125.5ms")
+            expect(status_text).to include("Processing latency (p90): 250.2ms")
+            expect(status_text).to include("Processing latency (p99): 450.8ms")
+          end
+          command.execute_subcommand("status", [])
+        end
+
+        context "when no metrics recorded yet" do
+          before do
+            allow(metrics_collector).to receive(:get_timer_stats).with(:exchange_processing).and_return(
+              { count: 0, p50: 0, p90: 0, p99: 0 }
+            )
+          end
+
+          it "does not include metrics section" do
+            expect(console).to receive(:puts).with("")
+            expect(application).to receive(:output_lines) do |*lines, type:|
+              expect(type).to eq(:command)
+              status_text = lines.join("\n")
+              expect(status_text).not_to include("Performance Metrics:")
+            end
+            command.execute_subcommand("status", [])
+          end
+        end
       end
     end
 

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "metrics_collector"
+
 module Nu
   module Agent
     class BackgroundWorkerManager
@@ -27,6 +29,11 @@ module Nu
         @summarizer_status = build_summarizer_status
         @exchange_summarizer_status = build_exchange_summarizer_status
         @embedding_status = build_embedding_status
+
+        # Initialize metrics collectors for each worker
+        @conversation_summarizer_metrics = MetricsCollector.new
+        @exchange_summarizer_metrics = MetricsCollector.new
+        @embedding_metrics = MetricsCollector.new
       end
 
       def start_summarization_worker
@@ -141,6 +148,20 @@ module Nu
         }
       end
 
+      # Get metrics collector for a specific worker
+      # @param name [String] Worker name
+      # @return [MetricsCollector, nil] Metrics collector or nil if invalid
+      def worker_metrics(name)
+        case name
+        when "conversation-summarizer"
+          @conversation_summarizer_metrics
+        when "exchange-summarizer"
+          @exchange_summarizer_metrics
+        when "embeddings"
+          @embedding_metrics
+        end
+      end
+
       # Check if a worker is enabled in config
       # @param name [String] Worker name
       # @return [Boolean] true if enabled
@@ -237,7 +258,8 @@ module Nu
           application: @application,
           status_info: { status: @summarizer_status, mutex: @status_mutex },
           current_conversation_id: @conversation_id,
-          config_store: config_store
+          config_store: config_store,
+          metrics_collector: @conversation_summarizer_metrics
         )
         [worker, worker.start_worker]
       end
@@ -250,7 +272,8 @@ module Nu
           application: @application,
           status_info: { status: @exchange_summarizer_status, mutex: @status_mutex },
           current_conversation_id: @conversation_id,
-          config_store: config_store
+          config_store: config_store,
+          metrics_collector: @exchange_summarizer_metrics
         )
         [worker, worker.start_worker]
       end
@@ -265,7 +288,8 @@ module Nu
           application: @application,
           status_info: { status: @embedding_status, mutex: @status_mutex },
           current_conversation_id: @conversation_id,
-          config_store: config_store
+          config_store: config_store,
+          metrics_collector: @embedding_metrics
         )
         [worker, worker.start_worker]
       end

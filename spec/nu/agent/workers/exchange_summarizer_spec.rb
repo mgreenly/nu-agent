@@ -314,6 +314,77 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
     end
   end
 
+  describe "metrics tracking" do
+    let(:metrics_collector) { instance_double(Nu::Agent::MetricsCollector) }
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store,
+        metrics_collector: metrics_collector
+      )
+    end
+
+    before do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      allow(application).to receive(:debug).and_return(false)
+    end
+
+    it "records duration metrics for successful processing" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      messages = [
+        { "role" => "user", "content" => "Test", "redacted" => false, "exchange_id" => 100 }
+      ]
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return(messages)
+      allow(summarizer).to receive_messages(model: "claude-sonnet-4-5", send_message: {
+                                              "content" => "Summary",
+                                              "spend" => 0.001
+                                            })
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_exchange_summary)
+
+      # Expect metrics to be recorded
+      expect(metrics_collector).to receive(:record_duration).with(:exchange_processing, kind_of(Numeric))
+
+      summarizer_worker.summarize_exchanges
+    end
+
+    it "does not record metrics when metrics_collector is nil" do
+      worker_without_metrics = described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+        # No metrics_collector passed
+      )
+
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return([])
+      allow(summarizer).to receive(:model).and_return("claude-sonnet-4-5")
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_exchange_summary)
+
+      # Should not raise error even without metrics_collector
+      expect { worker_without_metrics.summarize_exchanges }.not_to raise_error
+    end
+  end
+
   describe "#debug_output" do
     let(:summarizer_worker) do
       allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(verbosity)

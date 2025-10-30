@@ -548,4 +548,34 @@ RSpec.describe Nu::Agent::Application do
       expect(mock_worker).to have_received(:instance_variable_set).with(:@history, new_history)
     end
   end
+
+  describe "#start_background_workers" do
+    before do
+      allow(mock_history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
+      allow(mock_worker_manager).to receive(:start_summarization_worker)
+      allow(mock_worker_manager).to receive(:start_embedding_worker)
+    end
+
+    context "in development environment" do
+      before do
+        allow(ENV).to receive(:fetch).with("CI", "false").and_return("false")
+      end
+
+      it "starts workers when enabled" do
+        app = described_class.new(options: options)
+        expect(mock_worker_manager).to have_received(:start_summarization_worker)
+      end
+    end
+
+    context "in CI environment" do
+      before do
+        allow(ENV).to receive(:fetch).with("CI", "false").and_return("true")
+      end
+
+      it "does not auto-start workers even when enabled" do
+        app = described_class.new(options: options)
+        expect(mock_worker_manager).not_to have_received(:start_summarization_worker)
+      end
+    end
+  end
 end

@@ -180,7 +180,7 @@ module Nu
             model = app.history.get_config("exchange_summarizer_model")
             verbosity = app.history.get_int("exchange_summarizer_verbosity", 0)
 
-            <<~STATUS
+            result = <<~STATUS
               Exchange Summarizer Status:
                 Enabled: #{enabled}
                 State: #{state}
@@ -193,6 +193,23 @@ module Nu
                   Failed: #{status['failed']}
                   Cost: $#{format('%.2f', status['spend'])}
             STATUS
+
+            # Add metrics if available
+            metrics_collector = app.worker_manager.worker_metrics(WORKER_NAME)
+            if metrics_collector
+              metrics_stats = metrics_collector.get_timer_stats(:exchange_processing)
+              if metrics_stats[:count] > 0
+                result += <<~METRICS
+
+                  Performance Metrics:
+                    Processing latency (p50): #{metrics_stats[:p50]}ms
+                    Processing latency (p90): #{metrics_stats[:p90]}ms
+                    Processing latency (p99): #{metrics_stats[:p99]}ms
+                METRICS
+              end
+            end
+
+            result
           end
         end
       end

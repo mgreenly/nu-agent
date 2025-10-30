@@ -106,6 +106,12 @@ module Nu
 
       private
 
+      # Check if running in CI environment
+      # @return [Boolean] true if CI environment variable is set
+      def ci_environment?
+        ENV.fetch("CI", "false") == "true"
+      end
+
       def initialize_state(options)
         $stdout.sync = true
         @session_start_time = Time.now
@@ -168,6 +174,9 @@ module Nu
       end
 
       def start_background_workers
+        # Skip auto-start in CI environments to avoid background churn during tests
+        return if ci_environment?
+
         @worker_manager.start_summarization_worker if @summarizer_enabled
         @worker_manager.start_embedding_worker if @embedding_enabled && @embedding_client
       end

@@ -14,6 +14,7 @@ module Nu
           @application = options[:application]
           @current_conversation_id = options[:current_conversation_id]
           @config_store = options[:config_store]
+          @metrics_collector = options[:metrics_collector]
         end
 
         def load_verbosity

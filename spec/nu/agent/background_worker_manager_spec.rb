@@ -412,4 +412,26 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       expect(result).to be true
     end
   end
+
+  describe "#worker_metrics" do
+    it "returns metrics collector for conversation-summarizer" do
+      metrics = worker_manager.worker_metrics("conversation-summarizer")
+      expect(metrics).to be_a(Nu::Agent::MetricsCollector)
+    end
+
+    it "returns metrics collector for exchange-summarizer" do
+      metrics = worker_manager.worker_metrics("exchange-summarizer")
+      expect(metrics).to be_a(Nu::Agent::MetricsCollector)
+    end
+
+    it "returns metrics collector for embeddings" do
+      metrics = worker_manager.worker_metrics("embeddings")
+      expect(metrics).to be_a(Nu::Agent::MetricsCollector)
+    end
+
+    it "returns nil for invalid worker name" do
+      metrics = worker_manager.worker_metrics("invalid-worker")
+      expect(metrics).to be_nil
+    end
+  end
 end
