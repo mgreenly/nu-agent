@@ -3,11 +3,16 @@
 require "spec_helper"
 
 RSpec.describe Nu::Agent::BackgroundWorkerManager do
+  let(:config_store) { instance_double(Nu::Agent::ConfigStore) }
   let(:history) { instance_double(Nu::Agent::History) }
   let(:application) { instance_double(Nu::Agent::Application, output_line: nil) }
   let(:summarizer) { instance_double("Summarizer") }
   let(:conversation_id) { 1 }
   let(:status_mutex) { Mutex.new }
+
+  before do
+    allow(history).to receive(:instance_variable_get).with(:@config_store).and_return(config_store)
+  end
 
   let(:worker_manager) do
     described_class.new(
@@ -56,7 +61,8 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
         summarizer: summarizer,
         application: application,
         status_info: { status: worker_manager.summarizer_status, mutex: status_mutex },
-        current_conversation_id: conversation_id
+        current_conversation_id: conversation_id,
+        config_store: config_store
       ).and_return(mock_conversation_worker)
 
       expect(Nu::Agent::Workers::ExchangeSummarizer).to receive(:new).with(

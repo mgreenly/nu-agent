@@ -32,12 +32,14 @@ module Nu
       def start_summarization_worker
         @operation_mutex.synchronize do
           # Start conversation summarizer
+          config_store = @history.instance_variable_get(:@config_store)
           conversation_summarizer = Workers::ConversationSummarizer.new(
             history: @history,
             summarizer: @summarizer,
             application: @application,
             status_info: { status: @summarizer_status, mutex: @status_mutex },
-            current_conversation_id: @conversation_id
+            current_conversation_id: @conversation_id,
+            config_store: config_store
           )
           @workers << conversation_summarizer
 
@@ -227,12 +229,14 @@ module Nu
       end
 
       def create_conversation_summarizer
+        config_store = @history.instance_variable_get(:@config_store)
         worker = Workers::ConversationSummarizer.new(
           history: @history,
           summarizer: @summarizer,
           application: @application,
           status_info: { status: @summarizer_status, mutex: @status_mutex },
-          current_conversation_id: @conversation_id
+          current_conversation_id: @conversation_id,
+          config_store: config_store
         )
         [worker, worker.start_worker]
       end

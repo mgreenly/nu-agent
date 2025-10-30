@@ -5,7 +5,7 @@ module Nu
     module Workers
       # Manages background conversation summarization worker thread
       class ConversationSummarizer < PausableTask
-        def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:)
+        def initialize(history:, summarizer:, application:, status_info:, current_conversation_id:, config_store:)
           # Initialize PausableTask with shutdown flag from application
           super(status_info: status_info, shutdown_flag: application)
 
@@ -13,6 +13,19 @@ module Nu
           @summarizer = summarizer
           @application = application
           @current_conversation_id = current_conversation_id
+          @config_store = config_store
+          @verbosity = load_verbosity
+        end
+
+        def load_verbosity
+          @config_store.get_int("conversation_summarizer_verbosity", default: 0)
+        end
+
+        # Output debug message if verbosity level is sufficient
+        def debug_output(message, level: 0)
+          return unless @application.debug && level <= @verbosity
+
+          @application.output_line("[ConversationSummarizer] #{message}", type: :debug)
         end
 
         # Main summarization loop - processes unsummarized conversations
@@ -21,6 +34,8 @@ module Nu
           conversations = @history.get_unsummarized_conversations(exclude_id: @current_conversation_id)
 
           return if conversations.empty?
+
+          debug_output("Starting summarization of #{conversations.length} conversations", level: 0)
 
           # Update status
           @status_mutex.synchronize do
@@ -42,6 +57,8 @@ module Nu
             @status["running"] = false
             @status["current_conversation_id"] = nil
           end
+
+          debug_output("Finished summarization: #{@status['completed']} completed, #{@status['failed']} failed", level: 0)
         end
 
         protected
@@ -62,17 +79,22 @@ module Nu
           conv_id = conv["id"]
           update_status_current_conversation(conv_id)
 
+          debug_output("Processing conversation #{conv_id}", level: 1)
+
           messages = @history.messages(conversation_id: conv_id, include_in_context_only: false)
           return handle_empty_conversation(conv_id) if messages.empty?
 
           summary_prompt = build_summary_prompt(messages)
           return if shutdown_requested?
 
+          debug_output("Making LLM call for conversation #{conv_id} with #{messages.length} messages", level: 2)
+
           response = make_llm_call_with_shutdown_check(summary_prompt)
           return if shutdown_requested? || response.nil?
 
           handle_summarization_response(conv_id, response)
-        rescue StandardError
+        rescue StandardError => e
+          debug_output("Error processing conversation #{conv_id}: #{e.message}", level: 0)
           increment_failed_count
         end
 
@@ -109,15 +131,20 @@ module Nu
         end
 
         def handle_summarization_response(conv_id, response)
-          return increment_failed_count if response["error"]
+          if response["error"]
+            debug_output("LLM error for conversation #{conv_id}: #{response['error']}", level: 3)
+            return increment_failed_count
+          end
 
           summary = response["content"]&.strip
           cost = response["spend"] || 0.0
 
           if summary && !summary.empty?
+            debug_output("Got summary for conversation #{conv_id}, cost: $#{cost.round(4)}", level: 3)
             save_summary(conv_id, summary, cost)
             update_status_success(summary, cost)
           else
+            debug_output("Empty summary response for conversation #{conv_id}", level: 3)
             increment_failed_count
           end
         end

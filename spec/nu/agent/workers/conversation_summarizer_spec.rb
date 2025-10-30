@@ -5,8 +5,9 @@ require "spec_helper"
 RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
   let(:history) { instance_double(Nu::Agent::History) }
   let(:summarizer) { instance_double(Nu::Agent::Clients::Anthropic) }
-  let(:application) { instance_double(Nu::Agent::Application) }
+  let(:application) { instance_double(Nu::Agent::Application, debug: false) }
   let(:status_mutex) { Mutex.new }
+  let(:config_store) { instance_double(Nu::Agent::ConfigStore) }
   let(:summarizer_status) do
     {
       "running" => false,
@@ -19,6 +20,10 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
     }
   end
 
+  before do
+    allow(config_store).to receive(:get_int).with("conversation_summarizer_verbosity", default: 0).and_return(0)
+  end
+
   describe "#initialize" do
     it "initializes with required dependencies" do
       summarizer_worker = described_class.new(
@@ -26,7 +31,8 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
         summarizer: summarizer,
         application: application,
         status_info: { status: summarizer_status, mutex: status_mutex },
-        current_conversation_id: 1
+        current_conversation_id: 1,
+        config_store: config_store
       )
 
       expect(summarizer_worker).to be_a(described_class)
@@ -40,7 +46,8 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
         summarizer: summarizer,
         application: application,
         status_info: { status: summarizer_status, mutex: status_mutex },
-        current_conversation_id: 1
+        current_conversation_id: 1,
+        config_store: config_store
       )
     end
 
@@ -84,7 +91,8 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
         summarizer: summarizer,
         application: application,
         status_info: { status: summarizer_status, mutex: status_mutex },
-        current_conversation_id: 1
+        current_conversation_id: 1,
+        config_store: config_store
       )
     end
 
