@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
 require "io/console"
+require_relative "console_io_states"
 
 module Nu
   module Agent
     # ConsoleIO - Unified console I/O system with raw terminal mode and IO.select
     # Replaces TUIManager, OutputManager, and OutputBuffer with a single class
+    # Uses State Pattern for clean state management and transitions
     class ConsoleIO
+      attr_reader :state
+
       def initialize(db_history: nil, debug: false)
         @stdin = $stdin
         @stdout = $stdout
@@ -40,11 +44,48 @@ module Nu
         @spinner_thread = nil
         @spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
-        # Mode tracking
-        @mode = :input # :input or :spinner
+        # State Pattern - replaces @mode
+        @state = IdleState.new(self)
+        @previous_state = nil
 
         # Register cleanup
         at_exit { restore_terminal }
+      end
+
+      # State management methods
+
+      # Get current state object
+      def current_state
+        @state
+      end
+
+      # Get current state name for debugging
+      def current_state_name
+        @state.name
+      end
+
+      # Transition to a new state
+      def transition_to(new_state)
+        return if @state == new_state
+
+        log_state_transition(@state, new_state) if @debug
+
+        @state.on_exit
+        @previous_state = @state
+        @state = new_state
+        @state.on_enter
+      end
+
+      # Pause (can be called from any state)
+      def pause
+        @state.pause
+      end
+
+      # Resume from paused state
+      def resume
+        raise StateTransitionError, "Not in paused state" unless @state.is_a?(PausedState)
+
+        @state.resume
       end
 
       # Thread-safe output from background threads
@@ -55,18 +96,30 @@ module Nu
         # Ignore if pipe closed
       end
 
-      # Start progress bar mode - clears line and prepares for progress updates
+      # Progress bar methods - delegate to state
+
       def start_progress
-        @mode = :progress
+        @state.start_progress
+      end
+
+      def update_progress(text)
+        @state.update_progress(text)
+      end
+
+      def end_progress
+        @state.end_progress
+      end
+
+      # Internal methods called by states (prefixed with do_)
+
+      def do_start_progress
         @mutex.synchronize do
           @stdout.write("\e[2K\r") # Clear line and return to start
           @stdout.flush
         end
       end
 
-      # Update progress bar (in-place update with carriage return)
-      # Text should be a complete line (e.g., "[===>  ] 45%")
-      def update_progress(text)
+      def do_update_progress(text)
         @mutex.synchronize do
           @stdout.write("\r#{text}")
           @stdout.flush
@@ -75,52 +128,56 @@ module Nu
         # Ignore if output fails
       end
 
-      # End progress bar mode - moves to next line and returns to normal
-      def end_progress
-        @mode = :input
+      def do_end_progress
         @mutex.synchronize do
           @stdout.write("\r\n") # Move to next line, keeping progress visible
           @stdout.flush
         end
       end
 
-      # Spinner mode - show animated spinner
-      def show_spinner(message)
-        @mode = :spinner
-        @spinner_state.start(message, Thread.current) # Use encapsulated state
+      # Spinner methods - delegate to state
 
-        # Flush stdin before starting spinner
+      def show_spinner(message)
+        @state.show_spinner(message)
+      end
+
+      def hide_spinner
+        @state.hide_spinner
+      end
+
+      # Internal methods called by states
+
+      def do_show_spinner(message)
+        @spinner_state.start(message, Thread.current)
         flush_stdin
 
         @spinner_thread = Thread.new do
           Thread.current.report_on_exception = false
           spinner_loop
         rescue Interrupt
-          # Clean up spinner display
           @mutex.synchronize do
-            @stdout.write("\e[2K\r") # Clear spinner line
+            @stdout.write("\e[2K\r")
             @stdout.flush
           end
           @spinner_state.interrupt_requested = true
-          # Raise interrupt to parent thread
           @spinner_state.parent_thread&.raise(Interrupt)
         end
       end
 
-      # Hide spinner and return to ready state
-      def hide_spinner
+      def do_hide_spinner
         @spinner_state.stop
-
-        # Only join if we're not already in the spinner thread
         @spinner_thread&.join unless Thread.current == @spinner_thread
 
         @mutex.synchronize do
-          @stdout.write("\e[2K\r") # Clear spinner line
+          @stdout.write("\e[2K\r")
           @stdout.flush
         end
 
-        # Flush stdin when returning to input mode
         flush_stdin
+      end
+
+      def update_spinner_message(message)
+        @spinner_state.message = message
       end
 
       # Check if user requested interrupt via Ctrl-C
@@ -128,9 +185,13 @@ module Nu
         @spinner_state.interrupt_requested
       end
 
-      # Blocking read with interruption support
+      # Blocking read with interruption support - delegates to state
       def readline(prompt)
-        @mode = :input
+        @state.readline(prompt)
+      end
+
+      # Internal readline implementation called by state
+      def do_readline(prompt)
         @input_buffer = String.new("")
         @cursor_pos = 0
         @history_pos = nil
@@ -140,7 +201,12 @@ module Nu
 
         loop do
           result = handle_readline_select(prompt)
-          return result unless result == :continue
+
+          next unless result != :continue
+
+          # Input completed - notify state to transition back
+          @state.on_input_completed if @state.respond_to?(:on_input_completed)
+          return result
         end
       end
 
@@ -153,9 +219,17 @@ module Nu
 
       private
 
+      def log_state_transition(old_state, new_state)
+        old_name = old_state.name
+        new_name = new_state.name
+        warn "[ConsoleIO] State transition: #{old_name} -> #{new_name}"
+      end
+
       def handle_readline_select(prompt)
         # Monitor stdin and output pipe
         readable, = IO.select([@stdin, @output_pipe_read], nil, nil)
+
+        return :continue if readable.nil?
 
         readable.each do |io|
           if io == @output_pipe_read

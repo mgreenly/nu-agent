@@ -15,8 +15,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
       c.instance_variable_set(:@mutex, Mutex.new)
       c.instance_variable_set(:@input_buffer, String.new(""))
       c.instance_variable_set(:@cursor_pos, 0)
-      c.instance_variable_set(:@mode, :input)
       c.instance_variable_set(:@original_stty, nil)
+      c.instance_variable_set(:@state, Nu::Agent::ConsoleIO::IdleState.new(c))
       c.instance_variable_set(:@history, [])
       c.instance_variable_set(:@history_pos, nil)
       c.instance_variable_set(:@saved_input, String.new(""))
@@ -52,7 +52,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       console.instance_variable_set(:@history_pos, nil)
 
       # Manually trigger what readline does to reset buffers
-      console.instance_variable_set(:@mode, :input)
+      console.instance_variable_set(:@state, Nu::Agent::ConsoleIO::IdleState.new(console))
       console.instance_variable_set(:@input_buffer, String.new(""))
       console.instance_variable_set(:@cursor_pos, 0)
       console.instance_variable_set(:@history_pos, nil)
@@ -93,9 +93,9 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
   describe "progress bar methods" do
     describe "#start_progress" do
-      it "sets mode to :progress" do
+      it "transitions to ProgressState" do
         console.start_progress
-        expect(console.instance_variable_get(:@mode)).to eq(:progress)
+        expect(console.current_state).to be_a(Nu::Agent::ConsoleIO::ProgressState)
       end
 
       it "clears the line and writes to stdout" do
@@ -106,26 +106,29 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
     describe "#update_progress" do
       it "writes progress text with carriage return to stdout" do
+        console.start_progress # Need to be in ProgressState
         console.update_progress("[===>  ] 45%")
-        expect(stdout.string).to eq("\r[===>  ] 45%")
+        expect(stdout.string).to include("[===>  ] 45%")
       end
 
       it "handles errors gracefully" do
+        console.start_progress # Need to be in ProgressState
         allow(stdout).to receive(:write).and_raise(StandardError)
         expect { console.update_progress("test") }.not_to raise_error
       end
     end
 
     describe "#end_progress" do
-      it "sets mode back to :input" do
-        console.instance_variable_set(:@mode, :progress)
+      it "transitions back to IdleState" do
+        console.start_progress
         console.end_progress
-        expect(console.instance_variable_get(:@mode)).to eq(:input)
+        expect(console.current_state).to be_a(Nu::Agent::ConsoleIO::IdleState)
       end
 
       it "moves to next line, keeping progress visible" do
+        console.start_progress
         console.end_progress
-        expect(stdout.string).to eq("\r\n")
+        expect(stdout.string).to include("\r\n")
       end
     end
   end
@@ -254,13 +257,13 @@ RSpec.describe Nu::Agent::ConsoleIO do
   end
 
   describe "#show_spinner" do
-    it "switches to spinner mode" do
+    it "transitions to StreamingAssistantState" do
       allow(stdin).to receive(:wait_readable).and_return(nil)
       allow(stdin).to receive(:read_nonblock).and_raise(Errno::EAGAIN)
       allow(IO).to receive(:select).and_return(nil)
 
       console.show_spinner("Thinking...")
-      expect(console.instance_variable_get(:@mode)).to eq(:spinner)
+      expect(console.current_state).to be_a(Nu::Agent::ConsoleIO::StreamingAssistantState)
       spinner_state = console.instance_variable_get(:@spinner_state)
       expect(spinner_state.message).to eq("Thinking...")
       expect(spinner_state.running).to be true
@@ -273,9 +276,14 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "#hide_spinner" do
     it "stops spinner and clears line" do
       allow(stdin).to receive(:wait_readable).and_return(nil)
+      allow(stdin).to receive(:read_nonblock).and_raise(Errno::EAGAIN)
+      allow(IO).to receive(:select).and_return(nil)
+
+      # First start the spinner to transition to StreamingAssistantState
+      console.show_spinner("Test")
+
       spinner_state = console.instance_variable_get(:@spinner_state)
-      spinner_state.running = true
-      console.instance_variable_set(:@spinner_thread, Thread.new { sleep 0.1 })
+      expect(spinner_state.running).to be true
 
       console.hide_spinner
 
@@ -899,7 +907,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
       expect(console_instance.instance_variable_get(:@debug)).to be false
       expect(console_instance.instance_variable_get(:@db_history)).to eq(mock_db)
-      expect(console_instance.instance_variable_get(:@mode)).to eq(:input)
+      expect(console_instance.current_state).to be_a(Nu::Agent::ConsoleIO::IdleState)
       expect(console_instance.instance_variable_get(:@input_buffer)).not_to be_frozen
       expect(console_instance.instance_variable_get(:@kill_ring)).not_to be_frozen
       expect(console_instance.instance_variable_get(:@saved_input)).not_to be_frozen

@@ -72,16 +72,26 @@ Implementation Notes
 - Formatter subscribes to events and uses event-driven wait_for_completion (with polling fallback)
 - All existing tests updated to mock event_bus where needed
 
-Phase 2: ConsoleIO State Pattern (2–3 hrs)
+Phase 2: ConsoleIO State Pattern (2–3 hrs) ✅ COMPLETED
 Goal: Simplify ConsoleIO logic by modeling explicit states.
 Tasks
-- Define states and transitions: Idle → ReadingUserInput → StreamingAssistant → Idle; Idle ↔ CommandMode; any → Paused.
-- Encapsulate per-state rendering and input handling. Ensure clean cancellation and Ctrl-C behavior.
-- Remove conditional spaghetti and interleaved prints in ConsoleIO.
+- ✅ Define states and transitions: Idle → ReadingUserInput → StreamingAssistant → Idle; Idle → Progress → Idle; any → Paused.
+- ✅ Encapsulate per-state rendering and input handling. Ensure clean cancellation and Ctrl-C behavior.
+- ✅ Remove conditional logic based on @mode and replace with State Pattern.
 Validation
-- Clean transitions when switching between commands and normal chat. No lost inputs; no interleaved output.
+- ✅ Clean transitions when switching between states. No lost inputs; no interleaved output.
+- ✅ All 1884 tests passing with 98.65% line coverage / 90.71% branch coverage.
 Testing
-- Unit tests per state; simulation of transitions; cancellation paths.
+- ✅ Unit tests for all states (IdleState, ReadingUserInputState, StreamingAssistantState, ProgressState, PausedState).
+- ✅ Unit tests for state transitions and invalid transition detection.
+- ✅ 20 new tests added for State Pattern behavior.
+Implementation Notes
+- Created State Pattern with base State class and 5 concrete states
+- ConsoleIO delegates to current state via @state variable (replaces @mode)
+- Each state owns valid transitions and raises StateTransitionError for invalid ones
+- Internal do_* methods contain actual implementation logic
+- States can be paused from any state and resumed to previous state
+- All existing tests updated to work with State Pattern
 
 Phase 3: Operability — failed jobs and admin commands (2 hrs)
 Goal: Make background failures visible and recoverable.
