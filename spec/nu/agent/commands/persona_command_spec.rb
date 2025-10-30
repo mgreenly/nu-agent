@@ -20,37 +20,53 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
   end
 
   describe "#execute" do
-    context "with no arguments (list personas)" do
-      it "displays all personas with active marked" do
-        personas = [
-          { "id" => 1, "name" => "default", "is_default" => true },
-          { "id" => 2, "name" => "developer", "is_default" => false },
-          { "id" => 3, "name" => "writer", "is_default" => false }
-        ]
-        active_persona = { "id" => 2, "name" => "developer" }
-
-        allow(persona_manager).to receive_messages(list: personas, get_active: active_persona)
-
-        expect(console).to receive(:puts).with("\e[90mAvailable personas (* = active):\e[0m")
-        expect(console).to receive(:puts).with("\e[90m    default\e[0m")
-        expect(console).to receive(:puts).with("\e[90m  * developer\e[0m")
-        expect(console).to receive(:puts).with("\e[90m    writer\e[0m")
+    context "with no arguments (show help)" do
+      it "displays help text for persona command" do
+        expect(console).to receive(:puts).with("\e[90mAvailable commands:\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /persona                    - Show this help\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /persona help               - Show this help\e[0m")
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona list               - List all personas with active marked\e[0m"
+        )
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona create <name>      - Create new persona (opens editor)\e[0m"
+        )
+        expect(console).to receive(:puts).with("\e[90m  /persona <name>             - Switch to named persona\e[0m")
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona <name> show        - Display persona's system prompt\e[0m"
+        )
+        expect(console).to receive(:puts).with("\e[90m  /persona <name> edit        - Edit persona in editor\e[0m")
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona <name> delete      - Delete persona (with validations)\e[0m"
+        )
 
         result = command.execute("/persona")
         expect(result).to eq(:continue)
       end
+    end
 
-      it "handles case when no active persona is set" do
-        personas = [
-          { "id" => 1, "name" => "default", "is_default" => true }
-        ]
+    context "with 'help' argument" do
+      it "displays help text (same as no args)" do
+        expect(console).to receive(:puts).with("\e[90mAvailable commands:\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /persona                    - Show this help\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /persona help               - Show this help\e[0m")
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona list               - List all personas with active marked\e[0m"
+        )
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona create <name>      - Create new persona (opens editor)\e[0m"
+        )
+        expect(console).to receive(:puts).with("\e[90m  /persona <name>             - Switch to named persona\e[0m")
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona <name> show        - Display persona's system prompt\e[0m"
+        )
+        expect(console).to receive(:puts).with("\e[90m  /persona <name> edit        - Edit persona in editor\e[0m")
+        expect(console).to receive(:puts).with(
+          "\e[90m  /persona <name> delete      - Delete persona (with validations)\e[0m"
+        )
 
-        allow(persona_manager).to receive_messages(list: personas, get_active: nil)
-
-        expect(console).to receive(:puts).with("\e[90mAvailable personas (* = active):\e[0m")
-        expect(console).to receive(:puts).with("\e[90m    default\e[0m")
-
-        command.execute("/persona")
+        result = command.execute("/persona help")
+        expect(result).to eq(:continue)
       end
     end
 
@@ -73,6 +89,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
       it "switches to the specified persona" do
         persona = { "id" => 2, "name" => "developer" }
 
+        allow(persona_manager).to receive(:get).with("developer").and_return(persona)
         allow(persona_manager).to receive(:set_active).with("developer").and_return(persona)
 
         expect(console).to receive(:puts).with("\e[90mSwitched to persona: developer\e[0m")
@@ -93,7 +110,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
       end
     end
 
-    context "with 'show' subcommand" do
+    context "with 'show' subcommand (persona name first)" do
       it "displays the persona's system prompt" do
         persona = {
           "id" => 1,
@@ -109,7 +126,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         expect(console).to receive(:puts).with("\e[90mYou are a focused software development assistant.\e[0m")
         expect(console).to receive(:puts).with("\e[90m#{'-' * 60}\e[0m")
 
-        result = command.execute("/persona show developer")
+        result = command.execute("/persona developer show")
         expect(result).to eq(:continue)
       end
 
@@ -118,63 +135,51 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
 
         expect(console).to receive(:puts).with("\e[31mPersona 'nonexistent' not found\e[0m")
 
-        result = command.execute("/persona show nonexistent")
-        expect(result).to eq(:continue)
-      end
-
-      it "shows error when no persona name provided" do
-        expect(console).to receive(:puts).with("\e[31mUsage: /persona show <name>\e[0m")
-
-        result = command.execute("/persona show")
+        result = command.execute("/persona nonexistent show")
         expect(result).to eq(:continue)
       end
     end
 
-    context "with 'delete' subcommand" do
+    context "with 'delete' subcommand (persona name first)" do
       it "deletes the specified persona" do
+        allow(persona_manager).to receive(:get).with("custom").and_return({ "id" => 5, "name" => "custom" })
         allow(persona_manager).to receive(:delete).with("custom").and_return(true)
 
         expect(console).to receive(:puts).with("\e[90mPersona 'custom' deleted successfully.\e[0m")
 
-        result = command.execute("/persona delete custom")
+        result = command.execute("/persona custom delete")
         expect(result).to eq(:continue)
       end
 
       it "shows error when trying to delete default persona" do
+        allow(persona_manager).to receive(:get).with("default").and_return({ "id" => 1, "name" => "default" })
         allow(persona_manager).to receive(:delete).with("default")
                                                   .and_raise(Nu::Agent::Error.new("Cannot delete the default persona"))
 
         expect(console).to receive(:puts).with("\e[31mCannot delete the default persona\e[0m")
 
-        result = command.execute("/persona delete default")
+        result = command.execute("/persona default delete")
         expect(result).to eq(:continue)
       end
 
       it "shows error when trying to delete active persona" do
         error_msg = "Cannot delete the currently active persona. Switch to another persona first."
+        allow(persona_manager).to receive(:get).with("developer").and_return({ "id" => 2, "name" => "developer" })
         allow(persona_manager).to receive(:delete).with("developer")
                                                   .and_raise(Nu::Agent::Error.new(error_msg))
 
         expect(console).to receive(:puts).with("\e[31m#{error_msg}\e[0m")
 
-        result = command.execute("/persona delete developer")
+        result = command.execute("/persona developer delete")
         expect(result).to eq(:continue)
       end
 
       it "shows error when persona does not exist" do
-        allow(persona_manager).to receive(:delete).with("nonexistent")
-                                                  .and_raise(Nu::Agent::Error.new("Persona 'nonexistent' not found"))
+        allow(persona_manager).to receive(:get).with("nonexistent").and_return(nil)
 
         expect(console).to receive(:puts).with("\e[31mPersona 'nonexistent' not found\e[0m")
 
-        result = command.execute("/persona delete nonexistent")
-        expect(result).to eq(:continue)
-      end
-
-      it "shows error when no persona name provided" do
-        expect(console).to receive(:puts).with("\e[31mUsage: /persona delete <name>\e[0m")
-
-        result = command.execute("/persona delete")
+        result = command.execute("/persona nonexistent delete")
         expect(result).to eq(:continue)
       end
     end
@@ -230,7 +235,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         allow(persona_manager).to receive(:get).with("existing").and_return({ "id" => 5, "name" => "existing" })
 
         expect(console).to receive(:puts).with(
-          "\e[31mPersona 'existing' already exists. Use '/persona edit existing' to modify it.\e[0m"
+          "\e[31mPersona 'existing' already exists. Use '/persona existing edit' to modify it.\e[0m"
         )
         expect(persona_editor).not_to receive(:edit_in_editor)
 
@@ -260,7 +265,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
       end
     end
 
-    context "with 'edit' subcommand" do
+    context "with 'edit' subcommand (persona name first)" do
       it "opens editor and updates persona with edited content" do
         existing_persona = { "id" => 2, "name" => "developer", "system_prompt" => "Original prompt" }
         allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
@@ -271,7 +276,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         expect(console).to receive(:puts).with("\e[90mOpening editor to edit persona 'developer'...\e[0m")
         expect(console).to receive(:puts).with("\e[90mPersona 'developer' updated successfully.\e[0m")
 
-        result = command.execute("/persona edit developer")
+        result = command.execute("/persona developer edit")
         expect(result).to eq(:continue)
       end
 
@@ -285,7 +290,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         allow(persona_manager).to receive(:update).and_return({ "id" => 2, "name" => "developer" })
         allow(console).to receive(:puts)
 
-        command.execute("/persona edit developer")
+        command.execute("/persona developer edit")
 
         expect(persona_editor).to have_received(:edit_in_editor).with(
           initial_content: "Existing content",
@@ -302,7 +307,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         expect(console).to receive(:puts).with("\e[90mPersona edit cancelled (empty content).\e[0m")
         expect(persona_manager).not_to receive(:update)
 
-        result = command.execute("/persona edit developer")
+        result = command.execute("/persona developer edit")
         expect(result).to eq(:continue)
       end
 
@@ -312,15 +317,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         expect(console).to receive(:puts).with("\e[31mPersona 'nonexistent' not found\e[0m")
         expect(persona_editor).not_to receive(:edit_in_editor)
 
-        result = command.execute("/persona edit nonexistent")
-        expect(result).to eq(:continue)
-      end
-
-      it "shows error when no persona name provided" do
-        expect(console).to receive(:puts).with("\e[31mUsage: /persona edit <name>\e[0m")
-        expect(persona_editor).not_to receive(:edit_in_editor)
-
-        result = command.execute("/persona edit")
+        result = command.execute("/persona nonexistent edit")
         expect(result).to eq(:continue)
       end
 
@@ -333,18 +330,19 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         expect(console).to receive(:puts).with("\e[90mOpening editor to edit persona 'developer'...\e[0m")
         expect(console).to receive(:puts).with("\e[31mEditor error: Editor crashed\e[0m")
 
-        result = command.execute("/persona edit developer")
+        result = command.execute("/persona developer edit")
         expect(result).to eq(:continue)
       end
     end
 
-    context "with invalid subcommand" do
+    context "with invalid action for existing persona" do
       it "shows error message" do
-        expect(console).to receive(:puts).with("\e[31mUnknown subcommand: invalid\e[0m")
-        expect(console).to receive(:puts).with("\e[90mUsage: /persona [list|<name>|show <name>|" \
-                                               "create <name>|edit <name>|delete <name>]\e[0m")
+        allow(persona_manager).to receive(:get).with("developer").and_return({ "id" => 2, "name" => "developer" })
 
-        result = command.execute("/persona invalid arg")
+        expect(console).to receive(:puts).with("\e[31mInvalid action 'invalid' for persona 'developer'\e[0m")
+        expect(console).to receive(:puts).with("\e[90mValid actions: show, edit, delete\e[0m")
+
+        result = command.execute("/persona developer invalid")
         expect(result).to eq(:continue)
       end
     end
@@ -352,6 +350,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
     context "command parsing" do
       it "handles extra whitespace" do
         persona = { "id" => 2, "name" => "developer" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(persona)
         allow(persona_manager).to receive(:set_active).with("developer").and_return(persona)
         allow(console).to receive(:puts)
 
@@ -377,7 +376,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
 
         expect(console).to receive(:puts).with("\e[31mError: Database error\e[0m")
 
-        result = command.execute("/persona")
+        result = command.execute("/persona list")
         expect(result).to eq(:continue)
       end
     end

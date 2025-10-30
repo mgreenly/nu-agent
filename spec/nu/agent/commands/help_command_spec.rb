@@ -67,7 +67,9 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
     it "includes /persona command documentation" do
       expect(application).to receive(:output_lines) do |*lines, **_kwargs|
         help_text = lines.join("\n")
-        expect(help_text).to match(%r{/persona.*Manage agent personas})
+        # Should be one-line like /worker pattern
+        pattern = %r{/persona \[<name>\|<command>\]\s+-\s+Manage agent personas \(use /persona for details\)}
+        expect(help_text).to match(pattern)
       end
       command.execute("/help")
     end

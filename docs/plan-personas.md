@@ -2,7 +2,7 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 6 - COMPLETE ✅ All Phases Done!
+Plan Status: Phase 7 - COMPLETE ✅ (Refactored command structure to match /worker pattern)
 
 ## Progress Summary
 
@@ -48,6 +48,16 @@ Plan Status: Phase 6 - COMPLETE ✅ All Phases Done!
 - Coverage enforcement passes
 - Manual end-to-end testing successful
 - All persona commands work correctly with real DuckDB queries
+
+**Phase 7: COMPLETE** ✅
+- Refactored `/persona` command to match `/worker` pattern
+- `/persona` (no args) now shows help instead of listing personas
+- Added explicit `/persona list` subcommand for listing all personas
+- Changed command structure: `/persona <name> <action>` instead of `/persona <action> <name>`
+- Simplified `/help` to show one-line description matching `/worker` pattern
+- Updated all tests to reflect new behavior (1920 examples, 0 failures)
+- Maintained code quality: 98.9% line coverage, 90.63% branch coverage
+- Zero RuboCop violations
 
 Index
 - Background and current state
@@ -128,12 +138,13 @@ Scope (in)
 - Create `personas` database table to store persona definitions
 - Implement PersonaManager class to handle CRUD operations
 - Add `/persona` command with full subcommand suite:
-  - `/persona` or `/persona list` - Show all personas, highlight active one
+  - `/persona` - Show help for persona command
+  - `/persona list` - Show all personas, highlight active one
   - `/persona <name>` - Switch to named persona (applies to new conversations)
   - `/persona create <name>` - Create new persona (opens editor)
-  - `/persona edit <name>` - Edit existing persona (opens editor)
-  - `/persona delete <name>` - Delete persona (with confirmation)
-  - `/persona show <name>` - Display persona's system prompt
+  - `/persona <name> edit` - Edit existing persona (opens editor)
+  - `/persona <name> delete` - Delete persona (with confirmation)
+  - `/persona <name> show` - Display persona's system prompt
 - Track active persona in appconfig table
 - Integrate persona system with existing LLM clients (use selected persona's prompt)
 - Ship with 3-5 default personas (developer, writer, researcher, etc.)
@@ -647,23 +658,120 @@ DuckDB v1.4.1 returns query results as Arrays, not Hashes. Code used hash-style 
 - ✅ Zero RuboCop violations
 - ✅ Manual testing confirms all persona commands work correctly
 
-Success criteria - ALL ACHIEVED ✅
+Phase 7: Refactor to Match /worker Command Pattern (1 hr)
+----------------------------------------------------------
+Goal: Make `/persona` command follow the same UI pattern as `/worker` command.
+
+**Current Behavior**:
+- `/persona` with no args lists all personas
+- `/help` shows detailed multi-line persona documentation
+
+**Desired Behavior** (matching `/worker` pattern):
+- `/persona` with no args shows help text
+- `/persona list` explicitly lists all personas
+- `/persona create <name>` creates new persona (create is special, takes name as arg)
+- `/persona <name>` switches to that persona
+- `/persona <name> show` shows the persona's system prompt
+- `/persona <name> edit` opens editor to edit persona
+- `/persona <name> delete` deletes the persona
+- `/help` shows single-line: `/persona [<name>|<command>] - Manage agent personas (use /persona for details)`
+
+**Command Structure** (common pattern: persona name on left, action on right):
+```
+/persona                    - Show help
+/persona help               - Show help (explicit)
+/persona list               - List all personas with active marked
+/persona create <name>      - Create new persona (opens editor)
+/persona <name>             - Switch to named persona
+/persona <name> show        - Display persona's system prompt
+/persona <name> edit        - Edit persona in editor
+/persona <name> delete      - Delete persona (with validations)
+```
+
+Tasks:
+1. Update PersonaCommand#execute (TDD: write tests first):
+   - When args.empty? or args.first == "help"
+     - Call show_general_help
+   - When args.first == "list"
+     - Call show_persona_list (move existing list logic here)
+   - When args.first == "create"
+     - Handle create <name> (existing logic)
+   - When args.first is a persona name (check if exists)
+     - If no second arg: switch to persona (existing logic)
+     - If second arg == "show": display system prompt
+     - If second arg == "edit": open editor
+     - If second arg == "delete": delete with validation
+     - If second arg is invalid: show error
+   - Add show_general_help method that displays comprehensive help
+
+2. Update lib/nu/agent/commands/help_command.rb:
+   - Replace detailed persona documentation with single line
+   - Match the `/worker` pattern: `/persona [<name>|<command>] - Manage agent personas (use /persona for details)`
+
+3. Update spec/nu/agent/commands/persona_command_spec.rb:
+   - Change "with no arguments (list personas)" test to expect help text
+   - Add new "with 'list' argument" test to expect persona listing
+   - Change "with 'show' subcommand" tests to use new structure: `/persona <name> show`
+   - Change "with 'edit' subcommand" tests to use new structure: `/persona <name> edit`
+   - Change "with 'delete' subcommand" tests to use new structure: `/persona <name> delete`
+   - Keep "with 'create' subcommand" tests as-is: `/persona create <name>`
+   - Update "with persona name (switch)" tests to expect switching behavior
+
+4. Update spec/nu/agent/commands/help_command_spec.rb:
+   - Change test expectation from detailed multi-line to single-line
+   - Verify it matches the worker command pattern
+
+5. Update example usage in this plan document:
+   - Change `/persona` example to show help output
+   - Add `/persona list` example to show persona listing
+   - Update all command examples to use new structure
+
+Testing:
+- Run full test suite: rake test
+- All tests must pass (maintain ~1923 examples)
+- Zero RuboCop violations: rake lint
+- Coverage enforcement: rake coverage:enforce (maintain 98.9% with 0.01% margin)
+- Manual testing:
+  - `/persona` shows help
+  - `/persona help` shows help (same as no args)
+  - `/persona list` lists all personas with active marked
+  - `/persona developer` switches to developer persona
+  - `/persona create test-persona` opens editor and creates persona
+  - `/persona test-persona show` displays system prompt
+  - `/persona test-persona edit` opens editor
+  - `/persona test-persona delete` deletes persona
+  - `/persona default delete` fails (can't delete default)
+  - `/persona developer delete` fails (can't delete active)
+  - `/help` shows minimal one-line description
+
+**Success Criteria**:
+- ✅ `/persona` with no args shows help (not list)
+- ✅ `/persona help` shows same help
+- ✅ `/persona list` explicitly lists personas
+- ✅ `/help` shows one-line description matching `/worker` pattern
+- ✅ All existing functionality preserved (switch, create, edit, delete, show)
+- ✅ All tests pass with maintained coverage
+- ✅ Zero RuboCop violations
+
+Success criteria - ALL PHASES COMPLETE ✅
 ================
 - ✅ Database: personas table exists with 5 default personas
-- ✅ Command: `/persona` lists all personas with active marked
+- ✅ Command: `/persona` shows help (Phase 7 complete)
+- ✅ Command: `/persona list` lists all personas with active marked (Phase 7 complete)
 - ✅ Command: `/persona <name>` switches active persona
 - ✅ Command: `/persona create <name>` opens editor and creates persona
-- ✅ Command: `/persona edit <name>` opens editor and updates persona
-- ✅ Command: `/persona delete <name>` removes persona (with validations)
-- ✅ Command: `/persona show <name>` displays full system prompt
+- ✅ Command: `/persona <name> edit` opens editor and updates persona (Phase 7 complete)
+- ✅ Command: `/persona <name> delete` removes persona with validations (Phase 7 complete)
+- ✅ Command: `/persona <name> show` displays full system prompt (Phase 7 complete)
 - ✅ Integration: Active persona's prompt is used for LLM calls
 - ✅ Persistence: Active persona survives agent restart
 - ✅ Protection: Cannot delete default or active persona
 - ✅ Validation: Persona names follow rules (lowercase, no spaces, etc.)
 - ✅ Defaults: 5 useful personas ship with the system
-- ✅ Tests: Full coverage for PersonaManager and PersonaCommand
-- ✅ Help: `/help` includes persona documentation
+- ✅ Tests: Full coverage for PersonaManager and PersonaCommand (1920 examples, 0 failures)
+- ✅ Help: `/help` includes minimal one-line persona documentation (Phase 7 complete)
 - ✅ BUG FIX: DuckDB array access and parameter passing corrected
+- ✅ Code Quality: 98.9% line coverage, 90.63% branch coverage, zero RuboCop violations
 
 Future enhancements
 ===================
@@ -696,8 +804,20 @@ Notes
 Example usage
 =============
 ```
-# List available personas
+# Show help for persona command
 > /persona
+Available commands:
+  /persona                    - Show this help
+  /persona help               - Show this help
+  /persona list               - List all personas with active marked
+  /persona create <name>      - Create new persona (opens editor)
+  /persona <name>             - Switch to named persona
+  /persona <name> show        - Display persona's system prompt
+  /persona <name> edit        - Edit persona in editor
+  /persona <name> delete      - Delete persona (with validations)
+
+# List available personas
+> /persona list
 Available personas (* = active):
   * default         - General-purpose assistant
     developer       - Focused software development
@@ -711,7 +831,7 @@ Switched to persona: developer
 Note: This will apply to your next conversation.
 
 # Show what a persona says
-> /persona show developer
+> /persona developer show
 Persona: developer
 System Prompt:
 ----------------------------------------
@@ -731,21 +851,21 @@ Opening editor to create persona 'code-reviewer'...
 Persona 'code-reviewer' created successfully.
 
 # Edit a persona
-> /persona edit code-reviewer
+> /persona code-reviewer edit
 Opening editor to edit persona 'code-reviewer'...
 [Editor opens with current prompt]
 Persona 'code-reviewer' updated successfully.
 
 # Delete a custom persona
-> /persona delete code-reviewer
+> /persona code-reviewer delete
 Persona 'code-reviewer' deleted successfully.
 
 # Try to delete default (fails)
-> /persona delete default
+> /persona default delete
 Error: Cannot delete the default persona.
 
 # Try to delete active persona (fails)
-> /persona delete developer
+> /persona developer delete
 Error: Cannot delete the currently active persona. Switch to another persona first.
 ```
 
