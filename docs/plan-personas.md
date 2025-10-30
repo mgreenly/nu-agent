@@ -2,7 +2,7 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 5 - Critical Bug Found During Manual Testing
+Plan Status: Phase 6 - COMPLETE ✅ All Phases Done!
 
 ## Progress Summary
 
@@ -29,21 +29,25 @@ Plan Status: Phase 5 - Critical Bug Found During Manual Testing
 - Handles empty content, editor errors, and validation
 - All tests passing (1913 examples, 0 failures, 98.9% line coverage, 90.77% branch coverage)
 
-**Phase 5: BLOCKED - Critical Bug Discovered** 🚨
+**Phase 5: COMPLETE** ✅
 - Updated help_command.rb with comprehensive /persona documentation
 - Added test for /persona help documentation
 - All tests passing (1914 examples, 0 failures, 98.9% line coverage, 90.77% branch coverage)
 - No RuboCop violations
 - Coverage enforcement passes
-- **BLOCKER**: Manual testing revealed critical bug - `/persona` command fails with "no implicit conversion of String into Integer"
+- Manual testing revealed critical bug requiring Phase 6
 
-**Root Cause Analysis**:
-DuckDB returns query results as **Arrays**, not Hashes. Throughout PersonaManager and the migration, code attempts to access results using string/symbol keys (e.g., `row["id"]`, `row["value"]`) when it should use numeric indices (e.g., `row[0]`, `row[1]`).
-
-**Why Tests Didn't Catch This**:
-All PersonaManager tests mock database results as Hashes instead of Arrays, so the incorrect syntax never failed in tests.
-
-**Phase 6: REQUIRED - Comprehensive DuckDB Result Access Fix**
+**Phase 6: COMPLETE** ✅
+- Created failing integration test for migration 006 (RED phase - TDD)
+- Fixed DuckDB parameter passing (removed array wrapping)
+- Created row_to_persona helper method to convert arrays to hashes
+- Fixed all PersonaManager methods to use helper
+- Updated all PersonaManager unit tests to mock arrays instead of hashes
+- All tests passing (1923 examples, 0 failures, 98.9% line coverage, 90.72% branch coverage)
+- Zero RuboCop violations
+- Coverage enforcement passes
+- Manual end-to-end testing successful
+- All persona commands work correctly with real DuckDB queries
 
 Index
 - Background and current state
@@ -551,19 +555,20 @@ Testing:
 - Test persona switching across sessions (restart agent)
 - Test migration on existing database (backward compatibility)
 
-Phase 6: Fix DuckDB Result Access Bug (3-4 hrs) - CRITICAL
+Phase 6: Fix DuckDB Result Access Bug - COMPLETE ✅
 ----------------------------------------------------------------
 Goal: Fix PersonaManager, migration, and tests to correctly access DuckDB array results.
 
-**Problem Summary**:
-DuckDB's Ruby gem returns query results as Arrays, not Hashes. Code throughout uses hash-style access (e.g., `row["id"]`) which fails at runtime. Tests use hash mocks so they never caught this.
+**Problem Summary (FIXED)**:
+DuckDB v1.4.1 returns query results as Arrays, not Hashes. Code used hash-style access (e.g., `row["id"]`) which failed at runtime. Additionally, DuckDB v1.4.1 parameters must NOT be wrapped in arrays.
 
-**Files to Fix**:
-1. lib/nu/agent/persona_manager.rb - All methods that access query results
-2. migrations/006_create_personas_table.rb - Migration result access
-3. spec/nu/agent/persona_manager_spec.rb - Update mocks to use arrays
+**Files Fixed**:
+1. ✅ lib/nu/agent/persona_manager.rb - Added row_to_persona helper, fixed parameter passing
+2. ✅ migrations/006_create_personas_table.rb - Already correct (uses array indices)
+3. ✅ spec/nu/agent/persona_manager_spec.rb - Updated all mocks to use arrays
+4. ✅ spec/migrations/006_create_personas_table_spec.rb - Created integration test
 
-**Tasks** (TDD: Red → Green → Refactor):
+**Tasks Completed** (TDD: Red → Green → Refactor):
 
 1. Write failing integration test (RED):
    - Create spec/migrations/006_create_personas_table_spec.rb
@@ -632,32 +637,33 @@ DuckDB's Ruby gem returns query results as Arrays, not Hashes. Code throughout u
 - Check for Result#to_hash or similar methods
 - May be cleaner than refactoring all code
 
-**Success Criteria**:
-- Migration 006 runs successfully on fresh database
-- All 5 default personas are created
-- Default persona is set as active with correct ID
-- `/persona` command works without errors
-- All tests pass (1914+ examples, 0 failures)
-- Coverage maintained at 98.9% ± 0.01%
-- Zero RuboCop violations
-- Manual testing confirms all persona commands work
+**Success Criteria** - ALL ACHIEVED ✅:
+- ✅ Migration 006 runs successfully on fresh database
+- ✅ All 5 default personas are created
+- ✅ Default persona is set as active with correct ID
+- ✅ `/persona` command works without errors
+- ✅ All tests pass (1923 examples, 0 failures)
+- ✅ Coverage maintained at 98.9% (line) and 90.72% (branch)
+- ✅ Zero RuboCop violations
+- ✅ Manual testing confirms all persona commands work correctly
 
-Success criteria
+Success criteria - ALL ACHIEVED ✅
 ================
-- Database: personas table exists with 5 default personas
-- Command: `/persona` lists all personas with active marked
-- Command: `/persona <name>` switches active persona
-- Command: `/persona create <name>` opens editor and creates persona
-- Command: `/persona edit <name>` opens editor and updates persona
-- Command: `/persona delete <name>` removes persona (with validations)
-- Command: `/persona show <name>` displays full system prompt
-- Integration: Active persona's prompt is used for LLM calls
-- Persistence: Active persona survives agent restart
-- Protection: Cannot delete default or active persona
-- Validation: Persona names follow rules (lowercase, no spaces, etc.)
-- Defaults: 5 useful personas ship with the system
-- Tests: Full coverage for PersonaManager and PersonaCommand
-- Help: `/help` includes persona documentation
+- ✅ Database: personas table exists with 5 default personas
+- ✅ Command: `/persona` lists all personas with active marked
+- ✅ Command: `/persona <name>` switches active persona
+- ✅ Command: `/persona create <name>` opens editor and creates persona
+- ✅ Command: `/persona edit <name>` opens editor and updates persona
+- ✅ Command: `/persona delete <name>` removes persona (with validations)
+- ✅ Command: `/persona show <name>` displays full system prompt
+- ✅ Integration: Active persona's prompt is used for LLM calls
+- ✅ Persistence: Active persona survives agent restart
+- ✅ Protection: Cannot delete default or active persona
+- ✅ Validation: Persona names follow rules (lowercase, no spaces, etc.)
+- ✅ Defaults: 5 useful personas ship with the system
+- ✅ Tests: Full coverage for PersonaManager and PersonaCommand
+- ✅ Help: `/help` includes persona documentation
+- ✅ BUG FIX: DuckDB array access and parameter passing corrected
 
 Future enhancements
 ===================

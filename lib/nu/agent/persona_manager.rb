@@ -19,19 +19,19 @@ module Nu
           ORDER BY name
         SQL
 
-        result.to_a
+        result.to_a.map { |row| row_to_persona(row) }
       end
 
       # Returns persona hash or nil if not found
       def get(name)
-        result = @connection.query(<<~SQL, [name])
+        result = @connection.query(<<~SQL, name)
           SELECT id, name, system_prompt, is_default, created_at, updated_at
           FROM personas
           WHERE name = ?
         SQL
 
         personas = result.to_a
-        personas.empty? ? nil : personas.first
+        personas.empty? ? nil : row_to_persona(personas.first)
       end
 
       # Creates a new persona and returns it
@@ -40,7 +40,7 @@ module Nu
         validate_system_prompt(system_prompt)
 
         begin
-          @connection.query(<<~SQL, [name, system_prompt])
+          @connection.query(<<~SQL, name, system_prompt)
             INSERT INTO personas (name, system_prompt, is_default, created_at, updated_at)
             VALUES (?, ?, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           SQL
@@ -62,7 +62,7 @@ module Nu
         persona = get(name)
         raise Error, "Persona '#{name}' not found" unless persona
 
-        @connection.query(<<~SQL, [system_prompt, name])
+        @connection.query(<<~SQL, system_prompt, name)
           UPDATE personas
           SET system_prompt = ?, updated_at = CURRENT_TIMESTAMP
           WHERE name = ?
@@ -85,7 +85,7 @@ module Nu
           raise Error, "Cannot delete the currently active persona. Switch to another persona first."
         end
 
-        @connection.query(<<~SQL, [name])
+        @connection.query(<<~SQL, name)
           DELETE FROM personas WHERE name = ?
         SQL
 
@@ -104,16 +104,16 @@ module Nu
           return get_default_persona
         end
 
-        active_id = rows.first["value"].to_i
+        active_id = rows.first[0].to_i
 
-        result = @connection.query(<<~SQL, [active_id])
+        result = @connection.query(<<~SQL, active_id)
           SELECT id, name, system_prompt, is_default, created_at, updated_at
           FROM personas
           WHERE id = ?
         SQL
 
         personas = result.to_a
-        personas.empty? ? get_default_persona : personas.first
+        personas.empty? ? get_default_persona : row_to_persona(personas.first)
       end
 
       # Sets the active persona
@@ -121,7 +121,7 @@ module Nu
         persona = get(name)
         raise Error, "Persona '#{name}' not found" unless persona
 
-        @connection.query(<<~SQL, [persona["id"].to_s])
+        @connection.query(<<~SQL, persona["id"].to_s)
           INSERT OR REPLACE INTO appconfig (key, value, updated_at)
           VALUES ('active_persona_id', ?, CURRENT_TIMESTAMP)
         SQL
@@ -130,6 +130,21 @@ module Nu
       end
 
       private
+
+      # Converts a DuckDB result row (array) to a persona hash
+      # Expects columns in order: id, name, system_prompt, is_default, created_at, updated_at
+      def row_to_persona(row)
+        return nil if row.nil?
+
+        {
+          "id" => row[0],
+          "name" => row[1],
+          "system_prompt" => row[2],
+          "is_default" => row[3],
+          "created_at" => row[4],
+          "updated_at" => row[5]
+        }
+      end
 
       def validate_name(name)
         raise Error, "Invalid persona name: name cannot be empty" if name.nil? || name.empty?
@@ -156,7 +171,8 @@ module Nu
           WHERE is_default = TRUE
         SQL
 
-        result.to_a.first
+        row = result.to_a.first
+        row_to_persona(row)
       end
     end
   end

@@ -10,18 +10,11 @@ RSpec.describe Nu::Agent::PersonaManager do
   describe "#list" do
     it "returns an array of all personas" do
       result = double("result")
+      now = Time.now
       allow(connection).to receive(:query).and_return(result)
       allow(result).to receive(:to_a).and_return([
-                                                   { "id" => 1, "name" => "default",
-                                                     "system_prompt" => "Default prompt",
-                                                     "is_default" => true,
-                                                     "created_at" => Time.now,
-                                                     "updated_at" => Time.now },
-                                                   { "id" => 2, "name" => "developer",
-                                                     "system_prompt" => "Developer prompt",
-                                                     "is_default" => false,
-                                                     "created_at" => Time.now,
-                                                     "updated_at" => Time.now }
+                                                   [1, "default", "Default prompt", true, now, now],
+                                                   [2, "developer", "Developer prompt", false, now, now]
                                                  ])
 
       personas = manager.list
@@ -47,10 +40,8 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when persona exists" do
       it "returns persona hash" do
         result = double("result")
-        persona_data = {
-          "id" => 1, "name" => "default", "system_prompt" => "Default prompt",
-          "is_default" => true, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        persona_data = [1, "default", "Default prompt", true, now, now]
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([persona_data])
 
@@ -79,10 +70,8 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "with valid parameters" do
       it "creates a new persona and returns it" do
         result = double("result")
-        persona_data = {
-          "id" => 10, "name" => "my-persona", "system_prompt" => "My custom prompt",
-          "is_default" => false, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        persona_data = [10, "my-persona", "My custom prompt", false, now, now]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([persona_data])
@@ -161,14 +150,9 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when persona exists" do
       it "updates the persona and returns it" do
         result = double("result")
-        existing_persona = {
-          "id" => 1, "name" => "developer", "system_prompt" => "Old prompt",
-          "is_default" => false, "created_at" => Time.now, "updated_at" => Time.now
-        }
-        updated_persona = {
-          "id" => 1, "name" => "developer", "system_prompt" => "Updated prompt",
-          "is_default" => false, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        existing_persona = [1, "developer", "Old prompt", false, now, now]
+        updated_persona = [1, "developer", "Updated prompt", false, now, now]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([existing_persona], [updated_persona])
@@ -204,15 +188,10 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when persona exists and is not default or active" do
       it "deletes the persona and returns true" do
         result = double("result")
-        persona_data = {
-          "id" => 10, "name" => "custom", "system_prompt" => "Custom prompt",
-          "is_default" => false, "created_at" => Time.now, "updated_at" => Time.now
-        }
-        active_config = { "value" => "1" }
-        active_persona_data = {
-          "id" => 1, "name" => "default", "system_prompt" => "Default prompt",
-          "is_default" => true, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        persona_data = [10, "custom", "Custom prompt", false, now, now]
+        active_config = ["1"]
+        active_persona_data = [1, "default", "Default prompt", true, now, now]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([persona_data], [active_config], [active_persona_data])
@@ -226,10 +205,8 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when trying to delete default persona" do
       it "raises an error" do
         result = double("result")
-        persona_data = {
-          "id" => 1, "name" => "default", "system_prompt" => "Default prompt",
-          "is_default" => true, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        persona_data = [1, "default", "Default prompt", true, now, now]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([persona_data])
@@ -243,11 +220,9 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when trying to delete active persona" do
       it "raises an error" do
         result = double("result")
-        persona_data = {
-          "id" => 2, "name" => "developer", "system_prompt" => "Developer prompt",
-          "is_default" => false, "created_at" => Time.now, "updated_at" => Time.now
-        }
-        active_config = { "value" => "2" }
+        now = Time.now
+        persona_data = [2, "developer", "Developer prompt", false, now, now]
+        active_config = ["2"]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([persona_data], [active_config], [persona_data])
@@ -274,11 +249,9 @@ RSpec.describe Nu::Agent::PersonaManager do
   describe "#get_active" do
     it "returns the active persona" do
       result = double("result")
-      active_config = { "value" => "1" }
-      persona_data = {
-        "id" => 1, "name" => "default", "system_prompt" => "Default prompt",
-        "is_default" => true, "created_at" => Time.now, "updated_at" => Time.now
-      }
+      now = Time.now
+      active_config = ["1"]
+      persona_data = [1, "default", "Default prompt", true, now, now]
 
       allow(connection).to receive(:query).and_return(result)
       allow(result).to receive(:to_a).and_return([active_config], [persona_data])
@@ -292,10 +265,8 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when no active persona is set" do
       it "returns the default persona" do
         result = double("result")
-        persona_data = {
-          "id" => 1, "name" => "default", "system_prompt" => "Default prompt",
-          "is_default" => true, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        persona_data = [1, "default", "Default prompt", true, now, now]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([], [persona_data])
@@ -311,10 +282,8 @@ RSpec.describe Nu::Agent::PersonaManager do
     context "when persona exists" do
       it "sets the persona as active and returns it" do
         result = double("result")
-        persona_data = {
-          "id" => 2, "name" => "developer", "system_prompt" => "Developer prompt",
-          "is_default" => false, "created_at" => Time.now, "updated_at" => Time.now
-        }
+        now = Time.now
+        persona_data = [2, "developer", "Developer prompt", false, now, now]
 
         allow(connection).to receive(:query).and_return(result)
         allow(result).to receive(:to_a).and_return([persona_data])
