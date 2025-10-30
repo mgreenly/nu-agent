@@ -152,32 +152,34 @@ Implementation Notes
 - Dry-run support implemented for preview without actual deletion
 - Note: Custom patterns require double-escaping in JSON (e.g., \\\\b for \b word boundary)
 
-Phase 6: RAG refinements and caching (2.5–3.5 hrs) 🚧 IN PROGRESS
+Phase 6: RAG refinements and caching (2.5–3.5 hrs) 🚧 IN PROGRESS (50% complete - 4/8 tasks done)
 Goal: Improve relevance, latency, and observability of automatic RAG.
 Tasks
 - ✅ Create migration for rag_retrieval_logs table
 - ✅ Implement search_conversations and search_exchanges methods in EmbeddingStore with JOIN support
 - ✅ Create RAGRetrievalLogger class for logging retrieval metrics
 - ✅ Integrate RAGRetrievalLogger into RAGRetriever
-- ⏳ Add namespace/tag filters to retrieval processors and commands
-- ⏳ Add basic time-range filtering: recent (last N days), older (before N days ago), between dates
-- ⏳ Implement recency weight parameter alpha
-- ⏳ Introduce opt-in LRU cache keyed by rounded query embedding + config
+- ⏳ Add namespace/tag filters to retrieval processors and commands (PAUSED - requires schema changes)
+- ⏳ Add basic time-range filtering: recent (last N days), older (before N days ago), between dates (NOT STARTED)
+- ⏳ Implement recency weight parameter alpha (NOT STARTED)
+- ⏳ Introduce opt-in LRU cache keyed by rounded query embedding + config (NOT STARTED)
 Validation
-- p90 retrieval improves with cache on repeated queries; relevance remains good.
-- Time filters correctly limit candidate pool; logs enable validation of automatic RAG effectiveness.
+- ✅ RAG retrieval logging captures query_hash, candidates, scores, duration
+- ⏳ p90 retrieval improves with cache on repeated queries; relevance remains good
+- ⏳ Time filters correctly limit candidate pool; logs enable validation of automatic RAG effectiveness
 Testing
 - ✅ Migration tests verify rag_retrieval_logs table creation and idempotency (3 tests)
 - ✅ EmbeddingStore tests for search_conversations and search_exchanges (11 tests)
 - ✅ RAGRetrievalLogger tests for logging, query hashing, and recent logs retrieval (10 tests)
 - ✅ RAGRetriever tests verify logger integration and metrics logging (2 tests)
 - ⏳ Unit tests for filters (namespace/tag/time), cache hit/miss behavior; integration test for invalidation on new summaries
-- ⏳ Verify rag_retrieval_logs captures expected metrics in retrieval flow
-Implementation Notes (Partial)
-- Created migration 007 for rag_retrieval_logs with indexes on timestamp, query_hash, and cache_hit
-- Added search_conversations and search_exchanges to EmbeddingStore with JOIN support for fetching conversation/exchange metadata
-- Implemented RAGRetrievalLogger with query hash generation (using rounded embeddings for cache grouping)
-- Integrated RAGRetrievalLogger into RAGRetriever as optional parameter; logs query_hash, candidates, scores, duration, and cache_hit
+Implementation Notes (Partial - 4/8 tasks complete)
+- ✅ Created migration 007 for rag_retrieval_logs with indexes on timestamp, query_hash, and cache_hit
+- ✅ Added search_conversations and search_exchanges to EmbeddingStore with JOIN support for fetching conversation/exchange metadata
+- ✅ Implemented RAGRetrievalLogger with query hash generation (using rounded embeddings for cache grouping)
+- ✅ Integrated RAGRetrievalLogger into RAGRetriever as optional parameter; logs query_hash, candidates, scores, duration, and cache_hit
+- ⏳ Namespace/tag filtering requires conversations table schema changes (not yet in v0.11 baseline)
+- ⏳ Time-range filtering, recency weighting, and caching features pending
 - All 1988 tests passing with 98.15% line coverage / 90.71% branch coverage
 
 Phase 7: Migrations and developer workflow polish (1 hr)
