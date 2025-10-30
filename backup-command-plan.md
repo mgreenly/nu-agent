@@ -57,8 +57,9 @@ GitHub Issue: https://github.com/mgreenly/nu-agent/issues/9
   - No RuboCop violations
   - Coverage requirements met: 98.12% line, 90.13% branch
 
-### Remaining
-- None - All phases complete!
+### Next Steps
+- ⏳ Rebase branch on top of main
+- ⏳ Manual testing and validation
 
 ## Index
 - High-level motivation
