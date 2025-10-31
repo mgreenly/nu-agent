@@ -46,11 +46,16 @@ module Nu
           @console.puts("\e[90m[Tool Use Response]#{batch_indicator} #{name}#{timing_indicator}\e[0m")
         end
 
-        def format_timing_with_offsets(start_time, duration, batch_start_time)
-          start_offset = ((start_time - batch_start_time) * 1000).round
-          end_offset = (start_offset + (duration * 1000)).round
+        def format_timing_with_offsets(start_time, duration, _batch_start_time)
+          end_time = start_time + duration
+          start_str = format_timestamp(start_time)
+          end_str = format_timestamp(end_time)
           duration_ms = (duration * 1000).round
-          " [Start: #{start_offset}ms, End: #{end_offset}ms, Duration: #{duration_ms}ms]"
+          " [Start: #{start_str}, End: #{end_str}, Duration: #{duration_ms}ms]"
+        end
+
+        def format_timestamp(time)
+          time.strftime("%H:%M:%S.%3N")
         end
 
         def format_timing_duration_only(duration)
