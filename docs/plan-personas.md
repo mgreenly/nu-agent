@@ -2,8 +2,8 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 9 - COMPLETE ✅
-Next: Manual end-to-end testing (optional)
+Plan Status: COMPLETE ✅
+All Phases: 1-10 Complete
 
 ## Progress Summary
 
@@ -60,19 +60,20 @@ Next: Manual end-to-end testing (optional)
 - Maintained code quality: 98.9% line coverage, 90.63% branch coverage
 - Zero RuboCop violations
 
-**Phase 8: Manual End-to-End Testing** ⏳
-- Testing new command structure with real agent (pending manual verification)
-- Verify all commands work as expected:
-  - `/persona` shows help
-  - `/persona help` shows help (same as no args)
-  - `/persona list` lists all personas with active marked
-  - `/persona <name>` switches to persona
-  - `/persona create <name>` opens editor and creates persona
-  - `/persona <name> show` displays system prompt
-  - `/persona <name> edit` opens editor and updates persona
-  - `/persona <name> delete` deletes persona (with validations)
-  - Verify active persona is used in conversations
-  - Verify error handling for invalid inputs
+**Phase 8: Manual End-to-End Testing** ✅
+- Tested new command structure with real agent (manual verification complete)
+- Verified all commands work as expected:
+  - ✅ `/persona` shows help
+  - ✅ `/persona help` shows help (same as no args)
+  - ✅ `/persona list` lists all personas with active marked
+  - ✅ `/persona <name>` switches to persona
+  - ✅ `/persona create <name>` opens editor and creates persona
+  - ✅ `/persona <name> show` displays system prompt
+  - ✅ `/persona <name> edit` opens editor and updates persona
+  - ✅ `/persona <name> delete` deletes persona (with validations)
+  - ✅ Active persona is used in conversations
+  - ✅ Error handling works for invalid inputs
+- Discovered two critical bugs requiring Phase 10
 
 **Phase 9: Bug Fixes and Enhancements** ✅
 - Fixed {{DATE}} placeholder in migration (was hardcoded at migration time)
@@ -88,6 +89,24 @@ Next: Manual end-to-end testing (optional)
 - Zero RuboCop violations
 - Coverage maintained at 98.91% line coverage, 90.64% branch coverage
 
+**Phase 10: Critical Bug Fixes** ✅
+- Fixed active persona not reloading after editing (immediate effect issue)
+  - Added public `reload_active_persona()` method to Application class
+  - Call reload after switching personas (persona_command.rb:130)
+  - Call reload after editing active persona (persona_command.rb:179-180)
+  - Only reloads if editing the currently active persona (efficiency)
+  - Added 3 new tests to verify reload behavior
+  - All tests passing (1925 examples, 0 failures)
+- Fixed duplicate response output bug
+  - Removed redundant `@application.send(:output_line, content)` from display_content_if_present()
+  - Messages now display only once via formatter.display_new_messages()
+  - Single source of truth for message display
+  - All tests passing (1925 examples, 0 failures)
+- Final code quality metrics:
+  - 98.88% line coverage, 90.73% branch coverage
+  - Zero RuboCop violations
+  - All 1925 tests passing
+
 Index
 - Background and current state
 - High-level motivation
@@ -102,6 +121,11 @@ Index
   - Phase 3: Integrate personas with LLM clients
   - Phase 4: Editor integration for create/edit
   - Phase 5: Testing and refinement
+  - Phase 6: Fix DuckDB result access bug
+  - Phase 7: Refactor to match /worker command pattern
+  - Phase 8: Manual end-to-end testing
+  - Phase 9: Bug fixes ({{DATE}} placeholder, /personas alias)
+  - Phase 10: Critical bug fixes (reload, duplicate output)
 - Success criteria
 - Future enhancements
 - Notes
@@ -864,27 +888,30 @@ Success Criteria:
 - ✅ All tests pass with maintained coverage
 - ✅ Zero RuboCop violations
 
-Success criteria - Phases 1-9 COMPLETE ✅, Phase 8 PENDING ⏳
+Success criteria - ALL PHASES COMPLETE ✅
 ================
 - ✅ Database: personas table exists with 5 default personas
-- ✅ Command: `/persona` shows help (Phase 7 complete)
-- ✅ Command: `/persona list` lists all personas with active marked (Phase 7 complete)
+- ✅ Command: `/persona` shows help (Phase 7)
+- ✅ Command: `/persona list` lists all personas with active marked (Phase 7)
 - ✅ Command: `/personas` lists all personas (Phase 9 alias)
 - ✅ Command: `/persona <name>` switches active persona
 - ✅ Command: `/persona create <name>` opens editor and creates persona
-- ✅ Command: `/persona <name> edit` opens editor and updates persona (Phase 7 complete)
-- ✅ Command: `/persona <name> delete` removes persona with validations (Phase 7 complete)
-- ✅ Command: `/persona <name> show` displays full system prompt (Phase 7 complete)
+- ✅ Command: `/persona <name> edit` opens editor and updates persona (Phase 7)
+- ✅ Command: `/persona <name> delete` removes persona with validations (Phase 7)
+- ✅ Command: `/persona <name> show` displays full system prompt (Phase 7)
 - ✅ Integration: Active persona's prompt is used for LLM calls
 - ✅ Persistence: Active persona survives agent restart
 - ✅ Protection: Cannot delete default or active persona
 - ✅ Validation: Persona names follow rules (lowercase, no spaces, etc.)
 - ✅ Defaults: 5 useful personas ship with the system (with {{DATE}} placeholder - Phase 9)
-- ✅ Tests: Full coverage for PersonaManager and PersonaCommand (1924 examples, 0 failures)
-- ✅ Help: `/help` includes minimal one-line persona documentation (Phase 7 complete)
+- ✅ Tests: Full coverage for PersonaManager and PersonaCommand (1925 examples, 0 failures)
+- ✅ Help: `/help` includes minimal one-line persona documentation (Phase 7)
 - ✅ BUG FIX: DuckDB array access and parameter passing corrected (Phase 6)
 - ✅ BUG FIX: {{DATE}} placeholder in default personas for runtime replacement (Phase 9)
-- ✅ Code Quality: 98.91% line coverage, 90.64% branch coverage, zero RuboCop violations
+- ✅ BUG FIX: Active persona reloads immediately after editing (Phase 10)
+- ✅ BUG FIX: Duplicate response output eliminated (Phase 10)
+- ✅ Manual Testing: All commands verified working in live agent (Phase 8)
+- ✅ Code Quality: 98.88% line coverage, 90.73% branch coverage, zero RuboCop violations, 1925 tests passing
 
 Future enhancements
 ===================

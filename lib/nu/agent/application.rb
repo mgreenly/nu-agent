@@ -279,6 +279,10 @@ module Nu
         @worker_manager.start_summarization_worker if @summarizer_enabled
       end
 
+      def reload_active_persona
+        load_active_persona
+      end
+
       private
 
       def setup_signal_handlers

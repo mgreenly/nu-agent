@@ -122,10 +122,12 @@ module Nu
       end
 
       def display_content_if_present(content)
+        # Content is already saved to database and will be displayed by formatter.display_new_messages
+        # No need to display it here - that would cause duplication
         return unless content && !content.strip.empty?
 
+        # Just hide/show spinner to indicate content was received
         @console.hide_spinner
-        @application.send(:output_line, content)
         @console.show_spinner("Thinking...")
       end
 

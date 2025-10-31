@@ -126,6 +126,9 @@ module Nu
         def switch_persona(name)
           persona = @persona_manager.set_active(name)
 
+          # Reload active persona in application for immediate effect
+          app.reload_active_persona
+
           app.console.puts("\e[90mSwitched to persona: #{persona['name']}\e[0m")
           app.console.puts("\e[90mNote: This will apply to your next conversation.\e[0m")
         end
@@ -171,6 +174,11 @@ module Nu
 
           if content
             @persona_manager.update(name: name, system_prompt: content)
+
+            # Reload active persona if we just edited the active one
+            active_persona = @persona_manager.get_active
+            app.reload_active_persona if active_persona && active_persona["name"] == name
+
             app.console.puts("\e[90mPersona '#{name}' updated successfully.\e[0m")
           else
             app.console.puts("\e[90mPersona edit cancelled (empty content).\e[0m")

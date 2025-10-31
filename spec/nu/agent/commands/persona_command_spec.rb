@@ -110,12 +110,25 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
 
         allow(persona_manager).to receive(:get).with("developer").and_return(persona)
         allow(persona_manager).to receive(:set_active).with("developer").and_return(persona)
+        allow(application).to receive(:reload_active_persona)
 
         expect(console).to receive(:puts).with("\e[90mSwitched to persona: developer\e[0m")
         expect(console).to receive(:puts).with("\e[90mNote: This will apply to your next conversation.\e[0m")
 
         result = command.execute("/persona developer")
         expect(result).to eq(:continue)
+      end
+
+      it "reloads active persona in application after switching" do
+        persona = { "id" => 2, "name" => "developer", "system_prompt" => "Developer prompt" }
+
+        allow(persona_manager).to receive(:get).with("developer").and_return(persona)
+        allow(persona_manager).to receive(:set_active).with("developer").and_return(persona)
+        allow(console).to receive(:puts)
+
+        expect(application).to receive(:reload_active_persona).once
+
+        command.execute("/persona developer")
       end
 
       it "shows error when persona does not exist" do
@@ -287,7 +300,9 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
     context "with 'edit' subcommand (persona name first)" do
       it "opens editor and updates persona with edited content" do
         existing_persona = { "id" => 2, "name" => "developer", "system_prompt" => "Original prompt" }
+        active_persona = { "id" => 1, "name" => "default", "system_prompt" => "Default prompt" }
         allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
+        allow(persona_manager).to receive(:get_active).and_return(active_persona)
         allow(persona_editor).to receive(:edit_in_editor).and_return("Updated prompt")
         allow(persona_manager).to receive(:update).with(name: "developer", system_prompt: "Updated prompt")
                                                   .and_return({ "id" => 2, "name" => "developer" })
@@ -299,14 +314,47 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         expect(result).to eq(:continue)
       end
 
+      it "reloads active persona in application after editing active persona" do
+        active_persona = { "id" => 2, "name" => "developer", "system_prompt" => "Original prompt" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(active_persona)
+        allow(persona_manager).to receive(:get_active).and_return(active_persona)
+        allow(persona_editor).to receive(:edit_in_editor).and_return("Updated prompt")
+        allow(persona_manager).to receive(:update).with(name: "developer", system_prompt: "Updated prompt")
+                                                  .and_return({ "id" => 2, "name" => "developer" })
+        allow(console).to receive(:puts)
+
+        expect(application).to receive(:reload_active_persona).once
+
+        command.execute("/persona developer edit")
+      end
+
+      it "does not reload persona when editing inactive persona" do
+        active_persona = { "id" => 1, "name" => "default", "system_prompt" => "Default prompt" }
+        edit_persona = { "id" => 2, "name" => "developer", "system_prompt" => "Original prompt" }
+        allow(persona_manager).to receive(:get).with("developer").and_return(edit_persona)
+        allow(persona_manager).to receive(:get_active).and_return(active_persona)
+        allow(persona_editor).to receive(:edit_in_editor).and_return("Updated prompt")
+        allow(persona_manager).to receive(:update).with(name: "developer", system_prompt: "Updated prompt")
+                                                  .and_return({ "id" => 2, "name" => "developer" })
+        allow(console).to receive(:puts)
+
+        expect(application).not_to receive(:reload_active_persona)
+
+        command.execute("/persona developer edit")
+      end
+
       it "uses existing prompt as initial content" do
         existing_persona = { "system_prompt" => "Existing content" }
+        active_persona = { "id" => 1, "name" => "default" }
         allow(persona_manager).to receive(:get).with("developer").and_return(existing_persona)
+        allow(persona_manager).to receive_messages(
+          get_active: active_persona,
+          update: { "id" => 2, "name" => "developer" }
+        )
         allow(persona_editor).to receive(:edit_in_editor).with(
           initial_content: "Existing content",
           persona_name: "developer"
         ).and_return("Updated")
-        allow(persona_manager).to receive(:update).and_return({ "id" => 2, "name" => "developer" })
         allow(console).to receive(:puts)
 
         command.execute("/persona developer edit")
@@ -371,6 +419,7 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         persona = { "id" => 2, "name" => "developer" }
         allow(persona_manager).to receive(:get).with("developer").and_return(persona)
         allow(persona_manager).to receive(:set_active).with("developer").and_return(persona)
+        allow(application).to receive(:reload_active_persona)
         allow(console).to receive(:puts)
 
         result = command.execute("/persona    developer   ")
