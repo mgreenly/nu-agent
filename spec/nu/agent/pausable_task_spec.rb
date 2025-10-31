@@ -244,4 +244,50 @@ RSpec.describe Nu::Agent::PausableTask do
       thread.join(1)
     end
   end
+
+  describe "shutdown_flag variants" do
+    it "works with a simple boolean shutdown flag" do
+      # Test the else branch in shutdown_requested? method
+      simple_flag = false
+      task = Nu::Agent::PausableTaskSpec::TestTask.new(
+        status_info: { status: status_hash, mutex: status_mutex },
+        shutdown_flag: simple_flag
+      )
+
+      thread = task.start_worker
+      sleep 0.2
+
+      # Task should be running with non-hash flag
+      expect(task.work_count).to be > 0
+
+      # Can't set simple boolean flag from outside (it's not a reference)
+      # So we just join with timeout which will eventually stop
+      thread.kill
+      thread.join(0.5)
+    end
+
+    it "checks shutdown after pausing and resuming" do
+      task = Nu::Agent::PausableTaskSpec::TestTask.new(
+        status_info: { status: status_hash, mutex: status_mutex },
+        shutdown_flag: shutdown_flag
+      )
+
+      thread = task.start_worker
+      sleep 0.2
+
+      # Pause the task
+      task.pause
+      sleep 0.5
+
+      # Request shutdown while paused
+      shutdown_flag[:value] = true
+
+      # Resume - should check shutdown and exit
+      task.resume
+
+      # Should exit quickly after resume
+      expect(thread.join(2)).to eq(thread)
+      expect(thread.alive?).to be false
+    end
+  end
 end

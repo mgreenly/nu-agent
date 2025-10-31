@@ -755,4 +755,190 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       expect(result).to be(true).or be(false)
     end
   end
+
+  describe "linear scan fallback when VSS not available" do
+    let(:query_embedding) { Array.new(1536) { |i| i < 100 ? 0.5 : 0.0 } }
+    let(:config_store) { instance_double(Nu::Agent::ConfigStore) }
+    let(:embedding_store_no_vss) { described_class.new(connection, config_store: config_store) }
+
+    before do
+      # Mock VSS as not available
+      allow(config_store).to receive(:get_bool).with("vss_available", default: false).and_return(false)
+
+      # Store some test embeddings
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 1,
+        content: "very similar",
+        embedding: Array.new(1536) { |i| i < 100 ? 0.51 : 0.0 }
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 2,
+        content: "somewhat similar",
+        embedding: Array.new(1536) { |i| i < 50 ? 0.5 : 0.0 }
+      )
+      embedding_store.upsert_conversation_embedding(
+        conversation_id: 3,
+        content: "not similar",
+        embedding: Array.new(1536) { |i| i > 1000 ? 0.5 : 0.0 }
+      )
+    end
+
+    it "uses linear scan when VSS is not available" do
+      results = embedding_store_no_vss.search_similar(
+        kind: "conversation_summary",
+        query_embedding: query_embedding,
+        limit: 3
+      )
+
+      expect(results.length).to eq(3)
+      expect(results[0][:source_id]).to eq(1)
+      expect(results).to all(have_key(:similarity))
+    end
+
+    it "applies min_similarity filter in linear scan" do
+      results = embedding_store_no_vss.search_similar(
+        kind: "conversation_summary",
+        query_embedding: query_embedding,
+        limit: 10,
+        min_similarity: 0.8
+      )
+
+      results.each do |result|
+        expect(result[:similarity]).to be >= 0.8
+      end
+    end
+
+    it "uses linear scan for search_conversations when VSS not available" do
+      # Create test conversations
+      connection.query(<<~SQL)
+        INSERT INTO conversations (id, created_at, title, status)
+        VALUES (1, '2024-01-01 10:00:00', 'First', 'active'),
+               (2, '2024-01-02 10:00:00', 'Second', 'active'),
+               (3, '2024-01-03 10:00:00', 'Third', 'active')
+      SQL
+
+      results = embedding_store_no_vss.search_conversations(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.0
+      )
+
+      expect(results).to be_an(Array)
+      expect(results.length).to be > 0
+    end
+
+    it "uses linear scan for search_exchanges when VSS not available" do
+      # Create test conversation and exchange
+      connection.query(<<~SQL)
+        INSERT INTO conversations (id, created_at, title, status)
+        VALUES (1, '2024-01-01 10:00:00', 'First', 'active')
+      SQL
+
+      connection.query(<<~SQL)
+        INSERT INTO exchanges (id, conversation_id, exchange_number, started_at, completed_at, status)
+        VALUES (10, 1, 1, '2024-01-01 10:00:00', '2024-01-01 10:01:00', 'completed')
+      SQL
+
+      embedding_store.upsert_exchange_embedding(
+        exchange_id: 10,
+        content: "exchange ten",
+        embedding: query_embedding
+      )
+
+      results = embedding_store_no_vss.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: 0.0,
+        conversation_ids: nil
+      )
+
+      expect(results).to be_an(Array)
+      expect(results.length).to be > 0
+    end
+  end
+
+  describe "recency weighting edge cases" do
+    let(:query_embedding) { Array.new(1536, 0.1) }
+
+    context "when all timestamps are identical" do
+      before do
+        # Create conversations with same timestamp
+        connection.query(<<~SQL)
+          INSERT INTO conversations (id, created_at, title, status)
+          VALUES (1, '2024-01-01 10:00:00', 'First', 'active'),
+                 (2, '2024-01-01 10:00:00', 'Second', 'active'),
+                 (3, '2024-01-01 10:00:00', 'Third', 'active')
+        SQL
+
+        # Store conversation embeddings
+        embedding_store.upsert_conversation_embedding(
+          conversation_id: 1,
+          content: "conversation one",
+          embedding: Array.new(1536, 0.1)
+        )
+        embedding_store.upsert_conversation_embedding(
+          conversation_id: 2,
+          content: "conversation two",
+          embedding: Array.new(1536, 0.2)
+        )
+        embedding_store.upsert_conversation_embedding(
+          conversation_id: 3,
+          content: "conversation three",
+          embedding: Array.new(1536, 0.3)
+        )
+      end
+
+      it "handles zero timestamp range by using similarity only" do
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          recency_weight: 0.5
+        )
+
+        # When timestamp range is zero, blended_score should equal similarity
+        expect(results.length).to eq(3)
+        expect(results).to all(have_key(:blended_score))
+        results.each do |result|
+          expect(result[:blended_score]).to eq(result[:similarity])
+        end
+      end
+    end
+
+    context "when timestamps are strings" do
+      before do
+        # Create conversations
+        connection.query(<<~SQL)
+          INSERT INTO conversations (id, created_at, title, status)
+          VALUES (1, '2024-01-01 10:00:00', 'First', 'active'),
+                 (2, '2024-01-02 10:00:00', 'Second', 'active')
+        SQL
+
+        # Store conversation embeddings
+        embedding_store.upsert_conversation_embedding(
+          conversation_id: 1,
+          content: "conversation one",
+          embedding: Array.new(1536, 0.1)
+        )
+        embedding_store.upsert_conversation_embedding(
+          conversation_id: 2,
+          content: "conversation two",
+          embedding: Array.new(1536, 0.2)
+        )
+      end
+
+      it "parses string timestamps correctly for recency weighting" do
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0,
+          recency_weight: 0.0
+        )
+
+        # Should handle timestamp parsing and order by recency
+        expect(results.length).to eq(2)
+        expect(results).to all(have_key(:blended_score))
+      end
+    end
+  end
 end

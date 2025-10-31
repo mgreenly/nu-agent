@@ -141,6 +141,10 @@ RSpec.describe Nu::Agent::ConsoleIO::State do
         console.start_progress
       end
 
+      after do
+        console.end_progress if console.current_state.is_a?(described_class)
+      end
+
       it "transitions back to IdleState on end_progress" do
         console.end_progress
         expect(console.current_state).to be_a(Nu::Agent::ConsoleIO::IdleState)
@@ -149,6 +153,26 @@ RSpec.describe Nu::Agent::ConsoleIO::State do
       it "allows progress updates while in ProgressState" do
         expect { console.update_progress("[====>  ] 50%") }.not_to raise_error
         expect(console.current_state).to be_a(described_class)
+      end
+
+      it "rejects readline during progress" do
+        expect { console.readline("> ") }
+          .to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, /Cannot read input in progress state/)
+      end
+
+      it "rejects show_spinner during progress" do
+        expect { console.show_spinner("Test") }
+          .to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, /Cannot show spinner in progress state/)
+      end
+
+      it "rejects hide_spinner during progress" do
+        expect { console.hide_spinner }
+          .to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, /Cannot hide spinner in progress state/)
+      end
+
+      it "rejects start_progress during progress" do
+        expect { console.start_progress }
+          .to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, /Cannot start progress in progress state/)
       end
     end
 
@@ -170,6 +194,20 @@ RSpec.describe Nu::Agent::ConsoleIO::State do
         console.pause
         console.resume
         expect(console.current_state.class).to eq(original_state_class)
+      end
+
+      it "rejects update_progress during pause" do
+        console.pause
+        expect { console.update_progress("[====>  ] 50%") }
+          .to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, /Cannot update progress in paused state/)
+        console.resume
+      end
+
+      it "rejects end_progress during pause" do
+        console.pause
+        expect { console.end_progress }
+          .to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, /Cannot end progress in paused state/)
+        console.resume
       end
     end
   end

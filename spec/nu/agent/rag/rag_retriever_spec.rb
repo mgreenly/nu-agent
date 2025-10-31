@@ -273,6 +273,62 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         context = retriever_without_cache.retrieve(query: query)
         expect(context.formatted_context).not_to be_nil
       end
+
+      it "handles nil embedding_response when cache is enabled" do
+        # Mock the second call for fallback pipeline
+        call_count = 0
+        allow(embedding_client).to receive(:generate_embedding) do
+          call_count += 1
+          call_count == 1 ? nil : embedding_response
+        end
+
+        context = retriever_with_cache.retrieve(query: query)
+
+        # Should fall back to normal pipeline and succeed
+        expect(context.query_embedding).to eq(query_embedding)
+        expect(context.formatted_context).not_to be_nil
+      end
+
+      it "handles embedding_response with nil embeddings when cache is enabled" do
+        # Mock the second call for fallback pipeline
+        call_count = 0
+        allow(embedding_client).to receive(:generate_embedding) do
+          call_count += 1
+          call_count == 1 ? { "model" => "test" } : embedding_response
+        end
+
+        context = retriever_with_cache.retrieve(query: query)
+
+        # Should fall back to normal pipeline when embeddings key is missing
+        expect(context.query_embedding).to eq(query_embedding)
+        expect(context.formatted_context).not_to be_nil
+      end
+    end
+
+    context "with retrieval logger and edge cases" do
+      let(:retrieval_logger) { instance_double(Nu::Agent::RAG::RAGRetrievalLogger) }
+
+      before do
+        allow(retrieval_logger).to receive(:generate_query_hash).and_return("abc123")
+        allow(retrieval_logger).to receive(:log_retrieval)
+      end
+
+      it "skips logging when query_embedding is nil" do
+        retriever_with_logger = described_class.new(
+          embedding_store: embedding_store,
+          embedding_client: embedding_client,
+          config_store: config_store,
+          retrieval_logger: retrieval_logger
+        )
+
+        allow(embedding_client).to receive(:generate_embedding).and_return({ "error" => { "status" => 500 } })
+
+        retriever_with_logger.retrieve(query: query)
+
+        # Should not call generate_query_hash when query_embedding is nil
+        expect(retrieval_logger).not_to have_received(:generate_query_hash)
+        expect(retrieval_logger).not_to have_received(:log_retrieval)
+      end
     end
   end
 end

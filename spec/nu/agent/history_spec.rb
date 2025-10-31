@@ -1453,9 +1453,12 @@ RSpec.describe Nu::Agent::History do
           model: "test-model"
         )
 
-        # Note: purge_all_data has a bug in production code (RETURNING COUNT(*) not supported)
-        # This test will fail until that bug is fixed
-        expect { history.purge_all_data }.to raise_error(DuckDB::Error, /Aggregate functions are not supported/)
+        result = history.purge_all_data
+        expect(result).to be_a(Hash)
+        expect(result).to have_key(:conversations_cleared)
+        expect(result).to have_key(:exchanges_cleared)
+        expect(result).to have_key(:conversation_embeddings_deleted)
+        expect(result).to have_key(:exchange_embeddings_deleted)
       end
     end
   end

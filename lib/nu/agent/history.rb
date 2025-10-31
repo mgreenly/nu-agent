@@ -365,7 +365,7 @@ module Nu
 
       # Clear all exchange summaries
       def clear_exchange_summaries
-        connection.query("UPDATE exchanges SET summary = NULL, summary_cost = NULL")
+        connection.query("UPDATE exchanges SET summary = NULL, summary_model = NULL")
       end
 
       # Clear all embeddings (both conversations and exchanges)
@@ -433,39 +433,39 @@ module Nu
           }
 
           # Clear conversation summary
-          cleared = connection.query(<<~SQL).to_a.first.first
+          cleared = connection.query(<<~SQL).to_a.length
             UPDATE conversations
             SET summary = NULL, summary_model = NULL, summary_cost = 0.0
             WHERE id = #{conversation_id.to_i} AND summary IS NOT NULL
-            RETURNING COUNT(*)
+            RETURNING 1
           SQL
           stats[:conversation_summary_cleared] = cleared.positive?
 
           # Clear exchange summaries for this conversation
-          cleared = connection.query(<<~SQL).to_a.first.first
+          cleared = connection.query(<<~SQL).to_a.length
             UPDATE exchanges
-            SET summary = NULL, summary_model = NULL, summary_cost = 0.0
+            SET summary = NULL, summary_model = NULL
             WHERE conversation_id = #{conversation_id.to_i} AND summary IS NOT NULL
-            RETURNING COUNT(*)
+            RETURNING 1
           SQL
           stats[:exchange_summaries_cleared] = cleared
 
           # Delete conversation embeddings
-          deleted = connection.query(<<~SQL).to_a.first.first
-            DELETE FROM vector_store
-            WHERE kind = 'conversation' AND metadata->>'conversation_id' = '#{escape_sql(conversation_id.to_s)}'
-            RETURNING COUNT(*)
+          deleted = connection.query(<<~SQL).to_a.length
+            DELETE FROM text_embedding_3_small
+            WHERE kind = 'conversation_summary' AND conversation_id = #{conversation_id.to_i}
+            RETURNING 1
           SQL
           stats[:conversation_embeddings_deleted] = deleted
 
           # Delete exchange embeddings for this conversation
-          deleted = connection.query(<<~SQL).to_a.first.first
-            DELETE FROM vector_store
-            WHERE kind = 'exchange'
-              AND metadata->>'exchange_id' IN (
-                SELECT CAST(id AS VARCHAR) FROM exchanges WHERE conversation_id = #{conversation_id.to_i}
+          deleted = connection.query(<<~SQL).to_a.length
+            DELETE FROM text_embedding_3_small
+            WHERE kind = 'exchange_summary'
+              AND exchange_id IN (
+                SELECT id FROM exchanges WHERE conversation_id = #{conversation_id.to_i}
               )
-            RETURNING COUNT(*)
+            RETURNING 1
           SQL
           stats[:exchange_embeddings_deleted] = deleted
 
@@ -485,32 +485,32 @@ module Nu
           }
 
           # Clear all conversation summaries
-          cleared = connection.query(<<~SQL).to_a.first.first
+          cleared = connection.query(<<~SQL).to_a.length
             UPDATE conversations
             SET summary = NULL, summary_model = NULL, summary_cost = 0.0
             WHERE summary IS NOT NULL
-            RETURNING COUNT(*)
+            RETURNING 1
           SQL
           stats[:conversations_cleared] = cleared
 
           # Clear all exchange summaries
-          cleared = connection.query(<<~SQL).to_a.first.first
+          cleared = connection.query(<<~SQL).to_a.length
             UPDATE exchanges
-            SET summary = NULL, summary_model = NULL, summary_cost = 0.0
+            SET summary = NULL, summary_model = NULL
             WHERE summary IS NOT NULL
-            RETURNING COUNT(*)
+            RETURNING 1
           SQL
           stats[:exchanges_cleared] = cleared
 
           # Delete all conversation embeddings
-          deleted = connection.query(<<~SQL).to_a.first.first
-            DELETE FROM vector_store WHERE kind = 'conversation' RETURNING COUNT(*)
+          deleted = connection.query(<<~SQL).to_a.length
+            DELETE FROM text_embedding_3_small WHERE kind = 'conversation_summary' RETURNING 1
           SQL
           stats[:conversation_embeddings_deleted] = deleted
 
           # Delete all exchange embeddings
-          deleted = connection.query(<<~SQL).to_a.first.first
-            DELETE FROM vector_store WHERE kind = 'exchange' RETURNING COUNT(*)
+          deleted = connection.query(<<~SQL).to_a.length
+            DELETE FROM text_embedding_3_small WHERE kind = 'exchange_summary' RETURNING 1
           SQL
           stats[:exchange_embeddings_deleted] = deleted
 

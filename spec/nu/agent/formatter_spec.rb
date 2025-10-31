@@ -155,6 +155,37 @@ RSpec.describe Nu::Agent::Formatter do
 
       formatter.wait_for_completion(conversation_id: conversation_id, poll_interval: 0.01)
     end
+
+    it "uses event-driven approach when event_bus is available" do
+      event_bus = instance_double("EventBus")
+      allow(event_bus).to receive(:subscribe) # Accept any subscribe call
+
+      formatter_with_event_bus = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: false,
+        console: mock_console,
+        application: nil,
+        event_bus: event_bus
+      )
+
+      allow(history).to receive(:messages_since).and_return([])
+
+      # Simulate exchange completion after a short delay
+      Thread.new do
+        sleep 0.1
+        formatter_with_event_bus.instance_variable_get(:@exchange_mutex).synchronize do
+          formatter_with_event_bus.instance_variable_set(:@exchange_completed, true)
+        end
+      end
+
+      expect(mock_console).to receive(:show_spinner).with("Thinking...")
+      expect(mock_console).to receive(:hide_spinner)
+
+      formatter_with_event_bus.wait_for_completion(conversation_id: conversation_id)
+    end
   end
 
   describe "#display_message" do
