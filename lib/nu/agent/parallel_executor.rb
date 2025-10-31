@@ -72,16 +72,26 @@ module Nu
       # 5. Return results without the index tracking
       #
       # @param tool_calls [Array<Hash>] Array of tool call hashes with "name" and "arguments" keys
-      # @return [Array<Hash>] Array of results with format: { tool_call: ..., result: ... }
+      # @param batch_number [Integer, nil] Optional batch number for visibility/debugging
+      # @return [Array<Hash>] Array of results with format: { tool_call: ..., result: ..., batch: ..., thread: ... }
       #   Results are in the same order as input tool_calls, regardless of completion order
-      def execute_batch(tool_calls)
+      #   If batch_number provided, includes :batch and :thread keys for observability
+      def execute_batch(tool_calls, batch_number: nil)
         # Create threads for parallel execution
         # Each thread tracks its original index to enable result ordering
+        # If batch_number provided, also track thread number for visibility
         threads = []
         tool_calls.each_with_index do |tool_call, index|
+          thread_number = index + 1 # Thread numbers start at 1 for display
           thread = Thread.new do
             result = execute_tool_with_error_handling(tool_call)
-            { index: index, tool_call: tool_call, result: result }
+            result_data = { index: index, tool_call: tool_call, result: result }
+            # Add batch/thread info if batch_number provided
+            if batch_number
+              result_data[:batch] = batch_number
+              result_data[:thread] = thread_number
+            end
+            result_data
           end
           threads << thread
         end
@@ -93,7 +103,11 @@ module Nu
         # Sort by original index to maintain order, then strip the index field
         # This ensures results match the order of input tool_calls
         results_with_index.sort_by { |r| r[:index] }.map do |r|
-          { tool_call: r[:tool_call], result: r[:result] }
+          result = { tool_call: r[:tool_call], result: r[:result] }
+          # Preserve batch/thread info if present
+          result[:batch] = r[:batch] if r[:batch]
+          result[:thread] = r[:thread] if r[:thread]
+          result
         end
       end
 

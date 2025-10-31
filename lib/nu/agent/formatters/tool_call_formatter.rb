@@ -9,10 +9,10 @@ module Nu
           @application = application
         end
 
-        def display(tool_call, index: nil, total: nil)
+        def display(tool_call, index: nil, total: nil, batch: nil, thread: nil)
           verbosity = @application ? @application.verbosity : 0
 
-          display_header(tool_call["name"], index, total)
+          display_header(tool_call["name"], index, total, batch, thread)
 
           # Level 0: Show tool name only, no arguments
           return unless verbosity >= 1
@@ -22,10 +22,21 @@ module Nu
 
         private
 
-        def display_header(name, index, total)
+        def display_header(name, index, total, batch, thread)
+          # Build batch/thread indicator if present
+          batch_indicator = if batch && thread
+                              " (Batch #{batch}/Thread #{thread})"
+                            elsif batch
+                              " (Batch #{batch})"
+                            else
+                              ""
+                            end
+
+          # Build count indicator if present
           count_indicator = index && total && total > 1 ? " (#{index}/#{total})" : ""
+
           @console.puts("")
-          @console.puts("\e[90m[Tool Call Request] #{name}#{count_indicator}\e[0m")
+          @console.puts("\e[90m[Tool Call Request]#{batch_indicator} #{name}#{count_indicator}\e[0m")
         end
 
         def display_arguments(arguments, verbosity)

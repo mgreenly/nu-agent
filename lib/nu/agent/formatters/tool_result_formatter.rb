@@ -9,12 +9,12 @@ module Nu
           @application = application
         end
 
-        def display(message)
+        def display(message, batch: nil, thread: nil)
           result = message["tool_result"]["result"]
           name = message["tool_result"]["name"]
           verbosity = @application ? @application.verbosity : 0
 
-          display_header(name)
+          display_header(name, batch, thread)
 
           return unless verbosity >= 1
 
@@ -23,9 +23,18 @@ module Nu
 
         private
 
-        def display_header(name)
+        def display_header(name, batch, thread)
+          # Build batch/thread indicator if present
+          batch_indicator = if batch && thread
+                              " (Batch #{batch}/Thread #{thread})"
+                            elsif batch
+                              " (Batch #{batch})"
+                            else
+                              ""
+                            end
+
           @console.puts("")
-          @console.puts("\e[90m[Tool Use Response] #{name}\e[0m")
+          @console.puts("\e[90m[Tool Use Response]#{batch_indicator} #{name}\e[0m")
         end
 
         def display_result(result, verbosity)
