@@ -108,23 +108,24 @@ Each task must be tracked as:
 **Goal**: Add methods to convert between byte offset and (line, column) coordinates.
 **File**: `lib/nu/agent/console_io.rb`
 
-#### Task 1.1: Add get_lines method ⏳
-**TDD Steps**:
-1. Write spec test for `get_lines` with empty buffer → expect `[""]`
-2. Write spec test for single line "hello" → expect `["hello"]`
-3. Write spec test for "line1\nline2" → expect `["line1", "line2"]`
-4. Write spec test for trailing newline "line1\n" → expect `["line1", ""]`
-5. Implement `get_lines` method using `@input_buffer.split("\n", -1)`
-6. Run tests until green
-7. Run lint, fix any issues
-8. Run coverage check
-9. Commit: `[Phase 1.1] Add get_lines method for splitting buffer into lines`
-10. Update this document with ✅ DONE timestamp
+#### Task 1.1: Add lines method ✅ DONE (2025-10-31 15:01)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec test for `lines` with empty buffer → expect `[""]`
+2. ✅ Write spec test for single line "hello" → expect `["hello"]`
+3. ✅ Write spec test for "line1\nline2" → expect `["line1", "line2"]`
+4. ✅ Write spec test for trailing newline "line1\n" → expect `["line1", ""]`
+5. ✅ Implement `lines` method with special case for empty buffer
+6. ✅ Run tests until green
+7. ✅ Run lint, fix naming issue (get_lines → lines)
+8. ✅ Run coverage check - thresholds met
+9. ✅ Commit: `[Phase 1.1] Add lines method for splitting buffer into lines`
+10. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- `split("\n", -1)` preserves trailing empty line
-- All edge cases tested (empty, single line, multiline, trailing newline)
-- Tests pass, lint passes, coverage maintained
+**Acceptance criteria**: ✅ ALL MET
+- ✅ `split("\n", -1)` preserves trailing empty line
+- ✅ Special case for empty buffer returns `[""]`
+- ✅ All edge cases tested (empty, single line, multiline, trailing newline)
+- ✅ Tests pass, lint passes, coverage maintained (98.17% line, 90.02% branch)
 
 #### Task 1.2: Add get_line_and_column(pos) method ⏳
 **TDD Steps**:
@@ -551,7 +552,7 @@ WHERE id = 1
 <!-- Update this section as you complete tasks -->
 
 ### Phase 1: Line/column calculation helpers
-- Task 1.1: Add get_lines method - ⏳
+- Task 1.1: Add lines method - ✅ DONE (2025-10-31 15:01)
 - Task 1.2: Add get_line_and_column(pos) method - ⏳
 - Task 1.3: Add get_position_from_line_column(line, col) method - ⏳
 - Task 1.4: Add @saved_column instance variable - ⏳
