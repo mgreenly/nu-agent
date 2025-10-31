@@ -130,3 +130,15 @@ RSpec/AnyInstance:
 
 RSpec/VerifiedDoubleReference:
   Enabled: false  # Allow string references in instance_double when class constant not available
+
+RSpec/SpecFilePathSuffix:
+  Exclude:
+    - 'spec/benchmarks/**/*'  # Benchmark files use _benchmark.rb suffix
+
+RSpec/DescribeClass:
+  Exclude:
+    - 'spec/benchmarks/**/*'  # Benchmarks use descriptive strings instead of class names
+
+RSpec/BeforeAfterAll:
+  Exclude:
+    - 'spec/benchmarks/**/*'  # Benchmarks need global setup/teardown for performance testing
