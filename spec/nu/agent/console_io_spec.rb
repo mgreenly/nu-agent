@@ -2212,4 +2212,247 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
     end
   end
+
+  # Phase 5.1: Integration tests for multiline workflows
+  describe "multiline editing integration workflows" do
+    context "typing multiline input with Enter, navigating, and submitting" do
+      it "allows creating and submitting multiline input" do
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        # Type "SELECT *"
+        "SELECT *".each_char { |c| console.send(:insert_char, c) }
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *")
+
+        # Press Enter to insert newline
+        console.send(:insert_char, "\n")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\n")
+
+        # Type "FROM users"
+        "FROM users".each_char { |c| console.send(:insert_char, c) }
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users")
+
+        # Press Enter again
+        console.send(:insert_char, "\n")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\n")
+
+        # Type "WHERE id = 1"
+        "WHERE id = 1".each_char { |c| console.send(:insert_char, c) }
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\nWHERE id = 1")
+
+        # Submit with Ctrl+J
+        result = console.send(:parse_input, "\n")
+        expect(result).to eq(:submit)
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\nWHERE id = 1")
+      end
+
+      it "allows navigating up and down through lines" do
+        # Start with multiline content
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 18) # End of buffer
+
+        # Navigate up to line 2
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1) # On line 2 (0-indexed)
+
+        # Navigate up to line 1
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(0) # On line 1
+
+        # Navigate down to line 2
+        console.send(:cursor_down_or_history_next)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+
+        # Navigate down to line 3
+        console.send(:cursor_down_or_history_next)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(2)
+      end
+
+      it "preserves column position when navigating between lines of different lengths" do
+        # Create content with lines of different lengths
+        # "short" (5 chars) + \n + "longer line here" (16 chars) + \n + "short" (5 chars)
+        console.instance_variable_set(:@input_buffer, String.new("short\nlonger line here\nshort"))
+        console.instance_variable_set(:@cursor_pos, 16) # Position 16 = line 1, column 10 (the 'e' in "here")
+
+        # Navigate up to shorter line
+        console.send(:cursor_up_or_history_prev)
+        line, col = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(0)
+        expect(col).to eq(5) # Clamped to end of "short"
+
+        # Navigate down - should remember original column 10
+        console.send(:cursor_down_or_history_next)
+        line, col = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+        expect(col).to eq(10) # Restored to saved column 10
+      end
+    end
+
+    context "editing multiline input" do
+      it "allows inserting characters in the middle of lines" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 8) # Middle of line2
+
+        # Insert "XX"
+        console.send(:insert_char, "X")
+        console.send(:insert_char, "X")
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nliXXne2\nline3")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(10)
+      end
+
+      it "allows deleting characters in the middle of lines" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 8) # After "li" in line2
+
+        # Delete backward twice
+        console.send(:delete_backward)
+        console.send(:delete_backward)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nne2\nline3")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+      end
+
+      it "allows deleting forward across lines" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 5) # At end of line1, before \n
+
+        # Delete forward (removes the newline)
+        console.send(:delete_forward)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1line2\nline3")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+
+      it "handles inserting newlines in the middle of existing text" do
+        console.instance_variable_set(:@input_buffer, String.new("line1line2"))
+        console.instance_variable_set(:@cursor_pos, 5) # After "line1"
+
+        # Insert newline
+        console.send(:insert_char, "\n")
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+      end
+    end
+
+    context "loading and navigating multiline history entries" do
+      it "loads multiline history entry and allows navigation within it" do
+        # Setup history with a multiline entry
+        console.instance_variable_set(:@history, [
+                                        "single line",
+                                        "first line\nsecond line\nthird line",
+                                        "another single"
+                                      ])
+
+        # Start with empty buffer
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        # Navigate to most recent history (empty buffer allows history navigation)
+        console.send(:cursor_up_or_history_prev)
+        expect(console.instance_variable_get(:@input_buffer)).to eq("another single")
+
+        # Navigate to multiline entry
+        console.send(:cursor_up_or_history_prev)
+        expect(console.instance_variable_get(:@input_buffer)).to eq("first line\nsecond line\nthird line")
+
+        # Cursor should be at end of loaded entry
+        pos = console.instance_variable_get(:@cursor_pos)
+        line, = console.send(:get_line_and_column, pos)
+        expect(line).to eq(2) # Should be on last line
+
+        # To navigate within the entry, we need to exit history mode
+        # We do this by making an edit (which clears @history_pos)
+        # For now, verify we're in history mode
+        expect(console.instance_variable_get(:@history_pos)).not_to be_nil
+
+        # Exit history mode by clearing it manually (simulating what would happen after edit)
+        console.instance_variable_set(:@history_pos, nil)
+
+        # Now we can navigate within the multiline entry
+        # Navigate up to second line
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+
+        # Navigate up to first line
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(0)
+      end
+
+      it "allows editing multiline history entries before resubmitting" do
+        # Setup history
+        console.instance_variable_set(:@history, ["SELECT *\nFROM users\nWHERE id = 1"])
+
+        # Start with empty buffer and load history
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.send(:cursor_up_or_history_prev)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\nWHERE id = 1")
+
+        # Cursor should be at end of buffer
+        pos = console.instance_variable_get(:@cursor_pos)
+        line, = console.send(:get_line_and_column, pos)
+        expect(line).to eq(2) # On last line
+
+        # Make an edit
+        console.send(:insert_char, ";")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\nWHERE id = 1;")
+
+        # NOTE: Currently, edits don't automatically clear @history_pos (potential enhancement)
+        # For this test, we manually exit history mode to demonstrate navigation within edited content
+        console.instance_variable_set(:@history_pos, nil)
+
+        # Now we can navigate within the entry
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1) # Moved to "FROM users" line
+
+        # Edit this line
+        console.send(:insert_char, " ")
+        console.send(:insert_char, "u")
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users u\nWHERE id = 1;")
+      end
+    end
+
+    context "background output during multiline editing" do
+      it "properly redraws multiline input after background output" do
+        # Stub pipe_read to avoid unexpected message error
+        allow(pipe_read).to receive(:read_nonblock).with(1024).and_return("")
+        allow(pipe_write).to receive(:write)
+
+        # Setup queue with background message
+        queue = console.instance_variable_get(:@output_queue)
+        queue.push("background message")
+
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 8)
+        console.instance_variable_set(:@last_line_count, 3)
+
+        console.send(:handle_output_for_input_mode, "> ")
+
+        output = stdout.string
+
+        # Verify that:
+        # 1. Cursor moved up to clear old input (3 lines means move up 2 times)
+        expect(output).to include("\e[A") # Cursor up
+        # 2. Screen was cleared
+        expect(output).to include("\e[J") # Clear to end of screen
+        # 3. Background output was displayed
+        expect(output).to include("background message")
+        # 4. Input was redrawn (would include multiline content)
+        expect(output).to include("line1")
+        expect(output).to include("line2")
+        expect(output).to include("line3")
+      end
+    end
+  end
 end
