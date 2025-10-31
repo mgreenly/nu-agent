@@ -173,12 +173,15 @@ end
    - Commit: "Add metadata to all tools"
 
 **Acceptance Criteria**:
-- [ ] All tools have operation_type (:read or :write)
-- [ ] All tools have scope (:confined or :unconfined)
-- [ ] ToolRegistry stores and retrieves metadata correctly
-- [ ] 100% test coverage for new metadata functionality
-- [ ] Zero rubocop violations
-- [ ] All existing tests still pass
+- [x] All tools have operation_type (:read or :write)
+- [x] All tools have scope (:confined or :unconfined)
+- [x] ToolRegistry stores and retrieves metadata correctly
+- [x] 100% test coverage for new metadata functionality
+- [x] Zero rubocop violations
+- [x] All existing tests still pass
+
+**Status**: ✅ COMPLETE (6 commits)
+**Commits**: d5096c2, cce1837, 3986e66, 8596270, 82860b3
 
 **Estimated Commits**: 5-6
 
