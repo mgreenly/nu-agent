@@ -293,4 +293,102 @@ RSpec.describe Nu::Agent::ToolRegistry do
       expect(schema[:required]).to eq(["test"])
     end
   end
+
+  describe "Tool Metadata" do
+    let(:tool_with_metadata) do
+      double("ToolWithMetadata",
+             name: "tool_with_metadata",
+             description: "A tool with metadata",
+             parameters: {},
+             operation_type: :read,
+             scope: :confined)
+    end
+
+    let(:tool_without_metadata) do
+      double("ToolWithoutMetadata",
+             name: "tool_without_metadata",
+             description: "A tool without metadata",
+             parameters: {})
+    end
+
+    describe "#register with metadata" do
+      it "stores tool metadata when provided" do
+        registry.register(tool_with_metadata)
+
+        metadata = registry.metadata_for("tool_with_metadata")
+
+        expect(metadata[:operation_type]).to eq(:read)
+        expect(metadata[:scope]).to eq(:confined)
+      end
+
+      it "allows registering tools with write operation_type" do
+        write_tool = double("WriteTool",
+                            name: "write_tool",
+                            description: "A write tool",
+                            parameters: {},
+                            operation_type: :write,
+                            scope: :confined)
+
+        registry.register(write_tool)
+
+        metadata = registry.metadata_for("write_tool")
+
+        expect(metadata[:operation_type]).to eq(:write)
+      end
+
+      it "allows registering tools with unconfined scope" do
+        unconfined_tool = double("UnconfinedTool",
+                                 name: "unconfined_tool",
+                                 description: "An unconfined tool",
+                                 parameters: {},
+                                 operation_type: :write,
+                                 scope: :unconfined)
+
+        registry.register(unconfined_tool)
+
+        metadata = registry.metadata_for("unconfined_tool")
+
+        expect(metadata[:scope]).to eq(:unconfined)
+      end
+    end
+
+    describe "#metadata_for" do
+      it "returns metadata for a registered tool" do
+        registry.register(tool_with_metadata)
+
+        metadata = registry.metadata_for("tool_with_metadata")
+
+        expect(metadata).to be_a(Hash)
+        expect(metadata[:operation_type]).to eq(:read)
+        expect(metadata[:scope]).to eq(:confined)
+      end
+
+      it "returns default values when tool doesn't provide metadata" do
+        registry.register(tool_without_metadata)
+
+        metadata = registry.metadata_for("tool_without_metadata")
+
+        expect(metadata[:operation_type]).to eq(:read)
+        expect(metadata[:scope]).to eq(:confined)
+      end
+
+      it "returns nil for unknown tools" do
+        metadata = registry.metadata_for("unknown_tool")
+
+        expect(metadata).to be_nil
+      end
+    end
+
+    describe "#find with metadata" do
+      it "returns tool with metadata accessible" do
+        registry.register(tool_with_metadata)
+
+        tool = registry.find("tool_with_metadata")
+
+        expect(tool).to eq(tool_with_metadata)
+        expect(tool.operation_type).to eq(:read)
+        expect(tool.scope).to eq(:confined)
+      end
+    end
+  end
 end
