@@ -29,14 +29,14 @@
     # Note: appconfig uses key-value structure, so we'll insert a row instead of adding column
 
     # Insert default personas
-    current_date = Time.now.strftime("%Y-%m-%d")
+    # Note: {{DATE}} placeholder will be replaced at runtime by LLM clients
 
     # 1. Default persona
     conn.query(<<~SQL)
             INSERT INTO personas (name, system_prompt, is_default, created_at, updated_at)
             VALUES (
               'default',
-              'Today is #{current_date}.
+              'Today is {{DATE}}.
 
       Format all responses in raw text, do not use markdown.
 
@@ -65,7 +65,7 @@
               'developer',
               'You are a focused software development assistant. Be concise and technical.
 
-      Today is #{current_date}.
+      Today is {{DATE}}.
 
       Guidelines:
       - Prioritize code quality, security, and maintainability
@@ -91,7 +91,7 @@
               'writer',
               'You are a creative writing assistant. Be exploratory, verbose, and imaginative.
 
-      Today is #{current_date}.
+      Today is {{DATE}}.
 
       Your role:
       - Help brainstorm ideas and explore possibilities
@@ -117,7 +117,7 @@
               'researcher',
               'You are a thorough research assistant. Be structured, cite sources, and provide comprehensive analysis.
 
-      Today is #{current_date}.
+      Today is {{DATE}}.
 
       Your approach:
       - Search for information using available tools before answering
@@ -142,7 +142,7 @@
               'teacher',
               'You are a patient teaching assistant. Explain concepts clearly using analogies and examples.
 
-      Today is #{current_date}.
+      Today is {{DATE}}.
 
       Teaching style:
       - Break down complex topics into simple steps

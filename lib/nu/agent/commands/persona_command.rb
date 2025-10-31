@@ -8,13 +8,13 @@ module Nu
     module Commands
       # Command for managing agent personas
       class PersonaCommand < BaseCommand
-        # rubocop:disable Metrics/AbcSize
         def execute(input)
-          args = input.split[1..] # Skip the command name
+          initialize_managers
+          args = input.split[1..]
+          command_name = input.split.first
 
-          # Initialize PersonaManager and PersonaEditor
-          @persona_manager = PersonaManager.new(app.history.connection)
-          @persona_editor = PersonaEditor.new
+          # If invoked as /personas with no args, show list
+          return :continue if handle_personas_alias?(command_name, args)
 
           # Determine subcommand
           subcommand = args.first&.downcase
@@ -27,7 +27,6 @@ module Nu
           when "create"
             create_persona(args[1])
           else
-            # Check if this is a persona name with an action
             handle_persona_action(subcommand, args[1]&.downcase)
           end
 
@@ -39,9 +38,20 @@ module Nu
           app.console.puts("\e[31mError: #{e.message}\e[0m")
           :continue
         end
-        # rubocop:enable Metrics/AbcSize
 
         private
+
+        def initialize_managers
+          @persona_manager = PersonaManager.new(app.history.connection)
+          @persona_editor = PersonaEditor.new
+        end
+
+        def handle_personas_alias?(command_name, args)
+          return false unless command_name == "/personas" && args.empty?
+
+          show_persona_list
+          true
+        end
 
         def show_general_help
           help_lines = [

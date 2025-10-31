@@ -32,6 +32,7 @@ module Nu
               /model summarizer <name>       - Switch summarizer model
               /models                        - List available models
               /persona [<name>|<command>]    - Manage agent personas (use /persona for details)
+              /personas                      - List all available personas
               /rag <query>                   - Search conversation history using RAG
               /redaction <on|off>            - Enable/disable redaction of tool results in context
               /reset                         - Start a new conversation

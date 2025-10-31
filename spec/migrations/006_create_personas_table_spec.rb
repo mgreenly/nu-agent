@@ -43,6 +43,28 @@ RSpec.describe "Migration 006: create_personas_table" do
       expect(rows.first[0]).to eq("default")
     end
 
+    it "creates personas with {{DATE}} placeholder for runtime replacement" do
+      # Run the migration
+      migration[:up].call(conn)
+
+      # Verify all personas use {{DATE}} placeholder instead of hardcoded date
+      result = conn.query("SELECT name, system_prompt FROM personas")
+      personas = result.to_a
+
+      personas.each do |persona|
+        name = persona[0]
+        system_prompt = persona[1]
+
+        # Check for {{DATE}} placeholder
+        expect(system_prompt).to include("{{DATE}}"),
+                                 "Persona '#{name}' should contain {{DATE}} placeholder"
+
+        # Check that no hardcoded dates exist (YYYY-MM-DD format)
+        expect(system_prompt).not_to match(/Today is \d{4}-\d{2}-\d{2}/),
+                                     "Persona '#{name}' should not contain hardcoded date"
+      end
+    end
+
     it "sets default persona as active in appconfig" do
       # Run the migration
       migration[:up].call(conn)

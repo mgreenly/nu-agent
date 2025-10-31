@@ -176,6 +176,7 @@ module Nu
         @command_registry.register("/info", Commands::InfoCommand)
         @command_registry.register("/models", Commands::ModelsCommand)
         @command_registry.register("/persona", Commands::PersonaCommand)
+        @command_registry.register("/personas", Commands::PersonaCommand)
         @command_registry.register("/worker", Commands::WorkerCommand)
         @command_registry.register("/rag", Commands::RagCommand)
         @command_registry.register("/migrate-exchanges", Commands::MigrateExchangesCommand)

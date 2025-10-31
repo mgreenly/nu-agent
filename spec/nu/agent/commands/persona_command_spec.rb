@@ -85,6 +85,25 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
       end
     end
 
+    context "when invoked as /personas (alias)" do
+      it "lists all personas directly without arguments" do
+        personas = [
+          { "id" => 1, "name" => "default", "is_default" => true },
+          { "id" => 2, "name" => "developer", "is_default" => false }
+        ]
+        active_persona = { "id" => 1, "name" => "default" }
+
+        allow(persona_manager).to receive_messages(list: personas, get_active: active_persona)
+
+        expect(console).to receive(:puts).with("\e[90mAvailable personas (* = active):\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  * default\e[0m")
+        expect(console).to receive(:puts).with("\e[90m    developer\e[0m")
+
+        result = command.execute("/personas")
+        expect(result).to eq(:continue)
+      end
+    end
+
     context "with persona name (switch)" do
       it "switches to the specified persona" do
         persona = { "id" => 2, "name" => "developer" }
