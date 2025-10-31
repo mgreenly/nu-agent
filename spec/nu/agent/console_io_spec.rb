@@ -372,6 +372,37 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
         expect(console.instance_variable_get(:@last_line_count)).to eq(2)
       end
+
+      it "uses @last_cursor_line when set (after navigation)" do
+        # Simulate: 3 lines, cursor moved to line 1 (middle line) via navigation
+        # Previous redraw left cursor on line 1
+        console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+        console.instance_variable_set(:@cursor_pos, 8) # Middle of line2
+        console.instance_variable_set(:@last_line_count, 3)
+        console.instance_variable_set(:@last_cursor_line, 1) # Cursor was on line 1 after previous redraw
+
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Should move up 1 line (from @last_cursor_line), not 2 lines (from @last_line_count - 1)
+        # This prevents erasing output above the prompt
+        expect(output).to match(/\e\[1A/)
+        expect(output).not_to match(/\e\[2A/)
+      end
+
+      it "falls back to @last_line_count when @last_cursor_line is zero" do
+        # Initial redraw scenario - @last_cursor_line not yet set (defaults to 0)
+        console.instance_variable_set(:@input_buffer, "line1\nline2")
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@last_line_count, 3)
+        console.instance_variable_set(:@last_cursor_line, 0) # Not set yet
+
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Should fall back to @last_line_count - 1 = 2
+        expect(output).to match(/\e\[2A/)
+      end
     end
   end
 
