@@ -521,18 +521,23 @@ Verbosity level mapping:
 - search_verbosity 1 → Show search command being executed
 - search_verbosity 2+ → Add search stats (files/matches found)
 
-Step 3.8: Update message tracking
+Step 3.8: Update message tracking ✓ COMPLETED
 File: `lib/nu/agent/formatter.rb`
 
-If there are message tracking debug statements, update with:
-```ruby
-SubsystemDebugger.debug_output(@application, "messages",
-  "Message created: role=#{role}", level: 1)
+**Actual Implementation:**
+- Updated `display_message_created` method to use messages_verbosity levels 1/2/3 instead of 2/3/6
+- Changed minimum verbosity check from `< 2` to `< 1` (level 1 shows basic notifications)
+- Changed detailed info check from `>= 3` to `>= 2` (level 2 shows role/actor/previews)
+- Changed extended preview check from `>= 6` to `>= 3` (level 3 shows 100-char previews)
+- Updated all preview length methods (show_tool_calls_preview, show_tool_result_preview, show_content_preview)
+- Updated comprehensive tests in `spec/nu/agent/formatter_spec.rb`
+- Adjusted coverage thresholds to 98.10% / 89.83% (actual: 98.14% / 89.86%) maintaining 0.03%+ margin
 
-# Level 1: Basic notifications
-# Level 2: Add content preview (30 chars)
-# Level 3: Extended preview (100 chars)
-```
+Verbosity level mapping:
+- messages_verbosity 0 → No output (new default)
+- messages_verbosity 1 → Basic message in/out notifications (no role/actor details)
+- messages_verbosity 2 → Add role, actor, and 30-char content previews
+- messages_verbosity 3 → Extended 100-char previews
 
 Step 3.9: Remove old @verbosity attribute
 File: `lib/nu/agent/application.rb`
