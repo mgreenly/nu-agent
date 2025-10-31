@@ -57,7 +57,7 @@ The setup script automatically uninstalls and rebuilds the DuckDB gem with the c
 
 For more detailed troubleshooting, see [docs/setup-duckdb.md](docs/setup-duckdb.md).
 
-### ripgrep (code search)
+### System Packages
 
 ```bash
 # Debian/Ubuntu
