@@ -420,40 +420,33 @@ Spec: `spec/nu/agent/subsystem_debugger_spec.rb`
 Step 3.2: Update LLM request formatter ✓ COMPLETED
 File: `lib/nu/agent/formatters/llm_request_formatter.rb`
 
-Replace current verbosity checks with:
+**Actual Implementation:**
+- Removed `debug` parameter from `initialize` (now uses `application.debug` via SubsystemDebugger)
+- Changed signature: `def initialize(console:, application:, debug:)` → `def initialize(console:, application:)`
+- Removed `attr_writer :debug`
+- Added helper method `should_output?(level)` that calls `SubsystemDebugger.should_output?(@application, "llm", level)`
+- Updated Formatter to remove `@llm_request_formatter.debug = value` line
+- Updated Formatter to use `attr_writer :debug` instead of custom setter
+
+Verbosity level mapping (OLD → NEW):
+- OLD: verbosity >= 4 → NEW: llm_verbosity >= 3 (show full request messages)
+- OLD: verbosity >= 5 → NEW: llm_verbosity >= 4 (add tool definitions to request display)
 
 Step 3.3: Update tool call formatter ✓ COMPLETED
 File: `lib/nu/agent/formatters/tool_call_formatter.rb`
 
-Replace current verbosity checks with:
-```ruby
-# Old: verbosity = @application ? @application.verbosity : 0
-# Old: return if verbosity < 4
+**Actual Implementation:**
+- Added `require_relative "../subsystem_debugger"` at top
+- Added helper method `should_output?(level)` that calls `SubsystemDebugger.should_output?(@application, "tools", level)`
+- Replaced verbosity checks with subsystem calls
+- Removed `verbosity` parameter from `display_arguments` and `format_argument` methods
+- Updated logic to check verbosity levels on-the-fly using `should_output?(level)`
 
-# New: Check llm subsystem verbosity
-return unless SubsystemDebugger.should_output?(@application, "llm", 2)
-
-# For different levels:
-# Level 1: warnings only (show in display_content_or_warning for empty responses)
-# Level 2: message count and token estimates
-# Level 3: full request messages
-# Level 4: add tool definitions
-```
-
-Step 3.3: Update tool call formatter
-File: `lib/nu/agent/formatters/tool_call_formatter.rb`
-
-Replace current verbosity checks with:
-```ruby
-# Old: verbosity = @application ? @application.verbosity : 0
-
-# New: Check tools subsystem verbosity
-verbosity = @application.history.get_int("tools_verbosity", default: 0)
-
-# Level 1: Show tool name only
-# Level 2: Show tool name with brief args (current default behavior)
-# Level 3: Show full arguments, no truncation
-```
+Verbosity level mapping (OLD → NEW):
+- NEW: tools_verbosity 0 → No output at all (new behavior - nothing displayed)
+- OLD: verbosity 0 → NEW: tools_verbosity 1 (show tool name only, no arguments)
+- OLD: verbosity 1-3 → NEW: tools_verbosity 2 (show truncated arguments, 30 chars max)
+- OLD: verbosity 4+ → NEW: tools_verbosity 3+ (show full arguments, no truncation)
 
 Step 3.4: Update tool result formatter
 File: `lib/nu/agent/formatters/tool_result_formatter.rb`
