@@ -198,7 +198,7 @@ module Nu
             metrics_collector = app.worker_manager.worker_metrics(WORKER_NAME)
             if metrics_collector
               metrics_stats = metrics_collector.get_timer_stats(:exchange_processing)
-              if metrics_stats[:count] > 0
+              if metrics_stats[:count].positive?
                 result += <<~METRICS
 
                   Performance Metrics:

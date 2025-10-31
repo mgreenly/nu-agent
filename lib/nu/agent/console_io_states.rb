@@ -74,6 +74,11 @@ module Nu
           context.do_show_spinner(message)
         end
 
+        def hide_spinner
+          # No-op: spinner is already hidden in idle state
+          # This allows defensive cleanup calls without raising errors
+        end
+
         def start_progress
           context.transition_to(ProgressState.new(context))
           context.do_start_progress

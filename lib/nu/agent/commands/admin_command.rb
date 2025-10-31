@@ -134,7 +134,7 @@ module Nu
         def handle_purge_failures(args)
           # Parse options
           options = parse_options(args)
-          older_than = options["older-than"]&.to_i || 0
+          older_than = options["older-than"].to_i
 
           # Count jobs to be purged
           total_count = app.history.get_failed_jobs_count(job_type: nil)

@@ -460,10 +460,13 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       end
 
       it "handles empty results when recency weighting is enabled" do
+        # Use date filter to exclude all results
+        before_date = Time.parse("2024-01-01 00:00:00")
         results = embedding_store.search_conversations(
           query_embedding: query_embedding,
           limit: 10,
-          min_similarity: 0.99,
+          min_similarity: 0.0,
+          before_date: before_date,
           recency_weight: 0.5
         )
 
@@ -716,11 +719,14 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       end
 
       it "handles empty results when recency weighting is enabled" do
+        # Use date filter to exclude all results
+        before_date = Time.parse("2024-01-01 00:00:00")
         results = embedding_store.search_exchanges(
           query_embedding: query_embedding,
           limit: 10,
-          min_similarity: 0.99,
+          min_similarity: 0.0,
           conversation_ids: nil,
+          before_date: before_date,
           recency_weight: 0.5
         )
 

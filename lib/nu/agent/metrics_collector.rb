@@ -97,7 +97,7 @@ module Nu
 
         # Use nearest-rank method
         rank = (percentile / 100.0 * sorted_array.length).ceil - 1
-        rank = [0, [rank, sorted_array.length - 1].min].max
+        rank = rank.clamp(0, sorted_array.length - 1)
         sorted_array[rank]
       end
     end

@@ -31,6 +31,9 @@ Metrics/MethodLength:
     - 'lib/nu/agent/console_io.rb'  # Complex input parsing requires longer methods
     - 'lib/nu/agent/history.rb'  # Database initialization with WAL recovery detection
     - 'lib/nu/agent/configuration_loader.rb'  # Model configuration with reset logic requires longer method
+    - 'lib/nu/agent/background_worker_manager.rb'  # Worker initialization with multiple config checks
+    - 'lib/nu/agent/commands/admin_command.rb'  # CLI command handlers with display formatting
+    - 'lib/nu/agent/commands/workers/exchange_summarizer_command.rb'  # Status display with metrics formatting
 
 Metrics/ClassLength:
   Max: 250
@@ -44,6 +47,7 @@ Metrics/BlockLength:
     - 'spec/**/*'
     - 'rakelib/**/*'  # Rake task definitions may require long blocks
     - 'migrations/**/*'  # Migration scripts may require long blocks
+    - 'lib/nu/agent/history.rb'  # Transaction blocks for data purging require atomicity
 
 # Disable some overly strict cops
 Style/Documentation:
@@ -55,6 +59,9 @@ Metrics/AbcSize:
     - 'lib/nu/agent/console_io.rb'  # Complex input parsing
     - 'lib/nu/agent/history.rb'  # Database initialization with WAL recovery detection
     - 'lib/nu/agent/configuration_loader.rb'  # Model configuration with reset logic has high ABC size
+    - 'lib/nu/agent/commands/admin_command.rb'  # CLI command handlers with display formatting and error handling
+    - 'lib/nu/agent/commands/workers/exchange_summarizer_command.rb'  # Status display with metrics collection and formatting
+    - 'lib/nu/agent/workers/exchange_summarizer.rb'  # Exchange processing with multiple conditional checks
 
 Metrics/CyclomaticComplexity:
   Max: 10

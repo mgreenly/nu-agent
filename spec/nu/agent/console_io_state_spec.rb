@@ -67,6 +67,12 @@ RSpec.describe Nu::Agent::ConsoleIO::State do
         console.start_progress
         expect(console.current_state).to be_a(Nu::Agent::ConsoleIO::ProgressState)
       end
+
+      it "allows hide_spinner as a safe no-op when already idle" do
+        # This handles defensive cleanup calls that hide spinner even if not shown
+        expect { console.hide_spinner }.not_to raise_error
+        expect(console.current_state).to be_a(described_class)
+      end
     end
 
     describe Nu::Agent::ConsoleIO::ReadingUserInputState do
