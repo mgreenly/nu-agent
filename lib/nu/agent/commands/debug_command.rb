@@ -21,8 +21,24 @@ module Nu
         private
 
         def show_usage
-          app.console.puts("\e[90mUsage: /debug <on|off>\e[0m")
-          app.console.puts("\e[90mCurrent: debug=#{app.debug ? 'on' : 'off'}\e[0m")
+          usage_lines.each { |line| app.console.puts("\e[90m#{line}\e[0m") }
+        end
+
+        def usage_lines
+          [
+            "Usage: /debug <on|off>",
+            "Current: debug=#{app.debug ? 'on' : 'off'}",
+            "",
+            "Control specific debug output with subsystem commands:",
+            "  /llm verbosity <level>        - LLM API interactions",
+            "  /tools verbosity <level>      - Tool calls and results",
+            "  /messages verbosity <level>   - Message tracking",
+            "  /search verbosity <level>     - Search internals",
+            "  /stats verbosity <level>      - Statistics/costs",
+            "  /spellcheck verbosity <level> - Spell checker",
+            "",
+            "Use /<subsystem> help to see verbosity levels."
+          ]
         end
 
         def update_debug(setting)

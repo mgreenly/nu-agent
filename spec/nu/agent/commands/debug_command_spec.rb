@@ -25,6 +25,16 @@ RSpec.describe Nu::Agent::Commands::DebugCommand do
         allow(application).to receive(:debug).and_return(false)
         expect(console).to receive(:puts).with("\e[90mUsage: /debug <on|off>\e[0m")
         expect(console).to receive(:puts).with("\e[90mCurrent: debug=off\e[0m")
+        expect(console).to receive(:puts).with("\e[90m\e[0m")
+        expect(console).to receive(:puts).with("\e[90mControl specific debug output with subsystem commands:\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /llm verbosity <level>        - LLM API interactions\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /tools verbosity <level>      - Tool calls and results\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /messages verbosity <level>   - Message tracking\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /search verbosity <level>     - Search internals\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /stats verbosity <level>      - Statistics/costs\e[0m")
+        expect(console).to receive(:puts).with("\e[90m  /spellcheck verbosity <level> - Spell checker\e[0m")
+        expect(console).to receive(:puts).with("\e[90m\e[0m")
+        expect(console).to receive(:puts).with("\e[90mUse /<subsystem> help to see verbosity levels.\e[0m")
         command.execute("/debug")
       end
 

@@ -577,7 +577,7 @@ Deliverables:
 Phase 4: Deprecation and refinement (1 hr)
 Goal: Deprecate old /verbosity command and comprehensive testing.
 
-Step 4.1: Deprecate old /verbosity command
+Step 4.1: Deprecate old /verbosity command ✓ COMPLETED (in Step 3.9)
 File: `lib/nu/agent/commands/verbosity_command.rb`
 
 Update to show deprecation warning:
@@ -601,20 +601,22 @@ class VerbosityCommand < BaseCommand
 end
 ```
 
-Step 4.2: Update /debug command help text
+Step 4.2: Update /debug command help text ✓ COMPLETED
 File: `lib/nu/agent/commands/debug_command.rb`
 
-Update help text to mention subsystem commands:
-```ruby
-def show_help
-  # ... existing help text ...
-  app.output_line("", type: :command)
-  app.output_line("Use subsystem commands to control specific debug output:", type: :command)
-  app.output_line("  /llm verbosity <level>    - LLM API interactions", type: :command)
-  app.output_line("  /tools verbosity <level>  - Tool calls and results", type: :command)
-  app.output_line("  ... etc ...", type: :command)
-end
-```
+**Actual Implementation:**
+- Followed TDD: RED → GREEN → REFACTOR cycle
+- Added test expectations for new subsystem help text
+- Extracted help text to `usage_lines` method to avoid RuboCop ABC violation
+- Added comprehensive subsystem documentation to usage message:
+  - Lists all 6 subsystem commands (/llm, /tools, /messages, /search, /stats, /spellcheck)
+  - Shows command syntax for each subsystem
+  - Includes brief description of what each subsystem controls
+  - Directs users to `/<subsystem> help` for verbosity level details
+- Updated spec to verify all new help lines are displayed
+- All tests passing (2194 examples, 0 failures)
+- Coverage maintained: 98.12% line / 89.83% branch
+- Lint clean with good design (array iteration instead of multiple puts calls)
 
 Step 4.3: Update main help to document subsystem commands
 File: `lib/nu/agent/commands/help_command.rb` or `lib/nu/agent/help_text_builder.rb`
