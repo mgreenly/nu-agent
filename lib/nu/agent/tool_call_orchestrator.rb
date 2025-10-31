@@ -6,6 +6,7 @@ require_relative "parallel_executor"
 module Nu
   module Agent
     # Manages the tool calling loop with LLM
+    # rubocop:disable Metrics/ClassLength
     class ToolCallOrchestrator
       def initialize(client:, history:, exchange_info:, tool_registry:, application:)
         @client = client
@@ -101,63 +102,82 @@ module Nu
         add_assistant_message_to_list(messages, response)
 
         # Analyze dependencies and batch tool calls
-        tool_call_count = response["tool_calls"].length
-        output_debug("[DEBUG] Analyzing #{tool_call_count} tool calls for dependencies...", verbosity: 1)
-
-        batches = @dependency_analyzer.analyze(response["tool_calls"])
-
-        # Output batch planning summary
-        output_batch_summary(batches, tool_call_count)
+        batches = analyze_and_output_batches(response["tool_calls"])
 
         # Execute batches sequentially, but tools within each batch run in parallel
+        execute_batches(batches, response["tool_calls"], messages)
+      end
+
+      # Analyze tool calls for dependencies and output batch summary
+      def analyze_and_output_batches(tool_calls)
+        tool_call_count = tool_calls.length
+        output_debug("[DEBUG] Analyzing #{tool_call_count} tool calls for dependencies...", verbosity: 1)
+
+        batches = @dependency_analyzer.analyze(tool_calls)
+        output_batch_summary(batches, tool_call_count)
+        batches
+      end
+
+      # Execute all batches sequentially
+      def execute_batches(batches, all_tool_calls, messages)
         batches.each_with_index do |batch, batch_index|
-          batch_number = batch_index + 1 # Batch numbers start at 1 for display
-
-          # Display tool call requests with batch/thread info
-          if @application.respond_to?(:debug) && @application.debug
-            batch.each_with_index do |tool_call, index|
-              thread_number = index + 1
-              display_tool_call_with_context(
-                tool_call,
-                batch: batch_number,
-                thread: thread_number,
-                index: find_tool_call_index(response["tool_calls"], tool_call),
-                total: response["tool_calls"].length
-              )
-            end
-          end
-
-          # Execute batch with batch number for tracking
+          batch_number = batch_index + 1
+          display_batch_tool_calls(batch, batch_number, all_tool_calls) if debug_enabled?
           results = @parallel_executor.execute_batch(batch, batch_number: batch_number)
-
-          # Process results in original order
-          results.each do |result_data|
-            tool_call = result_data[:tool_call]
-            result = result_data[:result]
-            batch = result_data[:batch]
-            thread = result_data[:thread]
-            start_time = result_data[:start_time]
-            duration = result_data[:duration]
-            tool_result_data = build_tool_result_data(tool_call, result)
-
-            save_tool_result_message(tool_call, tool_result_data)
-
-            # Display tool result with batch/thread/timing info if debug enabled
-            if @application.respond_to?(:debug) && @application.debug && batch && thread
-              display_tool_result_with_context(
-                tool_result_data,
-                batch: batch,
-                thread: thread,
-                start_time: start_time,
-                duration: duration
-              )
-            else
-              display_tool_result_message(tool_result_data)
-            end
-
-            add_tool_result_to_messages(messages, tool_call, result)
-          end
+          process_batch_results(results, messages)
         end
+      end
+
+      # Display tool call requests for a batch with batch/thread context
+      def display_batch_tool_calls(batch, batch_number, all_tool_calls)
+        batch.each_with_index do |tool_call, index|
+          thread_number = index + 1
+          display_tool_call_with_context(
+            tool_call,
+            batch: batch_number,
+            thread: thread_number,
+            index: find_tool_call_index(all_tool_calls, tool_call),
+            total: all_tool_calls.length
+          )
+        end
+      end
+
+      # Process results from a batch execution
+      def process_batch_results(results, messages)
+        results.each do |result_data|
+          process_single_result(result_data, messages)
+        end
+      end
+
+      # Process a single tool execution result
+      def process_single_result(result_data, messages)
+        tool_call = result_data[:tool_call]
+        result = result_data[:result]
+        tool_result_data = build_tool_result_data(tool_call, result)
+
+        save_tool_result_message(tool_call, tool_result_data)
+        display_result_with_context(result_data, tool_result_data)
+        add_tool_result_to_messages(messages, tool_call, result)
+      end
+
+      # Display tool result with appropriate context
+      def display_result_with_context(result_data, tool_result_data)
+        if debug_enabled? && result_data[:batch] && result_data[:thread]
+          display_tool_result_with_context(
+            tool_result_data,
+            batch: result_data[:batch],
+            thread: result_data[:thread],
+            start_time: result_data[:start_time],
+            duration: result_data[:duration]
+          )
+        else
+          display_tool_result_message(tool_result_data)
+        end
+      end
+
+      # Check if debug mode is enabled
+      def debug_enabled?
+        @application.respond_to?(:debug) && @application.debug
       end
 
       def find_tool_call_index(all_tool_calls, target_tool_call)
@@ -279,35 +299,49 @@ module Nu
 
       # Output batch planning summary
       def output_batch_summary(batches, tool_call_count)
-        return unless @application.respond_to?(:debug) && @application.debug
-        return unless @application.respond_to?(:verbosity) && @application.verbosity >= 1
+        return unless debug_enabled? && @application.respond_to?(:verbosity) && @application.verbosity >= 1
 
-        batch_count = batches.length
+        output_batch_count_summary(batches.length, tool_call_count)
+        output_detailed_batch_info(batches) if @application.verbosity >= 2
+      end
+
+      # Output high-level batch count summary
+      def output_batch_count_summary(batch_count, tool_call_count)
+        batches_text = batch_count == 1 ? "batch" : "batches"
+        calls_text = tool_call_count == 1 ? "tool call" : "tool calls"
         @application.output_line(
-          "[DEBUG] Created #{batch_count} batch#{unless batch_count == 1
-                                                   'es'
-                                                 end} from #{tool_call_count} tool call#{unless tool_call_count == 1
-                                                                                           's'
-                                                                                         end}", type: :debug
+          "[DEBUG] Created #{batch_count} #{batches_text} from #{tool_call_count} #{calls_text}",
+          type: :debug
         )
+      end
 
-        # Show detailed batch information at verbosity 2+
-        return unless @application.verbosity >= 2
-
+      # Output detailed information about each batch
+      def output_detailed_batch_info(batches)
         batches.each_with_index do |batch, index|
           batch_number = index + 1
-          tool_counts = count_tools_in_batch(batch)
-          tool_summary = tool_counts.map { |name, count| "#{name} x#{count}" }.join(", ")
-          batch_type = if batch.length == 1 && barrier_tool?(batch.first)
-                         "BARRIER (runs alone)"
-                       else
-                         "parallel execution"
-                       end
-          @application.output_line(
-            "[DEBUG] Batch #{batch_number}: #{batch.length} tool#{unless batch.length == 1
-                                                                    's'
-                                                                  end} (#{tool_summary}) - #{batch_type}", type: :debug
-          )
+          output_single_batch_info(batch, batch_number)
+        end
+      end
+
+      # Output information about a single batch
+      def output_single_batch_info(batch, batch_number)
+        tool_counts = count_tools_in_batch(batch)
+        tool_summary = tool_counts.map { |name, count| "#{name} x#{count}" }.join(", ")
+        batch_type = determine_batch_type(batch)
+        tools_text = batch.length == 1 ? "tool" : "tools"
+
+        @application.output_line(
+          "[DEBUG] Batch #{batch_number}: #{batch.length} #{tools_text} (#{tool_summary}) - #{batch_type}",
+          type: :debug
+        )
+      end
+
+      # Determine the type of batch (barrier or parallel)
+      def determine_batch_type(batch)
+        if batch.length == 1 && barrier_tool?(batch.first)
+          "BARRIER (runs alone)"
+        else
+          "parallel execution"
         end
       end
 
@@ -328,5 +362,6 @@ module Nu
         metadata[:operation_type] == :write && metadata[:scope] == :unconfined
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

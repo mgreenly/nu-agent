@@ -77,63 +77,111 @@ module Nu
       #   Results are in the same order as input tool_calls, regardless of completion order
       #   If batch_number provided, includes :batch and :thread keys for observability
       def execute_batch(tool_calls, batch_number: nil)
-        # Output batch execution start message
         output_batch_start(tool_calls, batch_number) if batch_number
 
         start_time = Time.now
-
-        # Create threads for parallel execution
-        # Each thread tracks its original index to enable result ordering
-        # If batch_number provided, also track thread number for visibility
-        threads = []
-        tool_calls.each_with_index do |tool_call, index|
-          thread_number = index + 1 # Thread numbers start at 1 for display
-          thread = Thread.new do
-            # Track tool execution timing
-            tool_start_time = Time.now
-            result = execute_tool_with_error_handling(tool_call)
-            tool_end_time = Time.now
-            duration = tool_end_time - tool_start_time
-
-            result_data = { index: index, tool_call: tool_call, result: result }
-            # Add batch/thread info if batch_number provided
-            if batch_number
-              result_data[:batch] = batch_number
-              result_data[:thread] = thread_number
-            end
-            # Add timing info (always include for observability)
-            result_data[:start_time] = tool_start_time
-            result_data[:end_time] = tool_end_time
-            result_data[:duration] = duration
-            result_data
-          end
-          threads << thread
-        end
-
-        # Wait for all threads to complete and collect their return values
-        # Thread#value blocks until the thread completes and returns its final value
+        threads = create_execution_threads(tool_calls, batch_number)
         results_with_index = threads.map(&:value)
 
-        # Output batch execution complete message with timing
         elapsed = Time.now - start_time
         output_batch_complete(tool_calls, batch_number, elapsed) if batch_number
 
-        # Sort by original index to maintain order, then strip the index field
-        # This ensures results match the order of input tool_calls
+        format_results(results_with_index)
+      end
+
+      private
+
+      # Create threads for parallel execution of tool calls
+      #
+      # Creates one thread per tool call. Each thread executes its tool and
+      # returns a result hash with index, tool_call, result, and timing info.
+      #
+      # @param tool_calls [Array<Hash>] Array of tool calls to execute
+      # @param batch_number [Integer, nil] Optional batch number for visibility
+      # @return [Array<Thread>] Array of threads executing tool calls
+      def create_execution_threads(tool_calls, batch_number)
+        threads = []
+        tool_calls.each_with_index do |tool_call, index|
+          thread_number = index + 1
+          thread = Thread.new do
+            execute_tool_in_thread(tool_call, index, batch_number, thread_number)
+          end
+          threads << thread
+        end
+        threads
+      end
+
+      # Execute a tool call within a thread
+      #
+      # Tracks timing and builds result data with all metadata.
+      #
+      # @param tool_call [Hash] Tool call to execute
+      # @param index [Integer] Original index in tool_calls array
+      # @param batch_number [Integer, nil] Batch number if provided
+      # @param thread_number [Integer] Thread number for display
+      # @return [Hash] Result data with timing and batch/thread info
+      def execute_tool_in_thread(tool_call, index, batch_number, thread_number)
+        start_time = Time.now
+        result = execute_tool_with_error_handling(tool_call)
+        end_time = Time.now
+
+        build_result_data(
+          tool_call: tool_call,
+          result: result,
+          index: index,
+          batch_number: batch_number,
+          thread_number: thread_number,
+          start_time: start_time,
+          end_time: end_time
+        )
+      end
+
+      # Build result data hash with all metadata
+      #
+      # @param options [Hash] Options hash with all metadata
+      # @option options [Hash] :tool_call Tool call that was executed
+      # @option options [Object] :result Result from tool execution
+      # @option options [Integer] :index Original index in tool_calls array
+      # @option options [Integer, nil] :batch_number Batch number if provided
+      # @option options [Integer] :thread_number Thread number for display
+      # @option options [Time] :start_time When tool execution started
+      # @option options [Time] :end_time When tool execution ended
+      # @return [Hash] Complete result data
+      def build_result_data(options)
+        duration = options[:end_time] - options[:start_time]
+        result_data = {
+          index: options[:index],
+          tool_call: options[:tool_call],
+          result: options[:result]
+        }
+        if options[:batch_number]
+          result_data[:batch] = options[:batch_number]
+          result_data[:thread] = options[:thread_number]
+        end
+        result_data[:start_time] = options[:start_time]
+        result_data[:end_time] = options[:end_time]
+        result_data[:duration] = duration
+        result_data
+      end
+
+      # Format results for return
+      #
+      # Sorts results by original index and removes the index field.
+      # Preserves batch/thread/timing metadata.
+      #
+      # @param results_with_index [Array<Hash>] Results with index field
+      # @return [Array<Hash>] Formatted results in original order
+      def format_results(results_with_index)
         results_with_index.sort_by { |r| r[:index] }.map do |r|
           result = { tool_call: r[:tool_call], result: r[:result] }
-          # Preserve batch/thread info if present
           result[:batch] = r[:batch] if r[:batch]
           result[:thread] = r[:thread] if r[:thread]
-          # Preserve timing info (always include for observability)
           result[:start_time] = r[:start_time]
           result[:end_time] = r[:end_time]
           result[:duration] = r[:duration]
           result
         end
       end
-
-      private
 
       # Execute a tool with exception handling
       #
