@@ -160,5 +160,91 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         expect(elapsed_time).to be < 0.12
       end
     end
+
+    context "thread safety and exception handling" do
+      let(:test_dir) { "/tmp/parallel_executor_test" }
+
+      before do
+        FileUtils.mkdir_p(test_dir)
+        File.write("#{test_dir}/good_file.txt", "content")
+      end
+
+      after do
+        FileUtils.rm_rf(test_dir)
+      end
+
+      it "handles exception in one thread without crashing other threads" do
+        tool_calls = [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/nonexistent.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } }
+        ]
+
+        # Should not raise an exception
+        results = executor.execute_batch(tool_calls)
+
+        # All results should be returned
+        expect(results.length).to eq(3)
+
+        # First and third should succeed
+        expect(results[0][:result][:error]).to be_nil
+        expect(results[2][:result][:error]).to be_nil
+
+        # Second should have error
+        expect(results[1][:result][:error]).to match(/File not found/)
+      end
+
+      it "captures unhandled exceptions in threads and returns as error results" do
+        tool_calls = [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } }
+        ]
+
+        # Simulate an unhandled exception in tool execution
+        call_count = 0
+        allow(tool_registry).to receive(:execute) do |**args|
+          call_count += 1
+          raise StandardError, "Simulated crash" if call_count == 1
+
+          Nu::Agent::Tools::FileRead.new.execute(arguments: args[:arguments])
+        end
+
+        # Should not propagate exception to caller, but return it as error result
+        results = executor.execute_batch(tool_calls)
+
+        expect(results.length).to eq(2)
+
+        # First result should have the exception as an error
+        expect(results[0][:result][:error]).to match(/Simulated crash/)
+        expect(results[0][:result][:exception]).to be_a(StandardError)
+
+        # Second result should succeed
+        expect(results[1][:result][:error]).to be_nil
+      end
+
+      it "maintains result ordering even when threads complete out of order" do
+        tool_calls = [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/good_file.txt" } }
+        ]
+
+        # Make threads complete in reverse order
+        call_count = 0
+        allow(tool_registry).to receive(:execute) do |**args|
+          call_count += 1
+          # First call sleeps longest, last call completes first
+          sleep(0.01 * (4 - call_count))
+          Nu::Agent::Tools::FileRead.new.execute(arguments: args[:arguments])
+        end
+
+        results = executor.execute_batch(tool_calls)
+
+        # Despite reverse completion order, results should match original order
+        expect(results[0][:tool_call]["id"]).to eq("call_1")
+        expect(results[1][:tool_call]["id"]).to eq("call_2")
+        expect(results[2][:tool_call]["id"]).to eq("call_3")
+      end
+    end
   end
 end
