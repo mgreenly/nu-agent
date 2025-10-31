@@ -261,5 +261,48 @@ RSpec.describe Nu::Agent::PathExtractor do
         expect(result).to be_nil
       end
     end
+
+    context "edge cases" do
+      it "handles non-existent paths" do
+        arguments = { file: "/path/that/does/not/exist.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq(["/path/that/does/not/exist.rb"])
+      end
+
+      it "handles paths with spaces" do
+        arguments = { file: "/path/with spaces/file.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq(["/path/with spaces/file.rb"])
+      end
+
+      it "handles paths with special characters" do
+        arguments = { file: "/path/with-special_chars.123/file.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq(["/path/with-special_chars.123/file.rb"])
+      end
+
+      it "handles home directory expansion" do
+        arguments = { file: "~/project/file.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to all(start_with("/"))
+        expect(result.first).to include("project/file.rb")
+      end
+
+      it "handles mixed path formats in file_copy" do
+        arguments = {
+          source: "lib/file.rb",
+          destination: "/absolute/path/file.rb"
+        }
+        result = extractor.extract_and_normalize("file_copy", arguments)
+
+        expect(result).to all(start_with("/"))
+        expect(result.size).to eq(2)
+        expect(result).to include("/absolute/path/file.rb")
+      end
+    end
   end
 end
