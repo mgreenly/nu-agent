@@ -490,6 +490,7 @@ RSpec.describe Nu::Agent::Formatter do
 
     before do
       allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(1)
     end
 
     context "thread events" do
@@ -813,6 +814,19 @@ RSpec.describe Nu::Agent::Formatter do
   end
 
   describe "spell checker message when not in debug mode" do
+    let(:app_debug_off) { instance_double("Application", debug: false, history: history) }
+    let(:formatter_no_debug) do
+      described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: false,
+        console: mock_console,
+        application: app_debug_off
+      )
+    end
+
     it "does not display spell_checker messages when debug is false" do
       message = {
         "id" => 1,
@@ -823,11 +837,22 @@ RSpec.describe Nu::Agent::Formatter do
 
       expect(mock_console).not_to receive(:puts)
 
-      formatter.display_message(message)
+      formatter_no_debug.display_message(message)
     end
 
     it "displays spell_checker message with empty content in debug mode" do
-      formatter.debug = true
+      app_debug_on = instance_double("Application", debug: true, history: history)
+      formatter_debug_on = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: app_debug_on
+      )
+
+      allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(1)
 
       message = {
         "id" => 1,
@@ -839,7 +864,7 @@ RSpec.describe Nu::Agent::Formatter do
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Spell Check Request]\e[0m")
 
-      formatter.display_message(message)
+      formatter_debug_on.display_message(message)
     end
   end
 
@@ -1545,6 +1570,104 @@ RSpec.describe Nu::Agent::Formatter do
       expect(mock_console).not_to receive(:puts).with(a_string_matching(/LLM returned empty response/))
 
       formatter.display_message(message)
+    end
+  end
+
+  describe "spell checker subsystem verbosity control" do
+    let(:mock_application) { double("application", history: history, debug: true) }
+    let(:formatter_with_app) do
+      described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: mock_application
+      )
+    end
+
+    let(:spell_check_request) do
+      {
+        "id" => 1,
+        "actor" => "spell_checker",
+        "role" => "user",
+        "content" => "Fix this text"
+      }
+    end
+
+    let(:spell_check_result) do
+      {
+        "id" => 2,
+        "actor" => "spell_checker",
+        "role" => "assistant",
+        "content" => "Fixed text"
+      }
+    end
+
+    context "when debug is on and spellcheck_verbosity is 0" do
+      before do
+        allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(0)
+      end
+
+      it "does not display spell checker request" do
+        expect(mock_console).not_to receive(:puts)
+
+        formatter_with_app.display_message(spell_check_request)
+      end
+
+      it "does not display spell checker result" do
+        expect(mock_console).not_to receive(:puts)
+
+        formatter_with_app.display_message(spell_check_result)
+      end
+    end
+
+    context "when debug is on and spellcheck_verbosity is 1" do
+      before do
+        allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(1)
+      end
+
+      it "displays spell checker request" do
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Spell Check Request]\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mFix this text\e[0m").ordered
+
+        formatter_with_app.display_message(spell_check_request)
+      end
+
+      it "displays spell checker result" do
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m[Spell Check Result]\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mFixed text\e[0m").ordered
+
+        formatter_with_app.display_message(spell_check_result)
+      end
+    end
+
+    context "when debug is off" do
+      let(:mock_application_debug_off) { double("application", history: history, debug: false) }
+      let(:formatter_debug_off) do
+        described_class.new(
+          history: history,
+          session_start_time: session_start_time,
+          conversation_id: conversation_id,
+          orchestrator: orchestrator,
+          debug: false,
+          console: mock_console,
+          application: mock_application_debug_off
+        )
+      end
+
+      before do
+        allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(1)
+      end
+
+      it "does not display spell checker messages regardless of verbosity" do
+        expect(mock_console).not_to receive(:puts)
+
+        formatter_debug_off.display_message(spell_check_request)
+      end
     end
   end
 end

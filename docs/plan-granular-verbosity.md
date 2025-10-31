@@ -465,17 +465,23 @@ Verbosity level mapping (OLD → NEW):
 - OLD: verbosity 1-3 → NEW: tools_verbosity 2 (show brief/truncated results)
 - OLD: verbosity 4+ → NEW: tools_verbosity 3+ (show full results, no truncation)
 
-Step 3.5: Update spell checker output
+Step 3.5: Update spell checker output ✓ COMPLETED
 File: `lib/nu/agent/formatter.rb`
 
-In `display_spell_checker_message` method:
-```ruby
-# Old: if message["actor"] == "spell_checker" && @debug
+**Actual Implementation:**
+- Added `require_relative "subsystem_debugger"` at top of file
+- Replaced spell checker display logic in `display_message` method (lines 131-136)
+- Old logic checked `@debug` flag directly
+- New logic uses `SubsystemDebugger.should_output?(@application, "spellcheck", 1)`
+- Added comprehensive tests in `spec/nu/agent/formatter_spec.rb`:
+  - Tests for spellcheck_verbosity = 0 (no output)
+  - Tests for spellcheck_verbosity = 1 (output shown)
+  - Tests for debug off (no output regardless of verbosity)
+- Updated existing spell checker tests to provide proper application mock
 
-# New:
-if message["actor"] == "spell_checker" &&
-   SubsystemDebugger.should_output?(@application, "spellcheck", 1)
-```
+Verbosity level mapping:
+- spellcheck_verbosity 0 → No output (new default behavior)
+- spellcheck_verbosity 1+ → Show spell checker requests and responses
 
 Step 3.6: Update session statistics
 File: `lib/nu/agent/session_statistics.rb`

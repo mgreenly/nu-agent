@@ -3,6 +3,7 @@
 require_relative "formatters/tool_call_formatter"
 require_relative "formatters/tool_result_formatter"
 require_relative "formatters/llm_request_formatter"
+require_relative "subsystem_debugger"
 
 module Nu
   module Agent
@@ -127,12 +128,9 @@ module Nu
       end
 
       def display_message(message)
-        # Only show spell_checker messages in debug mode
-        return if message["actor"] == "spell_checker" && !@debug
-
-        # Display spell_checker messages in gray (debug style)
-        if message["actor"] == "spell_checker" && @debug
-          display_spell_checker_message(message)
+        # Only show spell_checker messages when debug is on and spellcheck_verbosity >= 1
+        if message["actor"] == "spell_checker"
+          display_spell_checker_message(message) if SubsystemDebugger.should_output?(@application, "spellcheck", 1)
           return
         end
 
