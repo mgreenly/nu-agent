@@ -84,6 +84,41 @@ module Nu
           arguments[param] || arguments[param.to_s]
         end.compact
       end
+
+      # Extract and normalize file/directory paths from tool arguments
+      #
+      # This method extracts paths and converts them to absolute, normalized form.
+      # Relative paths are resolved against the current working directory.
+      # Path normalization handles:
+      # - Converting relative to absolute paths
+      # - Resolving . (current directory) and .. (parent directory) references
+      # - Removing duplicate slashes
+      #
+      # @param tool_name [String] The name of the tool
+      # @param arguments [Hash] The tool's arguments (can use symbol or string keys)
+      # @return [Array<String>, nil] Array of normalized absolute paths, empty array if no paths,
+      #   or nil for unconfined/non-file tools
+      def extract_and_normalize(tool_name, arguments)
+        paths = extract(tool_name, arguments)
+
+        # Return nil if extract returned nil (unconfined or non-file tools)
+        return nil if paths.nil?
+
+        # Return empty array if extract returned empty array
+        return [] if paths.empty?
+
+        # Normalize each path and filter out nil/empty values
+        paths.map do |path|
+          next if path.nil? || path.empty?
+
+          # Use File.expand_path to normalize the path
+          # This handles:
+          # - Converting relative to absolute paths
+          # - Resolving . and .. references
+          # - Removing duplicate slashes
+          File.expand_path(path)
+        end.compact
+      end
     end
   end
 end
