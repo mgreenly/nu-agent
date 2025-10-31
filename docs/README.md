@@ -8,16 +8,16 @@ Table of Contents
 - Overview
   - [Project README](../README.md) — Project overview and quick start
 - Plans
-  - plan-0.11.md — Conversational Memory (RAG) delivery plan
-  - plan-0.12.md — UX, Observability, and Maintainability plan
+  - [dev/plan-0.11.md](dev/plan-0.11.md) — Conversational Memory (RAG) delivery plan
+  - [dev/plan-0.12.md](dev/plan-0.12.md) — UX, Observability, and Maintainability plan
 - Design
-  - design-rag-overview.md — RAG concepts and overview
-  - design-rag-implementation.md — RAG implementation details and processors
-  - architecture-analysis.md — Architecture layers and analysis
-  - design-threaded-subprocess.md — Threaded subprocess design
-  - design-overview.md — General design overview
+  - [dev/design-rag-overview.md](dev/design-rag-overview.md) — RAG concepts and overview
+  - [dev/design-rag-implementation.md](dev/design-rag-implementation.md) — RAG implementation details and processors
+  - [dev/architecture-analysis.md](dev/architecture-analysis.md) — Architecture layers and analysis
+  - [dev/design-threaded-subprocess.md](dev/design-threaded-subprocess.md) — Threaded subprocess design
+  - [dev/design-overview.md](dev/design-overview.md) — General design overview
 - Setup
-  - setup-duckdb.md — DuckDB setup, VSS extension, and troubleshooting
+  - [dev/setup-duckdb.md](dev/setup-duckdb.md) — DuckDB setup, VSS extension, and troubleshooting
 - Standards
   - Naming conventions (see below)
 
@@ -29,10 +29,10 @@ Naming conventions (consolidated)
 - File moves should also update intra-doc references in the repository
 
 Quick links
-- RAG overview: docs/design-rag-overview.md
-- RAG impl: docs/design-rag-implementation.md
-- DuckDB setup: docs/setup-duckdb.md
-- Current plan: docs/plan-0.11.md
+- RAG overview: dev/design-rag-overview.md
+- RAG impl: dev/design-rag-implementation.md
+- DuckDB setup: dev/setup-duckdb.md
+- Current plan: dev/plan-0.11.md
 
 Standards: Naming conventions
 - Class names

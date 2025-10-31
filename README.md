@@ -55,7 +55,7 @@ bin/setup
 
 The setup script automatically uninstalls and rebuilds the DuckDB gem with the correct native extensions.
 
-For more detailed troubleshooting, see [docs/setup-duckdb.md](docs/setup-duckdb.md).
+For more detailed troubleshooting, see [docs/dev/setup-duckdb.md](docs/dev/setup-duckdb.md).
 
 ### System Packages
 

@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `rake migration:generate NAME=migration_name` task for easy migration creation
   - Follows Rails convention: `NNN_migration_name.rb` format
   - Supports CamelCase to snake_case conversion
-  - Comprehensive migration workflow documentation in `docs/migrations.md`
+  - Comprehensive migration workflow documentation in `docs/dev/migrations.md`
   - Best practices, guardrails, troubleshooting, and rollback guidance
   - 14 new tests for MigrationGenerator
 
@@ -322,8 +322,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Current architecture strengths and opportunities
   - Pattern recommendations (Observer/Event, State, Chain of Responsibility, Decorator, Mediator)
   - Overall maturity grade: A- (Strong, with clear path forward)
-- **Future Planning**: Created `docs/plan-0.11.md` with detailed v0.11 refactoring roadmap
-- **Database Design Documentation**: Added `docs/design-overview.md` documenting database schema and relationships
+- **Future Planning**: Created `docs/dev/plan-0.11.md` with detailed v0.11 refactoring roadmap
+- **Database Design Documentation**: Added `docs/dev/design-overview.md` documenting database schema and relationships
 - **DuckDB Safety Guide**: Added `DUCKDB_SAFETY.md` with comprehensive safety improvements:
   - Explicit CHECKPOINT before close to prevent corruption
   - WAL file detection on startup for unclean shutdown detection
@@ -363,9 +363,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Details
 - **Test Coverage**: 680 specs passing with full coverage maintained
 - **Files Reorganized**:
-  - Moved `design.md` to `docs/design-overview.md`
-  - Created `docs/architecture-analysis.md`
-  - Created `docs/plan-0.11.md`
+  - Moved `design.md` to `docs/dev/design-overview.md`
+  - Created `docs/dev/architecture-analysis.md`
+  - Created `docs/dev/plan-0.11.md`
 - **Patterns Implemented**: WorkerToken (Token/Guard), SpinnerState (Value Object)
 - **Database Safety**: Zero performance overhead with significant corruption risk reduction
 

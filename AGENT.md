@@ -6,7 +6,7 @@
 - Always assume the database is $PWD/db/memory.db
 
 ## Plan Execution
-- Create `docs/plan-<NAME>.md` with clear phases and tasks
+- Create `docs/dev/plan-<NAME>.md` with clear phases and tasks
 - Use TDD red/green cycles for all changes
 - Every task requires passing `rake test`, `rake lint`, and `rake coverage`
 - Commit after each completed task
