@@ -43,21 +43,17 @@ The `bin/setup` script **automatically** handles DuckDB installation:
 - **Downloads** pre-built [DuckDB](https://duckdb.org/) v1.4.1 binaries from GitHub
 - **Installs locally** to `vendor/duckdb/` (project-specific, not system-wide)
 - **Configures bundler** to compile the Ruby gem against the local library
+- **Rebuilds the gem** if the library version changes (prevents version mismatches)
 - **Works on Linux and macOS** (x86_64 and ARM64)
 - **No sudo required** - perfect for sandboxed environments
 
-If you see errors like "Failed to execute prepared statement" or similar DuckDB errors:
+If you see errors like "Failed to execute prepared statement" or similar DuckDB errors, simply re-run:
 
-1. **Reinstall DuckDB locally**:
-   ```bash
-   rm -rf vendor/duckdb
-   bin/setup
-   ```
+```bash
+bin/setup
+```
 
-2. **Force gem recompilation**:
-   ```bash
-   gem uninstall duckdb --force
-   bundle install
+The setup script automatically uninstalls and rebuilds the DuckDB gem with the correct native extensions.
 
 For more detailed troubleshooting, see [docs/setup-duckdb.md](docs/setup-duckdb.md).
 

@@ -29,7 +29,8 @@ This will:
 - Verify the version matches the required version
 - Download and install if needed or if version differs
 - Configure bundler automatically
-- Run `bundle install`
+- Uninstall any existing DuckDB gem to ensure clean rebuild
+- Run `bundle install` to compile the gem with correct native extensions
 
 ## Manual Installation
 
@@ -95,9 +96,16 @@ To update to a new DuckDB version:
 
 ### Version Mismatch Errors
 
-If you see "Failed to execute prepared statement" or similar errors, there's likely a version mismatch between the DuckDB library and the Ruby gem.
+If you see "Failed to execute prepared statement" or similar errors, there's likely a version mismatch between the DuckDB library and the Ruby gem's native extension.
 
-**Solution**: Recompile the gem against your library:
+**Solution 1 (Recommended)**: Simply re-run the setup script:
+```bash
+bin/setup
+```
+
+The setup script automatically detects and fixes version mismatches by uninstalling the old gem and rebuilding it against the correct library.
+
+**Solution 2 (Manual)**: Recompile the gem manually:
 ```bash
 # Uninstall the gem
 gem uninstall duckdb --force

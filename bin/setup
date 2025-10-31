@@ -185,6 +185,15 @@ bundle config build.duckdb \
     --with-duckdb-lib="${INSTALL_DIR}/lib"
 echo -e "${GREEN}✓${NC} Bundler configured"
 
+# Uninstall existing duckdb gem to ensure it gets rebuilt
+echo -e "${BLUE}==>${NC} Ensuring DuckDB gem will be rebuilt..."
+if gem list -i duckdb &> /dev/null; then
+    gem uninstall duckdb --force --executables --ignore-dependencies || true
+    echo -e "${GREEN}✓${NC} Removed existing DuckDB gem"
+else
+    echo -e "${GREEN}✓${NC} No existing DuckDB gem found"
+fi
+
 # Install dependencies
 echo -e "${BLUE}==>${NC} Installing Ruby dependencies..."
 bundle install

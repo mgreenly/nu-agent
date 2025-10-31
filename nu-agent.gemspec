@@ -35,7 +35,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Runtime dependencies
-  spec.add_dependency "duckdb", "~> 1.1"
+  spec.add_dependency "duckdb", "~> 1.3"
   spec.add_dependency "gemini-ai", "~> 4.0"
   spec.add_dependency "ruby-anthropic", "~> 0.4.2"
   spec.add_dependency "ruby-openai", ">= 7", "< 9"
