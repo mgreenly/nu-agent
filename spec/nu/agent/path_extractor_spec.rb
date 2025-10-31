@@ -151,4 +151,115 @@ RSpec.describe Nu::Agent::PathExtractor do
       end
     end
   end
+
+  describe "#extract_and_normalize" do
+    context "with relative paths" do
+      it "converts relative paths to absolute paths" do
+        arguments = { file: "lib/nu/agent/tool_registry.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to all(start_with("/"))
+        expect(result.first).to end_with("lib/nu/agent/tool_registry.rb")
+      end
+
+      it "handles current directory reference (.)" do
+        arguments = { file: "./spec/nu/agent/tool_registry_spec.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to all(start_with("/"))
+        expect(result.first).to end_with("spec/nu/agent/tool_registry_spec.rb")
+      end
+
+      it "handles parent directory references (..)" do
+        arguments = { file: "../nu-agent/lib/nu/agent.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to all(start_with("/"))
+        expect(result.first).not_to include("..")
+      end
+    end
+
+    context "with absolute paths" do
+      it "returns absolute paths unchanged (already normalized)" do
+        absolute_path = "/home/user/project/file.rb"
+        arguments = { file: absolute_path }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq([absolute_path])
+      end
+
+      it "normalizes absolute paths with . and .." do
+        arguments = { file: "/home/user/./project/../project/file.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq(["/home/user/project/file.rb"])
+      end
+
+      it "normalizes paths with multiple slashes" do
+        arguments = { file: "/home//user///project/file.rb" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq(["/home/user/project/file.rb"])
+      end
+    end
+
+    context "with multiple paths" do
+      it "normalizes all paths in file_copy" do
+        arguments = {
+          source: "lib/file.rb",
+          destination: "./backup/file.rb"
+        }
+        result = extractor.extract_and_normalize("file_copy", arguments)
+
+        expect(result).to all(start_with("/"))
+        expect(result.size).to eq(2)
+      end
+    end
+
+    context "with nil or empty paths" do
+      it "handles nil arguments" do
+        result = extractor.extract_and_normalize("file_read", nil)
+
+        expect(result).to eq([])
+      end
+
+      it "handles empty arguments" do
+        result = extractor.extract_and_normalize("file_read", {})
+
+        expect(result).to eq([])
+      end
+
+      it "filters out nil paths from results" do
+        arguments = { file: nil }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq([])
+      end
+
+      it "filters out empty string paths from results" do
+        arguments = { file: "" }
+        result = extractor.extract_and_normalize("file_read", arguments)
+
+        expect(result).to eq([])
+      end
+    end
+
+    context "with unconfined tools" do
+      it "returns nil for execute_bash" do
+        arguments = { command: "ls -la" }
+        result = extractor.extract_and_normalize("execute_bash", arguments)
+
+        expect(result).to be_nil
+      end
+    end
+
+    context "with non-file tools" do
+      it "returns nil for database_query" do
+        arguments = { query: "SELECT * FROM users" }
+        result = extractor.extract_and_normalize("database_query", arguments)
+
+        expect(result).to be_nil
+      end
+    end
+  end
 end
