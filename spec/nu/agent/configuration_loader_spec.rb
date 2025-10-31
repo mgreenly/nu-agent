@@ -22,7 +22,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
 
     # Mock history.get_config calls for settings
     allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
-    allow(history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
     allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
     allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
     allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
@@ -47,7 +46,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       expect(config.spellchecker).to eq(spellchecker)
       expect(config.summarizer).to eq(summarizer)
       expect(config.debug).to be(false)
-      expect(config.verbosity).to eq(0)
       expect(config.redact).to be(true)
       expect(config.summarizer_enabled).to be(true)
       expect(config.spell_check_enabled).to be(true)
@@ -64,7 +62,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(Nu::Agent::ClientFactory).to receive(:create).with("gpt-5").and_return(gpt_client)
         # Re-stub config calls that are still needed
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
-        allow(history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
@@ -93,7 +90,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
         # Settings still need to be stubbed
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
-        allow(history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
@@ -126,7 +122,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("model_summarizer").and_return("claude-haiku-4-5")
         allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
-        allow(history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
@@ -140,29 +135,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       end
     end
 
-    context "when verbosity is set in database" do
-      before do
-        allow(history).to receive(:get_config).with("verbosity", default: "0").and_return("3")
-        # Re-stub required calls
-        allow(history).to receive(:get_config).with("model_orchestrator").and_return("claude-sonnet-4-5")
-        allow(history).to receive(:get_config).with("model_spellchecker").and_return("claude-haiku-4-5")
-        allow(history).to receive(:get_config).with("model_summarizer").and_return("claude-haiku-4-5")
-        allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
-        allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
-        allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
-        allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
-      end
-
-      it "loads verbosity as integer" do
-        config = described_class.load(history: history, options: options)
-
-        expect(config.verbosity).to eq(3)
-      end
-    end
-
     context "when redaction is disabled in database" do
       before do
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("false")
@@ -173,7 +145,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
-        allow(history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")

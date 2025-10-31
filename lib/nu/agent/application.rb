@@ -3,7 +3,7 @@
 module Nu
   module Agent
     class Application
-      attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :verbosity, :redact,
+      attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :redact,
                     :summarizer_enabled, :spell_check_enabled, :embedding_enabled, :conversation_id, :session_start_time
       attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager, :embedding_client,
                   :active_persona_system_prompt, :event_bus
@@ -131,7 +131,6 @@ module Nu
         @spellchecker = config.spellchecker
         @summarizer = config.summarizer
         @debug = config.debug
-        @verbosity = config.verbosity
         @redact = config.redact
         @summarizer_enabled = config.summarizer_enabled
         @spell_check_enabled = config.spell_check_enabled

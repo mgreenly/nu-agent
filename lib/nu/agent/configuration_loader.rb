@@ -10,7 +10,6 @@ module Nu
         :spellchecker,
         :summarizer,
         :debug,
-        :verbosity,
         :redact,
         :summarizer_enabled,
         :spell_check_enabled,
@@ -83,7 +82,6 @@ module Nu
 
         {
           debug: debug,
-          verbosity: history.get_config("verbosity", default: "0").to_i,
           redact: history.get_config("redaction", default: "true") == "true",
           summarizer_enabled: history.get_config("summarizer_enabled", default: "true") == "true",
           spell_check_enabled: history.get_config("spell_check_enabled", default: "true") == "true",

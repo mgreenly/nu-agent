@@ -234,27 +234,13 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
     end
 
     describe "/verbosity command" do
-      it "displays usage when no argument provided" do
-        expect(mock_console).to receive(:puts).with("\e[90mUsage: /verbosity <number>\e[0m").ordered
-        expect(mock_console).to receive(:puts).with("\e[90mCurrent: verbosity=0\e[0m").ordered
+      it "shows deprecation message" do
+        expect(mock_console).to receive(:puts).with("").ordered
+        expect(mock_console).to receive(:puts).with("\e[90mThe /verbosity command is deprecated.\e[0m").ordered
+        expect(mock_console).to receive(:puts)
+          .with("\e[90mPlease use subsystem-specific commands instead:\e[0m").ordered
 
         result = app.send(:handle_command, "/verbosity")
-        expect(result).to eq(:continue)
-      end
-
-      it "sets verbosity when valid number is specified" do
-        expect(mock_history).to receive(:set_config).with("verbosity", "3")
-        expect(mock_console).to receive(:puts).with("\e[90mverbosity=3\e[0m")
-
-        result = app.send(:handle_command, "/verbosity 3")
-        expect(result).to eq(:continue)
-        expect(app.instance_variable_get(:@verbosity)).to eq(3)
-      end
-
-      it "shows error for invalid input" do
-        expect(mock_console).to receive(:puts).with("\e[90mInvalid option. Use: /verbosity <number>\e[0m")
-
-        result = app.send(:handle_command, "/verbosity abc")
         expect(result).to eq(:continue)
       end
     end

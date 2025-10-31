@@ -539,12 +539,25 @@ Verbosity level mapping:
 - messages_verbosity 2 → Add role, actor, and 30-char content previews
 - messages_verbosity 3 → Extended 100-char previews
 
-Step 3.9: Remove old @verbosity attribute
-File: `lib/nu/agent/application.rb`
+Step 3.9: Remove old @verbosity attribute ✓ COMPLETED
+Files:
+- `lib/nu/agent/application.rb`
+- `lib/nu/agent/configuration_loader.rb`
+- `lib/nu/agent/commands/verbosity_command.rb`
+- `spec/nu/agent/configuration_loader_spec.rb`
+- `spec/nu/agent/commands/verbosity_command_spec.rb`
+- `spec/nu/agent/application_console_integration_spec.rb`
 
-- Remove `@verbosity` instance variable
-- Remove `attr_accessor :verbosity` (if exists)
-- Remove loading of `verbosity` from configuration
+**Actual Implementation:**
+- Removed `:verbosity` from Application's `attr_accessor` (line 6)
+- Removed `@verbosity = config.verbosity` from Application (line 134)
+- Removed `:verbosity` from ConfigurationLoader::Configuration struct
+- Removed verbosity loading from ConfigurationLoader's `load_settings` method
+- Deprecated VerbosityCommand: Updated to show deprecation message directing users to subsystem commands
+- Removed all tests for old verbosity behavior
+- Updated tests to expect deprecation message
+- All tests passing (2194 examples, 0 failures)
+- Coverage maintained: 98.14% line / 89.83% branch
 
 Testing:
 - Enable debug, set all subsystem verbosity to 0: verify complete silence

@@ -5,56 +5,50 @@ require "nu/agent/commands/verbosity_command"
 
 RSpec.describe Nu::Agent::Commands::VerbosityCommand do
   let(:application) { instance_double("Nu::Agent::Application") }
-  let(:history) { instance_double("Nu::Agent::History") }
   let(:console) { instance_double("Nu::Agent::ConsoleIO") }
   let(:command) { described_class.new(application) }
 
   before do
-    allow(application).to receive_messages(history: history, console: console)
-    allow(application).to receive(:verbosity=)
-    allow(history).to receive(:set_config)
+    allow(application).to receive_messages(console: console)
+    allow(application).to receive(:output_line)
     allow(console).to receive(:puts)
   end
 
   describe "#execute" do
-    context "when no argument provided" do
-      it "displays usage message" do
-        allow(application).to receive(:verbosity).and_return(0)
-        expect(console).to receive(:puts).with("\e[90mUsage: /verbosity <number>\e[0m")
-        expect(console).to receive(:puts).with("\e[90mCurrent: verbosity=0\e[0m")
-        command.execute("/verbosity")
-      end
+    it "shows deprecation message" do
+      expect(console).to receive(:puts).with("")
+      expect(application).to receive(:output_line).with("The /verbosity command is deprecated.", type: :command)
+      expect(application).to receive(:output_line).with("Please use subsystem-specific commands instead:",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("", type: :command)
+      expect(application).to receive(:output_line).with("  /llm verbosity <level>        - LLM debug output",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("  /tools-debug verbosity <level> - Tool debug output",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("  /messages verbosity <level>   - Message tracking",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("  /search verbosity <level>     - Search internals",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("  /stats verbosity <level>      - Statistics/costs",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("  /spellcheck-debug verbosity <level> - Spell checker",
+                                                        type: :command)
+      expect(application).to receive(:output_line).with("", type: :command)
+      expect(application).to receive(:output_line)
+        .with("Use /<subsystem> help to see verbosity levels for each subsystem.", type: :command)
 
-      it "returns :continue" do
-        allow(application).to receive(:verbosity).and_return(0)
-        expect(command.execute("/verbosity")).to eq(:continue)
-      end
+      command.execute("/verbosity")
     end
 
-    context "when setting a valid number" do
-      it "sets verbosity level" do
-        expect(application).to receive(:verbosity=).with(3)
-        allow(application).to receive(:verbosity).and_return(3)
-        expect(history).to receive(:set_config).with("verbosity", "3")
-        expect(console).to receive(:puts).with("\e[90mverbosity=3\e[0m")
-        command.execute("/verbosity 3")
-      end
-
-      it "returns :continue" do
-        allow(application).to receive(:verbosity).and_return(3)
-        expect(command.execute("/verbosity 3")).to eq(:continue)
-      end
+    it "returns :continue" do
+      expect(command.execute("/verbosity")).to eq(:continue)
     end
 
-    context "when invalid argument provided" do
-      it "displays error message for non-numeric input" do
-        expect(console).to receive(:puts).with("\e[90mInvalid option. Use: /verbosity <number>\e[0m")
-        command.execute("/verbosity abc")
-      end
+    it "ignores any arguments and shows deprecation message" do
+      expect(console).to receive(:puts).with("")
+      expect(application).to receive(:output_line).at_least(:once)
 
-      it "returns :continue" do
-        expect(command.execute("/verbosity abc")).to eq(:continue)
-      end
+      command.execute("/verbosity 3")
     end
   end
 end
