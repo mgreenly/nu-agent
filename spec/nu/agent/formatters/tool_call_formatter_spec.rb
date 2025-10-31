@@ -136,5 +136,40 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
         expect(console).to have_received(:puts).with(a_string_matching(/Error displaying arguments/))
       end
     end
+
+    context "with batch and thread info" do
+      before { allow(console).to receive(:puts) }
+
+      it "includes batch and thread in header when provided" do
+        formatter.display(tool_call, batch: 2, thread: 3, index: 5, total: 10)
+
+        expect(console).to have_received(:puts).with(
+          "\e[90m[Tool Call Request] (Batch 2/Thread 3) file_read (5/10)\e[0m"
+        )
+      end
+
+      it "displays without batch/thread when not provided" do
+        formatter.display(tool_call)
+
+        expect(console).to have_received(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
+        expect(console).not_to have_received(:puts).with(a_string_matching(/Batch/))
+      end
+
+      it "includes batch and thread even without count indicator" do
+        formatter.display(tool_call, batch: 1, thread: 2)
+
+        expect(console).to have_received(:puts).with(
+          "\e[90m[Tool Call Request] (Batch 1/Thread 2) file_read\e[0m"
+        )
+      end
+
+      it "works with only batch number (no thread)" do
+        formatter.display(tool_call, batch: 3)
+
+        expect(console).to have_received(:puts).with(
+          "\e[90m[Tool Call Request] (Batch 3) file_read\e[0m"
+        )
+      end
+    end
   end
 end

@@ -180,5 +180,32 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
         expect(console).to have_received(:puts).with(a_string_matching(/Error displaying result/))
       end
     end
+
+    context "with batch and thread info" do
+      before { allow(console).to receive(:puts) }
+
+      it "includes batch and thread in header when provided" do
+        formatter.display(message, batch: 2, thread: 3)
+
+        expect(console).to have_received(:puts).with(
+          "\e[90m[Tool Use Response] (Batch 2/Thread 3) file_read\e[0m"
+        )
+      end
+
+      it "displays without batch/thread when not provided" do
+        formatter.display(message)
+
+        expect(console).to have_received(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
+        expect(console).not_to have_received(:puts).with(a_string_matching(/Batch/))
+      end
+
+      it "works with only batch number (no thread)" do
+        formatter.display(message, batch: 1)
+
+        expect(console).to have_received(:puts).with(
+          "\e[90m[Tool Use Response] (Batch 1) file_read\e[0m"
+        )
+      end
+    end
   end
 end

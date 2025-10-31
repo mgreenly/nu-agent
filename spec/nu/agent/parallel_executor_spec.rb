@@ -333,5 +333,71 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         File.delete(test_file)
       end
     end
+
+    context "batch and thread tracking" do
+      let(:test_dir) { "/tmp/parallel_executor_test" }
+      let(:tool_calls) do
+        [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file1.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file2.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file3.txt" } }
+        ]
+      end
+
+      before do
+        FileUtils.mkdir_p(test_dir)
+        File.write("#{test_dir}/file1.txt", "content 1")
+        File.write("#{test_dir}/file2.txt", "content 2")
+        File.write("#{test_dir}/file3.txt", "content 3")
+      end
+
+      after do
+        FileUtils.rm_rf(test_dir)
+      end
+
+      it "includes batch number in result_data when batch number provided" do
+        results = executor.execute_batch(tool_calls, batch_number: 2)
+
+        expect(results.length).to eq(3)
+        results.each do |result_data|
+          expect(result_data[:batch]).to eq(2)
+        end
+      end
+
+      it "includes thread numbers in result_data starting from 1" do
+        results = executor.execute_batch(tool_calls, batch_number: 1)
+
+        expect(results.length).to eq(3)
+        # Each result should have a unique thread number from 1 to 3
+        thread_numbers = results.map { |r| r[:thread] }
+        expect(thread_numbers.sort).to eq([1, 2, 3])
+      end
+
+      it "does not include batch/thread when batch number not provided" do
+        results = executor.execute_batch(tool_calls)
+
+        expect(results.length).to eq(3)
+        results.each do |result_data|
+          expect(result_data).not_to have_key(:batch)
+          expect(result_data).not_to have_key(:thread)
+        end
+      end
+
+      it "includes batch and thread in all results including errors" do
+        tool_calls_with_error = [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file1.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/nonexistent.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file3.txt" } }
+        ]
+
+        results = executor.execute_batch(tool_calls_with_error, batch_number: 3)
+
+        expect(results.length).to eq(3)
+        results.each do |result_data|
+          expect(result_data[:batch]).to eq(3)
+          expect(result_data[:thread]).to be_between(1, 3)
+        end
+      end
+    end
   end
 end
