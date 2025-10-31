@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "../subsystem_debugger"
+require_relative "file_grep/output_parser"
 
 module Nu
   module Agent
@@ -105,9 +107,13 @@ module Nu
             max_results: args[:max_results]
           )
 
-          log_debug_output(cmd, args[:output_mode], context)
+          log_command_debug(cmd, context)
 
-          execute_ripgrep(cmd, args[:output_mode], args[:max_results])
+          result = execute_ripgrep(cmd, args[:output_mode], args[:max_results])
+
+          log_stats_debug(result, args[:output_mode], context)
+
+          result
         end
 
         private
@@ -155,12 +161,61 @@ module Nu
           %w[files_with_matches content count].include?(output_mode)
         end
 
-        def log_debug_output(cmd, output_mode, context)
+        def log_command_debug(cmd, context)
           application = context[:application]
-          return unless application&.debug
+          return unless application
 
-          application.output.debug("[file_grep] command: #{cmd.join(' ')}")
-          application.output.debug("[file_grep] output_mode: #{output_mode}")
+          SubsystemDebugger.debug_output(
+            application,
+            "search",
+            "command: #{cmd.join(' ')}",
+            level: 1
+          )
+        end
+
+        def log_stats_debug(result, output_mode, context)
+          application = context[:application]
+          return unless application
+          return if result.key?(:error)
+
+          case output_mode
+          when "files_with_matches"
+            log_files_stats(application, result)
+          when "count"
+            log_count_stats(application, result)
+          when "content"
+            log_content_stats(application, result)
+          end
+        end
+
+        def log_files_stats(application, result)
+          SubsystemDebugger.debug_output(
+            application,
+            "search",
+            "found #{result[:count]} files with matches",
+            level: 2
+          )
+        end
+
+        def log_count_stats(application, result)
+          SubsystemDebugger.debug_output(
+            application,
+            "search",
+            "found #{result[:total_matches]} matches in #{result[:total_files]} files",
+            level: 2
+          )
+        end
+
+        def log_content_stats(application, result)
+          message = "found #{result[:count]} matches"
+          message += " (truncated)" if result[:truncated]
+
+          SubsystemDebugger.debug_output(
+            application,
+            "search",
+            message,
+            level: 2
+          )
         end
 
         def execute_ripgrep(cmd, output_mode, max_results)
@@ -168,7 +223,7 @@ module Nu
 
           return handle_ripgrep_error(stderr) if status.exitstatus > 1
 
-          parse_output(stdout, output_mode, max_results)
+          output_parser.parse_output(stdout, output_mode, max_results)
         rescue StandardError => e
           {
             error: "Search failed: #{e.message}",
@@ -176,22 +231,15 @@ module Nu
           }
         end
 
+        def output_parser
+          @output_parser ||= OutputParser.new
+        end
+
         def handle_ripgrep_error(stderr)
           {
             error: "ripgrep failed: #{stderr}",
             matches: []
           }
-        end
-
-        def parse_output(stdout, output_mode, max_results)
-          case output_mode
-          when "files_with_matches"
-            parse_files_with_matches(stdout, max_results)
-          when "count"
-            parse_count(stdout, max_results)
-          when "content"
-            parse_content(stdout, max_results)
-          end
         end
 
         def build_ripgrep_command(pattern:, path:, output_mode:, **options)
@@ -241,67 +289,6 @@ module Nu
         def add_pattern_and_path(cmd_parts, pattern, path)
           # Pattern and path - double dash separates pattern from paths
           cmd_parts << "--" << pattern << path
-        end
-
-        def parse_files_with_matches(stdout, max_results)
-          files = stdout.split("\n").take(max_results)
-          {
-            files: files,
-            count: files.length
-          }
-        end
-
-        def parse_count(stdout, max_results)
-          results = []
-          stdout.split("\n").take(max_results).each do |line|
-            # Format: "path/to/file:count"
-            next unless line =~ /^(.+):(\d+)$/
-
-            results << {
-              file: ::Regexp.last_match(1),
-              count: ::Regexp.last_match(2).to_i
-            }
-          end
-
-          {
-            files: results,
-            total_files: results.length,
-            total_matches: results.sum { |r| r[:count] }
-          }
-        end
-
-        def parse_content(stdout, max_results)
-          matches = []
-
-          stdout.each_line do |line|
-            data = JSON.parse(line)
-
-            case data["type"]
-            when "match"
-              match_data = data["data"]
-
-              matches << {
-                file: match_data["path"]["text"],
-                line_number: match_data["line_number"],
-                line: match_data["lines"]["text"].chomp,
-                match_text: match_data["submatches"]&.first&.dig("match", "text")
-              }
-
-              break if matches.length >= max_results
-
-            when "context"
-              # Context lines could be added to the previous match if needed
-              # For now, we'll skip them as ripgrep --json provides them separately
-            end
-          rescue JSON::ParserError
-            # Skip non-JSON lines
-          end
-
-          {
-            matches: matches,
-            count: matches.length,
-            truncated: matches.length >= max_results
-          }
         end
       end
     end

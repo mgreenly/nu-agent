@@ -193,22 +193,47 @@ RSpec.describe Nu::Agent::Tools::FileGrep do
       end
     end
 
-    context "with debug mode enabled" do
-      it "logs debug output when application.debug is true" do
-        output = instance_double("Output")
-        application = instance_double("Application", debug: true, output: output)
+    context "with search subsystem verbosity" do
+      let(:history) { instance_double("History") }
+      let(:application) { instance_double("Application", debug: true, history: history) }
 
-        expect(output).to receive(:debug).with(match(/\[file_grep\] command:/))
-        expect(output).to receive(:debug).with(match(/\[file_grep\] output_mode:/))
+      it "shows no output when search_verbosity is 0" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(0)
+
+        # Should not call output_line for debug messages
+        result = tool.execute(arguments: { pattern: "execute", path: test_dir }, application: application)
+
+        expect(result).to have_key(:files)
+      end
+
+      it "shows command when search_verbosity is 1" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(1)
+        allow(application).to receive(:output_line)
+
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
 
         tool.execute(arguments: { pattern: "execute", path: test_dir }, application: application)
       end
 
-      it "does not log when application.debug is false" do
-        application = instance_double("Application", debug: false)
+      it "shows command and stats when search_verbosity is 2" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        allow(application).to receive(:output_line)
 
-        # Should not raise any errors and not call output.debug
-        result = tool.execute(arguments: { pattern: "execute", path: test_dir }, application: application)
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
+        expect(application).to receive(:output_line).with(match(/\[Search\].*found \d+ files/), type: :debug)
+
+        tool.execute(arguments: { pattern: "execute", path: test_dir }, application: application)
+      end
+
+      it "does not log when debug is false regardless of verbosity" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        application_no_debug = instance_double("Application", debug: false, history: history)
+
+        # Should not raise any errors and not call output_line
+        result = tool.execute(
+          arguments: { pattern: "execute", path: test_dir },
+          application: application_no_debug
+        )
 
         expect(result).to have_key(:files)
       end

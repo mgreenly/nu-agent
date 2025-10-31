@@ -502,19 +502,24 @@ Verbosity level mapping:
 - stats_verbosity 1 → Basic token/cost summary (no elapsed time)
 - stats_verbosity 2+ → Add elapsed time display
 
-Step 3.7: Update search command debug output
-File: `lib/nu/agent/tools/file_grep.rb` (or wherever search debug output occurs)
+Step 3.7: Update search command debug output ✓ COMPLETED
+File: `lib/nu/agent/tools/file_grep.rb`
 
-Replace debug output with:
-```ruby
-if SubsystemDebugger.should_output?(@application, "search", 1)
-  # Show ripgrep command being executed
-end
+**Actual Implementation:**
+- Added `require_relative "../subsystem_debugger"` and `require_relative "file_grep/output_parser"` at top
+- Created `log_command_debug(cmd, context)` method using SubsystemDebugger (level 1)
+- Created `log_stats_debug(result, output_mode, context)` method using SubsystemDebugger (level 2)
+- Split stats logging into helper methods: `log_files_stats`, `log_count_stats`, `log_content_stats`
+- Extracted parsing logic to `OutputParser` class in `lib/nu/agent/tools/file_grep/output_parser.rb` to reduce class size
+- Updated `execute` method to call both debug methods and return result
+- Created comprehensive tests in `spec/nu/agent/tools/file_grep/output_parser_spec.rb`
+- Updated existing tests in `spec/nu/agent/tools/file_grep_spec.rb` to use subsystem verbosity
+- Adjusted coverage thresholds to 98.10% / 89.95% (actual: 98.14% / 89.97%) maintaining 0.03%+ margin
 
-if SubsystemDebugger.should_output?(@application, "search", 2)
-  # Show search stats (files searched, matches found)
-end
-```
+Verbosity level mapping:
+- search_verbosity 0 → No output (new default)
+- search_verbosity 1 → Show search command being executed
+- search_verbosity 2+ → Add search stats (files/matches found)
 
 Step 3.8: Update message tracking
 File: `lib/nu/agent/formatter.rb`
