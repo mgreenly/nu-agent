@@ -201,6 +201,14 @@ module Nu
         @command_registry.register("/spellcheck", Commands::SpellcheckCommand)
         @command_registry.register("/reset", Commands::ResetCommand)
         @command_registry.register("/model", Commands::ModelCommand)
+
+        # Subsystem debug verbosity commands
+        @command_registry.register("/llm", Commands::Subsystems::LlmCommand)
+        @command_registry.register("/messages", Commands::Subsystems::MessagesCommand)
+        @command_registry.register("/search", Commands::Subsystems::SearchCommand)
+        @command_registry.register("/stats", Commands::Subsystems::StatsCommand)
+        @command_registry.register("/tools-debug", Commands::Subsystems::ToolsDebugCommand)
+        @command_registry.register("/spellcheck-debug", Commands::Subsystems::SpellcheckDebugCommand)
       end
 
       def enter_critical_section

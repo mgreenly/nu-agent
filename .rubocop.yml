@@ -41,6 +41,7 @@ Metrics/ClassLength:
     - 'lib/nu/agent/console_io.rb'  # Single-file console I/O implementation
     - 'lib/nu/agent/history.rb'  # Database management class with many methods
     - 'lib/nu/agent/formatter.rb'  # Message formatting and event handling with many display methods
+    - 'lib/nu/agent/application.rb'  # Main application coordinator with command registration
 
 Metrics/BlockLength:
   Exclude:
