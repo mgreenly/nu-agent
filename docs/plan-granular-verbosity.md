@@ -633,6 +633,52 @@ File: `lib/nu/agent/help_text_builder.rb`
 - Coverage maintained: 98.12% line / 89.83% branch
 - Lint clean with good design (no offenses detected)
 
+Step 4.3.1: Fix SQLite thread-safety issue (CRITICAL BUGFIX) ✓ COMPLETED
+Files:
+- `lib/nu/agent/subsystem_debugger.rb`
+- `spec/nu/agent/session_statistics_spec.rb`
+- `lib/nu/agent/session_info.rb` (from Step 4.3)
+
+**Problem discovered:**
+Application hung indefinitely during LLM requests ("Thinking..." spinner never returned).
+
+**Root cause analysis:**
+1. First bug: `session_info.rb` referenced `application.verbosity` which was removed in Phase 3.9
+   - Fixed by removing "Verbosity:" line from session info
+   - But hang persisted even after this fix
+
+2. Second bug: DuckDB thread-safety violation in `SubsystemDebugger.should_output?`
+   - Called from formatters during orchestrator thread execution
+   - Attempted to access `application.history.get_int()` from non-main thread
+   - DuckDB doesn't handle concurrent database access from multiple threads well
+   - This caused database locking/deadlock, hanging the application
+
+**Solution implemented:**
+- Added thread check: `return false unless Thread.current == Thread.main`
+- This prevents database access from any non-main threads
+- Workers have their own `@config_store` (separate History instance), so they're unaffected
+- Formatters running in orchestrator thread now safely skip debug output
+- Replaced error handling approach (begin/rescue) with preventive check
+
+**Additional fix:**
+- Fixed flaky timing test in `session_statistics_spec.rb`
+- Test calculated elapsed time but `Time.now` advanced between calculation steps
+- Added `allow(Time).to receive(:now).and_return(current_time)` to freeze time
+- This ensures deterministic test behavior
+
+**Impact:**
+- Application no longer hangs during LLM requests
+- Debug subsystem output correctly respects thread boundaries
+- All tests passing: 2196 examples, 0 failures
+- Coverage maintained: 98.12% line / 89.74% branch
+- Lint clean
+
+**Technical note:**
+This highlights an important constraint: DuckDB databases cannot be safely accessed from
+multiple threads simultaneously. The main thread owns `application.history`, while workers
+create their own `@config_store` instances. Any code running in background threads (like
+formatters during LLM requests) must not attempt to read from the shared history database.
+
 Step 4.4: Manual testing scenarios
 
 Scenario 1: Silent debug mode
