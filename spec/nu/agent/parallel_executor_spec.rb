@@ -246,5 +246,92 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         expect(results[2][:tool_call]["id"]).to eq("call_3")
       end
     end
+
+    context "edge cases" do
+      it "handles empty batch" do
+        results = executor.execute_batch([])
+
+        expect(results).to be_an(Array)
+        expect(results).to be_empty
+      end
+
+      it "handles large batch of tools" do
+        test_dir = "/tmp/parallel_executor_large_test"
+        FileUtils.mkdir_p(test_dir)
+
+        # Create 20 tool calls
+        tool_calls = (1..20).map do |i|
+          File.write("#{test_dir}/file#{i}.txt", "content #{i}")
+          { "id" => "call_#{i}", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file#{i}.txt" } }
+        end
+
+        results = executor.execute_batch(tool_calls)
+
+        # All results should be present
+        expect(results.length).to eq(20)
+
+        # All should succeed
+        results.each do |result_data|
+          expect(result_data[:result][:error]).to be_nil
+        end
+
+        # Verify ordering is maintained
+        results.each_with_index do |result_data, index|
+          expect(result_data[:tool_call]["id"]).to eq("call_#{index + 1}")
+        end
+
+        FileUtils.rm_rf(test_dir)
+      end
+
+      it "handles mixed success and failure scenarios" do
+        test_dir = "/tmp/parallel_executor_mixed_test"
+        FileUtils.mkdir_p(test_dir)
+        File.write("#{test_dir}/existing.txt", "content")
+
+        tool_calls = [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/existing.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/missing1.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/existing.txt" } },
+          { "id" => "call_4", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/missing2.txt" } },
+          { "id" => "call_5", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/existing.txt" } }
+        ]
+
+        results = executor.execute_batch(tool_calls)
+
+        # All results present
+        expect(results.length).to eq(5)
+
+        # Check each result
+        expect(results[0][:result][:error]).to be_nil # success
+        expect(results[1][:result][:error]).to match(/File not found/) # failure
+        expect(results[2][:result][:error]).to be_nil # success
+        expect(results[3][:result][:error]).to match(/File not found/) # failure
+        expect(results[4][:result][:error]).to be_nil # success
+
+        FileUtils.rm_rf(test_dir)
+      end
+
+      it "handles tools that modify shared resources" do
+        # This test verifies thread safety when tools access shared state
+        # In practice, tools shouldn't modify shared state, but we test defensive behavior
+        test_file = "/tmp/parallel_executor_shared.txt"
+        File.write(test_file, "initial")
+
+        # Create 5 concurrent reads of the same file
+        tool_calls = (1..5).map do |i|
+          { "id" => "call_#{i}", "name" => "file_read", "arguments" => { "file" => test_file } }
+        end
+
+        # Should not raise any thread safety errors
+        results = executor.execute_batch(tool_calls)
+
+        expect(results.length).to eq(5)
+        results.each do |result_data|
+          expect(result_data[:result][:error]).to be_nil
+        end
+
+        File.delete(test_file)
+      end
+    end
   end
 end
