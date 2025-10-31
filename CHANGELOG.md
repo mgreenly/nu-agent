@@ -5,6 +5,148 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2025-10-31
+
+### Added
+
+- **Event-Driven Message Display** (Phase 1): Eliminated polling-based message display with Observer pattern
+  - `EventBus` class with thread-safe publish/subscribe pattern
+  - Bounded queues for event delivery with subscriber management
+  - Events emitted for key lifecycle points: `user_input_received`, `exchange_completed`
+  - `Formatter` subscribes to events for responsive message display
+  - Polling fallback maintained for backward compatibility
+  - Reduces CPU usage and eliminates database polling in chat loop
+  - 25 new tests for EventBus publish/subscribe and ordering guarantees
+
+- **ConsoleIO State Pattern** (Phase 2): Refactored ConsoleIO from conditional logic to explicit state machine
+  - Five distinct states: `IdleState`, `ReadingUserInputState`, `StreamingAssistantState`, `ProgressState`, `PausedState`
+  - State-based transition validation with `StateTransitionError` for invalid transitions
+  - Each state owns its rendering and input handling responsibilities
+  - Safe pause/resume from any state with previous state restoration
+  - Eliminates input/output interleaving bugs and conditional spaghetti
+  - 20 new tests for state transitions and state-specific behaviors
+
+- **Failed Jobs Tracking and Admin Commands** (Phase 3): Background work observability and recovery
+  - `failed_jobs` table for terminal worker failures (job_type, ref_id, payload, error, retry_count, failed_at)
+  - `FailedJobRepository` for CRUD operations and filtering
+  - Workers automatically record failures with full context
+  - `/admin failures [--type=]` - List failed jobs with filtering
+  - `/admin show <id>` - Inspect detailed failure information
+  - `/admin retry <id>` - Retry failed job by re-queuing
+  - `/admin purge-failures [--older-than=]` - Clean up old failures
+  - 19 new tests for FailedJobRepository and AdminCommand
+
+- **Metrics Collection and CI-Friendly Defaults** (Phase 4): Performance observability and CI compatibility
+  - `MetricsCollector` class with thread-safe counters and duration tracking
+  - Timer statistics with p50/p90/p99 percentile calculations
+  - Worker processing latencies tracked and displayed in status output
+  - `/worker exchange-summarizer status` now shows performance metrics
+  - Workers automatically skip auto-start when `CI=true` environment variable set
+  - Prevents background worker churn during CI test runs
+  - 16 new tests for MetricsCollector (counters, timers, percentiles, thread safety)
+
+- **Privacy Controls** (Phase 5): Data redaction and purge capabilities
+  - `RedactionFilter` class with configurable regex patterns
+  - Default patterns for API keys, emails, bearer tokens, secrets
+  - Custom patterns configurable via JSON in config store (requires double-escaping)
+  - Redaction applied before persisting summaries and embeddings
+  - `/admin purge conversation <id>` - Delete all data for a conversation
+  - `/admin purge all` - Delete all summaries and embeddings (requires confirmation)
+  - Dry-run support for preview without actual deletion
+  - Transactional purge operations for consistency
+  - 12 new tests for RedactionFilter, 7 tests for purge commands
+
+- **RAG Retrieval Enhancements** (Phase 6): Advanced filtering, caching, and observability
+  - **Time-Range Filtering**: `after_date` and `before_date` parameters through full RAG pipeline
+  - **Recency Weighting**: Tunable `recency_weight` (alpha) parameter for blending similarity and recency scores
+    - `alpha=1.0`: Pure similarity ranking (default)
+    - `alpha=0.0`: Pure recency ranking
+    - `alpha=0.5`: Balanced scoring
+  - **RAG Cache**: Opt-in LRU cache with configurable TTL (default 5 minutes)
+    - Thread-safe cache keyed by rounded query embeddings + config parameters
+    - Cache hit/miss tracking via retrieval logger
+    - Automatic cache invalidation on conversation writes
+  - **Retrieval Logging**: `rag_retrieval_logs` table for automatic RAG observability
+    - Tracks query_hash, candidate counts, scores, cache hits, duration
+    - `RAGRetrievalLogger` class for logging and recent logs retrieval
+    - Enables validation of automatic RAG effectiveness without manual queries
+  - **Enhanced Search Methods**: `search_conversations` and `search_exchanges` in EmbeddingStore
+    - JOIN support for fetching conversation/exchange metadata
+    - Time-range filtering at SQL level for efficiency
+  - 61 new tests for RAG enhancements (retrieval logger, time filters, recency weight, cache)
+
+- **Migration Generator and Workflow** (Phase 7): Developer experience improvements
+  - `MigrationGenerator` class for creating timestamped migration files
+  - `rake migration:generate NAME=migration_name` task for easy migration creation
+  - Follows Rails convention: `NNN_migration_name.rb` format
+  - Supports CamelCase to snake_case conversion
+  - Comprehensive migration workflow documentation in `docs/migrations.md`
+  - Best practices, guardrails, troubleshooting, and rollback guidance
+  - 14 new tests for MigrationGenerator
+
+### Changed
+
+- **ConsoleIO Architecture**: Replaced mode-based conditionals with State Pattern
+  - Removed `@mode` instance variable in favor of `@state`
+  - State transitions now validated and explicit
+  - Safer defensive cleanup with no-op `hide_spinner` in IdleState
+  - Improved maintainability and testability
+
+- **Worker Auto-Start Behavior**: Background workers respect CI environment
+  - Workers check `ENV["CI"]` before auto-starting
+  - Prevents unnecessary background processing during test runs
+  - Reduces CI noise and resource usage
+
+- **Coverage Enforcement**: Updated thresholds for combined v0.12 + main codebase
+  - Line coverage: 98.15% (actual: 98.17%, margin: 0.02%)
+  - Branch coverage: 90.00% (actual: 90.02%, margin: 0.02%)
+  - Maintains project standard of 0.02% margin above required threshold
+
+### Fixed
+
+- **StateTransitionError in IdleState**: Added safe no-op `hide_spinner` method
+  - Defensive cleanup calls no longer raise errors when already idle
+  - Improves robustness during state transitions
+
+- **Recency Weighting Edge Cases**: Fixed empty results handling
+  - Tests updated to use date filters instead of unrealistic similarity thresholds
+  - Proper handling when no results match time-range filters
+
+- **RuboCop Compliance**: Added legitimate exclusions for new v0.12 code
+  - `BackgroundWorkerManager`, `AdminCommand`, `ExchangeSummarizerCommand` method length exclusions
+  - `History` purge transaction blocks require long blocks for atomicity
+  - All exclusions documented with justification
+
+### Technical Details
+
+- **Test Coverage**: 2,138 tests passing (up from 1,839 in v0.11.0)
+  - Line coverage: 98.17% (6,281 / 6,398 lines)
+  - Branch coverage: 90.02% (1,543 / 1,714 branches)
+  - Added 299 new test cases across all 7 phases
+- **Quality Metrics**:
+  - Zero RuboCop violations maintained (252 files inspected)
+  - TDD methodology followed throughout (Red → Green → Refactor)
+  - Comprehensive test coverage for all new features
+- **Database Migrations**:
+  - Migration 006: `failed_jobs` table for operational resilience
+  - Migration 007: `rag_retrieval_logs` table for automatic RAG observability
+  - All migrations idempotent and reversible
+- **Performance**:
+  - Event-driven architecture reduces CPU usage vs polling
+  - RAG cache improves p90 latency on repeated queries
+  - Worker metrics enable performance monitoring and optimization
+- **Code Organization**:
+  - State classes organized in `lib/nu/agent/console_io_states.rb`
+  - Admin commands in `lib/nu/agent/commands/admin_command.rb`
+  - Metrics collection in `lib/nu/agent/metrics_collector.rb`
+  - Privacy controls in `lib/nu/agent/redaction_filter.rb`
+  - RAG cache in `lib/nu/agent/rag_cache.rb`
+
+### References
+
+- Implements Issue #19: v0.12: RAG UX, Observability, and Maintainability
+- Builds on Issue #17: v0.11: Conversational Memory - RAG Foundation
+
 ## [0.11.0] - 2025-10-30
 
 ### Added
@@ -233,6 +375,7 @@ _(Earlier changelog entries to be added)_
 
 ---
 
+[0.12.0]: https://github.com/mgreenly/nu-agent/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/mgreenly/nu-agent/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mgreenly/nu-agent/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/mgreenly/nu-agent/releases/tag/v0.9.0
