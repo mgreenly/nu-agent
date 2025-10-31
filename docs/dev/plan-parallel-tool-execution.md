@@ -601,6 +601,230 @@ end
 
 ---
 
+### Phase 9: Manual Testing with Real API
+
+**Objective**: Verify parallel tool execution works correctly in production with real API calls from Anthropic/OpenAI.
+
+**Prerequisites**:
+- All automated tests passing (2236 examples, 0 failures)
+- API keys configured in secrets file
+- Application starts without errors
+
+**Manual Test Scenarios**:
+
+#### Test 1: Parallel Independent Reads
+**Goal**: Verify multiple file reads execute in parallel
+
+**Steps**:
+1. Start the application: `bundle exec ruby bin/nu-agent`
+2. Enter this prompt:
+   ```
+   Read these 3 files and summarize what each does:
+   - lib/nu/agent/tool_registry.rb
+   - lib/nu/agent/path_extractor.rb
+   - lib/nu/agent/dependency_analyzer.rb
+   ```
+3. Wait for LLM response with tool calls
+4. Observe tool execution output
+
+**Expected Behavior**:
+- LLM returns 3 `file_read` tool calls
+- All 3 execute in parallel (single batch)
+- Results appear quickly (not sequential delay)
+- All 3 file contents returned correctly
+- LLM provides summary of all 3 files
+
+**Success Criteria**:
+- ✅ Tool calls use flat format: `{ "name": "file_read", "arguments": {...} }`
+- ✅ DependencyAnalyzer creates 1 batch with 3 tools
+- ✅ ParallelExecutor executes all in threads
+- ✅ No errors during execution
+- ✅ Results returned in correct order
+
+#### Test 2: Read-Write Dependencies
+**Goal**: Verify dependency batching for read-then-write on same file
+
+**Steps**:
+1. In the running session, enter:
+   ```
+   Read lib/nu/agent/version.rb, then write a new comment at the top
+   ```
+2. Observe batch creation
+3. Verify file is read before write
+
+**Expected Behavior**:
+- LLM returns 2 tool calls: `file_read` then `file_write`
+- DependencyAnalyzer creates 2 batches (read in batch 1, write in batch 2)
+- Read executes first, completely finishes
+- Write executes second with updated content
+- File is modified correctly
+
+**Success Criteria**:
+- ✅ Batches separated correctly (not parallel)
+- ✅ Read completes before write starts
+- ✅ Write uses content from read result
+- ✅ No race conditions or data corruption
+
+#### Test 3: Barrier Synchronization (execute_bash)
+**Goal**: Verify bash commands execute in isolation as barriers
+
+**Steps**:
+1. In the running session, enter:
+   ```
+   Read lib/nu/agent/version.rb, then run 'ls -la lib/nu/agent/',
+   then read lib/nu/agent/parallel_executor.rb
+   ```
+2. Observe batching around bash command
+
+**Expected Behavior**:
+- LLM returns 3 tool calls: `file_read`, `execute_bash`, `file_read`
+- DependencyAnalyzer creates 3 batches:
+  - Batch 1: First file_read
+  - Batch 2: execute_bash (solo)
+  - Batch 3: Second file_read
+- Bash executes alone, isolated from other operations
+
+**Success Criteria**:
+- ✅ execute_bash in its own batch
+- ✅ No tools run concurrently with bash
+- ✅ Bash completes before subsequent operations
+- ✅ All operations complete successfully
+
+#### Test 4: Mixed Independent Operations
+**Goal**: Verify optimal batching with mix of operations
+
+**Steps**:
+1. In the running session, enter:
+   ```
+   Read these 5 files:
+   - lib/nu/agent/tool_registry.rb
+   - lib/nu/agent/path_extractor.rb
+   - lib/nu/agent/dependency_analyzer.rb
+   - lib/nu/agent/parallel_executor.rb
+   - lib/nu/agent/tool_call_orchestrator.rb
+   ```
+2. Observe all 5 execute in parallel
+
+**Expected Behavior**:
+- LLM returns 5 `file_read` tool calls
+- DependencyAnalyzer creates 1 batch with all 5 tools
+- All 5 execute concurrently in threads
+- Noticeable performance improvement vs sequential
+
+**Success Criteria**:
+- ✅ Single batch with 5 tools
+- ✅ Concurrent execution visible in timing
+- ✅ All results correct and in order
+- ✅ No thread safety issues
+
+#### Test 5: Write-Write on Same Path
+**Goal**: Verify sequential execution for multiple writes to same file
+
+**Steps**:
+1. In the running session, enter:
+   ```
+   Write "Line 1" to /tmp/test.txt, then append "Line 2" to /tmp/test.txt
+   ```
+2. Observe sequential batching
+
+**Expected Behavior**:
+- LLM returns 2 `file_write` tool calls on same path
+- DependencyAnalyzer creates 2 batches
+- First write completes before second starts
+- File ends up with both lines
+
+**Success Criteria**:
+- ✅ Batches separated (no parallel writes to same file)
+- ✅ No data corruption or race conditions
+- ✅ Final file content is correct
+
+#### Test 6: Error Handling in Parallel Execution
+**Goal**: Verify error in one tool doesn't block others
+
+**Steps**:
+1. In the running session, enter:
+   ```
+   Read these files:
+   - lib/nu/agent/tool_registry.rb
+   - /nonexistent/file.txt (this will fail)
+   - lib/nu/agent/path_extractor.rb
+   ```
+2. Observe that valid files are still read
+
+**Expected Behavior**:
+- LLM returns 3 `file_read` tool calls
+- All 3 execute in parallel
+- Middle one fails with error
+- Other 2 succeed and return content
+- LLM receives all 3 results (2 success, 1 error)
+
+**Success Criteria**:
+- ✅ Successful tools complete despite error in batch
+- ✅ Error is captured and returned
+- ✅ No exception crashes the batch
+- ✅ LLM can respond to partial results
+
+#### Test 7: Real API Format Verification
+**Goal**: Verify actual API responses use flat format
+
+**Steps**:
+1. Enable debug mode: `/debug on`
+2. Set verbosity high: `/verbosity 3`
+3. Make a request that triggers tool calls
+4. Observe the raw API response in debug output
+
+**Expected Behavior**:
+- API response contains tool_calls array
+- Each tool call uses flat format: `{ "id": "...", "name": "...", "arguments": "..." }`
+- No nested `"function"` wrapper
+- DependencyAnalyzer handles it correctly
+
+**Success Criteria**:
+- ✅ Confirm flat format from real API
+- ✅ No parsing errors
+- ✅ Dependency analysis works with real data
+- ✅ Parallel execution proceeds correctly
+
+**Debugging Tips**:
+- Use `/debug on` to see detailed execution flow
+- Use `/verbosity 3` for maximum output
+- Check `coverage/` directory after tests for any missed code paths
+- Monitor thread creation in debug output
+- Look for "batch" mentions in output to verify batching
+
+**Expected Issues & Solutions**:
+1. **Thread overhead > benefits for fast operations**
+   - This is expected and documented
+   - Parallel execution still correct, just not faster for tiny files
+
+2. **API doesn't return multiple tool calls**
+   - This depends on the LLM's response
+   - Try more explicit prompts requesting multiple operations
+
+3. **Tools execute too fast to observe parallelism**
+   - Use larger files or slower operations
+   - Check timing metrics in debug output
+
+**Documentation After Testing**:
+1. Record any issues found
+2. Document actual performance characteristics observed
+3. Note any edge cases discovered
+4. Update `docs/parallel-execution-performance.md` with real-world results
+
+**Acceptance Criteria**:
+- [ ] All 7 test scenarios pass
+- [ ] No errors or crashes during manual testing
+- [ ] Parallel execution observable and correct
+- [ ] Dependency batching works as designed
+- [ ] Real API format (flat) handled correctly
+- [ ] Performance improvement visible for appropriate scenarios
+- [ ] Error handling works correctly
+- [ ] Thread safety confirmed (no corruption or races)
+
+**Status**: 🔲 NOT STARTED
+
+---
+
 ## Quality Gates (Every Commit)
 
 Before each commit, verify:
