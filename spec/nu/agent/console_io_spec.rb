@@ -1869,5 +1869,29 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(result).to eq(:submit)
       end
     end
+
+    context "with Ctrl+Enter (\\e[13;5~)" do
+      it "returns :submit action" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        result = console.send(:parse_input, "\e[13;5~")
+        expect(result).to eq(:submit)
+      end
+
+      it "submits multiline content with embedded newlines" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+        console.instance_variable_set(:@cursor_pos, 11)
+        result = console.send(:parse_input, "\e[13;5~")
+        expect(result).to eq(:submit)
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2")
+      end
+
+      it "can submit empty buffer" do
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+        result = console.send(:parse_input, "\e[13;5~")
+        expect(result).to eq(:submit)
+      end
+    end
   end
 end

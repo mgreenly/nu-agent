@@ -37,6 +37,7 @@ module Nu
         @saved_input = String.new("")
         @saved_column = nil
         @last_line_count = 1
+        @submit_requested = false
 
         # Database history (optional)
         @db_history = db_history
@@ -393,6 +394,7 @@ module Nu
       def parse_input(raw)
         chars = raw.chars
         i = 0
+        @submit_requested = false
 
         while i < chars.length
           char = chars[i]
@@ -446,6 +448,9 @@ module Nu
 
           i += 1
         end
+
+        # Check if submit was requested by a CSI sequence (e.g., Ctrl+Enter)
+        return :submit if @submit_requested
 
         nil # Continue reading
       end
@@ -504,13 +509,8 @@ module Nu
         when "F" # End
           cursor_to_end
           index
-        when "1" # Home variant (1~)
-          if index + 1 < chars.length && chars[index + 1] == "~"
-            cursor_to_start
-            index + 1
-          else
-            index
-          end
+        when "1" # Home variant (1~) or modified key sequence
+          handle_numbered_csi_sequence(chars, index, "1")
         when "3" # Delete (3~)
           if index + 1 < chars.length && chars[index + 1] == "~"
             delete_forward
@@ -526,9 +526,49 @@ module Nu
             index
           end
         else
-          # Unknown sequence - ignore
-          index
+          # Check if it's a multi-digit modified key sequence (e.g., "13;5~")
+          if char =~ /\d/
+            handle_numbered_csi_sequence(chars, index, char)
+          else
+            # Unknown sequence - ignore
+            index
+          end
         end
+      end
+
+      def handle_numbered_csi_sequence(chars, index, first_digit)
+        # Parse sequences like "1~", "13;5~", etc.
+        # Build the full sequence string
+        seq_chars = [first_digit]
+        i = index + 1
+
+        while i < chars.length
+          c = chars[i]
+          break if c == "~"
+          break unless c =~ /[\d;]/
+
+          seq_chars << c
+          i += 1
+        end
+
+        # Check if sequence ends with ~
+        if i < chars.length && chars[i] == "~"
+          sequence = seq_chars.join
+          # Check for Ctrl+Enter: 13;5
+          if sequence == "13;5"
+            @submit_requested = true
+            return i
+          elsif sequence == "1"
+            # Home key
+            cursor_to_start
+            return i
+          end
+        elsif seq_chars.length == 1 && first_digit == "1"
+          # Just "1" without ~ - return to previous handling
+          return index
+        end
+
+        i < chars.length ? i : index
       end
 
       def cursor_forward
