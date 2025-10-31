@@ -1,7 +1,6 @@
-Nu-Agent v0.14 Plan: Hash-Like Configuration Store
+Nu-Agent Plan: Hash-Like Configuration Store
 
 Last Updated: 2025-10-29
-Target Version: 0.14.0
 Plan Status: Draft for review
 
 Index
