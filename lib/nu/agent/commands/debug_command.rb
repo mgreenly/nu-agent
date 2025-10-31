@@ -38,6 +38,7 @@ module Nu
 
         def apply_debug_setting(enabled, config_value, display_value)
           app.debug = enabled
+          app.console.debug = enabled
           app.formatter.debug = enabled
           app.history.set_config("debug", config_value)
           app.console.puts("\e[90mdebug=#{display_value}\e[0m")

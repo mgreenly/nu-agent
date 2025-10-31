@@ -10,6 +10,7 @@ module Nu
     # Uses State Pattern for clean state management and transitions
     class ConsoleIO
       attr_reader :state
+      attr_writer :debug
 
       def initialize(db_history: nil, debug: false)
         @stdin = $stdin
@@ -222,7 +223,7 @@ module Nu
       def log_state_transition(old_state, new_state)
         old_name = old_state.name
         new_name = new_state.name
-        warn "[ConsoleIO] State transition: #{old_name} -> #{new_name}"
+        puts("\e[90m[ConsoleIO] State transition: #{old_name} -> #{new_name}\e[0m")
       end
 
       def handle_readline_select(prompt)
