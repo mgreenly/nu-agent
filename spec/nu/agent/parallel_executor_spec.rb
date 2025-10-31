@@ -1,28 +1,28 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
+require "fileutils"
 
 RSpec.describe Nu::Agent::ParallelExecutor do
-  let(:tool_registry) { Nu::Agent::ToolRegistry.instance }
+  let(:tool_registry) { Nu::Agent::ToolRegistry.new }
   let(:history) { instance_double(Nu::Agent::History) }
   let(:executor) { described_class.new(tool_registry: tool_registry, history: history) }
 
-  describe '#execute_batch' do
-    context 'with a single tool call' do
+  describe "#execute_batch" do
+    context "with a single tool call" do
       let(:tool_call) do
         {
-          'id' => 'call_1',
-          'type' => 'function',
-          'function' => {
-            'name' => 'file_read',
-            'arguments' => '{"file": "/tmp/test.txt"}'
-          }
+          "id" => "call_1",
+          "name" => "file_read",
+          "arguments" => { "file" => "/tmp/test.txt" }
         }
       end
 
-      it 'executes the tool call and returns the result' do
-        allow(File).to receive(:exist?).with('/tmp/test.txt').and_return(true)
-        allow(File).to receive(:read).with('/tmp/test.txt').and_return('test content')
+      it "executes the tool call and returns the result" do
+        # Create a temporary test file
+        test_file = "/tmp/test.txt"
+        FileUtils.mkdir_p("/tmp")
+        File.write(test_file, "test content")
 
         results = executor.execute_batch([tool_call])
 
@@ -31,26 +31,33 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         expect(results[0]).to include(
           tool_call: tool_call,
           result: hash_including(
-            success: true,
-            output: 'test content'
+            file: test_file,
+            content: String
           )
         )
+        expect(results[0][:result][:error]).to be_nil
+
+        # Clean up
+        File.delete(test_file)
       end
 
-      it 'preserves tool_call and result in output' do
-        allow(File).to receive(:exist?).with('/tmp/test.txt').and_return(true)
-        allow(File).to receive(:read).with('/tmp/test.txt').and_return('test content')
+      it "preserves tool_call and result in output" do
+        # Create a temporary test file
+        test_file = "/tmp/test.txt"
+        FileUtils.mkdir_p("/tmp")
+        File.write(test_file, "test content")
 
         results = executor.execute_batch([tool_call])
 
         expect(results[0][:tool_call]).to eq(tool_call)
         expect(results[0][:result]).to be_a(Hash)
-        expect(results[0][:result][:success]).to eq(true)
+        expect(results[0][:result][:error]).to be_nil
+
+        # Clean up
+        File.delete(test_file)
       end
 
-      it 'handles tool execution errors gracefully' do
-        allow(File).to receive(:exist?).with('/tmp/test.txt').and_return(false)
-
+      it "handles tool execution errors gracefully" do
         results = executor.execute_batch([tool_call])
 
         expect(results).to be_an(Array)
@@ -58,10 +65,10 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         expect(results[0]).to include(
           tool_call: tool_call,
           result: hash_including(
-            success: false,
-            error: /does not exist/
+            error: /File not found/
           )
         )
+        expect(results[0][:result][:content]).to be_nil
       end
     end
   end
