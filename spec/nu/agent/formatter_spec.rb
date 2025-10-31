@@ -296,7 +296,7 @@ RSpec.describe Nu::Agent::Formatter do
   end
 
   describe "verbosity levels" do
-    let(:application) { instance_double("Application") }
+    let(:application) { instance_double("Application", debug: true, history: history) }
     let(:formatter_with_app) do
       described_class.new(
         history: history,
@@ -354,12 +354,13 @@ RSpec.describe Nu::Agent::Formatter do
                                          }, workers_idle?: true)
     end
 
-    describe "level 0: tool name only" do
+    describe "level 1: tool name only" do
       before do
-        allow(application).to receive(:verbosity).and_return(0)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
       end
 
       it "displays tool call name without arguments" do
+        expect(mock_console).to receive(:puts).with("").ordered
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
 
         formatter_with_app.display_message(tool_call_message)
@@ -372,12 +373,13 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe "level 1: tool name + first 30 chars of params + thread notifications" do
+    describe "level 2: tool name + first 30 chars of params + thread notifications" do
       before do
-        allow(application).to receive(:verbosity).and_return(1)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
       end
 
       it "displays tool call arguments truncated to 30 characters" do
+        expect(mock_console).to receive(:puts).with("").ordered
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
@@ -415,12 +417,13 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe "level 2: truncated params (same as level 1)" do
+    describe "level 2: truncated params (same as level 2)" do
       before do
-        allow(application).to receive(:verbosity).and_return(2)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
       end
 
       it "displays tool call arguments truncated to 30 chars" do
+        expect(mock_console).to receive(:puts).with("").ordered
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
@@ -437,12 +440,13 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe "level 3: truncated params (same as levels 1-2)" do
+    describe "level 2: truncated params (same as level 2)" do
       before do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
       end
 
       it "displays tool call arguments truncated to 30 chars" do
+        expect(mock_console).to receive(:puts).with("").ordered
         expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
         expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
@@ -471,6 +475,7 @@ RSpec.describe Nu::Agent::Formatter do
   end
 
   describe "blank line spacing for readability" do
+    let(:blank_line_app) { instance_double("Application", debug: true, history: history) }
     let(:formatter_debug) do
       described_class.new(
         history: history,
@@ -479,8 +484,12 @@ RSpec.describe Nu::Agent::Formatter do
         orchestrator: orchestrator,
         debug: true,
         console: mock_console,
-        application: nil
+        application: blank_line_app
       )
+    end
+
+    before do
+      allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
     end
 
     context "thread events" do
@@ -1506,8 +1515,8 @@ RSpec.describe Nu::Agent::Formatter do
 
       # Should not show empty response warning because tool_calls exist
       expect(mock_console).not_to receive(:puts).with(a_string_matching(/LLM returned empty response/))
-      expect(mock_console).to receive(:puts).with("")
-      expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] test_tool\e[0m")
+      # Tool calls won't be displayed without an application
+      expect(mock_console).not_to receive(:puts)
 
       formatter.display_message(message)
     end

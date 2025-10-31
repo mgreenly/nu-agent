@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../subsystem_debugger"
+
 module Nu
   module Agent
     module Formatters
@@ -10,17 +12,25 @@ module Nu
         end
 
         def display(tool_call, index: nil, total: nil, batch: nil, thread: nil)
-          verbosity = @application ? @application.verbosity : 0
+          # Level 0: No tool debug output
+          return unless should_output?(1)
 
           display_header(tool_call["name"], index, total, batch, thread)
 
-          # Level 0: Show tool name only, no arguments
-          return unless verbosity >= 1
+          # Level 1: Show tool name only, no arguments
+          return unless should_output?(2)
 
-          display_arguments(tool_call["arguments"], verbosity)
+          # Level 2+: Show arguments (truncated or full depending on level)
+          display_arguments(tool_call["arguments"])
         end
 
         private
+
+        def should_output?(level)
+          return false unless @application
+
+          SubsystemDebugger.should_output?(@application, "tools", level)
+        end
 
         def display_header(name, index, total, batch, thread)
           # Build batch/thread indicator if present
@@ -39,25 +49,29 @@ module Nu
           @console.puts("\e[90m[Tool Call Request]#{batch_indicator} #{name}#{count_indicator}\e[0m")
         end
 
-        def display_arguments(arguments, verbosity)
+        def display_arguments(arguments)
           return unless arguments && !arguments.empty?
 
           begin
             arguments.each do |key, value|
-              format_argument(key, value.to_s.strip, verbosity)
+              format_argument(key, value.to_s.strip)
             end
           rescue StandardError => e
             @console.puts("\e[90m  [Error displaying arguments: #{e.message}]\e[0m")
           end
         end
 
-        def format_argument(key, value_str, verbosity)
-          if verbosity < 4
-            format_truncated_argument(key, value_str)
-          elsif value_str.include?("\n")
-            format_multiline_argument(key, value_str)
+        def format_argument(key, value_str)
+          # Level 3+: Show full arguments without truncation
+          if should_output?(3)
+            if value_str.include?("\n")
+              format_multiline_argument(key, value_str)
+            else
+              @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
+            end
           else
-            @console.puts("\e[90m  #{key}: #{value_str}\e[0m")
+            # Level 2: Show truncated arguments
+            format_truncated_argument(key, value_str)
           end
         end
 

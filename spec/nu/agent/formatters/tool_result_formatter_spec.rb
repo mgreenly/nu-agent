@@ -2,10 +2,12 @@
 
 require "spec_helper"
 require "nu/agent/formatters/tool_result_formatter"
+require "nu/agent/subsystem_debugger"
 
 RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
   let(:console) { double("console") }
-  let(:application) { double("application", verbosity: 0) }
+  let(:history) { double("history") }
+  let(:application) { double("application", debug: true, history: history) }
   let(:formatter) { described_class.new(console: console, application: application) }
   let(:message) do
     {
@@ -18,7 +20,10 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
 
   describe "#display" do
     context "with verbosity 0 (tool name only)" do
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(0)
+      end
 
       it "displays tool name without result" do
         formatter.display(message)
@@ -31,9 +36,10 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
     end
 
     context "with verbosity 1 (truncated result)" do
-      let(:application) { double("application", verbosity: 1) }
-
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
 
       context "with simple string result" do
         it "displays truncated result" do
@@ -109,9 +115,10 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
     end
 
     context "with verbosity 4+ (full result)" do
-      let(:application) { double("application", verbosity: 4) }
-
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(4)
+      end
 
       context "with simple string result" do
         it "displays full result" do
@@ -160,7 +167,6 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
     end
 
     context "when error occurs displaying result" do
-      let(:application) { double("application", verbosity: 1) }
       let(:bad_message) do
         {
           "tool_result" => {
@@ -172,6 +178,7 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
 
       before do
         allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
       end
 
       it "displays error message" do
@@ -182,7 +189,10 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
     end
 
     context "with batch and thread info" do
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
 
       it "includes batch and thread in header when provided" do
         formatter.display(message, batch: 2, thread: 3)
@@ -209,7 +219,10 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
     end
 
     context "with timing information" do
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
 
       context "with duration only" do
         it "displays duration less than 1ms" do

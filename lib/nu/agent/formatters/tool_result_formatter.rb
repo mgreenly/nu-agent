@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../subsystem_debugger"
+
 module Nu
   module Agent
     module Formatters
@@ -12,16 +14,30 @@ module Nu
         def display(message, **options)
           result = message["tool_result"]["result"]
           name = message["tool_result"]["name"]
-          verbosity = @application ? @application.verbosity : 0
 
           display_header(name, **options)
 
-          return unless verbosity >= 1
+          # Level 0: No tool debug output - don't show results
+          return unless should_output?(1)
 
+          # Level 1+: Show results with varying detail
+          verbosity = get_verbosity_level
           display_result(result, verbosity)
         end
 
         private
+
+        def should_output?(level)
+          return false unless @application
+
+          SubsystemDebugger.should_output?(@application, "tools", level)
+        end
+
+        def get_verbosity_level
+          return 0 unless @application
+
+          @application.history.get_int("tools_verbosity", default: 0)
+        end
 
         def display_header(name, **options)
           batch = options[:batch]

@@ -2,10 +2,12 @@
 
 require "spec_helper"
 require "nu/agent/formatters/tool_call_formatter"
+require "nu/agent/subsystem_debugger"
 
 RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
   let(:console) { double("console") }
-  let(:application) { double("application", verbosity: 0) }
+  let(:history) { double("history") }
+  let(:application) { double("application", debug: true, history: history) }
   let(:formatter) { described_class.new(console: console, application: application) }
   let(:tool_call) do
     {
@@ -18,15 +20,31 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
   end
 
   describe "#display" do
-    context "with verbosity 0 (tool name only)" do
-      before { allow(console).to receive(:puts) }
+    context "with tools_verbosity 0 (no output)" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(0)
+      end
+
+      it "does not display anything" do
+        formatter.display(tool_call)
+
+        expect(console).not_to have_received(:puts)
+      end
+    end
+
+    context "with tools_verbosity 1 (tool name only)" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
 
       it "displays tool name without arguments" do
         formatter.display(tool_call)
 
         expect(console).to have_received(:puts).with("")
         expect(console).to have_received(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
-        # Should not display arguments at verbosity 0
+        # Should not display arguments at verbosity 1
         expect(console).not_to have_received(:puts).with(a_string_matching(/path:/))
       end
 
@@ -37,10 +55,11 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
       end
     end
 
-    context "with verbosity 1 (truncated arguments)" do
-      let(:application) { double("application", verbosity: 1) }
-
-      before { allow(console).to receive(:puts) }
+    context "with tools_verbosity 2 (truncated arguments)" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
+      end
 
       it "displays truncated arguments" do
         formatter.display(tool_call)
@@ -65,10 +84,11 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
       end
     end
 
-    context "with verbosity 4+ (full arguments)" do
-      let(:application) { double("application", verbosity: 4) }
-
-      before { allow(console).to receive(:puts) }
+    context "with tools_verbosity 3+ (full arguments)" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(3)
+      end
 
       it "displays full arguments" do
         formatter.display(tool_call)
@@ -94,23 +114,40 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
       end
     end
 
+    context "when debug is false" do
+      let(:application) { double("application", debug: false, history: history) }
+
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
+
+      it "does not display anything" do
+        formatter.display(tool_call)
+
+        expect(console).not_to have_received(:puts)
+      end
+    end
+
     context "when no application provided" do
       let(:formatter) { described_class.new(console: console, application: nil) }
 
       before { allow(console).to receive(:puts) }
 
-      it "defaults to verbosity 0" do
+      it "defaults to tools_verbosity 0 and displays nothing" do
         formatter.display(tool_call)
 
-        expect(console).to have_received(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
-        expect(console).not_to have_received(:puts).with(a_string_matching(/path:/))
+        expect(console).not_to have_received(:puts)
       end
     end
 
     context "with empty arguments" do
       let(:tool_call) { { "name" => "get_weather", "arguments" => {} } }
 
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
 
       it "displays tool name only" do
         formatter.display(tool_call)
@@ -120,7 +157,6 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
     end
 
     context "when error occurs displaying arguments" do
-      let(:application) { double("application", verbosity: 1) }
       let(:bad_tool_call) do
         {
           "name" => "test_tool",
@@ -128,7 +164,10 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
         }
       end
 
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
+      end
 
       it "displays error message" do
         formatter.display(bad_tool_call)
@@ -138,7 +177,10 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
     end
 
     context "with batch and thread info" do
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+      end
 
       it "includes batch and thread in header when provided" do
         formatter.display(tool_call, batch: 2, thread: 3, index: 5, total: 10)
