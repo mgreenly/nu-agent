@@ -3,20 +3,56 @@
 module Nu
   module Agent
     # PathExtractor is responsible for extracting file/directory paths from tool arguments.
-    # This is used for dependency analysis to determine which tool calls can run in parallel.
+    #
+    # This class serves as a critical component in the parallel tool execution system by identifying
+    # which files and directories are affected by each tool operation. This information is used by
+    # the DependencyAnalyzer to determine which tool calls can safely run in parallel.
+    #
+    # The extractor knows about three categories of tools:
+    #
+    # 1. **File-based tools**: Tools that operate on specific file paths (file_read, file_write, etc.)
+    #    Returns an array of file paths that will be accessed.
+    #
+    # 2. **Unconfined tools**: Tools that can affect any resource (execute_bash, execute_python)
+    #    Returns nil to signal that these tools must run in isolation.
+    #
+    # 3. **Non-file tools**: Tools that operate on non-file resources (database_query, search_internet)
+    #    Returns nil as these don't conflict with file operations.
+    #
+    # Path Normalization:
+    # The extractor normalizes all paths to absolute form using File.expand_path. This ensures that
+    # relative paths like "./file.txt", "../file.txt", and "file.txt" are all properly resolved to
+    # their absolute locations, allowing accurate dependency detection.
+    #
+    # Return Values:
+    # - Array of paths: Tool operates on specific file/directory paths
+    # - Empty array: Tool is file-based but has no paths (e.g., file_glob with just a pattern)
+    # - nil: Tool is unconfined or operates on non-file resources
     #
     # Examples:
     #   extractor = PathExtractor.new
+    #
+    #   # File-based tool with single path
     #   extractor.extract("file_read", { file: "/path/to/file.rb" })
     #   # => ["/path/to/file.rb"]
     #
+    #   # File-based tool with multiple paths
     #   extractor.extract("file_copy", { source: "/src.rb", destination: "/dst.rb" })
     #   # => ["/src.rb", "/dst.rb"]
     #
+    #   # Unconfined tool (must run in isolation)
     #   extractor.extract("execute_bash", { command: "ls" })
-    #   # => nil (unconfined tool)
+    #   # => nil
+    #
+    #   # Path normalization
+    #   extractor.extract_and_normalize("file_read", { file: "../file.rb" })
+    #   # => ["/absolute/path/to/file.rb"]
     class PathExtractor
       # File-based tools and their path parameter names
+      #
+      # Maps tool names to the parameter names that contain file paths.
+      # Tools with empty arrays are file-related but don't operate on specific paths
+      # (e.g., file_glob searches by pattern, not a specific file).
       FILE_TOOLS = {
         "file_read" => [:file],
         "file_write" => [:file],
@@ -31,6 +67,8 @@ module Nu
       }.freeze
 
       # Directory-based tools and their path parameter names
+      #
+      # Similar to FILE_TOOLS but for directory operations.
       DIR_TOOLS = {
         "dir_list" => [:path],
         "dir_create" => [:path],
@@ -39,12 +77,20 @@ module Nu
       }.freeze
 
       # Tools that have unconfined scope and should return nil
+      #
+      # These tools can potentially affect any file or resource in the system,
+      # so they must run in isolation as barriers. The extractor returns nil
+      # for these tools to signal to the DependencyAnalyzer that they need
+      # special handling.
       UNCONFINED_TOOLS = %w[
         execute_bash
         execute_python
       ].freeze
 
       # Tools that operate on non-file resources (databases, network, etc.)
+      #
+      # These tools don't operate on the file system, so they don't participate
+      # in file-based dependency analysis. Returns nil to indicate no file paths.
       NON_FILE_TOOLS = %w[
         database_query
         database_schema
