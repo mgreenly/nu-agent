@@ -11,9 +11,9 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
     instance_double(Nu::Agent::ToolRegistry).tap do |registry|
       # Stub metadata_for to return default metadata for all tools
       allow(registry).to receive(:metadata_for).and_return({
-        operation_type: :read,
-        scope: :confined
-      })
+                                                             operation_type: :read,
+                                                             scope: :confined
+                                                           })
     end
   end
   let(:application) { instance_double(Nu::Agent::Application, formatter: formatter, console: console) }
@@ -298,7 +298,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         orchestrator.execute(messages: messages, tools: tools)
 
         # Results should be saved in the same order as tool calls
-        expect(saved_tool_call_ids).to eq(["call_1", "call_2"])
+        expect(saved_tool_call_ids).to eq(%w[call_1 call_2])
       end
 
       it "displays tool results in correct order" do
@@ -331,7 +331,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         orchestrator.execute(messages: messages, tools: tools)
 
         # Results should be displayed in the same order as tool calls
-        expect(displayed_tool_names).to eq(["file_read", "file_read"])
+        expect(displayed_tool_names).to eq(%w[file_read file_read])
       end
 
       it "updates messages list with tool results in correct order" do
@@ -376,7 +376,8 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "tokens" => { "input" => 10, "output" => 5 },
           "spend" => 0.001,
           "tool_calls" => [
-            { "id" => "call_1", "name" => "file_write", "arguments" => { "file" => "/path/to/file", "content" => "new content" } },
+            { "id" => "call_1", "name" => "file_write",
+              "arguments" => { "file" => "/path/to/file", "content" => "new content" } },
             { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "/path/to/file" } }
           ]
         }
@@ -400,7 +401,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         orchestrator.execute(messages: messages, tools: tools)
 
         # Write must complete before read
-        expect(execution_order).to eq(["file_write", "file_read"])
+        expect(execution_order).to eq(%w[file_write file_read])
       end
     end
   end

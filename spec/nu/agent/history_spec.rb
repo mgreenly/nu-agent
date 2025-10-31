@@ -1503,7 +1503,7 @@ RSpec.describe Nu::Agent::History do
       # Verify message contents are correct
       content_counts = messages.group_by { |m| m["content"].match(/Thread (\d+)/)[1] }
       expect(content_counts.keys.length).to eq(num_threads)
-      content_counts.each do |_thread_num, msgs|
+      content_counts.each_value do |msgs|
         expect(msgs.length).to eq(messages_per_thread)
       end
     end
