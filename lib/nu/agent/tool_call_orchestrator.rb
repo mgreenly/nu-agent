@@ -168,7 +168,8 @@ module Nu
             batch: result_data[:batch],
             thread: result_data[:thread],
             start_time: result_data[:start_time],
-            duration: result_data[:duration]
+            duration: result_data[:duration],
+            batch_start_time: result_data[:batch_start_time]
           )
         else
           display_tool_result_message(tool_result_data)
@@ -189,7 +190,8 @@ module Nu
         tool_call_formatter.display(tool_call, batch: batch, thread: thread, index: index, total: total)
       end
 
-      def display_tool_result_with_context(tool_result_data, batch:, thread:, start_time: nil, duration: nil)
+      def display_tool_result_with_context(tool_result_data, batch:, thread:, start_time: nil, duration: nil,
+batch_start_time: nil)
         tool_result_formatter = @formatter.instance_variable_get(:@tool_result_formatter)
         # Build message structure expected by formatter
         message = {
@@ -200,7 +202,8 @@ module Nu
           batch: batch,
           thread: thread,
           start_time: start_time,
-          duration: duration
+          duration: duration,
+          batch_start_time: batch_start_time
         )
       end
 

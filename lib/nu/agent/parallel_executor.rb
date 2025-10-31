@@ -79,14 +79,14 @@ module Nu
       def execute_batch(tool_calls, batch_number: nil)
         output_batch_start(tool_calls, batch_number) if batch_number
 
-        start_time = Time.now
-        threads = create_execution_threads(tool_calls, batch_number)
+        batch_start_time = Time.now
+        threads = create_execution_threads(tool_calls, batch_number, batch_start_time)
         results_with_index = threads.map(&:value)
 
-        elapsed = Time.now - start_time
+        elapsed = Time.now - batch_start_time
         output_batch_complete(tool_calls, batch_number, elapsed) if batch_number
 
-        format_results(results_with_index)
+        format_results(results_with_index, batch_start_time)
       end
 
       private
@@ -98,13 +98,14 @@ module Nu
       #
       # @param tool_calls [Array<Hash>] Array of tool calls to execute
       # @param batch_number [Integer, nil] Optional batch number for visibility
+      # @param batch_start_time [Time] Time when batch execution started
       # @return [Array<Thread>] Array of threads executing tool calls
-      def create_execution_threads(tool_calls, batch_number)
+      def create_execution_threads(tool_calls, batch_number, batch_start_time)
         threads = []
         tool_calls.each_with_index do |tool_call, index|
           thread_number = index + 1
           thread = Thread.new do
-            execute_tool_in_thread(tool_call, index, batch_number, thread_number)
+            execute_tool_in_thread(tool_call, index, batch_number, thread_number, batch_start_time)
           end
           threads << thread
         end
@@ -119,8 +120,9 @@ module Nu
       # @param index [Integer] Original index in tool_calls array
       # @param batch_number [Integer, nil] Batch number if provided
       # @param thread_number [Integer] Thread number for display
+      # @param batch_start_time [Time] Time when batch execution started
       # @return [Hash] Result data with timing and batch/thread info
-      def execute_tool_in_thread(tool_call, index, batch_number, thread_number)
+      def execute_tool_in_thread(tool_call, index, batch_number, thread_number, batch_start_time)
         start_time = Time.now
         result = execute_tool_with_error_handling(tool_call)
         end_time = Time.now
@@ -132,7 +134,8 @@ module Nu
           batch_number: batch_number,
           thread_number: thread_number,
           start_time: start_time,
-          end_time: end_time
+          end_time: end_time,
+          batch_start_time: batch_start_time
         )
       end
 
@@ -146,6 +149,7 @@ module Nu
       # @option options [Integer] :thread_number Thread number for display
       # @option options [Time] :start_time When tool execution started
       # @option options [Time] :end_time When tool execution ended
+      # @option options [Time] :batch_start_time When batch execution started
       # @return [Hash] Complete result data
       def build_result_data(options)
         duration = options[:end_time] - options[:start_time]
@@ -161,6 +165,7 @@ module Nu
         result_data[:start_time] = options[:start_time]
         result_data[:end_time] = options[:end_time]
         result_data[:duration] = duration
+        result_data[:batch_start_time] = options[:batch_start_time]
         result_data
       end
 
@@ -170,8 +175,9 @@ module Nu
       # Preserves batch/thread/timing metadata.
       #
       # @param results_with_index [Array<Hash>] Results with index field
+      # @param batch_start_time [Time] Time when batch execution started
       # @return [Array<Hash>] Formatted results in original order
-      def format_results(results_with_index)
+      def format_results(results_with_index, batch_start_time)
         results_with_index.sort_by { |r| r[:index] }.map do |r|
           result = { tool_call: r[:tool_call], result: r[:result] }
           result[:batch] = r[:batch] if r[:batch]
@@ -179,6 +185,7 @@ module Nu
           result[:start_time] = r[:start_time]
           result[:end_time] = r[:end_time]
           result[:duration] = r[:duration]
+          result[:batch_start_time] = batch_start_time
           result
         end
       end

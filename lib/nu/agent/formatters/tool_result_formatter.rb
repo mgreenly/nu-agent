@@ -9,12 +9,12 @@ module Nu
           @application = application
         end
 
-        def display(message, batch: nil, thread: nil, start_time: nil, duration: nil)
+        def display(message, batch: nil, thread: nil, start_time: nil, duration: nil, batch_start_time: nil)
           result = message["tool_result"]["result"]
           name = message["tool_result"]["name"]
           verbosity = @application ? @application.verbosity : 0
 
-          display_header(name, batch, thread, start_time, duration)
+          display_header(name, batch, thread, start_time, duration, batch_start_time)
 
           return unless verbosity >= 1
 
@@ -23,7 +23,7 @@ module Nu
 
         private
 
-        def display_header(name, batch, thread, _start_time, duration)
+        def display_header(name, batch, thread, start_time, duration, batch_start_time)
           # Build batch/thread indicator if present
           batch_indicator = if batch && thread
                               " (Batch #{batch}/Thread #{thread})"
@@ -34,15 +34,28 @@ module Nu
                             end
 
           # Build timing indicator if present
-          timing_indicator = if duration
-                               formatted_duration = format_duration(duration)
-                               " [Duration: #{formatted_duration}]"
+          timing_indicator = if start_time && duration && batch_start_time
+                               format_timing_with_offsets(start_time, duration, batch_start_time)
+                             elsif duration
+                               format_timing_duration_only(duration)
                              else
                                ""
                              end
 
           @console.puts("")
           @console.puts("\e[90m[Tool Use Response]#{batch_indicator} #{name}#{timing_indicator}\e[0m")
+        end
+
+        def format_timing_with_offsets(start_time, duration, batch_start_time)
+          start_offset = ((start_time - batch_start_time) * 1000).round
+          end_offset = (start_offset + (duration * 1000)).round
+          duration_ms = (duration * 1000).round
+          " [Start: #{start_offset}ms, End: #{end_offset}ms, Duration: #{duration_ms}ms]"
+        end
+
+        def format_timing_duration_only(duration)
+          formatted_duration = format_duration(duration)
+          " [Duration: #{formatted_duration}]"
         end
 
         def format_duration(duration)
