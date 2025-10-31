@@ -231,6 +231,40 @@ module Nu
         @input_buffer.split("\n", -1)
       end
 
+      # Convert byte position to [line_index, column_offset]
+      # Clamps position to buffer length if beyond
+      # Returns [0, 0] for empty buffer
+      def get_line_and_column(pos)
+        # Clamp position to buffer length
+        pos = [@input_buffer.length, pos].min
+
+        # Handle empty buffer
+        return [0, 0] if @input_buffer.empty?
+
+        # Iterate through lines to find position
+        line_list = lines
+        cumulative_pos = 0
+
+        line_list.each_with_index do |line, line_index|
+          line_length = line.length
+          # Add 1 for newline character (except for last line)
+          line_with_newline = line_index < line_list.length - 1 ? line_length + 1 : line_length
+
+          # Position is on this line if it's within the line's range
+          # For the last line, accept position at line_length (end of buffer)
+          if pos <= cumulative_pos + line_length
+            column = pos - cumulative_pos
+            return [line_index, column]
+          end
+
+          cumulative_pos += line_with_newline
+        end
+
+        # Position is at the very end after all lines processed
+        # This handles the case where pos == buffer.length and buffer ends without newline
+        [line_list.length - 1, line_list.last.length]
+      end
+
       def log_state_transition(old_state, new_state)
         old_name = old_state.name
         new_name = new_state.name

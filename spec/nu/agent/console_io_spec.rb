@@ -1460,4 +1460,72 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(result).to eq(["line1", ""])
     end
   end
+
+  describe "#get_line_and_column" do
+    it "returns [0, 0] for position 0 in empty buffer" do
+      console.instance_variable_set(:@input_buffer, String.new(""))
+      result = console.send(:get_line_and_column, 0)
+      expect(result).to eq([0, 0])
+    end
+
+    it "returns [0, 3] for position 3 in single line 'hello'" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_line_and_column, 3)
+      expect(result).to eq([0, 3])
+    end
+
+    it "returns [1, 0] for position 6 in 'line1\\nline2' (first char of line2)" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:get_line_and_column, 6)
+      expect(result).to eq([1, 0])
+    end
+
+    it "returns [1, 2] for position 8 in 'line1\\nline2'" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:get_line_and_column, 8)
+      expect(result).to eq([1, 2])
+    end
+
+    it "clamps position beyond buffer length to end of buffer" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_line_and_column, 100)
+      expect(result).to eq([0, 5])
+    end
+
+    it "returns [0, 0] for position 0 in single line" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_line_and_column, 0)
+      expect(result).to eq([0, 0])
+    end
+
+    it "handles position at newline character" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:get_line_and_column, 5)
+      expect(result).to eq([0, 5])
+    end
+
+    it "handles multiline with position on last line" do
+      console.instance_variable_set(:@input_buffer, String.new("a\nb\nc"))
+      result = console.send(:get_line_and_column, 4)
+      expect(result).to eq([2, 0])
+    end
+
+    it "handles position at end of buffer with trailing newline" do
+      console.instance_variable_set(:@input_buffer, String.new("line\n"))
+      result = console.send(:get_line_and_column, 5)
+      expect(result).to eq([1, 0])
+    end
+
+    it "handles empty lines in multiline buffer" do
+      console.instance_variable_set(:@input_buffer, String.new("a\n\nc"))
+      result = console.send(:get_line_and_column, 2)
+      expect(result).to eq([1, 0])
+    end
+
+    it "handles position at end of buffer without trailing newline" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_line_and_column, 5)
+      expect(result).to eq([0, 5])
+    end
+  end
 end
