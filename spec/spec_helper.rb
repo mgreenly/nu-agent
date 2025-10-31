@@ -10,12 +10,12 @@ SimpleCov.start do
 
   # Only enforce minimum coverage when COVERAGE_ENFORCE is set
   if ENV["COVERAGE_ENFORCE"] == "true"
-    # Current baseline coverage (as of 2025-10-31 after v0.12 rebase)
+    # Current baseline coverage (as of 2025-10-31 after coverage improvement)
     # Goal: gradually increase to 100%
-    # Note: Set to 98.15% / 90.00% after rebasing v0.12 onto main (actual: 98.17% line / 90.02% branch)
-    # Combined coverage from main (persona refactoring) + v0.12 (RAG improvements, metrics, privacy)
+    # Note: Set to 98.56% / 90.12% after adding comprehensive History method tests (actual: 98.58% line / 90.14% branch)
+    # Added tests for failed jobs, purge methods, clear methods, and other delegate methods
     # Maintaining 0.02% margin above required threshold
-    minimum_coverage line: 98.15, branch: 90.00
+    minimum_coverage line: 98.56, branch: 90.12
   end
 end
 
