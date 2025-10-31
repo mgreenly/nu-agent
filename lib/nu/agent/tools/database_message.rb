@@ -26,6 +26,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :read
+        end
+
+        def scope
+          :unconfined
+        end
+
         def execute(arguments:, history:, context:)
           message_id = arguments[:message_id] || arguments["message_id"]
 

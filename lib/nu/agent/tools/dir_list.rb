@@ -50,6 +50,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :read
+        end
+
+        def scope
+          :confined
+        end
+
         def execute(arguments:, **)
           args = parse_arguments(arguments)
           resolved_path = resolve_path(args[:dir_path])

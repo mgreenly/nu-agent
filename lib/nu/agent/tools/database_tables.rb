@@ -21,6 +21,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :read
+        end
+
+        def scope
+          :unconfined
+        end
+
         def execute(history:, context:, **)
           # Debug output
           context["application"]

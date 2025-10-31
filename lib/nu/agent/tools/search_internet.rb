@@ -42,6 +42,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :write
+        end
+
+        def scope
+          :unconfined
+        end
+
         def execute(arguments:, **)
           query = arguments[:query] || arguments["query"]
           num_results = (arguments[:num_results] || arguments["num_results"] || 5).to_i.clamp(1, 10)

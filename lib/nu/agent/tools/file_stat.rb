@@ -26,6 +26,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :read
+        end
+
+        def scope
+          :confined
+        end
+
         def execute(arguments:, **)
           path = arguments[:path] || arguments["path"]
 

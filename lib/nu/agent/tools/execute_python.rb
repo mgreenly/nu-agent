@@ -38,6 +38,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :write
+        end
+
+        def scope
+          :unconfined
+        end
+
         def execute(arguments:, **)
           code = arguments[:code] || arguments["code"]
           timeout_seconds = arguments[:timeout] || arguments["timeout"] || 30

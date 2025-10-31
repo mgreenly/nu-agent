@@ -27,6 +27,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :write
+        end
+
+        def scope
+          :confined
+        end
+
         def execute(arguments:, _context:, **)
           dir_path = extract_argument(arguments, :path)
 

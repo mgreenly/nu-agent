@@ -34,6 +34,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :write
+        end
+
+        def scope
+          :confined
+        end
+
         def execute(arguments:, **)
           dir_path = extract_argument(arguments, :path)
           confirm = extract_argument(arguments, :confirm_delete) || false

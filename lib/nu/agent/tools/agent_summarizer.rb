@@ -20,6 +20,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :read
+        end
+
+        def scope
+          :unconfined
+        end
+
         def execute(context:, **)
           application = context["application"]
           return error_response if application.nil?

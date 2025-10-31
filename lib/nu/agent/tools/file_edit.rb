@@ -109,6 +109,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :write
+        end
+
+        def scope
+          :confined
+        end
+
         def execute(arguments:, **)
           file_path = arguments[:file] || arguments["file"]
           return { status: "error", error: "file path is required" } if file_path.nil? || file_path.empty?

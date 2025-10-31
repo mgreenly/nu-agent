@@ -27,6 +27,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :read
+        end
+
+        def scope
+          :unconfined
+        end
+
         def execute(arguments:, history:, context:)
           table_name = arguments[:table_name] || arguments["table_name"]
 
