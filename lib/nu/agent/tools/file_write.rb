@@ -31,6 +31,14 @@ module Nu
           PARAMETERS
         end
 
+        def operation_type
+          :write
+        end
+
+        def scope
+          :confined
+        end
+
         def execute(arguments:, **)
           file_path = extract_argument(arguments, :file)
           content = extract_argument(arguments, :content)
