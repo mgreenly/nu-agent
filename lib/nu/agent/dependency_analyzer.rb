@@ -137,8 +137,8 @@ module Nu
       # @param tool_call [Hash] Tool call hash from API response
       # @return [Hash] Hash with :operation_type, :scope, and :affected_paths keys
       def extract_tool_info(tool_call)
-        tool_name = tool_call.dig("function", "name")
-        arguments = parse_arguments(tool_call.dig("function", "arguments"))
+        tool_name = tool_call["name"]
+        arguments = parse_arguments(tool_call["arguments"])
         metadata = @tool_registry.metadata_for(tool_name) || default_metadata
         affected_paths = @path_extractor.extract_and_normalize(tool_name, arguments) || []
 
@@ -256,8 +256,8 @@ module Nu
       # @return [Boolean] true if path is in current batch
       def path_in_current_batch?(current_batch, path)
         current_batch.any? do |tc|
-          tool_name = tc.dig("function", "name")
-          arguments = parse_arguments(tc.dig("function", "arguments"))
+          tool_name = tc["name"]
+          arguments = parse_arguments(tc["arguments"])
           paths = @path_extractor.extract_and_normalize(tool_name, arguments) || []
           paths.include?(path)
         end

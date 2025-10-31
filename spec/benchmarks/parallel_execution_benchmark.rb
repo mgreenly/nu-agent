@@ -30,7 +30,7 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
 
   after(:all) do
     # Clean up test files
-    FileUtils.rm_rf(@test_dir) if File.exist?(@test_dir)
+    FileUtils.rm_rf(@test_dir)
   end
 
   describe "5 independent FileRead operations" do
@@ -138,19 +138,47 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
     let(:tool_calls) do
       [
         # Batch 1: Independent reads (can run in parallel)
-        { "id" => "call_1", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_0.txt" } } },
-        { "id" => "call_2", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_1.txt" } } },
-        { "id" => "call_3", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_2.txt" } } },
+        {
+          "id" => "call_1",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_0.txt" }
+        },
+        {
+          "id" => "call_2",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_1.txt" }
+        },
+        {
+          "id" => "call_3",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_2.txt" }
+        },
 
         # Batch 2: Write (must wait for reads above)
-        { "id" => "call_4", "function" => { "name" => "file_write", "arguments" => { "file" => "#{test_dir}/output.txt", "content" => "new content" } } },
+        {
+          "id" => "call_4",
+          "name" => "file_write",
+          "arguments" => { "file" => "#{test_dir}/output.txt", "content" => "new content" }
+        },
 
         # Batch 3: Read the written file (must wait for write)
-        { "id" => "call_5", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/output.txt" } } },
+        {
+          "id" => "call_5",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/output.txt" }
+        },
 
         # Batch 4: More independent reads (can run in parallel)
-        { "id" => "call_6", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_3.txt" } } },
-        { "id" => "call_7", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_4.txt" } } }
+        {
+          "id" => "call_6",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_3.txt" }
+        },
+        {
+          "id" => "call_7",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_4.txt" }
+        }
       ]
     end
 
@@ -161,7 +189,7 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
       puts "     Total tool calls: #{tool_calls.length}"
       puts "     Number of batches: #{batches.length}"
       batches.each_with_index do |batch, i|
-        puts "     Batch #{i + 1}: #{batch.length} tool(s) - #{batch.map { |tc| tc.dig('function', 'name') }.join(', ')}"
+        puts "     Batch #{i + 1}: #{batch.length} tool(s) - #{batch.map { |tc| tc['name'] }.join(', ')}"
       end
 
       # We expect multiple batches due to dependencies
@@ -194,10 +222,8 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
     let(:tool_call) do
       {
         "id" => "call_1",
-        "function" => {
-          "name" => "file_read",
-          "arguments" => { "file" => "#{test_dir}/file_0.txt" }
-        }
+        "name" => "file_read",
+        "arguments" => { "file" => "#{test_dir}/file_0.txt" }
       }
     end
 
@@ -223,15 +249,35 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
     let(:tool_calls) do
       [
         # Batch 1: Independent reads
-        { "id" => "call_1", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_0.txt" } } },
-        { "id" => "call_2", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_1.txt" } } },
+        {
+          "id" => "call_1",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_0.txt" }
+        },
+        {
+          "id" => "call_2",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_1.txt" }
+        },
 
         # Batch 2: ExecuteBash (barrier - must run alone)
-        { "id" => "call_3", "function" => { "name" => "execute_bash", "arguments" => { "command" => "echo 'test' > #{test_dir}/bash_output.txt" } } },
+        {
+          "id" => "call_3",
+          "name" => "execute_bash",
+          "arguments" => { "command" => "echo 'test' > #{test_dir}/bash_output.txt" }
+        },
 
         # Batch 3: Read after bash
-        { "id" => "call_4", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_2.txt" } } },
-        { "id" => "call_5", "function" => { "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file_3.txt" } } }
+        {
+          "id" => "call_4",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_2.txt" }
+        },
+        {
+          "id" => "call_5",
+          "name" => "file_read",
+          "arguments" => { "file" => "#{test_dir}/file_3.txt" }
+        }
       ]
     end
 
@@ -242,11 +288,11 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
       puts "     Total tool calls: #{tool_calls.length}"
       puts "     Number of batches: #{batches.length}"
       batches.each_with_index do |batch, i|
-        puts "     Batch #{i + 1}: #{batch.length} tool(s) - #{batch.map { |tc| tc.dig('function', 'name') }.join(', ')}"
+        puts "     Batch #{i + 1}: #{batch.length} tool(s) - #{batch.map { |tc| tc['name'] }.join(', ')}"
       end
 
       # ExecuteBash should be in its own batch
-      bash_batch = batches.find { |batch| batch.any? { |tc| tc.dig("function", "name") == "execute_bash" } }
+      bash_batch = batches.find { |batch| batch.any? { |tc| tc["name"] == "execute_bash" } }
       expect(bash_batch.length).to eq(1)
       expect(batches.length).to eq(3)
     end
@@ -271,16 +317,14 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
       ]
 
       puts "\n  📈 Performance Summary:"
-      puts "  " + "=" * 60
+      puts "  #{'=' * 60}"
 
       scenarios.each do |scenario|
         tool_calls = scenario[:tool_count].times.map do |i|
           {
             "id" => "call_#{i}",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => { "file" => "#{test_dir}/file_#{i % 20}.txt" }
-            }
+            "name" => "file_read",
+            "arguments" => { "file" => "#{test_dir}/file_#{i % 20}.txt" }
           }
         end
 
@@ -292,7 +336,7 @@ RSpec.describe "Parallel Execution Performance Benchmarks", :benchmark do
         puts "  #{scenario[:name].ljust(30)} #{(avg_time * 1000).round(2)}ms"
       end
 
-      puts "  " + "=" * 60
+      puts "  #{'=' * 60}"
     end
   end
 end

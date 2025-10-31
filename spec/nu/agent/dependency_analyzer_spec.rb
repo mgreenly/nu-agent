@@ -11,11 +11,8 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -30,19 +27,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file1.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file1.rb"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file2.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file2.rb"}'
           }
         ]
 
@@ -58,19 +49,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_stat",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_stat",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -86,19 +71,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file.rb","content":"new content"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file.rb","content":"new content"}'
           }
         ]
 
@@ -117,19 +96,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file.rb","content":"content1"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file.rb","content":"content1"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file.rb","content":"content2"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file.rb","content":"content2"}'
           }
         ]
 
@@ -146,19 +119,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file.rb","content":"new content"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file.rb","content":"new content"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -175,19 +142,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/fileA.rb","content":"content"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/fileA.rb","content":"content"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/fileB.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/fileB.rb"}'
           }
         ]
 
@@ -203,27 +164,18 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file1.rb","content":"content1"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file1.rb","content":"content1"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file2.rb","content":"content2"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file2.rb","content":"content2"}'
           },
           {
             "id" => "call_3",
-            "type" => "function",
-            "function" => {
-              "name" => "file_write",
-              "arguments" => '{"file":"/path/to/file3.rb","content":"content3"}'
-            }
+            "name" => "file_write",
+            "arguments" => '{"file":"/path/to/file3.rb","content":"content3"}'
           }
         ]
 
@@ -242,11 +194,8 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "execute_bash",
-              "arguments" => '{"command":"ls -la"}'
-            }
+            "name" => "execute_bash",
+            "arguments" => '{"command":"ls -la"}'
           }
         ]
 
@@ -261,19 +210,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "execute_bash",
-              "arguments" => '{"command":"ls -la"}'
-            }
+            "name" => "execute_bash",
+            "arguments" => '{"command":"ls -la"}'
           }
         ]
 
@@ -290,19 +233,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "execute_bash",
-              "arguments" => '{"command":"ls -la"}'
-            }
+            "name" => "execute_bash",
+            "arguments" => '{"command":"ls -la"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -319,27 +256,18 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "execute_bash",
-              "arguments" => '{"command":"ls -la"}'
-            }
+            "name" => "execute_bash",
+            "arguments" => '{"command":"ls -la"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "execute_bash",
-              "arguments" => '{"command":"pwd"}'
-            }
+            "name" => "execute_bash",
+            "arguments" => '{"command":"pwd"}'
           },
           {
             "id" => "call_3",
-            "type" => "function",
-            "function" => {
-              "name" => "execute_bash",
-              "arguments" => '{"command":"date"}'
-            }
+            "name" => "execute_bash",
+            "arguments" => '{"command":"date"}'
           }
         ]
 
@@ -359,34 +287,25 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
       it "handles complex mix of 10+ tools with various dependencies" do
         tool_calls = [
           # Batch 1: Independent reads
-          { "id" => "call_1", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/a.rb"}' } },
-          { "id" => "call_2", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/b.rb"}' } },
-          { "id" => "call_3", "type" => "function",
-            "function" => { "name" => "file_stat", "arguments" => '{"file":"/path/c.rb"}' } },
+          { "id" => "call_1", "name" => "file_read", "arguments" => '{"file":"/path/a.rb"}' },
+          { "id" => "call_2", "name" => "file_read", "arguments" => '{"file":"/path/b.rb"}' },
+          { "id" => "call_3", "name" => "file_stat", "arguments" => '{"file":"/path/c.rb"}' },
           # Batch 2: Write on a.rb (conflicts with call_1)
-          { "id" => "call_4", "type" => "function",
-            "function" => { "name" => "file_write", "arguments" => '{"file":"/path/a.rb","content":"new"}' } },
+          { "id" => "call_4", "name" => "file_write",
+            "arguments" => '{"file":"/path/a.rb","content":"new"}' },
           # Batch 3: Reads on different paths
-          { "id" => "call_5", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/d.rb"}' } },
-          { "id" => "call_6", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/e.rb"}' } },
+          { "id" => "call_5", "name" => "file_read", "arguments" => '{"file":"/path/d.rb"}' },
+          { "id" => "call_6", "name" => "file_read", "arguments" => '{"file":"/path/e.rb"}' },
           # Batch 4: Execute bash (barrier)
-          { "id" => "call_7", "type" => "function",
-            "function" => { "name" => "execute_bash", "arguments" => '{"command":"ls"}' } },
+          { "id" => "call_7", "name" => "execute_bash", "arguments" => '{"command":"ls"}' },
           # Batch 5: Reads after barrier
-          { "id" => "call_8", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/f.rb"}' } },
-          { "id" => "call_9", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/g.rb"}' } },
+          { "id" => "call_8", "name" => "file_read", "arguments" => '{"file":"/path/f.rb"}' },
+          { "id" => "call_9", "name" => "file_read", "arguments" => '{"file":"/path/g.rb"}' },
           # Batch 6: Write on f.rb
-          { "id" => "call_10", "type" => "function",
-            "function" => { "name" => "file_write", "arguments" => '{"file":"/path/f.rb","content":"x"}' } },
+          { "id" => "call_10", "name" => "file_write",
+            "arguments" => '{"file":"/path/f.rb","content":"x"}' },
           # Batch 7: Read after write
-          { "id" => "call_11", "type" => "function",
-            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/h.rb"}' } }
+          { "id" => "call_11", "name" => "file_read", "arguments" => '{"file":"/path/h.rb"}' }
         ]
 
         batches = analyzer.analyze(tool_calls)
@@ -409,27 +328,18 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "database_query",
-              "arguments" => '{"query":"SELECT * FROM users"}'
-            }
+            "name" => "database_query",
+            "arguments" => '{"query":"SELECT * FROM users"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "database_query",
-              "arguments" => '{"query":"SELECT * FROM posts"}'
-            }
+            "name" => "database_query",
+            "arguments" => '{"query":"SELECT * FROM posts"}'
           },
           {
             "id" => "call_3",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -444,27 +354,18 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_glob",
-              "arguments" => '{"pattern":"*.rb"}'
-            }
+            "name" => "file_glob",
+            "arguments" => '{"pattern":"*.rb"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_grep",
-              "arguments" => '{"pattern":"TODO","path":"."}'
-            }
+            "name" => "file_grep",
+            "arguments" => '{"pattern":"TODO","path":"."}'
           },
           {
             "id" => "call_3",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -495,19 +396,13 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => nil
-            }
+            "name" => "file_read",
+            "arguments" => nil
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/path/to/file.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/path/to/file.rb"}'
           }
         ]
 
@@ -522,35 +417,23 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         tool_calls = [
           {
             "id" => "call_1",
-            "type" => "function",
-            "function" => {
-              "name" => "file_copy",
-              "arguments" => '{"source":"/a.rb","destination":"/b.rb"}'
-            }
+            "name" => "file_copy",
+            "arguments" => '{"source":"/a.rb","destination":"/b.rb"}'
           },
           {
             "id" => "call_2",
-            "type" => "function",
-            "function" => {
-              "name" => "file_move",
-              "arguments" => '{"source":"/c.rb","destination":"/d.rb"}'
-            }
+            "name" => "file_move",
+            "arguments" => '{"source":"/c.rb","destination":"/d.rb"}'
           },
           {
             "id" => "call_3",
-            "type" => "function",
-            "function" => {
-              "name" => "file_delete",
-              "arguments" => '{"file":"/e.rb"}'
-            }
+            "name" => "file_delete",
+            "arguments" => '{"file":"/e.rb"}'
           },
           {
             "id" => "call_4",
-            "type" => "function",
-            "function" => {
-              "name" => "file_read",
-              "arguments" => '{"file":"/a.rb"}'
-            }
+            "name" => "file_read",
+            "arguments" => '{"file":"/a.rb"}'
           }
         ]
 
