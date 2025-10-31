@@ -638,13 +638,37 @@ module Nu
           # Clear screen and move cursor to home
           @stdout.write("\e[2J\e[H")
 
-          # Redraw prompt and input buffer
-          @stdout.write(prompt)
-          @stdout.write(@input_buffer)
+          # Get lines and calculate cursor position
+          buffer_lines = lines
+          cursor_line, cursor_col = get_line_and_column(@cursor_pos)
 
-          # Position cursor
-          col = prompt.length + @cursor_pos + 1
-          @stdout.write("\e[#{col}G")
+          # Render all lines
+          buffer_lines.each_with_index do |line, index|
+            if index.zero?
+              # First line: render with prompt
+              @stdout.write(prompt)
+            else
+              # Subsequent lines: newline, then line content
+              @stdout.write("\r\n")
+            end
+            @stdout.write(line)
+          end
+
+          # Update line count
+          @last_line_count = buffer_lines.length
+
+          # Position cursor at correct line and column
+          # After rendering all lines, cursor is at the end of the last line
+          # Calculate how many lines to move up from the last line
+          lines_from_bottom = buffer_lines.length - 1 - cursor_line
+          @stdout.write("\e[#{lines_from_bottom}A") if lines_from_bottom.positive?
+
+          # Set column position (first line includes prompt length)
+          if cursor_line.zero?
+            @stdout.write("\e[#{prompt.length + cursor_col + 1}G")
+          else
+            @stdout.write("\e[#{cursor_col + 1}G")
+          end
 
           @stdout.flush
         end

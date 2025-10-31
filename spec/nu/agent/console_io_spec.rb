@@ -751,6 +751,46 @@ RSpec.describe Nu::Agent::ConsoleIO do
       # Should redraw the prompt and input
       expect(output).to include("> test input")
     end
+
+    it "clears terminal and redraws multiline input" do
+      console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+      console.instance_variable_set(:@cursor_pos, 6) # At start of line2
+      console.send(:clear_screen, "> ")
+
+      output = stdout.string
+      # Should include clear screen escape code
+      expect(output).to include("\e[2J\e[H")
+      # Should render all lines
+      expect(output).to include("> line1")
+      expect(output).to include("line2")
+      expect(output).to include("line3")
+      # Should have newlines between lines
+      expect(output).to include("\r\n")
+    end
+
+    it "positions cursor correctly in multiline content after clear" do
+      console.instance_variable_set(:@input_buffer, "first\nsecond")
+      console.instance_variable_set(:@cursor_pos, 8) # At 'c' in 'second'
+      console.send(:clear_screen, "> ")
+
+      output = stdout.string
+      # Should position cursor at line 1 (second line), column 2 (at 'c')
+      # After rendering all lines, cursor is on the last line already
+      expect(output).to include("\e[3G") # Column 3 (2 + 1 for 1-indexed)
+    end
+
+    it "positions cursor correctly when not on last line after clear" do
+      console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+      console.instance_variable_set(:@cursor_pos, 6) # At start of line2
+      console.send(:clear_screen, "> ")
+
+      output = stdout.string
+      # Should position cursor at line 1 (middle line), column 0
+      # After rendering all 3 lines, cursor is at end of line 3 (line index 2)
+      # To get to line 1 (index 1), we move up 1 line
+      expect(output).to include("\e[1A") # Move up 1 line
+      expect(output).to include("\e[1G") # Column 1 (0 + 1 for 1-indexed)
+    end
   end
 
   # Phase 3: Command History Emulation
