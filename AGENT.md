@@ -11,6 +11,7 @@
 - Every task requires passing `rake test`, `rake lint`, and `rake coverage`
 - Commit after each completed task
 - Update plan document progress after each task
+- All plan files must include a final step for manual validation
 
 ## TDD: Red → Green → Refactor
 1. Write failing test first
