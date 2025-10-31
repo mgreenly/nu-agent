@@ -11,11 +11,17 @@ module Nu
       # @param level [Integer] The minimum verbosity level required
       # @return [Boolean] True if debug output should be shown
       def self.should_output?(application, subsystem, level)
-        return false unless application.debug
+        return false unless application&.debug
 
-        config_key = "#{subsystem}_verbosity"
-        verbosity = application.history.get_int(config_key, default: 0)
-        verbosity >= level
+        # Default to 0 if we can't access history (e.g., from thread)
+        begin
+          config_key = "#{subsystem}_verbosity"
+          verbosity = application.history.get_int(config_key, default: 0)
+          verbosity >= level
+        rescue StandardError
+          # If we can't access history, assume verbosity is 0
+          false
+        end
       end
 
       # Output debug message if verbosity level is sufficient
