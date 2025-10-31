@@ -391,27 +391,27 @@ Each task must be tracked as:
 - ✅ History navigation continues when in history mode
 - ✅ All quality gates pass
 
-#### Task 4.4: Reset @saved_column on horizontal movement and edits ⏳
-**TDD Steps**:
-1. Write spec: cursor_forward → expect @saved_column = nil
-2. Write spec: cursor_backward → expect @saved_column = nil
-3. Write spec: insert_char → expect @saved_column = nil
-4. Write spec: delete_backward → expect @saved_column = nil
-5. Write spec: delete_forward → expect @saved_column = nil
-6. Write spec: cursor_to_start → expect @saved_column = nil
-7. Write spec: cursor_to_end → expect @saved_column = nil
-8. Update all relevant methods to set @saved_column = nil
-9. Run tests until green
-10. Run lint, fix any issues
-11. Run coverage check
-12. Commit: `[Phase 4.4] Reset saved column on horizontal movement and edits`
-13. Update this document with ✅ DONE timestamp
+#### Task 4.4: Reset @saved_column on horizontal movement and edits ✅ DONE (2025-10-31 17:32)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: cursor_forward → expect @saved_column = nil
+2. ✅ Write spec: cursor_backward → expect @saved_column = nil
+3. ✅ Write spec: insert_char → expect @saved_column = nil
+4. ✅ Write spec: delete_backward → expect @saved_column = nil
+5. ✅ Write spec: delete_forward → expect @saved_column = nil
+6. ✅ Write spec: cursor_to_start → expect @saved_column = nil
+7. ✅ Write spec: cursor_to_end → expect @saved_column = nil
+8. ✅ Update all relevant methods to set @saved_column = nil
+9. ✅ Run tests until green (2216 examples, 0 failures)
+10. ✅ Run lint (no offenses detected)
+11. ✅ Run coverage check (98.17% line / 90.1% branch)
+12. ✅ Commit: `[Phase 4.4] Reset saved column on horizontal movement and edits`
+13. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- All horizontal movements reset @saved_column
-- All edit operations reset @saved_column
-- Column memory only preserved during vertical navigation
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ All horizontal movements reset @saved_column (4 methods updated)
+- ✅ All edit operations reset @saved_column (3 methods updated)
+- ✅ Column memory only preserved during vertical navigation (7 test cases)
+- ✅ All quality gates pass (tests, lint, coverage)
 
 ### Phase 5: Integration testing and edge cases
 **Status**: Not started
@@ -581,7 +581,7 @@ WHERE id = 1
 - Task 4.1: Implement cursor_up_or_history_prev - ✅ DONE (2025-10-31 16:46)
 - Task 4.2: Implement cursor_down_or_history_next - ✅ DONE (2025-10-31 16:53)
 - Task 4.3: Update handle_csi_sequence to use new navigation methods - ✅ DONE (2025-10-31 17:18)
-- Task 4.4: Reset @saved_column on horizontal movement and edits - ⏳
+- Task 4.4: Reset @saved_column on horizontal movement and edits - ✅ DONE (2025-10-31 17:32)
 
 ### Phase 5: Integration testing and edge cases
 - Task 5.1: Add integration tests for multiline workflows - ⏳
