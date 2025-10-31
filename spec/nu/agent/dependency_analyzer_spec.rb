@@ -236,5 +236,123 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         expect(batches[0][2]["id"]).to eq("call_3")
       end
     end
+
+    context "with unconfined tool barriers" do
+      it "forces execute_bash into solo batch" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "execute_bash",
+              "arguments" => '{"command":"ls -la"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(1)
+        expect(batches[0][0]["id"]).to eq("call_1")
+      end
+
+      it "separates tools before execute_bash into separate batch" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => '{"file":"/path/to/file.rb"}'
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "execute_bash",
+              "arguments" => '{"command":"ls -la"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches.size).to eq(2)
+        expect(batches[0].size).to eq(1)
+        expect(batches[0][0]["id"]).to eq("call_1")
+        expect(batches[1].size).to eq(1)
+        expect(batches[1][0]["id"]).to eq("call_2")
+      end
+
+      it "separates tools after execute_bash into separate batch" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "execute_bash",
+              "arguments" => '{"command":"ls -la"}'
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => '{"file":"/path/to/file.rb"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches.size).to eq(2)
+        expect(batches[0].size).to eq(1)
+        expect(batches[0][0]["id"]).to eq("call_1")
+        expect(batches[1].size).to eq(1)
+        expect(batches[1][0]["id"]).to eq("call_2")
+      end
+
+      it "gives each execute_bash call its own solo batch" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "execute_bash",
+              "arguments" => '{"command":"ls -la"}'
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "execute_bash",
+              "arguments" => '{"command":"pwd"}'
+            }
+          },
+          {
+            "id" => "call_3",
+            "type" => "function",
+            "function" => {
+              "name" => "execute_bash",
+              "arguments" => '{"command":"date"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches.size).to eq(3)
+        expect(batches[0].size).to eq(1)
+        expect(batches[0][0]["id"]).to eq("call_1")
+        expect(batches[1].size).to eq(1)
+        expect(batches[1][0]["id"]).to eq("call_2")
+        expect(batches[2].size).to eq(1)
+        expect(batches[2][0]["id"]).to eq("call_3")
+      end
+    end
   end
 end
