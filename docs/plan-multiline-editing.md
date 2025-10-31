@@ -171,21 +171,21 @@ Each task must be tracked as:
 - ✅ Round-trip test: pos → (line, col) → pos yields same position (verified with 6 test positions)
 - ✅ All quality gates pass (tests, lint, coverage)
 
-#### Task 1.4: Add @saved_column instance variable ⏳
-**TDD Steps**:
-1. Write spec: initialize ConsoleIO → expect `@saved_column` is nil
-2. Update initialize method to set `@saved_column = nil`
-3. Run tests until green
-4. Run lint, fix any issues
-5. Run coverage check
-6. Commit: `[Phase 1.4] Add @saved_column instance variable for vertical navigation`
-7. Update this document with ✅ DONE timestamp
+#### Task 1.4: Add @saved_column instance variable ✅ DONE (2025-10-31 15:30)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: initialize ConsoleIO → expect `@saved_column` is nil
+2. ✅ Update initialize method to set `@saved_column = nil`
+3. ✅ Run tests until green (2164 examples, 0 failures)
+4. ✅ Run lint (no offenses detected)
+5. ✅ Run coverage check (98.16% line / 90.07% branch)
+6. ✅ Commit: `[Phase 1.4] Add @saved_column instance variable for vertical navigation`
+7. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Variable initialized in `initialize` method
-- Default value is nil
-- Tests verify initialization
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Variable initialized in `initialize` method
+- ✅ Default value is nil
+- ✅ Tests verify initialization
+- ✅ All quality gates pass
 
 ### Phase 2: Multiline display rendering
 **Status**: Not started
@@ -556,7 +556,7 @@ WHERE id = 1
 - Task 1.1: Add lines method - ✅ DONE (2025-10-31 15:01)
 - Task 1.2: Add get_line_and_column(pos) method - ✅ DONE (2025-10-31 15:10)
 - Task 1.3: Add get_position_from_line_column(line, col) method - ✅ DONE (2025-10-31 15:21)
-- Task 1.4: Add @saved_column instance variable - ⏳
+- Task 1.4: Add @saved_column instance variable - ✅ DONE (2025-10-31 15:30)
 
 ### Phase 2: Multiline display rendering
 - Task 2.1: Add @last_line_count instance variable - ⏳
