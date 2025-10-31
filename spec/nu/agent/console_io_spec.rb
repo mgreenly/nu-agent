@@ -247,24 +247,136 @@ RSpec.describe Nu::Agent::ConsoleIO do
   end
 
   describe "#redraw_input_line" do
-    it "clears the line and redraws prompt and buffer" do
-      console.instance_variable_set(:@input_buffer, "test")
-      console.instance_variable_set(:@cursor_pos, 4)
-      console.send(:redraw_input_line, "> ")
+    context "with single line input" do
+      it "clears the line and redraws prompt and buffer" do
+        console.instance_variable_set(:@input_buffer, "test")
+        console.instance_variable_set(:@cursor_pos, 4)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
 
-      output = stdout.string
-      expect(output).to include("\e[2K\r") # Clear line
-      expect(output).to include("> test")
+        output = stdout.string
+        expect(output).to include("\e[J") # Clear to end of screen
+        expect(output).to include("> test")
+      end
+
+      it "positions cursor correctly" do
+        console.instance_variable_set(:@input_buffer, "hello")
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Cursor should be at column 5 (prompt "> " = 2 chars, cursor_pos = 2, col = 2 + 2 + 1 = 5)
+        expect(output).to match(/\e\[5G/)
+      end
+
+      it "updates @last_line_count to 1 for single line" do
+        console.instance_variable_set(:@input_buffer, "single line")
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@last_line_count, 3) # Previous multiline
+        console.send(:redraw_input_line, "> ")
+
+        expect(console.instance_variable_get(:@last_line_count)).to eq(1)
+      end
     end
 
-    it "positions cursor correctly" do
-      console.instance_variable_set(:@input_buffer, "hello")
-      console.instance_variable_set(:@cursor_pos, 2)
-      console.send(:redraw_input_line, "> ")
+    context "with multiline input" do
+      it "displays two lines correctly" do
+        console.instance_variable_set(:@input_buffer, "line1\nline2")
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
 
-      output = stdout.string
-      # Cursor should be at column 5 (prompt "> " = 2 chars, cursor_pos = 2, col = 2 + 2 + 1 = 5)
-      expect(output).to match(/\e\[5G/)
+        output = stdout.string
+        # Should contain both lines
+        expect(output).to include("line1")
+        expect(output).to include("line2")
+      end
+
+      it "displays three lines correctly" do
+        console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        expect(output).to include("line1")
+        expect(output).to include("line2")
+        expect(output).to include("line3")
+      end
+
+      it "updates @last_line_count to match number of lines" do
+        console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        expect(console.instance_variable_get(:@last_line_count)).to eq(3)
+      end
+
+      it "positions cursor on correct line and column" do
+        # Buffer: "line1\nline2", cursor at position 6 (first char of line2)
+        console.instance_variable_set(:@input_buffer, "line1\nline2")
+        console.instance_variable_set(:@cursor_pos, 6) # First char of "line2"
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # After rendering both lines, cursor is at end of line2
+        # Target is also on line2, so no vertical movement needed
+        # Just position to column 1 (first character)
+        expect(output).to match(/\e\[1G/) # Move to column 1
+      end
+
+      it "positions cursor on second line with offset" do
+        # Buffer: "line1\nline2", cursor at position 8 (char 'n' in "line2")
+        console.instance_variable_set(:@input_buffer, "line1\nline2")
+        console.instance_variable_set(:@cursor_pos, 8)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Cursor on line 2 (where we already are), column 3 (2 chars into "line2")
+        expect(output).to match(/\e\[3G/) # Move to column 3
+      end
+
+      it "positions cursor on first line of multiline buffer" do
+        # Buffer: "line1\nline2\nline3", cursor at position 2 (in "line1")
+        console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+        console.instance_variable_set(:@cursor_pos, 2)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # After rendering 3 lines, cursor is at end of line3
+        # Need to move up 2 lines to get to line1
+        expect(output).to match(/\e\[2A/) # Move up 2 lines
+        # Position at column 5 (prompt "> " = 2 chars, cursor_pos = 2, col = 2 + 2 + 1 = 5)
+        expect(output).to match(/\e\[5G/)
+      end
+
+      it "clears previous multiline display before redrawing" do
+        # Start with 3-line display, redraw with 2 lines
+        console.instance_variable_set(:@input_buffer, "line1\nline2")
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@last_line_count, 3)
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Should move up 2 lines (3 - 1) to clear old display
+        expect(output).to match(/\e\[2A/)
+        # Should clear to end of screen
+        expect(output).to include("\e[J")
+      end
+
+      it "handles trailing newline" do
+        console.instance_variable_set(:@input_buffer, "line1\n")
+        console.instance_variable_set(:@cursor_pos, 6)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.send(:redraw_input_line, "> ")
+
+        expect(console.instance_variable_get(:@last_line_count)).to eq(2)
+      end
     end
   end
 
