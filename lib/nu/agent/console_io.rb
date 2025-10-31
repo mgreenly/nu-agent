@@ -265,6 +265,28 @@ module Nu
         [line_list.length - 1, line_list.last.length]
       end
 
+      # Convert [line_index, column_offset] to byte position
+      # Clamps line to last line and column to line length
+      # Returns position as integer
+      def get_position_from_line_column(line, col)
+        line_list = lines
+
+        # Clamp line to valid range [0, last_line]
+        line = line.clamp(0, line_list.length - 1)
+
+        # Sum lengths of all lines before target line (including their newlines)
+        pos = 0
+        line.times do |i|
+          pos += line_list[i].length + 1 # +1 for newline character
+        end
+
+        # Clamp column to target line's length
+        target_line = line_list[line]
+        col = col.clamp(0, target_line.length)
+
+        pos + col
+      end
+
       def log_state_transition(old_state, new_state)
         old_name = old_state.name
         new_name = new_state.name

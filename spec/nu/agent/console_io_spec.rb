@@ -1528,4 +1528,71 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(result).to eq([0, 5])
     end
   end
+
+  describe "#get_position_from_line_column" do
+    it "returns 0 for line=0, col=0 on 'hello'" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_position_from_line_column, 0, 0)
+      expect(result).to eq(0)
+    end
+
+    it "returns 3 for line=0, col=3 on 'hello'" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_position_from_line_column, 0, 3)
+      expect(result).to eq(3)
+    end
+
+    it "returns 6 for line=1, col=0 on 'line1\\nline2'" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:get_position_from_line_column, 1, 0)
+      expect(result).to eq(6)
+    end
+
+    it "returns 11 for line=1, col=5 on 'line1\\nline2'" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:get_position_from_line_column, 1, 5)
+      expect(result).to eq(11)
+    end
+
+    it "clamps column beyond line length to end of line" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:get_position_from_line_column, 0, 100)
+      expect(result).to eq(5)
+    end
+
+    it "clamps line beyond buffer to last line" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:get_position_from_line_column, 100, 0)
+      expect(result).to eq(6)
+    end
+
+    it "handles empty buffer" do
+      console.instance_variable_set(:@input_buffer, String.new(""))
+      result = console.send(:get_position_from_line_column, 0, 0)
+      expect(result).to eq(0)
+    end
+
+    it "round-trips with get_line_and_column for various positions" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+
+      # Test several positions
+      [0, 3, 6, 8, 12, 17].each do |pos|
+        line, col = console.send(:get_line_and_column, pos)
+        result = console.send(:get_position_from_line_column, line, col)
+        expect(result).to eq(pos), "Expected position #{pos} to round-trip, got #{result} for (#{line}, #{col})"
+      end
+    end
+
+    it "handles position at end of multiline buffer" do
+      console.instance_variable_set(:@input_buffer, String.new("a\nb\nc"))
+      result = console.send(:get_position_from_line_column, 2, 1)
+      expect(result).to eq(5)
+    end
+
+    it "handles buffer with trailing newline" do
+      console.instance_variable_set(:@input_buffer, String.new("line\n"))
+      result = console.send(:get_position_from_line_column, 1, 0)
+      expect(result).to eq(5)
+    end
+  end
 end
