@@ -43,7 +43,8 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
       puts: nil,
       show_spinner: nil,
       hide_spinner: nil,
-      close: nil
+      close: nil,
+      :debug= => nil
     )
   end
 

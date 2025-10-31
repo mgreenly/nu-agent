@@ -14,6 +14,7 @@ RSpec.describe Nu::Agent::Commands::DebugCommand do
     allow(application).to receive_messages(history: history, formatter: formatter, console: console)
     allow(application).to receive(:debug=)
     allow(formatter).to receive(:debug=)
+    allow(console).to receive(:debug=)
     allow(history).to receive(:set_config)
     allow(console).to receive(:puts)
   end
