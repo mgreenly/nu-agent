@@ -290,22 +290,22 @@ Each task must be tracked as:
 - ✅ Existing single-line tests updated to use new submit key (Ctrl+J)
 - ✅ All quality gates pass (tests, lint, coverage)
 
-#### Task 3.2: Make Ctrl+J submit input ⏳
-**TDD Steps**:
-1. Write spec: pressing Ctrl+J (\n) → expect :submit action
-2. Write spec: multiline content submitted with embedded \n characters
-3. Update parse_input: when "\n" → return :submit
-4. Run tests until green
-5. Run lint, fix any issues
-6. Run coverage check
-7. Commit: `[Phase 3.2] Make Ctrl+J submit multiline input`
-8. Update this document with ✅ DONE timestamp
+#### Task 3.2: Make Ctrl+J submit input ✅ DONE (2025-10-31 16:29)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: pressing Ctrl+J (\n) → expect :submit action
+2. ✅ Write spec: multiline content submitted with embedded \n characters
+3. ✅ Update parse_input: when "\n" → return :submit (already implemented in Task 3.1)
+4. ✅ Run tests until green (2186 examples, 0 failures)
+5. ✅ Run lint, fix any issues (no offenses detected)
+6. ✅ Run coverage check (98.17% line / 90.17% branch)
+7. ✅ Commit: `[Phase 3.2] Make Ctrl+J submit multiline input`
+8. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Ctrl+J (\n) returns :submit
-- Multiline content preserved in submission
-- Empty buffer can be submitted
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Ctrl+J (\n) returns :submit
+- ✅ Multiline content preserved in submission
+- ✅ Empty buffer can be submitted
+- ✅ All quality gates pass
 
 #### Task 3.3: Add Ctrl+Enter detection (optional) ⏳
 **TDD Steps**:
@@ -568,7 +568,7 @@ WHERE id = 1
 
 ### Phase 3: Submit key handling
 - Task 3.1: Update parse_input to make Enter insert newline - ✅ DONE (2025-10-31 16:21)
-- Task 3.2: Make Ctrl+J submit input - ⏳
+- Task 3.2: Make Ctrl+J submit input - ✅ DONE (2025-10-31 16:29)
 - Task 3.3: Add Ctrl+Enter detection (optional) - ⏳
 
 ### Phase 4: Up/Down navigation logic
