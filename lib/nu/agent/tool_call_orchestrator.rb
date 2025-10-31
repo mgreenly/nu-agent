@@ -101,14 +101,20 @@ module Nu
         add_assistant_message_to_list(messages, response)
 
         # Analyze dependencies and batch tool calls
+        tool_call_count = response["tool_calls"].length
+        output_debug("[DEBUG] Analyzing #{tool_call_count} tool calls for dependencies...", verbosity: 1)
+
         batches = @dependency_analyzer.analyze(response["tool_calls"])
+
+        # Output batch planning summary
+        output_batch_summary(batches, tool_call_count)
 
         # Execute batches sequentially, but tools within each batch run in parallel
         batches.each_with_index do |batch, batch_index|
           batch_number = batch_index + 1 # Batch numbers start at 1 for display
 
           # Display tool call requests with batch/thread info
-          if @application&.respond_to?(:debug) && @application.debug
+          if @application.respond_to?(:debug) && @application.debug
             batch.each_with_index do |tool_call, index|
               thread_number = index + 1
               display_tool_call_with_context(
@@ -135,7 +141,7 @@ module Nu
             save_tool_result_message(tool_call, tool_result_data)
 
             # Display tool result with batch/thread info if debug enabled
-            if @application&.respond_to?(:debug) && @application.debug && batch && thread
+            if @application.respond_to?(:debug) && @application.debug && batch && thread
               display_tool_result_with_context(tool_result_data, batch: batch, thread: thread)
             else
               display_tool_result_message(tool_result_data)
@@ -247,6 +253,65 @@ module Nu
             "result" => result
           }
         }
+      end
+
+      # Output debug message with verbosity check
+      def output_debug(message, verbosity: 1)
+        return unless @application.respond_to?(:debug) && @application.debug
+        return unless @application.respond_to?(:verbosity) && @application.verbosity >= verbosity
+
+        @application.output_line(message, type: :debug)
+      end
+
+      # Output batch planning summary
+      def output_batch_summary(batches, tool_call_count)
+        return unless @application.respond_to?(:debug) && @application.debug
+        return unless @application.respond_to?(:verbosity) && @application.verbosity >= 1
+
+        batch_count = batches.length
+        @application.output_line(
+          "[DEBUG] Created #{batch_count} batch#{unless batch_count == 1
+                                                   'es'
+                                                 end} from #{tool_call_count} tool call#{unless tool_call_count == 1
+                                                                                           's'
+                                                                                         end}", type: :debug
+        )
+
+        # Show detailed batch information at verbosity 2+
+        return unless @application.verbosity >= 2
+
+        batches.each_with_index do |batch, index|
+          batch_number = index + 1
+          tool_counts = count_tools_in_batch(batch)
+          tool_summary = tool_counts.map { |name, count| "#{name} x#{count}" }.join(", ")
+          batch_type = if batch.length == 1 && barrier_tool?(batch.first)
+                         "BARRIER (runs alone)"
+                       else
+                         "parallel execution"
+                       end
+          @application.output_line(
+            "[DEBUG] Batch #{batch_number}: #{batch.length} tool#{unless batch.length == 1
+                                                                    's'
+                                                                  end} (#{tool_summary}) - #{batch_type}", type: :debug
+          )
+        end
+      end
+
+      # Count occurrences of each tool in a batch
+      def count_tools_in_batch(batch)
+        counts = Hash.new(0)
+        batch.each do |tool_call|
+          counts[tool_call["name"]] += 1
+        end
+        counts
+      end
+
+      # Check if a tool is a barrier tool (unconfined write)
+      def barrier_tool?(tool_call)
+        metadata = @tool_registry.metadata_for(tool_call["name"])
+        return false unless metadata
+
+        metadata[:operation_type] == :write && metadata[:scope] == :unconfined
       end
     end
   end

@@ -77,6 +77,11 @@ module Nu
       #   Results are in the same order as input tool_calls, regardless of completion order
       #   If batch_number provided, includes :batch and :thread keys for observability
       def execute_batch(tool_calls, batch_number: nil)
+        # Output batch execution start message
+        output_batch_start(tool_calls, batch_number) if batch_number
+
+        start_time = Time.now
+
         # Create threads for parallel execution
         # Each thread tracks its original index to enable result ordering
         # If batch_number provided, also track thread number for visibility
@@ -99,6 +104,10 @@ module Nu
         # Wait for all threads to complete and collect their return values
         # Thread#value blocks until the thread completes and returns its final value
         results_with_index = threads.map(&:value)
+
+        # Output batch execution complete message with timing
+        elapsed = Time.now - start_time
+        output_batch_complete(tool_calls, batch_number, elapsed) if batch_number
 
         # Sort by original index to maintain order, then strip the index field
         # This ensures results match the order of input tool_calls
@@ -162,6 +171,62 @@ module Nu
         context["model"] = @client.model if @client
         context["application"] = @application if @application
         context
+      end
+
+      # Output batch execution start message
+      #
+      # Outputs a debug message indicating that a batch is starting execution.
+      # Only outputs if application has debug mode and verbosity level 2 or higher.
+      #
+      # @param tool_calls [Array<Hash>] Array of tool calls in the batch
+      # @param batch_number [Integer] Batch number for display
+      def output_batch_start(tool_calls, batch_number)
+        return unless @application.respond_to?(:debug) && @application.debug
+        return unless @application.respond_to?(:verbosity) && @application.verbosity >= 2
+
+        tool_count = tool_calls.length
+        thread_text = tool_count == 1 ? "thread" : "parallel threads"
+        @application.output_line(
+          "[DEBUG] Executing batch #{batch_number}: #{tool_count} tool#{unless tool_count == 1
+                                                                          's'
+                                                                        end} in #{thread_text}", type: :debug
+        )
+      end
+
+      # Output batch execution complete message with timing
+      #
+      # Outputs a debug message indicating that a batch has completed execution,
+      # including the elapsed time. Only outputs if application has debug mode
+      # and verbosity level 2 or higher.
+      #
+      # @param tool_calls [Array<Hash>] Array of tool calls that were executed
+      # @param batch_number [Integer] Batch number for display
+      # @param elapsed [Float] Elapsed time in seconds
+      def output_batch_complete(tool_calls, batch_number, elapsed)
+        return unless @application.respond_to?(:debug) && @application.debug
+        return unless @application.respond_to?(:verbosity) && @application.verbosity >= 2
+
+        tool_count = tool_calls.length
+        elapsed_str = format_elapsed_time(elapsed)
+        @application.output_line(
+          "[DEBUG] Batch #{batch_number} complete: #{tool_count}/#{tool_count} tools in #{elapsed_str}", type: :debug
+        )
+      end
+
+      # Format elapsed time for display
+      #
+      # Formats elapsed time in either milliseconds or seconds depending on magnitude.
+      # - Less than 1 second: shows in milliseconds (e.g., "350ms")
+      # - 1 second or more: shows in seconds with 2 decimal places (e.g., "1.23s")
+      #
+      # @param elapsed [Float] Elapsed time in seconds
+      # @return [String] Formatted elapsed time string
+      def format_elapsed_time(elapsed)
+        if elapsed < 1.0
+          "#{(elapsed * 1000).round}ms"
+        else
+          "#{format('%.2f', elapsed)}s"
+        end
       end
     end
   end
