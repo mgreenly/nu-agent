@@ -379,7 +379,7 @@ Deliverables:
 Phase 3: Update debug output to use subsystem verbosity (2 hrs)
 Goal: Refactor all debug output to use subsystem-specific verbosity checks.
 
-Step 3.1: Create subsystem debugger module
+Step 3.1: Create subsystem debugger module ✓ COMPLETED
 File: `lib/nu/agent/subsystem_debugger.rb`
 
 ```ruby
@@ -417,7 +417,7 @@ end
 
 Spec: `spec/nu/agent/subsystem_debugger_spec.rb`
 
-Step 3.2: Update LLM request formatter
+Step 3.2: Update LLM request formatter ✓ COMPLETED
 File: `lib/nu/agent/formatters/llm_request_formatter.rb`
 
 Replace current verbosity checks with:
