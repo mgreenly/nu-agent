@@ -601,6 +601,175 @@ end
 
 ---
 
+### Phase 9.5: Add Debug Output for Parallel Execution Observability
+
+**Objective**: Add batch/thread visibility to tool call output to make parallel execution observable during manual testing.
+
+**Rationale**:
+Without visibility into batching and threading, it's impossible to verify that parallel execution is working correctly. The current implementation provides no feedback about:
+- How many batches were created from tool calls
+- Which tools are in each batch
+- Whether tools are running in parallel (multiple threads)
+- Individual tool execution timing
+
+**Design**: Enhance existing tool call output with batch/thread information instead of adding separate debug messages.
+
+**Output Format Examples**:
+
+**Single batch with 22 parallel tools (all independent reads):**
+```
+[DEBUG] Analyzing 22 tool calls for dependencies...
+[DEBUG] Created 1 batch from 22 tool calls
+[DEBUG] Batch 1: 22 tools (file_read x22) - parallel execution
+[DEBUG] Executing batch 1: 22 tools in parallel threads
+
+[Tool Call Request] (Batch 1/Thread 1) file_read (1/22)
+  file: docs/README.md
+[Tool Call Request] (Batch 1/Thread 2) file_read (2/22)
+  file: docs/architecture-analysis.md
+[Tool Call Request] (Batch 1/Thread 3) file_read (3/22)
+  file: docs/design-diagram.md
+... [all 22 requests appear rapidly] ...
+
+[Tool Use Response] (Batch 1/Thread 5) file_read
+  file: docs/design-rag-implementation.md
+  total_lines: 2365
+  lines_read: 1
+[Tool Use Response] (Batch 1/Thread 1) file_read
+  file: docs/README.md
+  total_lines: 61
+  lines_read: 1
+... [responses appear out-of-order as threads complete] ...
+
+[DEBUG] Batch 1 complete: 22/22 tools in 0.35s
+```
+
+**Multiple batches with barrier (sequential execution):**
+```
+[DEBUG] Analyzing 5 tool calls for dependencies...
+[DEBUG] Created 3 batches from 5 tool calls
+[DEBUG] Batch 1: 2 tools (file_read x2) - parallel execution
+[DEBUG] Batch 2: 1 tool (execute_bash) - BARRIER (runs alone)
+[DEBUG] Batch 3: 2 tools (file_read x2) - parallel execution
+
+[DEBUG] Executing batch 1: 2 tools in parallel threads
+[Tool Call Request] (Batch 1/Thread 1) file_read (1/5)
+[Tool Call Request] (Batch 1/Thread 2) file_read (2/5)
+[Tool Use Response] (Batch 1/Thread 1) file_read
+[Tool Use Response] (Batch 1/Thread 2) file_read
+[DEBUG] Batch 1 complete: 2/2 tools in 0.15s
+
+[DEBUG] Executing batch 2: 1 tool (barrier)
+[Tool Call Request] (Batch 2/Thread 1) execute_bash (3/5)
+[Tool Use Response] (Batch 2/Thread 1) execute_bash
+[DEBUG] Batch 2 complete: 1/1 tools in 0.82s
+
+[DEBUG] Executing batch 3: 2 tools in parallel threads
+[Tool Call Request] (Batch 3/Thread 1) file_read (4/5)
+[Tool Call Request] (Batch 3/Thread 2) file_read (5/5)
+[Tool Use Response] (Batch 3/Thread 1) file_read
+[Tool Use Response] (Batch 3/Thread 2) file_read
+[DEBUG] Batch 3 complete: 2/2 tools in 0.14s
+```
+
+**Sequential execution (no batching needed):**
+```
+[Tool Call Request] file_read
+  file: docs/README.md
+[Tool Use Response] file_read
+  file: docs/README.md
+```
+(No batch/thread indicator shown when only one tool or all sequential)
+
+**Key Observable Indicators**:
+- ✅ Batch/thread numbers show which tools run together
+- ✅ Multiple `[Tool Call Request]` messages appearing rapidly = parallel start
+- ✅ `[Tool Use Response]` messages appearing out-of-order = parallel completion
+- ✅ Thread numbers in responses match their requests
+- ✅ Batch timing shows performance benefit
+
+**Verbosity Levels**:
+- **Verbosity 0**: No batch debug output, but batch/thread indicators still shown on tool messages
+- **Verbosity 1**: Batch summary only ("Created 3 batches from 5 tool calls")
+- **Verbosity 2**: Batch details + timing ("Batch 1 complete: 22/22 tools in 0.35s")
+- **Verbosity 3**: Full details including dependency reasoning
+
+**Implementation Changes**:
+
+1. **ToolCallFormatter** (`lib/nu/agent/formatters/tool_call_formatter.rb`):
+   - Modify `#display` to accept optional `batch:` and `thread:` parameters
+   - Update `#display_header` to include "(Batch N/Thread M)" when present
+   - Format: `[Tool Call Request] (Batch 1/Thread 3) file_read (5/22)`
+
+2. **ToolResultFormatter** (`lib/nu/agent/formatters/tool_result_formatter.rb`):
+   - Modify `#display` to accept tool call context with batch/thread info
+   - Update `#display_header` to include "(Batch N/Thread M)" when present
+   - Format: `[Tool Use Response] (Batch 1/Thread 3) file_read`
+
+3. **ParallelExecutor** (`lib/nu/agent/parallel_executor.rb`):
+   - Track current batch number (passed from orchestrator)
+   - Assign thread number (1, 2, 3...) to each thread in batch
+   - Include batch/thread in result_data: `{ batch: 1, thread: 3, tool_call: ..., result: ... }`
+   - Add batch execution output: "Executing batch N: M tools in parallel threads"
+   - Add batch completion output with timing: "Batch N complete: M/M tools in 0.35s"
+
+4. **DependencyAnalyzer** (`lib/nu/agent/dependency_analyzer.rb`):
+   - Add batch planning output (requires application reference)
+   - Output: "Analyzing N tool calls for dependencies..."
+   - Output: "Created M batches from N tool calls"
+   - Output per batch: "Batch 1: 3 tools (file_read x3) - parallel execution"
+   - Output barriers: "Batch 2: 1 tool (execute_bash) - BARRIER (runs alone)"
+
+5. **ToolCallOrchestrator** (`lib/nu/agent/tool_call_orchestrator.rb`):
+   - Pass batch number to ParallelExecutor when executing each batch
+   - Pass batch/thread info to formatters when displaying tool calls/results
+   - Extract batch/thread from result_data and pass to display methods
+
+**TDD Steps**:
+
+1. **RED**: Write failing specs for batch/thread visibility
+   - Test ToolCallFormatter includes "(Batch N/Thread M)" when provided
+   - Test ToolCallFormatter excludes batch/thread when not provided
+   - Test ToolResultFormatter includes "(Batch N/Thread M)" when provided
+   - Test ParallelExecutor includes batch/thread in result_data
+   - Test DependencyAnalyzer outputs batch planning (with mock application)
+   - Test ParallelExecutor outputs batch execution timing
+   - Commit: "Add failing specs for batch/thread visibility"
+
+2. **GREEN**: Implement batch/thread visibility
+   - Modify ToolCallFormatter to accept and display batch/thread
+   - Modify ToolResultFormatter to accept and display batch/thread
+   - Modify ParallelExecutor to track and pass batch/thread numbers
+   - Add batch planning output to DependencyAnalyzer
+   - Add batch execution timing to ParallelExecutor
+   - Update ToolCallOrchestrator to pass batch numbers and extract batch/thread info
+   - Run tests until green
+   - Commit: "Add batch/thread visibility to parallel execution"
+
+3. **REFACTOR**: Polish output formatting
+   - Format batch/thread consistently: "(Batch 1/Thread 3)"
+   - Ensure thread-safe output doesn't corrupt
+   - Add verbosity level controls for batch debug output
+   - Format timing appropriately (ms for <1s, s for ≥1s)
+   - Run full test suite + coverage
+   - Commit: "Polish batch/thread visibility formatting"
+
+**Acceptance Criteria**:
+- [ ] Tool call messages include "(Batch N/Thread M)" when executing in parallel
+- [ ] No batch/thread shown when tool executes alone or sequentially
+- [ ] Batch/thread numbers match between request and response
+- [ ] Batch planning output shows dependency analysis (verbosity ≥1)
+- [ ] Batch execution timing shows performance (verbosity ≥2)
+- [ ] Parallel execution is visually obvious from output
+- [ ] All existing tests still pass
+- [ ] Zero rubocop violations
+
+**Status**: 🔲 NOT STARTED
+
+**Estimated Commits**: 3
+
+---
+
 ### Phase 9: Manual Testing with Real API
 
 **Objective**: Verify parallel tool execution works correctly in production with real API calls from Anthropic/OpenAI.
