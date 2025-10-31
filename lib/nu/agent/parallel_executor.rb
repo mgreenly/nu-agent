@@ -13,13 +13,26 @@ module Nu
         @application = application
       end
 
-      # Execute a batch of tool calls and return results
+      # Execute a batch of tool calls in parallel and return results
       # @param tool_calls [Array<Hash>] Array of tool call hashes
       # @return [Array<Hash>] Array of results with format: { tool_call: ..., result: ... }
       def execute_batch(tool_calls)
-        tool_calls.map do |tool_call|
-          result = execute_tool(tool_call)
-          { tool_call: tool_call, result: result }
+        # Create threads for parallel execution
+        threads = []
+        tool_calls.each_with_index do |tool_call, index|
+          thread = Thread.new do
+            result = execute_tool(tool_call)
+            { index: index, tool_call: tool_call, result: result }
+          end
+          threads << thread
+        end
+
+        # Wait for all threads to complete
+        results_with_index = threads.map(&:value)
+
+        # Sort by original index to maintain order
+        results_with_index.sort_by { |r| r[:index] }.map do |r|
+          { tool_call: r[:tool_call], result: r[:result] }
         end
       end
 
