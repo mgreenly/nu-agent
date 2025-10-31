@@ -89,13 +89,22 @@ module Nu
         tool_calls.each_with_index do |tool_call, index|
           thread_number = index + 1 # Thread numbers start at 1 for display
           thread = Thread.new do
+            # Track tool execution timing
+            tool_start_time = Time.now
             result = execute_tool_with_error_handling(tool_call)
+            tool_end_time = Time.now
+            duration = tool_end_time - tool_start_time
+
             result_data = { index: index, tool_call: tool_call, result: result }
             # Add batch/thread info if batch_number provided
             if batch_number
               result_data[:batch] = batch_number
               result_data[:thread] = thread_number
             end
+            # Add timing info (always include for observability)
+            result_data[:start_time] = tool_start_time
+            result_data[:end_time] = tool_end_time
+            result_data[:duration] = duration
             result_data
           end
           threads << thread
@@ -116,6 +125,10 @@ module Nu
           # Preserve batch/thread info if present
           result[:batch] = r[:batch] if r[:batch]
           result[:thread] = r[:thread] if r[:thread]
+          # Preserve timing info (always include for observability)
+          result[:start_time] = r[:start_time]
+          result[:end_time] = r[:end_time]
+          result[:duration] = r[:duration]
           result
         end
       end

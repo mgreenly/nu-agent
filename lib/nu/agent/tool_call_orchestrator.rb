@@ -136,13 +136,21 @@ module Nu
             result = result_data[:result]
             batch = result_data[:batch]
             thread = result_data[:thread]
+            start_time = result_data[:start_time]
+            duration = result_data[:duration]
             tool_result_data = build_tool_result_data(tool_call, result)
 
             save_tool_result_message(tool_call, tool_result_data)
 
-            # Display tool result with batch/thread info if debug enabled
+            # Display tool result with batch/thread/timing info if debug enabled
             if @application.respond_to?(:debug) && @application.debug && batch && thread
-              display_tool_result_with_context(tool_result_data, batch: batch, thread: thread)
+              display_tool_result_with_context(
+                tool_result_data,
+                batch: batch,
+                thread: thread,
+                start_time: start_time,
+                duration: duration
+              )
             else
               display_tool_result_message(tool_result_data)
             end
@@ -161,13 +169,19 @@ module Nu
         tool_call_formatter.display(tool_call, batch: batch, thread: thread, index: index, total: total)
       end
 
-      def display_tool_result_with_context(tool_result_data, batch:, thread:)
+      def display_tool_result_with_context(tool_result_data, batch:, thread:, start_time: nil, duration: nil)
         tool_result_formatter = @formatter.instance_variable_get(:@tool_result_formatter)
         # Build message structure expected by formatter
         message = {
           "tool_result" => tool_result_data
         }
-        tool_result_formatter.display(message, batch: batch, thread: thread)
+        tool_result_formatter.display(
+          message,
+          batch: batch,
+          thread: thread,
+          start_time: start_time,
+          duration: duration
+        )
       end
 
       def save_tool_call_message(response)
