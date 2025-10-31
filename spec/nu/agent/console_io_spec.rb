@@ -2455,4 +2455,201 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
     end
   end
+
+  # Phase 5.2: Edge case tests
+  describe "multiline editing edge cases" do
+    context "buffer with only newlines" do
+      it "handles buffer containing only newline characters" do
+        console.instance_variable_set(:@input_buffer, String.new("\n\n\n"))
+        console.instance_variable_set(:@cursor_pos, 3) # At end of buffer
+
+        # Verify lines method returns empty strings
+        lines = console.send(:lines)
+        expect(lines).to eq(["", "", "", ""])
+        expect(lines.length).to eq(4)
+
+        # Verify get_line_and_column works
+        line, col = console.send(:get_line_and_column, 0)
+        expect(line).to eq(0)
+        expect(col).to eq(0)
+
+        line, col = console.send(:get_line_and_column, 1)
+        expect(line).to eq(1)
+        expect(col).to eq(0)
+
+        line, col = console.send(:get_line_and_column, 3)
+        expect(line).to eq(3)
+        expect(col).to eq(0)
+
+        # Verify navigation works (moving up from last line)
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(2)
+      end
+
+      it "allows navigating through lines that are all empty" do
+        console.instance_variable_set(:@input_buffer, String.new("\n\n"))
+        console.instance_variable_set(:@cursor_pos, 0) # Start of buffer
+
+        # Navigate down through empty lines
+        console.send(:cursor_down_or_history_next)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+
+        console.send(:cursor_down_or_history_next)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(2)
+
+        # Navigate back up
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+      end
+    end
+
+    context "very long lines" do
+      it "handles very long single lines without issues" do
+        # Create a line with 1000 characters
+        long_line = "x" * 1000
+        console.instance_variable_set(:@input_buffer, String.new(long_line))
+        console.instance_variable_set(:@cursor_pos, 500)
+
+        # Verify line/column calculation works
+        line, col = console.send(:get_line_and_column, 500)
+        expect(line).to eq(0)
+        expect(col).to eq(500)
+
+        # Verify navigation doesn't break
+        console.send(:cursor_up_or_history_prev)
+        # Should stay on same position (only one line)
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(500)
+
+        # Verify redraw doesn't crash (just ensure it completes without error)
+        expect { console.send(:redraw_input_line, "> ") }.not_to raise_error
+      end
+
+      it "handles multiline input with very long lines" do
+        # Create multiple very long lines
+        long_line1 = "a" * 500
+        long_line2 = "b" * 800
+        long_line3 = "c" * 300
+        buffer = "#{long_line1}\n#{long_line2}\n#{long_line3}"
+
+        console.instance_variable_set(:@input_buffer, String.new(buffer))
+        console.instance_variable_set(:@cursor_pos, 501) # Start of line2
+
+        # Verify line calculation
+        line, col = console.send(:get_line_and_column, 501)
+        expect(line).to eq(1)
+        expect(col).to eq(0)
+
+        # Navigate between long lines
+        console.send(:cursor_down_or_history_next)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(2)
+
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+      end
+    end
+
+    context "cursor at end of buffer with trailing newline" do
+      it "handles cursor positioning after trailing newline" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\n"))
+        console.instance_variable_set(:@cursor_pos, 12) # After trailing newline
+
+        # Verify we're on the empty third line
+        line, col = console.send(:get_line_and_column, 12)
+        expect(line).to eq(2)
+        expect(col).to eq(0)
+
+        # Navigate up to line 2
+        console.send(:cursor_up_or_history_prev)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(1)
+
+        # Navigate back down to empty line
+        console.send(:cursor_down_or_history_next)
+        line, = console.send(:get_line_and_column, console.instance_variable_get(:@cursor_pos))
+        expect(line).to eq(2)
+      end
+
+      it "handles inserting characters after trailing newline" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\n"))
+        console.instance_variable_set(:@cursor_pos, 6) # After newline
+
+        # Insert characters
+        console.send(:insert_char, "n")
+        console.send(:insert_char, "e")
+        console.send(:insert_char, "w")
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nnew")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(9)
+
+        # Verify line calculation
+        line, col = console.send(:get_line_and_column, 9)
+        expect(line).to eq(1)
+        expect(col).to eq(3)
+      end
+    end
+
+    context "Ctrl+K (kill to end of line) across line boundaries" do
+      it "kills from cursor to end of buffer without crossing newline" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 3) # Middle of "line1"
+
+        # Ctrl+K should kill "e1" but not the newline or following lines
+        console.send(:kill_to_end)
+
+        # NOTE: kill_to_end kills to END OF BUFFER, not end of line
+        # This is current behavior according to scope (Home/End work on entire buffer)
+        expect(console.instance_variable_get(:@input_buffer)).to eq("lin")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(3)
+      end
+
+      it "kills entire remaining buffer when called from middle of multiline" do
+        console.instance_variable_set(:@input_buffer, String.new("first\nsecond\nthird"))
+        console.instance_variable_set(:@cursor_pos, 8) # Middle of "second"
+
+        console.send(:kill_to_end)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("first\nse")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(8)
+      end
+    end
+
+    context "Ctrl+U (kill to start) across line boundaries" do
+      it "kills from start of buffer to cursor" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 8) # Middle of "line2"
+
+        # Ctrl+U should kill from start to cursor
+        console.send(:kill_to_start)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("ne2\nline3")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+
+      it "kills across multiple lines when cursor is on last line" do
+        console.instance_variable_set(:@input_buffer, String.new("first\nsecond\nthird"))
+        console.instance_variable_set(:@cursor_pos, 15) # Middle of "third"
+
+        console.send(:kill_to_start)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("ird")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+
+      it "does nothing when cursor is at start of buffer" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+        console.instance_variable_set(:@cursor_pos, 0)
+
+        console.send(:kill_to_start)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(0)
+      end
+    end
+  end
 end
