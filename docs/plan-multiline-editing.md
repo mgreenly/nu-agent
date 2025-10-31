@@ -273,22 +273,22 @@ Each task must be tracked as:
 **Goal**: Change Enter to insert newline, add submit keys.
 **File**: `lib/nu/agent/console_io.rb`
 
-#### Task 3.1: Update parse_input to make Enter insert newline ⏳
-**TDD Steps**:
-1. Write spec: pressing Enter (\r) → expect :newline action (not :submit)
-2. Write spec: verify \n character inserted into buffer
-3. Update parse_input: when "\r" → call insert_char("\n")
-4. Run tests until green
-5. Run lint, fix any issues
-6. Run coverage check
-7. Commit: `[Phase 3.1] Change Enter key to insert newline instead of submit`
-8. Update this document with ✅ DONE timestamp
+#### Task 3.1: Update parse_input to make Enter insert newline ✅ DONE (2025-10-31 16:21)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: pressing Enter (\r) → expect :newline action (not :submit)
+2. ✅ Write spec: verify \n character inserted into buffer
+3. ✅ Update parse_input: when "\r" → call insert_char("\n")
+4. ✅ Run tests until green (2183 examples, 0 failures)
+5. ✅ Run lint, fix any issues (no offenses detected)
+6. ✅ Run coverage check (98.17% line / 90.17% branch)
+7. ✅ Commit: `[Phase 3.1] Change Enter key to insert newline instead of submit`
+8. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Enter (\r) inserts newline character
-- Does NOT return :submit
-- Existing single-line tests updated to use new submit key
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Enter (\r) inserts newline character
+- ✅ Does NOT return :submit
+- ✅ Existing single-line tests updated to use new submit key (Ctrl+J)
+- ✅ All quality gates pass (tests, lint, coverage)
 
 #### Task 3.2: Make Ctrl+J submit input ⏳
 **TDD Steps**:
@@ -567,7 +567,7 @@ WHERE id = 1
 - Task 2.4: Update handle_output_for_input_mode for multiline - ✅ DONE (2025-10-31 16:08)
 
 ### Phase 3: Submit key handling
-- Task 3.1: Update parse_input to make Enter insert newline - ⏳
+- Task 3.1: Update parse_input to make Enter insert newline - ✅ DONE (2025-10-31 16:21)
 - Task 3.2: Make Ctrl+J submit input - ⏳
 - Task 3.3: Add Ctrl+Enter detection (optional) - ⏳
 
