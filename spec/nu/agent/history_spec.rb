@@ -1462,4 +1462,76 @@ RSpec.describe Nu::Agent::History do
       end
     end
   end
+
+  describe "concurrent writes" do
+    it "handles concurrent add_message calls safely" do
+      conversation_id = history.create_conversation
+
+      # Create 5 threads that each add 10 messages
+      num_threads = 5
+      messages_per_thread = 10
+      message_ids = []
+      mutex = Mutex.new
+
+      threads = num_threads.times.map do |thread_num|
+        Thread.new do
+          messages_per_thread.times do |msg_num|
+            content = "Thread #{thread_num}, Message #{msg_num}"
+            id = history.add_message(
+              conversation_id: conversation_id,
+              actor: "test",
+              role: "user",
+              content: content
+            )
+            mutex.synchronize { message_ids << id }
+          end
+        end
+      end
+
+      threads.each(&:join)
+
+      # Verify all messages were added
+      expect(message_ids.length).to eq(num_threads * messages_per_thread)
+
+      # Verify all IDs are unique
+      expect(message_ids.uniq.length).to eq(message_ids.length)
+
+      # Verify all messages can be retrieved
+      messages = history.messages(conversation_id: conversation_id, include_in_context_only: false)
+      expect(messages.length).to eq(num_threads * messages_per_thread)
+
+      # Verify message contents are correct
+      content_counts = messages.group_by { |m| m["content"].match(/Thread (\d+)/)[1] }
+      expect(content_counts.keys.length).to eq(num_threads)
+      content_counts.each do |_thread_num, msgs|
+        expect(msgs.length).to eq(messages_per_thread)
+      end
+    end
+
+    it "handles concurrent writes with transactions" do
+      conversation_id = history.create_conversation
+
+      # Create threads that add messages within transactions
+      threads = 3.times.map do |thread_num|
+        Thread.new do
+          history.transaction do
+            5.times do |msg_num|
+              history.add_message(
+                conversation_id: conversation_id,
+                actor: "test",
+                role: "user",
+                content: "Transaction #{thread_num}, Message #{msg_num}"
+              )
+            end
+          end
+        end
+      end
+
+      threads.each(&:join)
+
+      # Verify all messages were added correctly
+      messages = history.messages(conversation_id: conversation_id, include_in_context_only: false)
+      expect(messages.length).to eq(15)
+    end
+  end
 end
