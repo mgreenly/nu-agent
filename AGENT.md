@@ -2,6 +2,7 @@
 
 ## Project Management
 - Use GitHub Issues to track enhancement plans and feature requests
+- Include NO attribution lines in the commit messages, only the signing committer is relavent.
 
 ## TDD: Red → Green → Refactor
 1. Write failing test first
