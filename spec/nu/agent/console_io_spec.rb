@@ -22,6 +22,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       c.instance_variable_set(:@saved_input, String.new(""))
       c.instance_variable_set(:@kill_ring, String.new(""))
       c.instance_variable_set(:@saved_column, nil)
+      c.instance_variable_set(:@last_line_count, 1)
       c.instance_variable_set(:@spinner_state, Nu::Agent::SpinnerState.new)
       c.instance_variable_set(:@spinner_frames, ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
     end
@@ -45,6 +46,11 @@ RSpec.describe Nu::Agent::ConsoleIO do
     it "initializes @saved_column to nil" do
       saved_column = console.instance_variable_get(:@saved_column)
       expect(saved_column).to be_nil
+    end
+
+    it "initializes @last_line_count to 1" do
+      last_line_count = console.instance_variable_get(:@last_line_count)
+      expect(last_line_count).to eq(1)
     end
   end
 
