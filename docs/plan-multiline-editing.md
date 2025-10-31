@@ -435,24 +435,24 @@ Each task must be tracked as:
 - ✅ All integration tests pass
 - ✅ All quality gates pass
 
-#### Task 5.2: Add edge case tests ⏳
-**TDD Steps**:
-1. Write spec: buffer with only newlines "\n\n\n"
-2. Write spec: very long lines (test no terminal width issues)
-3. Write spec: cursor at end of buffer with trailing newline
-4. Write spec: Ctrl+K across line boundaries
-5. Write spec: Ctrl+U across line boundaries
-6. Implement fixes for any failures
-7. Run tests until green
-8. Run lint, fix any issues
-9. Run coverage check
-10. Commit: `[Phase 5.2] Add edge case tests and fixes`
-11. Update this document with ✅ DONE timestamp
+#### Task 5.2: Add edge case tests ✅ DONE (2025-10-31 18:09)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: buffer with only newlines "\n\n\n"
+2. ✅ Write spec: very long lines (test no terminal width issues)
+3. ✅ Write spec: cursor at end of buffer with trailing newline
+4. ✅ Write spec: Ctrl+K across line boundaries
+5. ✅ Write spec: Ctrl+U across line boundaries
+6. ✅ Implement fixes for any failures (no failures, all tests passed on first run)
+7. ✅ Run tests until green (2237 examples, 0 failures)
+8. ✅ Run lint, fix any issues (1 auto-corrected annotation style issue)
+9. ✅ Run coverage check (98.17% line / 90.1% branch)
+10. ✅ Commit: `[Phase 5.2] Add edge case tests and fixes`
+11. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- All edge cases handled gracefully
-- No crashes or display corruption
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ All edge cases handled gracefully (11 new test cases covering edge scenarios)
+- ✅ No crashes or display corruption (all tests verify correct behavior)
+- ✅ All quality gates pass (tests, lint, coverage)
 
 #### Task 5.3: Verify no regressions in existing tests ⏳
 **TDD Steps**:
@@ -585,6 +585,6 @@ WHERE id = 1
 
 ### Phase 5: Integration testing and edge cases
 - Task 5.1: Add integration tests for multiline workflows - ✅ DONE (2025-10-31 17:58)
-- Task 5.2: Add edge case tests - ⏳
+- Task 5.2: Add edge case tests - ✅ DONE (2025-10-31 18:09)
 - Task 5.3: Verify no regressions in existing tests - ⏳
 - Task 5.4: Manual testing and documentation - ⏳
