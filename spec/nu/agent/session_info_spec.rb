@@ -50,7 +50,6 @@ RSpec.describe Nu::Agent::SessionInfo do
       info_text = described_class.build(application)
 
       expect(info_text).to include("Debug mode:")
-      expect(info_text).to include("Verbosity:")
       expect(info_text).to include("Redaction:")
     end
 

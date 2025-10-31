@@ -36,7 +36,6 @@ module Nu
       def self.build_settings_lines(application)
         [
           "Debug mode:    #{application.debug}",
-          "Verbosity:     #{application.verbosity}",
           "Redaction:     #{application.redact ? 'on' : 'off'}",
           "Summarizer:    #{application.summarizer_enabled ? 'on' : 'off'}"
         ]
