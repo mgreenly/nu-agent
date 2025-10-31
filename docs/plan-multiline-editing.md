@@ -330,26 +330,26 @@ Each task must be tracked as:
 **Goal**: Implement smart up/down navigation: history when empty, line navigation when non-empty.
 **File**: `lib/nu/agent/console_io.rb`
 
-#### Task 4.1: Implement cursor_up_or_history_prev ⏳
-**TDD Steps**:
-1. Write spec: empty buffer + up arrow → expect history navigation
-2. Write spec: single line buffer + up arrow → expect no movement
-3. Write spec: multiline buffer, cursor on line 1 + up → expect move to line 0
-4. Write spec: multiline buffer, cursor on line 0 + up → expect no movement
-5. Write spec: verify @saved_column behavior
-6. Implement cursor_up_or_history_prev method
-7. Run tests until green
-8. Refactor if needed
-9. Run lint, fix any issues
-10. Run coverage check
-11. Commit: `[Phase 4.1] Implement cursor_up_or_history_prev navigation`
-12. Update this document with ✅ DONE timestamp
+#### Task 4.1: Implement cursor_up_or_history_prev ✅ DONE (2025-10-31 16:46)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: empty buffer + up arrow → expect history navigation (2 tests)
+2. ✅ Write spec: single line buffer + up arrow → expect no movement
+3. ✅ Write spec: multiline buffer, cursor on line 1 + up → expect move to line 0
+4. ✅ Write spec: multiline buffer, cursor on line 0 + up → expect no movement
+5. ✅ Write spec: verify @saved_column behavior (3 tests covering save/use/restore)
+6. ✅ Implement cursor_up_or_history_prev method
+7. ✅ Run tests until green (10 specs pass)
+8. ✅ Refactor: Fixed test setup (position 16 instead of 18 for "end of short")
+9. ✅ Run lint, fix spacing issues with rubocop -A
+10. ✅ Run coverage check: 98.16% line / 90.07% branch (thresholds met)
+11. ✅ Commit: `[Phase 4.1] Implement cursor_up_or_history_prev navigation`
+12. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Empty buffer navigates history (existing behavior)
-- Non-empty buffer navigates between lines
-- Column memory maintained via @saved_column
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Empty buffer navigates history (existing behavior preserved)
+- ✅ Non-empty buffer navigates between lines (10 test cases)
+- ✅ Column memory maintained via @saved_column (3 tests)
+- ✅ All quality gates pass (tests, lint, coverage)
 
 #### Task 4.2: Implement cursor_down_or_history_next ⏳
 **TDD Steps**:
@@ -575,7 +575,7 @@ WHERE id = 1
 - Task 3.3: Add Ctrl+Enter detection (optional) - ✅ DONE (2025-10-31 16:36)
 
 ### Phase 4: Up/Down navigation logic
-- Task 4.1: Implement cursor_up_or_history_prev - ⏳
+- Task 4.1: Implement cursor_up_or_history_prev - ✅ DONE (2025-10-31 16:46)
 - Task 4.2: Implement cursor_down_or_history_next - ⏳
 - Task 4.3: Update handle_csi_sequence to use new navigation methods - ⏳
 - Task 4.4: Reset @saved_column on horizontal movement and edits - ⏳
