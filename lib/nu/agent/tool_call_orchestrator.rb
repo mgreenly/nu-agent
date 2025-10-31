@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "dependency_analyzer"
+require_relative "parallel_executor"
+
 module Nu
   module Agent
     # Manages the tool calling loop with LLM
@@ -13,6 +16,14 @@ module Nu
         @exchange_id = exchange_info[:exchange_id]
         @tool_registry = tool_registry
         @application = application
+        @dependency_analyzer = DependencyAnalyzer.new(tool_registry: tool_registry)
+        @parallel_executor = ParallelExecutor.new(
+          tool_registry: tool_registry,
+          history: history,
+          conversation_id: @conversation_id,
+          client: client,
+          application: application
+        )
       end
 
       # Execute the tool calling loop
@@ -89,9 +100,23 @@ module Nu
         metrics[:tool_call_count] += response["tool_calls"].length
         add_assistant_message_to_list(messages, response)
 
-        # Execute each tool call
-        response["tool_calls"].each do |tool_call|
-          execute_tool_call(tool_call, messages)
+        # Analyze dependencies and batch tool calls
+        batches = @dependency_analyzer.analyze(response["tool_calls"])
+
+        # Execute batches sequentially, but tools within each batch run in parallel
+        batches.each do |batch|
+          results = @parallel_executor.execute_batch(batch)
+
+          # Process results in original order
+          results.each do |result_data|
+            tool_call = result_data[:tool_call]
+            result = result_data[:result]
+            tool_result_data = build_tool_result_data(tool_call, result)
+
+            save_tool_result_message(tool_call, tool_result_data)
+            display_tool_result_message(tool_result_data)
+            add_tool_result_to_messages(messages, tool_call, result)
+          end
         end
       end
 
@@ -137,28 +162,6 @@ module Nu
           "content" => response["content"],
           "tool_calls" => response["tool_calls"]
         }
-      end
-
-      def execute_tool_call(tool_call, messages)
-        result = execute_tool(tool_call)
-        tool_result_data = build_tool_result_data(tool_call, result)
-
-        save_tool_result_message(tool_call, tool_result_data)
-        display_tool_result_message(tool_result_data)
-        add_tool_result_to_messages(messages, tool_call, result)
-      end
-
-      def execute_tool(tool_call)
-        @tool_registry.execute(
-          name: tool_call["name"],
-          arguments: tool_call["arguments"],
-          history: @history,
-          context: {
-            "conversation_id" => @conversation_id,
-            "model" => @client.model,
-            "application" => @application
-          }
-        )
       end
 
       def build_tool_result_data(tool_call, result)
