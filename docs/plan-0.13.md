@@ -1,7 +1,6 @@
-Nu-Agent v0.13 Plan: Deep Memory Search
+Nu-Agent Plan: Deep Memory Search
 
 Last Updated: 2025-10-29
-Target Version: 0.13.0
 Plan Status: Ready to execute
 
 Index
@@ -22,7 +21,7 @@ Index
 
 
 High-level motivation
-- Provide a deep memory search tool that the LLM can explicitly invoke when it needs comprehensive historical context beyond the automatic RAG from v0.11.
+- Provide a deep memory search tool that the LLM can explicitly invoke when it needs comprehensive historical context beyond automatic RAG.
 - Enable exhaustive search across all conversations and exchanges using hybrid retrieval strategies (VSS + BM25) combined with LLM re-ranking.
 - Accept longer latency (10-30s) in exchange for maximal recall and relevance - this is a deliberate, high-value search the LLM requests when needed.
 - Leverage available computational resources (high CPU cores, memory, storage) for parallel execution and quality over speed.
@@ -66,7 +65,7 @@ Key technical decisions and hints
 - Max results: Configurable, default 10, hard cap 30 to respect token budgets.
 - Time filtering: Support before/after/between parameters on tool invocation; filter candidates during retrieval phase.
 - Recency boost: Score boost based on age (e.g., exponential decay from present); applied during hybrid scoring.
-- Logging schema: Capture query, all phase timings, candidate counts by strategy, re-ranking model/cost, final results, success/error in deep_search_logs table - enables retrospective analysis. This is distinct from and more comprehensive than v0.12's rag_retrieval_logs which tracks automatic RAG; deep search logs include hybrid strategy breakdown and re-ranking metrics.
+- Logging schema: Capture query, all phase timings, candidate counts by strategy, re-ranking model/cost, final results, success/error in deep_search_logs table - enables retrospective analysis. This is distinct from and more comprehensive than rag_retrieval_logs which tracks automatic RAG; deep search logs include hybrid strategy breakdown and re-ranking metrics.
 - Fail-fast philosophy: If critical components fail (VSS, FTS, re-ranking), surface error immediately rather than degrading silently; user/LLM can retry or adjust.
 - Cost tracking: Re-ranking calls are part of session cost accounting; displayed in real-time session summary.
 - SQL safety: Parameterized queries throughout; verify FTS query syntax to prevent injection.
@@ -77,7 +76,7 @@ Implementation phases
 Phase 1: Schema additions and FTS indexes (1-1.5 hrs)
 Goal: Add full-text search indexes and logging infrastructure.
 Tasks
-- Verify exchanges.summary_text column exists (created in v0.11 Phase 2); if not, add migration.
+- Verify exchanges.summary_text column exists; if not, add migration.
 - Create FTS indexes via migration
   - CREATE INDEX IF NOT EXISTS fts_conversation_summary ON conversations USING fts(summary)
   - CREATE INDEX IF NOT EXISTS fts_exchange_summary ON exchanges USING fts(summary_text)
@@ -218,8 +217,8 @@ Future enhancements
 - Conversation retrieval tool: Separate tool for LLM to request full conversation by ID after reviewing deep search results.
 
 Notes
-- Deep search is complementary to v0.11's automatic RAG: RAG provides fast, always-on context; deep search provides exhaustive, deliberate exploration when needed.
-- Logging is critical for validating hybrid search approach: track which strategies contribute to successful retrievals; adjust weights and tactics based on data. deep_search_logs is distinct from v0.12's rag_retrieval_logs: the latter tracks automatic RAG performance with basic metrics, while deep search logs capture comprehensive hybrid strategy breakdown, re-ranking details, and costs.
+- Deep search is complementary to automatic RAG: RAG provides fast, always-on context; deep search provides exhaustive, deliberate exploration when needed.
+- Logging is critical for validating hybrid search approach: track which strategies contribute to successful retrievals; adjust weights and tactics based on data. deep_search_logs is distinct from rag_retrieval_logs: the latter tracks automatic RAG performance with basic metrics, while deep search logs capture comprehensive hybrid strategy breakdown, re-ranking details, and costs.
 - Start with opinionated defaults (weights, batch sizes, model) based on research and best practices; make configurable; tune based on real usage.
 - Parallel execution is a first-class feature: leverage available hardware for speed; design for concurrent searchers and re-rankers from the start.
 - Keep re-ranking prompt design iterative: test with real queries during implementation; refine based on quality of scores and reasoning.
