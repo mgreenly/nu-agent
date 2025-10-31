@@ -307,20 +307,23 @@ Each task must be tracked as:
 - ✅ Empty buffer can be submitted
 - ✅ All quality gates pass
 
-#### Task 3.3: Add Ctrl+Enter detection (optional) ⏳
-**TDD Steps**:
-1. Research terminal-specific sequences for Ctrl+Enter
-2. If feasible, write spec and implement
-3. If not feasible, document as future enhancement
-4. Run tests until green
-5. Run lint, fix any issues
-6. Run coverage check
-7. Commit: `[Phase 3.3] Add Ctrl+Enter detection (if feasible)` OR skip with documentation
-8. Update this document with ✅ DONE or ⏭️ SKIPPED timestamp
+#### Task 3.3: Add Ctrl+Enter detection (optional) ✅ DONE (2025-10-31 16:36)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Research terminal-specific sequences for Ctrl+Enter (Ghostty: \e[13;5~)
+2. ✅ Write spec for Ctrl+Enter detection and verify it fails (RED)
+3. ✅ Implement handle_numbered_csi_sequence to parse modified key sequences
+4. ✅ Add @submit_requested flag to coordinate with parse_input
+5. ✅ Run tests until green (2189 examples, 0 failures)
+6. ✅ Run lint (no offenses detected)
+7. ✅ Run coverage check (98.16% line / 90.03% branch)
+8. ✅ Commit: `[Phase 3.3] Add Ctrl+Enter detection for submit`
+9. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Either working Ctrl+Enter detection OR documented as unsupported
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Ctrl+Enter (\e[13;5~) detection working for Ghostty/xterm-compatible terminals
+- ✅ Parser handles modified key sequences (number;modifier~ format)
+- ✅ Backward compatibility maintained (1~ Home key still works)
+- ✅ All quality gates pass
 
 ### Phase 4: Up/Down navigation logic
 **Status**: Not started
@@ -569,7 +572,7 @@ WHERE id = 1
 ### Phase 3: Submit key handling
 - Task 3.1: Update parse_input to make Enter insert newline - ✅ DONE (2025-10-31 16:21)
 - Task 3.2: Make Ctrl+J submit input - ✅ DONE (2025-10-31 16:29)
-- Task 3.3: Add Ctrl+Enter detection (optional) - ⏳
+- Task 3.3: Add Ctrl+Enter detection (optional) - ✅ DONE (2025-10-31 16:36)
 
 ### Phase 4: Up/Down navigation logic
 - Task 4.1: Implement cursor_up_or_history_prev - ⏳
