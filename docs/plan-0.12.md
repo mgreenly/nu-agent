@@ -1,7 +1,6 @@
-Nu-Agent v0.12 Plan: UX, Observability, and Maintainability
+Nu-Agent Plan: UX, Observability, and Maintainability
 
 Last Updated: 2025-10-30
-Target Version: 0.12.0
 Plan Status: ✅ COMPLETE - All 7 phases implemented and tested
 
 Index
@@ -23,7 +22,7 @@ Index
 
 
 High-level motivation
-- Consolidate and refine the RAG-based conversational memory introduced in v0.11 by improving user experience, reliability, and operability.
+- Consolidate and refine the RAG-based conversational memory by improving user experience, reliability, and operability.
 - Remove remaining architectural friction: eliminate polling for message display, simplify ConsoleIO through a State Pattern, and make background work inspectable and recoverable.
 - Strengthen privacy and governance: optional redaction on storage and a purge capability.
 
@@ -33,10 +32,10 @@ Scope (in)
 - Operability: failed_jobs storage and commands; richer metrics; environment-aware worker defaults.
 - Privacy: optional redaction pipeline and purge command.
 - RAG refinements: filters (namespace/tags/time-range), recency weighting parameter, lightweight caching for common queries, and simple retrieval logging for observability.
-- Migrations: finalize the minimal framework started in v0.11 and document workflow.
+- Migrations: finalize the minimal framework and document workflow.
 
 Scope (out)
-- New retrieval modalities (web search/tools) and agent tool decorators beyond basic logging/metrics (target v0.13).
+- New retrieval modalities (web search/tools) and agent tool decorators beyond basic logging/metrics (deferred to future work).
 - Model/provider changes beyond what’s necessary for stability.
 
 Key technical decisions and hints
@@ -46,8 +45,8 @@ Key technical decisions and hints
 - Metrics: Counters and timers collected in-memory with periodic snapshot to DB for inspection; expose via commands. Track processed/failed/retried, queue depth, batch latencies, API rate limit backoffs, and RAG retrieval latencies (p50/p90/p99).
 - Privacy: Redaction hook in summarization/embedding paths. Start with regex-based scrub for common secrets (tokens, emails, keys) and allow custom patterns via config. Purge command must delete summaries/embeddings for a scope and rebuild as needed. Provide dry-run.
 - Caching: Small in-memory LRU for RAG retrieval keyed by rounded query embeddings and config knobs; include TTL and invalidate on new writes to relevant conversations. Keep it opt-in and bounded to avoid stale/bloated context.
-- RAG parameters: Support namespace/tag/time-range filters and a tunable recency weight alpha; preserve token budget and global caps from v0.11.
-- RAG logging: Add rag_retrieval_logs table to capture query characteristics, candidate counts, scores, filtering applied, cache hits, and retrieval latency; enables validation of automatic RAG effectiveness without the complexity of v0.13's deep search logging.
+- RAG parameters: Support namespace/tag/time-range filters and a tunable recency weight alpha; preserve token budget and global caps from previous implementation.
+- RAG logging: Add rag_retrieval_logs table to capture query characteristics, candidate counts, scores, filtering applied, cache hits, and retrieval latency; enables validation of automatic RAG effectiveness.
 - Migrations: Keep versioned files in migrations/. Ensure schema_version monotonic progression, idempotency, and rollback guidance for risky steps. Do not rely on IF NOT EXISTS for structural changes.
 
 Implementation phases
@@ -249,8 +248,7 @@ All success criteria met:
 
 ### Next Steps (Optional)
 1. **Performance Benchmarking** - Quantify CPU and latency improvements
-2. **Documentation** - Update README with v0.12 feature highlights
-3. **Release** - Tag v0.12.0 and create release notes
+2. **Documentation** - Update README with feature highlights
 
 Success criteria
 - UX: Smooth, non-polling message display; clean console behavior across states; responsive streaming.
@@ -267,5 +265,5 @@ Risks and mitigations
 
 Notes
 - Preserve the ethos: tests accompany each phase; no instance_variable_get hacks; parameterized SQL; explicit types.
-- RAG retrieval logging provides lightweight observability of automatic RAG performance without the complexity of v0.13's deep search logging; helps validate that automatic retrieval is working effectively and informs tuning decisions.
-- Defer tool decorators and broader telemetry integrations to v0.13 to keep v0.12 focused on UX and operability.
+- RAG retrieval logging provides lightweight observability of automatic RAG performance; helps validate that automatic retrieval is working effectively and informs tuning decisions.
+- Defer tool decorators and broader telemetry integrations to future work to keep this focused on UX and operability.
