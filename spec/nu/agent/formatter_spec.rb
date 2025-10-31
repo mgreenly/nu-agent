@@ -915,7 +915,7 @@ RSpec.describe Nu::Agent::Formatter do
 
     context "when verbosity is 2" do
       it "displays basic message info for user message" do
-        allow(application).to receive(:verbosity).and_return(2)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
@@ -924,7 +924,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays basic message info for assistant message" do
-        allow(application).to receive(:verbosity).and_return(2)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("\e[90m[Message In] Created message\e[0m")
@@ -933,7 +933,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays basic message info for system message" do
-        allow(application).to receive(:verbosity).and_return(2)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
@@ -942,7 +942,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays redacted message indicator" do
-        allow(application).to receive(:verbosity).and_return(2)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created redacted message\e[0m")
@@ -953,7 +953,7 @@ RSpec.describe Nu::Agent::Formatter do
 
     context "when verbosity is 3 or higher" do
       it "displays detailed message info including role and actor" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
@@ -964,7 +964,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays tool_calls preview" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         tool_calls = [
           { "name" => "file_read", "arguments" => { "path" => "/tmp/test.txt" } },
@@ -986,7 +986,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays tool_result preview" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         tool_result = {
           "name" => "file_read",
@@ -1008,7 +1008,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays content preview" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         content = "This is some message content"
 
@@ -1026,7 +1026,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "truncates tool call arguments at verbosity 3" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         long_arg = "a" * 100
         tool_calls = [{ "name" => "test", "arguments" => { "data" => long_arg } }]
@@ -1046,7 +1046,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "shows longer preview at verbosity 6" do
-        allow(application).to receive(:verbosity).and_return(6)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(6)
 
         long_arg = "a" * 150
         tool_calls = [{ "name" => "test", "arguments" => { "data" => long_arg } }]
@@ -1066,7 +1066,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "displays tool_result without result field" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         tool_result = { "name" => "file_read", "result" => nil }
 
@@ -1084,7 +1084,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "handles tool result with Hash result" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         tool_result = {
           "name" => "test",
@@ -1106,7 +1106,7 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "handles tool result with String result" do
-        allow(application).to receive(:verbosity).and_return(3)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
         tool_result = { "name" => "test", "result" => "simple string" }
 
@@ -1203,6 +1203,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(6)
 
       tool_result = {
         "name" => "test",
@@ -1236,6 +1237,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(6)
 
       content = "a" * 150
 
@@ -1305,6 +1307,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
@@ -1368,6 +1371,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Message ] Created message\e[0m")
@@ -1404,6 +1408,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(false)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(3)
 
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
@@ -1453,6 +1458,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
       tool_calls = [{ "name" => "test", "arguments" => { "data" => "value" } }]
 
@@ -1516,6 +1522,7 @@ RSpec.describe Nu::Agent::Formatter do
       )
 
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2)
 
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
