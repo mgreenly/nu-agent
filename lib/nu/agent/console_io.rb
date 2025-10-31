@@ -37,6 +37,7 @@ module Nu
         @saved_input = String.new("")
         @saved_column = nil
         @last_line_count = 1
+        @last_cursor_line = 0
         @submit_requested = false
 
         # Database history (optional)
@@ -653,7 +654,16 @@ module Nu
         cursor_line, cursor_col = get_line_and_column(@cursor_pos)
 
         # Move up to start of previous multiline display and clear
-        @stdout.write("\e[#{@last_line_count - 1}A") if @last_line_count && @last_line_count > 1
+        # Use @last_cursor_line to know where the cursor was positioned after the last redraw
+        # Fall back to old behavior (@last_line_count - 1) if @last_cursor_line is not set
+        lines_to_move_up = if @last_cursor_line&.positive?
+                             @last_cursor_line
+                           elsif @last_line_count && @last_line_count > 1
+                             @last_line_count - 1
+                           else
+                             0
+                           end
+        @stdout.write("\e[#{lines_to_move_up}A") if lines_to_move_up.positive?
         @stdout.write("\e[J") # Clear to end of screen
         @stdout.write("\r")   # Move to start of line
 
@@ -684,6 +694,9 @@ module Nu
         else
           @stdout.write("\e[#{cursor_col + 1}G")
         end
+
+        # Remember where we positioned the cursor for next redraw
+        @last_cursor_line = cursor_line
 
         @stdout.flush
       end
@@ -725,6 +738,9 @@ module Nu
           else
             @stdout.write("\e[#{cursor_col + 1}G")
           end
+
+          # Remember where we positioned the cursor for next redraw
+          @last_cursor_line = cursor_line
 
           @stdout.flush
         end
