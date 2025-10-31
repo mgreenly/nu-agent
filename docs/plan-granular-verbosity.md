@@ -421,6 +421,11 @@ Step 3.2: Update LLM request formatter ✓ COMPLETED
 File: `lib/nu/agent/formatters/llm_request_formatter.rb`
 
 Replace current verbosity checks with:
+
+Step 3.3: Update tool call formatter ✓ COMPLETED
+File: `lib/nu/agent/formatters/tool_call_formatter.rb`
+
+Replace current verbosity checks with:
 ```ruby
 # Old: verbosity = @application ? @application.verbosity : 0
 # Old: return if verbosity < 4
