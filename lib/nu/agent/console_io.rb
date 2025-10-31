@@ -220,6 +220,17 @@ module Nu
 
       private
 
+      # Multiline editing support - Line/column calculation helpers
+
+      # Split input buffer into array of lines
+      # Uses split("\n", -1) to preserve trailing empty line
+      # Special case: empty buffer returns [""] for consistency
+      def lines
+        return [""] if @input_buffer.empty?
+
+        @input_buffer.split("\n", -1)
+      end
+
       def log_state_transition(old_state, new_state)
         old_name = old_state.name
         new_name = new_state.name

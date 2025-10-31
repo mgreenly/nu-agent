@@ -1433,4 +1433,31 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(result).to eq(:continue)
     end
   end
+
+  # Phase 5: Multiline editing support - Line/column calculation helpers
+  describe "#lines" do
+    it "returns array with empty string for empty buffer" do
+      console.instance_variable_set(:@input_buffer, String.new(""))
+      result = console.send(:lines)
+      expect(result).to eq([""])
+    end
+
+    it "returns array with single element for single line" do
+      console.instance_variable_set(:@input_buffer, String.new("hello"))
+      result = console.send(:lines)
+      expect(result).to eq(["hello"])
+    end
+
+    it "splits multiline buffer into array of lines" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      result = console.send(:lines)
+      expect(result).to eq(%w[line1 line2])
+    end
+
+    it "preserves trailing empty line when buffer ends with newline" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\n"))
+      result = console.send(:lines)
+      expect(result).to eq(["line1", ""])
+    end
+  end
 end
