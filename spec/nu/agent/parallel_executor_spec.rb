@@ -71,5 +71,94 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         expect(results[0][:result][:content]).to be_nil
       end
     end
+
+    context "with multiple independent tool calls" do
+      let(:test_dir) { "/tmp/parallel_executor_test" }
+      let(:tool_calls) do
+        [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file1.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file2.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file3.txt" } }
+        ]
+      end
+
+      before do
+        FileUtils.mkdir_p(test_dir)
+        File.write("#{test_dir}/file1.txt", "content 1")
+        File.write("#{test_dir}/file2.txt", "content 2")
+        File.write("#{test_dir}/file3.txt", "content 3")
+      end
+
+      after do
+        FileUtils.rm_rf(test_dir)
+      end
+
+      it "executes 3 independent tools in parallel" do
+        # Mock Thread to track parallel execution
+        original_new = Thread.method(:new)
+        threads = []
+
+        allow(Thread).to receive(:new) do |&block|
+          thread = original_new.call(&block)
+          threads << thread
+          thread
+        end
+
+        results = executor.execute_batch(tool_calls)
+
+        # Verify that threads were created (indicating parallel execution)
+        expect(threads.length).to be > 0
+
+        # Verify all results returned
+        expect(results.length).to eq(3)
+      end
+
+      it "waits for all tools to complete before returning" do
+        results = executor.execute_batch(tool_calls)
+
+        # All results should be present
+        expect(results.length).to eq(3)
+
+        # All results should have completed successfully
+        results.each do |result_data|
+          expect(result_data[:result][:error]).to be_nil
+          expect(result_data[:result][:content]).to be_a(String)
+        end
+      end
+
+      it "returns results in original order" do
+        results = executor.execute_batch(tool_calls)
+
+        # Verify results match original tool_call order
+        expect(results[0][:tool_call]["id"]).to eq("call_1")
+        expect(results[1][:tool_call]["id"]).to eq("call_2")
+        expect(results[2][:tool_call]["id"]).to eq("call_3")
+      end
+
+      it "actually executes tools in parallel (timing-based verification)" do
+        # Create tool calls that have measurable execution time
+        slow_tool_calls = [
+          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file1.txt" } },
+          { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file2.txt" } },
+          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "#{test_dir}/file3.txt" } }
+        ]
+
+        # Inject delays to make execution time measurable
+        allow(tool_registry).to receive(:execute) do |**args|
+          sleep(0.05) # 50ms delay per tool
+          Nu::Agent::Tools::FileRead.new.execute(arguments: args[:arguments])
+        end
+
+        # Parallel execution of 3 tools with 50ms each should take ~50ms total
+        # Sequential execution would take ~150ms
+        start_time = Time.now
+        executor.execute_batch(slow_tool_calls)
+        elapsed_time = Time.now - start_time
+
+        # If truly parallel, should be closer to 0.05s than 0.15s
+        # Use 0.12s as threshold (between 0.05 and 0.15)
+        expect(elapsed_time).to be < 0.12
+      end
+    end
   end
 end
