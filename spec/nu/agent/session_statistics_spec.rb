@@ -3,11 +3,12 @@
 require "spec_helper"
 
 RSpec.describe Nu::Agent::SessionStatistics do
-  let(:history) { instance_double(Nu::Agent::History) }
+  let(:history) { instance_double(Nu::Agent::History, get_int: 0) }
   let(:orchestrator) { instance_double("Orchestrator", max_context: 200_000) }
   let(:console) { instance_double(Nu::Agent::ConsoleIO, puts: nil) }
   let(:conversation_id) { 1 }
   let(:session_start_time) { Time.now - 60 }
+  let(:application) { instance_double(Nu::Agent::Application, debug: true, history: history) }
 
   let(:statistics) do
     described_class.new(
@@ -15,7 +16,8 @@ RSpec.describe Nu::Agent::SessionStatistics do
       orchestrator: orchestrator,
       console: console,
       conversation_id: conversation_id,
-      session_start_time: session_start_time
+      session_start_time: session_start_time,
+      application: application
     )
   end
 
@@ -73,63 +75,121 @@ RSpec.describe Nu::Agent::SessionStatistics do
       allow(history).to receive(:session_tokens).and_return(tokens_data)
     end
 
-    context "when debug is false" do
-      it "does not display any statistics" do
+    context "when debug is disabled" do
+      before do
+        allow(application).to receive(:debug).and_return(false)
+      end
+
+      it "does not display any statistics regardless of verbosity" do
+        allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(1)
         expect(console).not_to receive(:puts)
 
-        statistics.display(exchange_start_time: Time.now - 2, debug: false)
+        statistics.display(exchange_start_time: Time.now - 2)
       end
     end
 
-    context "when debug is true" do
-      it "displays token statistics with percentage of max context" do
-        # 150 / 200_000 = 0.075%
-        expected_output = "\e[90mSession tokens: 100 in / 50 out / 150 Total / (0.1% of 200000)\e[0m"
-
-        expect(console).to receive(:puts).with("").ordered
-        expect(console).to receive(:puts).with(expected_output).ordered
-
-        statistics.display(exchange_start_time: nil, debug: true)
+    context "when debug is enabled" do
+      before do
+        allow(application).to receive(:debug).and_return(true)
       end
 
-      it "displays spend statistics" do
-        expected_output = "\e[90mSession spend: $0.001500\e[0m"
+      context "when stats_verbosity is 0" do
+        it "does not display any statistics" do
+          allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(0)
+          expect(console).not_to receive(:puts)
 
-        expect(console).to receive(:puts).with("").ordered
-        expect(console).to receive(:puts).with(anything).ordered # token stats
-        expect(console).to receive(:puts).with(expected_output).ordered
-
-        statistics.display(exchange_start_time: nil, debug: true)
+          statistics.display(exchange_start_time: Time.now - 2)
+        end
       end
 
-      it "displays elapsed time when exchange_start_time is provided" do
-        start_time = Time.now - 2.5
-        expected_output = "\e[90mElapsed time: 2.50s\e[0m"
+      context "when stats_verbosity is 1" do
+        before do
+          allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(1)
+        end
 
-        expect(console).to receive(:puts).with("").ordered
-        expect(console).to receive(:puts).with(anything).ordered # token stats
-        expect(console).to receive(:puts).with(anything).ordered # spend stats
-        expect(console).to receive(:puts).with(expected_output).ordered
+        it "displays token statistics with percentage of max context" do
+          # 150 / 200_000 = 0.075%
+          expected_output = "\e[90mSession tokens: 100 in / 50 out / 150 Total / (0.1% of 200000)\e[0m"
 
-        statistics.display(exchange_start_time: start_time, debug: true)
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(expected_output).ordered
+
+          statistics.display(exchange_start_time: nil)
+        end
+
+        it "displays spend statistics" do
+          expected_output = "\e[90mSession spend: $0.001500\e[0m"
+
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(anything).ordered # token stats
+          expect(console).to receive(:puts).with(expected_output).ordered
+
+          statistics.display(exchange_start_time: nil)
+        end
+
+        it "does not display elapsed time" do
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(anything).ordered # token stats
+          expect(console).to receive(:puts).with(anything).ordered # spend stats
+          expect(console).not_to receive(:puts).with(/Elapsed time/)
+
+          statistics.display(exchange_start_time: Time.now - 2)
+        end
+
+        it "queries history with correct conversation_id and session_start_time" do
+          expect(history).to receive(:session_tokens).with(
+            conversation_id: conversation_id,
+            since: session_start_time
+          ).and_return(tokens_data)
+
+          statistics.display(exchange_start_time: nil)
+        end
       end
 
-      it "does not display elapsed time when exchange_start_time is nil" do
-        expect(console).to receive(:puts).with("").ordered
-        expect(console).to receive(:puts).with(anything).ordered # token stats
-        expect(console).to receive(:puts).with(anything).ordered # spend stats
-        expect(console).not_to receive(:puts).with(/Elapsed time/)
+      context "when stats_verbosity is 2 or higher" do
+        before do
+          allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(2)
+        end
 
-        statistics.display(exchange_start_time: nil, debug: true)
-      end
+        it "displays token statistics" do
+          expected_output = "\e[90mSession tokens: 100 in / 50 out / 150 Total / (0.1% of 200000)\e[0m"
 
-      it "queries history with correct conversation_id and session_start_time" do
-        expect(history).to receive(:session_tokens).with(
-          conversation_id: conversation_id,
-          since: session_start_time
-        ).and_return(tokens_data)
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(expected_output).ordered
 
-        statistics.display(exchange_start_time: nil, debug: true)
+          statistics.display(exchange_start_time: nil)
+        end
+
+        it "displays spend statistics" do
+          expected_output = "\e[90mSession spend: $0.001500\e[0m"
+
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(anything).ordered # token stats
+          expect(console).to receive(:puts).with(expected_output).ordered
+
+          statistics.display(exchange_start_time: nil)
+        end
+
+        it "displays elapsed time when exchange_start_time is provided" do
+          start_time = Time.now - 2.5
+          expected_output = "\e[90mElapsed time: 2.50s\e[0m"
+
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(anything).ordered # token stats
+          expect(console).to receive(:puts).with(anything).ordered # spend stats
+          expect(console).to receive(:puts).with(expected_output).ordered
+
+          statistics.display(exchange_start_time: start_time)
+        end
+
+        it "does not display elapsed time when exchange_start_time is nil" do
+          expect(console).to receive(:puts).with("").ordered
+          expect(console).to receive(:puts).with(anything).ordered # token stats
+          expect(console).to receive(:puts).with(anything).ordered # spend stats
+          expect(console).not_to receive(:puts).with(/Elapsed time/)
+
+          statistics.display(exchange_start_time: nil)
+        end
       end
     end
   end

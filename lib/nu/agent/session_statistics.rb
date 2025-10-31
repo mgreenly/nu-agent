@@ -1,22 +1,27 @@
 # frozen_string_literal: true
 
+require_relative "subsystem_debugger"
+
 module Nu
   module Agent
     class SessionStatistics
-      def initialize(history:, orchestrator:, console:, conversation_id:, session_start_time:)
+      # rubocop:disable Metrics/ParameterLists
+      def initialize(history:, orchestrator:, console:, conversation_id:, session_start_time:, application:)
+        # rubocop:enable Metrics/ParameterLists
         @history = history
         @orchestrator = orchestrator
         @console = console
         @conversation_id = conversation_id
         @session_start_time = session_start_time
+        @application = application
       end
 
       def should_display?(message)
         !!(message["tokens_input"] && message["tokens_output"] && !message["tool_calls"])
       end
 
-      def display(exchange_start_time:, debug:)
-        return unless debug
+      def display(exchange_start_time: nil)
+        return unless should_output?(1)
 
         elapsed_time = exchange_start_time ? Time.now - exchange_start_time : nil
 
@@ -27,10 +32,14 @@ module Nu
 
         display_token_statistics(tokens)
         display_spend_statistics(tokens)
-        display_elapsed_time(elapsed_time) if elapsed_time
+        display_elapsed_time(elapsed_time) if elapsed_time && should_output?(2)
       end
 
       private
+
+      def should_output?(level)
+        SubsystemDebugger.should_output?(@application, "stats", level)
+      end
 
       def display_token_statistics(tokens)
         max_context = @orchestrator.max_context

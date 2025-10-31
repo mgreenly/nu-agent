@@ -3,7 +3,7 @@
 require "spec_helper"
 
 RSpec.describe Nu::Agent::Formatter do
-  let(:history) { instance_double(Nu::Agent::History) }
+  let(:history) { instance_double(Nu::Agent::History, get_int: 0) }
   let(:orchestrator) { instance_double("Orchestrator", max_context: 200_000) }
   let(:mock_console) do
     instance_double(
@@ -13,6 +13,7 @@ RSpec.describe Nu::Agent::Formatter do
       hide_spinner: nil
     )
   end
+  let(:application) { instance_double(Nu::Agent::Application, debug: false, history: history) }
   let(:session_start_time) { Time.now - 60 }
   let(:conversation_id) { 1 }
   let(:formatter) do
@@ -23,7 +24,7 @@ RSpec.describe Nu::Agent::Formatter do
       orchestrator: orchestrator,
       debug: false,
       console: mock_console,
-      application: nil
+      application: application
     )
   end
 
@@ -73,8 +74,10 @@ RSpec.describe Nu::Agent::Formatter do
                                                                 "spend" => 0.000150
                                                               })
 
-        # Enable debug mode to show token stats
+        # Enable debug mode and stats verbosity to show token stats
         formatter.debug = true
+        allow(application).to receive(:debug).and_return(true)
+        allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(1)
 
         expect(mock_console).to receive(:puts).with("Hi there!")
         token_str = "\e[90mSession tokens: 10 in / 5 out / 15 Total / (0.0% of 200000)\e[0m"
@@ -228,8 +231,10 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "queries session tokens from database for cumulative totals" do
-      # Enable debug mode to trigger token statistics display
+      # Enable debug mode and stats verbosity to trigger token statistics display
       formatter.debug = true
+      allow(application).to receive(:debug).and_return(true)
+      allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(1)
 
       message1 = {
         "id" => 1,
@@ -491,6 +496,7 @@ RSpec.describe Nu::Agent::Formatter do
     before do
       allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
       allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(1)
+      allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(1)
     end
 
     context "thread events" do
@@ -869,7 +875,7 @@ RSpec.describe Nu::Agent::Formatter do
   end
 
   describe "#display_message_created" do
-    let(:application) { instance_double("Application", verbosity: 2) }
+    let(:message_app) { instance_double("Application", history: history) }
     let(:formatter_with_app) do
       described_class.new(
         history: history,
@@ -878,12 +884,13 @@ RSpec.describe Nu::Agent::Formatter do
         orchestrator: orchestrator,
         debug: true,
         console: mock_console,
-        application: application
+        application: message_app
       )
     end
 
     before do
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(0)
     end
 
     context "when debug is false" do
@@ -898,7 +905,7 @@ RSpec.describe Nu::Agent::Formatter do
 
     context "when verbosity is less than 2" do
       it "does not display anything" do
-        allow(application).to receive(:verbosity).and_return(1)
+        allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(1)
 
         expect(mock_console).not_to receive(:puts)
 
@@ -1184,7 +1191,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles tool result preview with very long content at verbosity 6" do
-      application = instance_double("Application", verbosity: 6)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,
@@ -1217,7 +1224,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles content preview with long content at verbosity 6" do
-      application = instance_double("Application", verbosity: 6)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,
@@ -1286,7 +1293,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles display_message_created with verbosity 3 but workers idle (no spinner restart)" do
-      application = instance_double("Application", verbosity: 3)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,
@@ -1349,7 +1356,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles display_message_created with unknown role type" do
-      application = instance_double("Application", verbosity: 2)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,
@@ -1385,7 +1392,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles display_message_created when workers are not idle" do
-      application = instance_double("Application", verbosity: 3)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,
@@ -1434,7 +1441,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles display_message_created with verbosity 2 (no detailed info)" do
-      application = instance_double("Application", verbosity: 2)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,
@@ -1497,7 +1504,7 @@ RSpec.describe Nu::Agent::Formatter do
     end
 
     it "handles display_message_created at verbosity 2 (does not display detailed info)" do
-      application = instance_double("Application", verbosity: 2)
+      application = instance_double("Application", history: history)
       formatter_with_app = described_class.new(
         history: history,
         session_start_time: session_start_time,

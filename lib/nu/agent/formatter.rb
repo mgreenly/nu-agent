@@ -47,7 +47,8 @@ module Nu
           orchestrator: orchestrator,
           console: @console,
           conversation_id: @conversation_id,
-          session_start_time: @session_start_time
+          session_start_time: @session_start_time,
+          application: @application
         )
       end
 
@@ -173,8 +174,8 @@ module Nu
       def display_message_created(actor:, role:, **details)
         return unless @debug
 
-        verbosity = @application ? @application.verbosity : 0
-        return if verbosity < 2
+        msg_verbosity = messages_verbosity
+        return if msg_verbosity < 2
 
         # Use thread-safe puts - spinner loop will handle clearing/redrawing
 
@@ -185,10 +186,10 @@ module Nu
                     end
         msg_type = details.fetch(:redacted, false) ? "redacted message" : "message"
 
-        display_basic_message_info(direction, msg_type, verbosity)
-        return if verbosity == 2
+        display_basic_message_info(direction, msg_type, msg_verbosity)
+        return if msg_verbosity == 2
 
-        display_detailed_message_info(actor, role, details, verbosity) if verbosity >= 3
+        display_detailed_message_info(actor, role, details, msg_verbosity) if msg_verbosity >= 3
       end
 
       def display_basic_message_info(direction, msg_type, _verbosity)
@@ -243,13 +244,18 @@ module Nu
 
       private
 
+      def messages_verbosity
+        return 0 unless @application
+
+        @application.history.get_int("messages_verbosity", default: 0)
+      end
+
       def display_assistant_message(message)
         display_content_or_warning(message)
         display_debug_tool_calls(message)
         return unless @session_statistics.should_display?(message)
 
-        @session_statistics.display(exchange_start_time: @exchange_start_time,
-                                    debug: @debug)
+        @session_statistics.display(exchange_start_time: @exchange_start_time)
       end
 
       def display_content_or_warning(message)

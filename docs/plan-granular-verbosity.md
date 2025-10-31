@@ -483,16 +483,24 @@ Verbosity level mapping:
 - spellcheck_verbosity 0 → No output (new default behavior)
 - spellcheck_verbosity 1+ → Show spell checker requests and responses
 
-Step 3.6: Update session statistics
+Step 3.6: Update session statistics ✓ COMPLETED
 File: `lib/nu/agent/session_statistics.rb`
 
-Replace `if @debug` checks with:
-```ruby
-return unless SubsystemDebugger.should_output?(@application, "stats", 1)
+**Actual Implementation:**
+- Added `require_relative "subsystem_debugger"` at top of file
+- Added `application:` parameter to initialize method
+- Removed `debug:` parameter from `display` method (now uses subsystem verbosity)
+- Added `should_output?(level)` helper method that calls `SubsystemDebugger.should_output?(@application, "stats", level)`
+- Updated `display` method to check `should_output?(1)` for basic stats, `should_output?(2)` for timing
+- Updated `lib/nu/agent/formatter.rb` to pass `application: @application` when creating SessionStatistics
+- Removed `debug: @debug` parameter from session_statistics.display() call
+- Updated all tests in `spec/nu/agent/session_statistics_spec.rb` to use subsystem verbosity
+- Updated formatter_spec.rb to provide proper application mocks with history
 
-# Level 1: Basic token/cost summary
-# Level 2: Add timing, cache hits, detailed breakdown
-```
+Verbosity level mapping:
+- stats_verbosity 0 → No output (new default)
+- stats_verbosity 1 → Basic token/cost summary (no elapsed time)
+- stats_verbosity 2+ → Add elapsed time display
 
 Step 3.7: Update search command debug output
 File: `lib/nu/agent/tools/file_grep.rb` (or wherever search debug output occurs)
