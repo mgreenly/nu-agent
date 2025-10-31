@@ -127,12 +127,431 @@ end
 5. **Resource Conflicts with Workers**: Rare conflicts between tool threads and background workers can be mitigated by mutexes for shared resources.
 6. **Interrupt Handling**: Ensure `ConsoleIO`’s interrupt handling (Ctrl-C, lines 261-262) works during parallel tool execution, with threads checking for interrupts or being killable.
 
-## Next Steps
-- **Refine Dependency Analysis**: Develop a robust mechanism to detect potential conflicts based on tool arguments (e.g., file paths). Test batching logic for correctness.
-- **Test Thread Safety**: Audit `execute_tool_call` and related methods to identify and resolve thread-safety issues with shared resources.
-- **Performance Benchmarking**: Implement a prototype of this approach and benchmark it against the current sequential execution to quantify performance gains.
-- **Iterative Improvements**: Based on testing, consider advanced concurrency models (e.g., thread pools via `concurrent-ruby`) or integration of complex tool calls with `BackgroundWorkerManager` if resource-intensive.
-- **Draft Code Changes**: Prepare specific updates for `tool_call_orchestrator.rb` to implement threading, batching, and output via `ConsoleIO`.
+## Implementation Plan
+
+### Development Methodology
+- **TDD Required**: All work follows strict Red-Green-Refactor cycle. Write failing tests first, implement minimal code to pass, then refactor.
+- **Git Workflow**: Commit frequently after each green test or logical unit. DO NOT push to GitHub until explicitly requested.
+- **Quality Gates**: 100% test coverage, zero lint violations, all specs passing at every commit. NO EXCEPTIONS.
+- **Test Execution**: Run full test suite (`bundle exec rspec`) and lint (`bundle exec rubocop`) before every commit.
+
+### Phase 1: Tool Metadata Foundation (TDD)
+
+**Objective**: Extend ToolRegistry and tool definitions to include operation_type and scope metadata.
+
+**TDD Steps**:
+1. **RED**: Write spec for ToolRegistry metadata storage
+   - Test: `tool_registry_spec.rb` - verify tools can be registered with metadata
+   - Test: `tool_registry_spec.rb` - verify metadata retrieval for registered tools
+   - Test: `tool_registry_spec.rb` - verify default values when metadata not provided
+   - Commit: "Add failing specs for tool metadata in ToolRegistry"
+
+2. **GREEN**: Implement metadata in ToolRegistry
+   - Update `ToolRegistry#register` to accept and store metadata
+   - Update `ToolRegistry#find` to return metadata with tool
+   - Add `ToolRegistry#metadata_for(name)` method
+   - Run tests until green
+   - Commit: "Implement tool metadata storage in ToolRegistry"
+
+3. **RED**: Write specs for tool metadata declarations
+   - Test: Pick 3 sample tools (FileRead, FileWrite, ExecuteBash)
+   - Test: Verify each tool declares operation_type and scope
+   - Commit: "Add failing specs for tool metadata declarations"
+
+4. **GREEN**: Add metadata to tool base interface
+   - Add `operation_type` and `scope` methods to tool classes
+   - Implement for FileRead (:read, :confined)
+   - Implement for FileWrite (:write, :confined)
+   - Implement for ExecuteBash (:write, :unconfined)
+   - Run tests until green
+   - Commit: "Add metadata methods to sample tools"
+
+5. **REFACTOR**: Add metadata to all remaining tools
+   - Update all 21 tools with appropriate metadata
+   - Verify all specs pass
+   - Run full test suite + coverage check
+   - Commit: "Add metadata to all tools"
+
+**Acceptance Criteria**:
+- [ ] All tools have operation_type (:read or :write)
+- [ ] All tools have scope (:confined or :unconfined)
+- [ ] ToolRegistry stores and retrieves metadata correctly
+- [ ] 100% test coverage for new metadata functionality
+- [ ] Zero rubocop violations
+- [ ] All existing tests still pass
+
+**Estimated Commits**: 5-6
+
+---
+
+### Phase 2: Resource Path Extraction (TDD)
+
+**Objective**: Build logic to extract affected file paths and resources from tool arguments for dependency tracking.
+
+**TDD Steps**:
+1. **RED**: Write spec for PathExtractor class
+   - Test: Extract file path from FileRead arguments
+   - Test: Extract file path from FileWrite arguments
+   - Test: Extract multiple paths from FileCopy arguments
+   - Test: Return nil for ExecuteBash (unconfined)
+   - Test: Return nil for DatabaseQuery (different resource type)
+   - Test: Handle missing/nil arguments gracefully
+   - Commit: "Add failing specs for PathExtractor"
+
+2. **GREEN**: Implement PathExtractor class
+   - Create `lib/nu/agent/path_extractor.rb`
+   - Implement `extract(tool_name, arguments)` method
+   - Use tool metadata to determine extraction strategy
+   - Handle file, source_file, destination_file, path parameters
+   - Run tests until green
+   - Commit: "Implement PathExtractor for dependency analysis"
+
+3. **RED**: Write specs for path normalization
+   - Test: Resolve relative paths to absolute paths
+   - Test: Normalize paths (handle .., ., //)
+   - Test: Handle nil/empty paths
+   - Commit: "Add failing specs for path normalization"
+
+4. **GREEN**: Implement path normalization
+   - Add `normalize_path(path)` method to PathExtractor
+   - Use `File.expand_path` for normalization
+   - Run tests until green
+   - Commit: "Implement path normalization in PathExtractor"
+
+5. **REFACTOR**: Edge case handling
+   - Add specs for symlinks, non-existent paths
+   - Update implementation as needed
+   - Run full test suite + coverage
+   - Commit: "Add edge case handling for path extraction"
+
+**Acceptance Criteria**:
+- [ ] PathExtractor correctly identifies file paths from all file-based tools
+- [ ] PathExtractor returns nil for unconfined tools
+- [ ] Paths are normalized to absolute form
+- [ ] 100% test coverage for PathExtractor
+- [ ] Zero rubocop violations
+- [ ] All existing tests still pass
+
+**Estimated Commits**: 5-6
+
+---
+
+### Phase 3: Dependency Analysis & Batching (TDD)
+
+**Objective**: Implement the core logic that analyzes tool call dependencies and groups them into parallelizable batches.
+
+**TDD Steps**:
+1. **RED**: Write specs for DependencyAnalyzer - basic batching
+   - Test: Single tool call produces single batch
+   - Test: Two independent read tools batch together
+   - Test: Two read tools on same path batch together
+   - Test: Read then write on same path creates two batches
+   - Commit: "Add failing specs for basic dependency batching"
+
+2. **GREEN**: Implement DependencyAnalyzer skeleton
+   - Create `lib/nu/agent/dependency_analyzer.rb`
+   - Implement `analyze(tool_calls)` method returning batches
+   - Basic logic for read/read compatibility
+   - Run tests until green
+   - Commit: "Implement basic dependency batching"
+
+3. **RED**: Write specs for write dependency rules
+   - Test: Write then write on same path creates two batches
+   - Test: Write then read on same path creates two batches
+   - Test: Write on path A, read on path B batches together
+   - Test: Multiple writes on different paths batch together
+   - Commit: "Add failing specs for write dependency rules"
+
+4. **GREEN**: Implement write dependency logic
+   - Add path tracking during analysis
+   - Implement write/write conflict detection
+   - Implement write blocks subsequent read logic
+   - Run tests until green
+   - Commit: "Implement write dependency analysis"
+
+5. **RED**: Write specs for unconfined tool barriers
+   - Test: ExecuteBash forces solo batch
+   - Test: Tools before ExecuteBash in separate batch
+   - Test: Tools after ExecuteBash in separate batch
+   - Test: Multiple ExecuteBash calls each get solo batch
+   - Commit: "Add failing specs for unconfined tool barriers"
+
+6. **GREEN**: Implement barrier logic for unconfined tools
+   - Detect unconfined write tools (operation_type: :write, scope: :unconfined)
+   - Force batch boundary before and after
+   - Run tests until green
+   - Commit: "Implement barrier synchronization for unconfined tools"
+
+7. **REFACTOR**: Complex scenarios
+   - Add specs for 10+ tool calls with mixed dependencies
+   - Add specs for database tools (different resource type)
+   - Add specs for tools with no extractable paths
+   - Update implementation to handle all scenarios
+   - Run full test suite + coverage
+   - Commit: "Add comprehensive dependency analysis scenarios"
+
+**Acceptance Criteria**:
+- [ ] DependencyAnalyzer correctly batches independent tools together
+- [ ] Read/write dependencies on same path are respected
+- [ ] Unconfined tools act as barriers (solo batches)
+- [ ] Complex multi-tool scenarios produce correct batches
+- [ ] 100% test coverage for DependencyAnalyzer
+- [ ] Zero rubocop violations
+- [ ] All existing tests still pass
+
+**Estimated Commits**: 7-8
+
+---
+
+### Phase 4: Parallel Execution Engine (TDD)
+
+**Objective**: Implement thread-based parallel execution within batches with result collection and ordering.
+
+**TDD Steps**:
+1. **RED**: Write specs for ParallelExecutor - single tool
+   - Test: Execute single tool call, return result
+   - Test: Preserve tool_call and result in output
+   - Test: Handle tool execution errors gracefully
+   - Commit: "Add failing specs for single tool execution"
+
+2. **GREEN**: Implement ParallelExecutor skeleton
+   - Create `lib/nu/agent/parallel_executor.rb`
+   - Implement `execute_batch(tool_calls)` method
+   - Execute single tool sequentially for now
+   - Run tests until green
+   - Commit: "Implement basic single tool execution"
+
+3. **RED**: Write specs for parallel execution
+   - Test: Execute 3 independent tools in parallel
+   - Test: All tools complete before returning
+   - Test: Results returned in original order
+   - Test: Verify parallel execution (timing-based or mock threads)
+   - Commit: "Add failing specs for parallel execution"
+
+4. **GREEN**: Implement parallel execution with threads
+   - Use `Thread.new` for each tool in batch
+   - Collect results with tool_call reference
+   - Use `threads.each(&:join)` to wait for completion
+   - Sort results by original order before returning
+   - Run tests until green
+   - Commit: "Implement parallel thread-based execution"
+
+5. **RED**: Write specs for thread safety
+   - Test: Shared state access (mock History, ToolRegistry)
+   - Test: Concurrent tool executions don't interfere
+   - Test: Thread exceptions don't crash other threads
+   - Commit: "Add failing specs for thread safety"
+
+6. **GREEN**: Implement thread safety measures
+   - Ensure each thread gets isolated execution context
+   - Wrap thread bodies in exception handlers
+   - Store exceptions in results for later handling
+   - Run tests until green
+   - Commit: "Implement thread safety and exception handling"
+
+7. **RED**: Write specs for result ordering guarantee
+   - Test: 5 tools with random execution times
+   - Test: Results always match original tool_call order
+   - Test: Verify index-based ordering logic
+   - Commit: "Add failing specs for result ordering"
+
+8. **GREEN**: Implement robust result ordering
+   - Store original index with each tool_call
+   - Sort results by index before returning
+   - Run tests until green
+   - Commit: "Implement guaranteed result ordering"
+
+9. **REFACTOR**: Performance and edge cases
+   - Add specs for empty batches
+   - Add specs for tools with slow execution
+   - Add specs for tools that modify shared resources
+   - Update implementation as needed
+   - Run full test suite + coverage
+   - Commit: "Add edge cases and performance specs"
+
+**Acceptance Criteria**:
+- [ ] ParallelExecutor executes batches using threads
+- [ ] Results are returned in original order
+- [ ] Thread exceptions are captured and handled
+- [ ] Thread-safe execution with isolated contexts
+- [ ] 100% test coverage for ParallelExecutor
+- [ ] Zero rubocop violations
+- [ ] All existing tests still pass
+
+**Estimated Commits**: 9-10
+
+---
+
+### Phase 5: Integration into ToolCallOrchestrator (TDD)
+
+**Objective**: Integrate parallel execution into the main orchestrator while maintaining backward compatibility.
+
+**TDD Steps**:
+1. **RED**: Write integration specs for orchestrator
+   - Test: Single tool call works with new system
+   - Test: Multiple independent tools execute in parallel
+   - Test: Dependent tools execute in correct order
+   - Test: Tool results saved to history in correct order
+   - Test: Tool results displayed in correct order
+   - Test: Messages list updated correctly
+   - Commit: "Add failing integration specs for parallel orchestrator"
+
+2. **GREEN**: Integrate DependencyAnalyzer into orchestrator
+   - Update `handle_tool_calls` to use DependencyAnalyzer
+   - Keep sequential execution for now
+   - Verify batches are created correctly
+   - Run tests until green
+   - Commit: "Integrate DependencyAnalyzer into orchestrator"
+
+3. **GREEN**: Integrate ParallelExecutor into orchestrator
+   - Replace sequential loop with batch execution
+   - Use ParallelExecutor for each batch
+   - Process results in order
+   - Run tests until green
+   - Commit: "Integrate ParallelExecutor into orchestrator"
+
+4. **RED**: Write specs for thread-safe history access
+   - Test: Multiple tools saving results concurrently
+   - Test: History.add_message is thread-safe
+   - Test: No data corruption or race conditions
+   - Commit: "Add failing specs for concurrent history access"
+
+5. **GREEN**: Implement thread-safe history access
+   - Add mutex to History for add_message if needed
+   - Verify ConsoleIO output queue handles concurrent puts
+   - Run tests until green
+   - Commit: "Ensure thread-safe history and console access"
+
+6. **REFACTOR**: Update all orchestrator specs
+   - Update existing specs to work with new architecture
+   - Add specs for metrics tracking with parallel execution
+   - Add specs for error handling in parallel context
+   - Run full test suite + coverage
+   - Commit: "Update and expand orchestrator specs"
+
+**Acceptance Criteria**:
+- [ ] ToolCallOrchestrator uses DependencyAnalyzer and ParallelExecutor
+- [ ] All existing orchestrator tests pass
+- [ ] Tool results saved and displayed in correct order
+- [ ] Metrics tracking works correctly
+- [ ] History and ConsoleIO are thread-safe
+- [ ] 100% test coverage maintained
+- [ ] Zero rubocop violations
+
+**Estimated Commits**: 6-7
+
+---
+
+### Phase 6: End-to-End Testing & Validation (TDD)
+
+**Objective**: Comprehensive integration testing and validation of the complete parallel execution system.
+
+**TDD Steps**:
+1. **RED**: Write end-to-end integration specs
+   - Test: Complete chat loop with parallel tool calls
+   - Test: Complex scenario: 10 tools with mixed dependencies
+   - Test: Verify actual parallelism (timing-based)
+   - Test: Error in one tool doesn't affect others in batch
+   - Commit: "Add failing end-to-end integration specs"
+
+2. **GREEN**: Fix integration issues
+   - Debug and fix any issues revealed by integration tests
+   - Verify all components work together
+   - Run tests until green
+   - Commit: "Fix integration issues for end-to-end tests"
+
+3. **RED**: Write specs for edge cases
+   - Test: All tools in single batch (all independent reads)
+   - Test: All tools in separate batches (chain of dependencies)
+   - Test: ExecuteBash in middle of tool sequence
+   - Test: Empty tool_calls array
+   - Test: Tool execution timeout during parallel execution
+   - Commit: "Add failing specs for edge cases"
+
+4. **GREEN**: Handle all edge cases
+   - Fix any edge case failures
+   - Add defensive code as needed
+   - Run tests until green
+   - Commit: "Handle edge cases in parallel execution"
+
+5. **REFACTOR**: Code cleanup and documentation
+   - Add inline documentation to all new classes
+   - Add examples to class-level docs
+   - Remove any dead code or debug statements
+   - Run full test suite + coverage + lint
+   - Commit: "Add documentation and clean up code"
+
+**Acceptance Criteria**:
+- [ ] Full integration tests pass
+- [ ] All edge cases handled correctly
+- [ ] Code is well-documented
+- [ ] 100% test coverage maintained
+- [ ] Zero rubocop violations
+- [ ] All existing tests still pass
+
+**Estimated Commits**: 5-6
+
+---
+
+### Phase 7: Performance Benchmarking
+
+**Objective**: Validate performance improvements and document results.
+
+**TDD Steps**:
+1. **Create benchmark suite**
+   - Create `spec/benchmarks/parallel_execution_benchmark.rb`
+   - Benchmark: 5 independent FileRead tools
+   - Benchmark: 10 independent FileRead tools
+   - Benchmark: Mixed read/write dependencies
+   - Run and collect baseline metrics
+   - Commit: "Add performance benchmark suite"
+
+2. **Document results**
+   - Create `docs/parallel-execution-performance.md`
+   - Document speedup ratios for different scenarios
+   - Document overhead for single tool calls
+   - Document batch configuration recommendations
+   - Commit: "Document parallel execution performance results"
+
+**Acceptance Criteria**:
+- [ ] Benchmark suite exists and is runnable
+- [ ] Performance improvements documented
+- [ ] Recommendations for usage documented
+
+**Estimated Commits**: 2
+
+---
+
+## Quality Gates (Every Commit)
+
+Before each commit, verify:
+```bash
+# Run full test suite
+bundle exec rspec
+
+# Check coverage (must be 100% for new code)
+open coverage/index.html
+
+# Run linter
+bundle exec rubocop
+
+# Verify no warnings
+bundle exec rubocop --format offenses
+```
+
+All must pass before committing.
+
+## Total Estimated Commits
+
+- Phase 1: 5-6 commits
+- Phase 2: 5-6 commits
+- Phase 3: 7-8 commits
+- Phase 4: 9-10 commits
+- Phase 5: 6-7 commits
+- Phase 6: 5-6 commits
+- Phase 7: 2 commits
+
+**Total: 39-45 commits**
 
 ## Additional Enhancements
 Beyond parallel execution, other optimizations could be explored:
@@ -145,4 +564,4 @@ This plan is a comprehensive blueprint for parallel tool execution. Feedback is 
 - Thread safety mechanisms for shared state and integration with background workers.
 - Prioritization of this optimization versus other enhancements like batch processing or caching.
 
-**Last Updated**: October 30, 2025
+**Last Updated**: October 31, 2025 - Added comprehensive TDD implementation plan with 7 phases
