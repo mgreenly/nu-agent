@@ -21,6 +21,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       c.instance_variable_set(:@history_pos, nil)
       c.instance_variable_set(:@saved_input, String.new(""))
       c.instance_variable_set(:@kill_ring, String.new(""))
+      c.instance_variable_set(:@saved_column, nil)
       c.instance_variable_set(:@spinner_state, Nu::Agent::SpinnerState.new)
       c.instance_variable_set(:@spinner_frames, ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
     end
@@ -39,6 +40,11 @@ RSpec.describe Nu::Agent::ConsoleIO do
       buffer = console.instance_variable_get(:@input_buffer)
       expect(buffer.frozen?).to be false
       expect { console.send(:insert_char, "a") }.not_to raise_error
+    end
+
+    it "initializes @saved_column to nil" do
+      saved_column = console.instance_variable_get(:@saved_column)
+      expect(saved_column).to be_nil
     end
   end
 

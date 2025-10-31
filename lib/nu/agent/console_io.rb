@@ -35,6 +35,7 @@ module Nu
         @history = []
         @history_pos = nil
         @saved_input = String.new("")
+        @saved_column = nil
 
         # Database history (optional)
         @db_history = db_history
