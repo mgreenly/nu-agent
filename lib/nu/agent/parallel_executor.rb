@@ -21,7 +21,7 @@ module Nu
         threads = []
         tool_calls.each_with_index do |tool_call, index|
           thread = Thread.new do
-            result = execute_tool(tool_call)
+            result = execute_tool_with_error_handling(tool_call)
             { index: index, tool_call: tool_call, result: result }
           end
           threads << thread
@@ -37,6 +37,19 @@ module Nu
       end
 
       private
+
+      def execute_tool_with_error_handling(tool_call)
+        execute_tool(tool_call)
+      rescue StandardError => e
+        # Capture exceptions and return them as error results
+        # This prevents one failing tool from crashing other parallel tools
+        {
+          error: "Exception during tool execution: #{e.message}",
+          exception: e,
+          exception_class: e.class.name,
+          backtrace: e.backtrace&.first(5)
+        }
+      end
 
       def execute_tool(tool_call)
         @tool_registry.execute(
