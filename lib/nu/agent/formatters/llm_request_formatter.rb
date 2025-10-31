@@ -1,33 +1,34 @@
 # frozen_string_literal: true
 
+require_relative "../subsystem_debugger"
+
 module Nu
   module Agent
     module Formatters
       class LlmRequestFormatter
-        attr_writer :debug
-
-        def initialize(console:, application:, debug:)
+        def initialize(console:, application:)
           @console = console
           @application = application
-          @debug = debug
         end
 
         def display(messages, tools = nil, markdown_document = nil)
-          # Only show in debug mode
-          return unless @debug
+          # Only show LLM request at verbosity level 3+
+          return unless should_output?(3)
 
-          # Only show LLM request at verbosity level 4+
-          verbosity = @application ? @application.verbosity : 0
-          return if verbosity < 4
-
-          display_tools(tools, verbosity) if verbosity >= 5 && tools && !tools.empty?
+          display_tools(tools) if should_output?(4) && tools && !tools.empty?
           display_history(messages, markdown_document)
           display_markdown_document(markdown_document) if markdown_document
         end
 
         private
 
-        def display_tools(tools, _verbosity)
+        def should_output?(level)
+          return false unless @application
+
+          SubsystemDebugger.should_output?(@application, "llm", level)
+        end
+
+        def display_tools(tools)
           @console.puts("")
           @console.puts("\e[90m--- #{tools.length} Tools Offered ---\e[0m")
           tools.each do |tool|

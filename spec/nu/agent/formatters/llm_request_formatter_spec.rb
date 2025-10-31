@@ -2,12 +2,13 @@
 
 require "spec_helper"
 require "nu/agent/formatters/llm_request_formatter"
+require "nu/agent/subsystem_debugger"
 
 RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
   let(:console) { double("console") }
-  let(:application) { double("application", verbosity: 4) }
-  let(:debug) { true }
-  let(:formatter) { described_class.new(console: console, application: application, debug: debug) }
+  let(:history) { double("history") }
+  let(:application) { double("application", debug: true, history: history) }
+  let(:formatter) { described_class.new(console: console, application: application) }
 
   let(:messages) do
     [
@@ -18,9 +19,12 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
 
   describe "#display" do
     context "when debug is false" do
-      let(:debug) { false }
+      let(:application) { double("application", debug: false, history: history) }
 
-      before { allow(console).to receive(:puts) }
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(3)
+      end
 
       it "does not display anything" do
         formatter.display(messages)
@@ -29,10 +33,11 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
       end
     end
 
-    context "when verbosity is less than 4" do
-      let(:application) { double("application", verbosity: 3) }
-
-      before { allow(console).to receive(:puts) }
+    context "when llm_verbosity is less than 3" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(2)
+      end
 
       it "does not display anything" do
         formatter.display(messages)
@@ -41,8 +46,11 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
       end
     end
 
-    context "when debug is true and verbosity >= 4" do
-      before { allow(console).to receive(:puts) }
+    context "when debug is true and llm_verbosity >= 3" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(3)
+      end
 
       context "without tools" do
         it "displays conversation history" do
@@ -55,13 +63,16 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         end
       end
 
-      context "with tools at verbosity 5+" do
-        let(:application) { double("application", verbosity: 5) }
+      context "with tools at llm_verbosity 4+" do
         let(:tools) do
           [
             { "name" => "file_read", "description" => "Read a file" },
             { "name" => "file_write", "description" => "Write a file" }
           ]
+        end
+
+        before do
+          allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(4)
         end
 
         it "displays tools section" do
@@ -174,11 +185,11 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
     end
 
     context "when no application provided" do
-      let(:formatter) { described_class.new(console: console, application: nil, debug: true) }
+      let(:formatter) { described_class.new(console: console, application: nil) }
 
       before { allow(console).to receive(:puts) }
 
-      it "defaults to verbosity 0 and does not display" do
+      it "defaults to llm_verbosity 0 and does not display" do
         formatter.display(messages)
 
         expect(console).not_to have_received(:puts)

@@ -7,13 +7,8 @@ require_relative "formatters/llm_request_formatter"
 module Nu
   module Agent
     class Formatter
-      attr_writer :orchestrator
+      attr_writer :orchestrator, :debug
       attr_accessor :exchange_start_time
-
-      def debug=(value)
-        @debug = value
-        @llm_request_formatter.debug = value if @llm_request_formatter
-      end
 
       def initialize(history:, console:, orchestrator:, **config)
         @history = history
@@ -41,7 +36,7 @@ module Nu
         @tool_call_formatter = Formatters::ToolCallFormatter.new(console: @console, application: @application)
         @tool_result_formatter = Formatters::ToolResultFormatter.new(console: @console, application: @application)
         @llm_request_formatter = Formatters::LlmRequestFormatter.new(
-          console: @console, application: @application, debug: @debug
+          console: @console, application: @application
         )
       end
 
