@@ -466,6 +466,57 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(output).to include("Background output line 2")
       expect(output).to include("> typing")
     end
+
+    it "clears multiline input area before writing output" do
+      queue = console.instance_variable_get(:@output_queue)
+      queue.push("Background output")
+
+      console.instance_variable_set(:@input_buffer, "line1\nline2")
+      console.instance_variable_set(:@cursor_pos, 11)
+      console.instance_variable_set(:@last_line_count, 2)
+
+      console.send(:handle_output_for_input_mode, "> ")
+
+      output = stdout.string
+      # Should move up one line (from line 2 to line 1) before clearing
+      expect(output).to include("\e[A")
+      # Should clear from cursor to end of screen
+      expect(output).to include("\e[J")
+      # Should include the background output
+      expect(output).to include("Background output")
+    end
+
+    it "redraws multiline input correctly after output" do
+      queue = console.instance_variable_get(:@output_queue)
+      queue.push("Background output")
+
+      console.instance_variable_set(:@input_buffer, "line1\nline2")
+      console.instance_variable_set(:@cursor_pos, 11)
+      console.instance_variable_set(:@last_line_count, 2)
+
+      console.send(:handle_output_for_input_mode, "> ")
+
+      output = stdout.string
+      # Should include both lines in the redraw
+      expect(output).to include("line1")
+      expect(output).to include("line2")
+      # Should have the prompt
+      expect(output).to include("> ")
+    end
+
+    it "updates @last_line_count after redrawing multiline input" do
+      queue = console.instance_variable_get(:@output_queue)
+      queue.push("Background output")
+
+      console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+      console.instance_variable_set(:@cursor_pos, 0)
+      console.instance_variable_set(:@last_line_count, 2)
+
+      console.send(:handle_output_for_input_mode, "> ")
+
+      # Should update to 3 lines since buffer has 3 lines
+      expect(console.instance_variable_get(:@last_line_count)).to eq(3)
+    end
   end
 
   describe "#add_to_history" do

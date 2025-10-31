@@ -592,46 +592,51 @@ module Nu
 
       def redraw_input_line(prompt)
         @mutex.synchronize do
-          # Get lines and calculate cursor position
-          buffer_lines = lines
-          cursor_line, cursor_col = get_line_and_column(@cursor_pos)
-
-          # Move up to start of previous multiline display and clear
-          @stdout.write("\e[#{@last_line_count - 1}A") if @last_line_count && @last_line_count > 1
-          @stdout.write("\e[J") # Clear to end of screen
-          @stdout.write("\r")   # Move to start of line
-
-          # Render all lines
-          buffer_lines.each_with_index do |line, index|
-            if index.zero?
-              # First line: render with prompt
-              @stdout.write(prompt)
-            else
-              # Subsequent lines: newline, then line content
-              @stdout.write("\r\n")
-            end
-            @stdout.write(line)
-          end
-
-          # Update line count
-          @last_line_count = buffer_lines.length
-
-          # Position cursor at correct line and column
-          # After rendering all lines, cursor is at the end of the last line
-          # Calculate how many lines to move up from the last line
-          lines_from_bottom = buffer_lines.length - 1 - cursor_line
-          @stdout.write("\e[#{lines_from_bottom}A") if lines_from_bottom.positive?
-
-          # Set column position (first line includes prompt length)
-          if cursor_line.zero?
-            @stdout.write("\e[#{prompt.length + cursor_col + 1}G")
-          else
-            @stdout.write("\e[#{cursor_col + 1}G")
-          end
-
-          @stdout.flush
+          do_redraw_input_line(prompt)
         end
       end
+
+      def do_redraw_input_line(prompt)
+        # Get lines and calculate cursor position
+        buffer_lines = lines
+        cursor_line, cursor_col = get_line_and_column(@cursor_pos)
+
+        # Move up to start of previous multiline display and clear
+        @stdout.write("\e[#{@last_line_count - 1}A") if @last_line_count && @last_line_count > 1
+        @stdout.write("\e[J") # Clear to end of screen
+        @stdout.write("\r")   # Move to start of line
+
+        # Render all lines
+        buffer_lines.each_with_index do |line, index|
+          if index.zero?
+            # First line: render with prompt
+            @stdout.write(prompt)
+          else
+            # Subsequent lines: newline, then line content
+            @stdout.write("\r\n")
+          end
+          @stdout.write(line)
+        end
+
+        # Update line count
+        @last_line_count = buffer_lines.length
+
+        # Position cursor at correct line and column
+        # After rendering all lines, cursor is at the end of the last line
+        # Calculate how many lines to move up from the last line
+        lines_from_bottom = buffer_lines.length - 1 - cursor_line
+        @stdout.write("\e[#{lines_from_bottom}A") if lines_from_bottom.positive?
+
+        # Set column position (first line includes prompt length)
+        if cursor_line.zero?
+          @stdout.write("\e[#{prompt.length + cursor_col + 1}G")
+        else
+          @stdout.write("\e[#{cursor_col + 1}G")
+        end
+
+        @stdout.flush
+      end
+      private :do_redraw_input_line
 
       def clear_screen(prompt)
         @mutex.synchronize do
@@ -679,8 +684,11 @@ module Nu
         return if lines.empty?
 
         @mutex.synchronize do
-          # Clear current input line
-          @stdout.write("\e[2K\r")
+          # Clear multiline input area
+          # Move up to first line if we have multiple lines
+          @stdout.write("\e[A" * (@last_line_count - 1)) if @last_line_count > 1
+          # Clear from cursor to end of screen
+          @stdout.write("\e[J")
 
           # Write all output (in raw mode, need explicit \r\n for all newlines)
           lines.each do |line|
@@ -689,12 +697,8 @@ module Nu
             @stdout.write("#{formatted}\r\n")
           end
 
-          # Redraw input line at new bottom
-          @stdout.write(prompt)
-          @stdout.write(@input_buffer)
-
-          col = prompt.length + @cursor_pos + 1
-          @stdout.write("\e[#{col}G")
+          # Redraw input using multiline-aware method (already in mutex, use private method)
+          do_redraw_input_line(prompt)
 
           @stdout.flush
         end
