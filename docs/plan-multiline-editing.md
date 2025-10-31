@@ -192,20 +192,20 @@ Each task must be tracked as:
 **Goal**: Update display methods to render multiple lines and position cursor in 2D.
 **Files**: `lib/nu/agent/console_io.rb`
 
-#### Task 2.1: Add @last_line_count instance variable ⏳
-**TDD Steps**:
-1. Write spec: initialize ConsoleIO → expect `@last_line_count` equals 1
-2. Update initialize method to set `@last_line_count = 1`
-3. Run tests until green
-4. Run lint, fix any issues
-5. Run coverage check
-6. Commit: `[Phase 2.1] Add @last_line_count instance variable for display tracking`
-7. Update this document with ✅ DONE timestamp
+#### Task 2.1: Add @last_line_count instance variable ✅ DONE (2025-10-31 15:37)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: initialize ConsoleIO → expect `@last_line_count` equals 1
+2. ✅ Update initialize method to set `@last_line_count = 1`
+3. ✅ Run tests until green (2164 examples, 0 failures)
+4. ✅ Run lint (no offenses detected)
+5. ✅ Run coverage check (98.16% line / 90.07% branch)
+6. ✅ Commit: `[Phase 2.1] Add @last_line_count instance variable for display tracking`
+7. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Variable initialized to 1 (single line default)
-- Tests verify initialization
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Variable initialized to 1 (single line default)
+- ✅ Tests verify initialization
+- ✅ All quality gates pass
 
 #### Task 2.2: Update redraw_input_line for multiline rendering ⏳
 **TDD Steps**:
@@ -559,7 +559,7 @@ WHERE id = 1
 - Task 1.4: Add @saved_column instance variable - ✅ DONE (2025-10-31 15:30)
 
 ### Phase 2: Multiline display rendering
-- Task 2.1: Add @last_line_count instance variable - ⏳
+- Task 2.1: Add @last_line_count instance variable - ✅ DONE (2025-10-31 15:37)
 - Task 2.2: Update redraw_input_line for multiline rendering - ⏳
 - Task 2.3: Update clear_screen for multiline support - ⏳
 - Task 2.4: Update handle_output_for_input_mode for multiline - ⏳
