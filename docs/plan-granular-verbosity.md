@@ -448,17 +448,22 @@ Verbosity level mapping (OLD → NEW):
 - OLD: verbosity 1-3 → NEW: tools_verbosity 2 (show truncated arguments, 30 chars max)
 - OLD: verbosity 4+ → NEW: tools_verbosity 3+ (show full arguments, no truncation)
 
-Step 3.4: Update tool result formatter
+Step 3.4: Update tool result formatter ✓ COMPLETED
 File: `lib/nu/agent/formatters/tool_result_formatter.rb`
 
-Replace current verbosity checks with tools subsystem verbosity:
-```ruby
-verbosity = @application.history.get_int("tools_verbosity", default: 0)
+**Actual Implementation:**
+- Added `should_output?(level)` helper method that checks `tools_verbosity` from config
+- Updated `display()` method to check verbosity levels before output
+- Removed dependency on `@application.verbosity`
+- Updated `display_result()` and related methods to use `should_output?(level)`
+- Updated specs in `tool_result_formatter_spec.rb` to test new subsystem verbosity
+- Fixed duplicate describe blocks in `formatter_spec.rb` (lint compliance)
 
-# Level 1: Show tool name only
-# Level 2: Show brief result
-# Level 3: Show full result, no truncation
-```
+Verbosity level mapping (OLD → NEW):
+- NEW: tools_verbosity 0 → No output at all
+- OLD: verbosity 0 → NEW: tools_verbosity 1 (show tool name/header only)
+- OLD: verbosity 1-3 → NEW: tools_verbosity 2 (show brief/truncated results)
+- OLD: verbosity 4+ → NEW: tools_verbosity 3+ (show full results, no truncation)
 
 Step 3.5: Update spell checker output
 File: `lib/nu/agent/formatter.rb`
