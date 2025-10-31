@@ -20,18 +20,20 @@ module Nu
             /model summarizer <name>       - Switch summarizer model
             /models                        - List available models
             /redaction <on|off>            - Enable/disable redaction of tool results in context
-            /verbosity <number>            - Set verbosity level for debug output (default: 0)
-                                             - Level 0: Thread lifecycle events + tool names only
-                                             - Level 1: Level 0 + truncated tool call/result params (30 chars)
-                                             - Level 2: Level 1 + message creation notifications
-                                             - Level 3: Level 2 + message role/actor + truncated content/params (30 chars)
-                                             - Level 4: Level 3 + full tool params + messages sent to LLM
-                                             - Level 5: Level 4 + tools array
-                                             - Level 6: Level 5 + longer message content previews (100 chars)
             /reset                         - Start a new conversation
             /spellcheck <on|off>           - Enable/disable automatic spell checking of user input
             /summarizer <on|off>           - Enable/disable background conversation summarization
             /tools                         - List available tools
+
+          Debug Subsystems:
+            /llm verbosity <level>         - Control LLM API debug output
+            /tools verbosity <level>       - Control tool call/result debug output
+            /messages verbosity <level>    - Control message tracking debug output
+            /search verbosity <level>      - Control search internals debug output
+            /stats verbosity <level>       - Control statistics/cost debug output
+            /spellcheck verbosity <level>  - Control spell checker debug output
+
+            Use /<subsystem> help for details on verbosity levels
         HELP
       end
     end

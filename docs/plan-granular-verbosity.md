@@ -618,19 +618,20 @@ File: `lib/nu/agent/commands/debug_command.rb`
 - Coverage maintained: 98.12% line / 89.83% branch
 - Lint clean with good design (array iteration instead of multiple puts calls)
 
-Step 4.3: Update main help to document subsystem commands
-File: `lib/nu/agent/commands/help_command.rb` or `lib/nu/agent/help_text_builder.rb`
+Step 4.3: Update main help to document subsystem commands ✓ COMPLETED
+File: `lib/nu/agent/help_text_builder.rb`
 
-Add subsystem commands to help output:
-```
-Debug Subsystems:
-  /llm          - LLM debug output control
-  /tools        - Tool debug output control
-  /messages     - Message tracking control
-  /search       - Search debug output control
-  /stats        - Statistics output control
-  /spellcheck   - Spell checker output control
-```
+**Actual Implementation:**
+- Followed TDD: RED → GREEN → REFACTOR cycle
+- Removed old /verbosity command with verbose level descriptions (lines 15-21)
+- Added new "Debug Subsystems:" section with all 6 subsystem commands
+- Each subsystem command shows full syntax: `/subsystem verbosity <level>`
+- Includes brief description of what each subsystem controls
+- Added note: "Use /<subsystem> help for details on verbosity levels"
+- Refactored spec to avoid RuboCop violation (split into 3 smaller tests, added `let` helper)
+- All tests passing (2196 examples, 0 failures - added 2 new examples)
+- Coverage maintained: 98.12% line / 89.83% branch
+- Lint clean with good design (no offenses detected)
 
 Step 4.4: Manual testing scenarios
 
