@@ -532,11 +532,63 @@ end
    - Commit: "Document parallel execution performance results"
 
 **Acceptance Criteria**:
-- [ ] Benchmark suite exists and is runnable
-- [ ] Performance improvements documented
-- [ ] Recommendations for usage documented
+- [x] Benchmark suite exists and is runnable
+- [x] Performance improvements documented
+- [x] Recommendations for usage documented
+- [!] **CRITICAL ISSUE DISCOVERED**: Format inconsistency between components
+
+**Status**: ⚠️ PARTIALLY COMPLETE - Critical Issue Found
+**Issue**: DependencyAnalyzer expects nested format but API clients return flat format
 
 **Estimated Commits**: 2
+
+---
+
+### Phase 8: Fix Format Inconsistency (URGENT)
+
+**Objective**: Resolve the format mismatch between DependencyAnalyzer and API clients.
+
+**Issue Summary**:
+- API clients (Anthropic, OpenAI) return tool calls in **flat format**: `{ "name": "tool", "arguments": {...} }`
+- DependencyAnalyzer expects **nested format**: `{ "function": { "name": "tool", "arguments": {...} } }`
+- ParallelExecutor expects **flat format**: `tool_call["name"]`
+- This causes dependency analysis to fail silently and use default metadata for all tools
+- End-to-end tests use flat format (correct for production)
+- DependencyAnalyzer unit tests use nested format (incorrect for production)
+
+**TDD Steps**:
+1. **RED**: Update DependencyAnalyzer specs to use flat format
+   - Fix all specs in `dependency_analyzer_spec.rb` to use `{ "name": ..., "arguments": ... }`
+   - Run specs - they should fail
+   - Commit: "Update DependencyAnalyzer specs to use flat format (tests fail)"
+
+2. **GREEN**: Update DependencyAnalyzer implementation
+   - Modify `extract_tool_info` to support flat format: `tool_call["name"]`
+   - Modify `path_in_current_batch?` to support flat format
+   - Add backward compatibility for nested format if needed
+   - Run specs until all pass
+   - Commit: "Fix DependencyAnalyzer to support flat format from API clients"
+
+3. **VERIFY**: Run full test suite
+   - Ensure all dependency analyzer tests pass
+   - Ensure all end-to-end tests still pass
+   - Ensure parallel executor tests still pass
+   - Commit: "Verify all tests pass with format fix"
+
+4. **BENCHMARK**: Re-run performance benchmarks
+   - Run `bundle exec rspec spec/benchmarks/parallel_execution_benchmark.rb`
+   - Collect actual performance data with correct dependency analysis
+   - Update `docs/parallel-execution-performance.md` with real results
+   - Commit: "Document actual performance results after format fix"
+
+**Acceptance Criteria**:
+- [ ] DependencyAnalyzer handles flat format correctly
+- [ ] All dependency analyzer specs use flat format
+- [ ] All tests pass (unit, integration, end-to-end)
+- [ ] Performance benchmarks show correct dependency batching
+- [ ] Documentation updated with actual performance data
+
+**Estimated Commits**: 4
 
 ---
 
