@@ -354,5 +354,215 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         expect(batches[2][0]["id"]).to eq("call_3")
       end
     end
+
+    context "with comprehensive scenarios" do
+      it "handles complex mix of 10+ tools with various dependencies" do
+        tool_calls = [
+          # Batch 1: Independent reads
+          { "id" => "call_1", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/a.rb"}' } },
+          { "id" => "call_2", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/b.rb"}' } },
+          { "id" => "call_3", "type" => "function",
+            "function" => { "name" => "file_stat", "arguments" => '{"file":"/path/c.rb"}' } },
+          # Batch 2: Write on a.rb (conflicts with call_1)
+          { "id" => "call_4", "type" => "function",
+            "function" => { "name" => "file_write", "arguments" => '{"file":"/path/a.rb","content":"new"}' } },
+          # Batch 3: Reads on different paths
+          { "id" => "call_5", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/d.rb"}' } },
+          { "id" => "call_6", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/e.rb"}' } },
+          # Batch 4: Execute bash (barrier)
+          { "id" => "call_7", "type" => "function",
+            "function" => { "name" => "execute_bash", "arguments" => '{"command":"ls"}' } },
+          # Batch 5: Reads after barrier
+          { "id" => "call_8", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/f.rb"}' } },
+          { "id" => "call_9", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/g.rb"}' } },
+          # Batch 6: Write on f.rb
+          { "id" => "call_10", "type" => "function",
+            "function" => { "name" => "file_write", "arguments" => '{"file":"/path/f.rb","content":"x"}' } },
+          # Batch 7: Read after write
+          { "id" => "call_11", "type" => "function",
+            "function" => { "name" => "file_read", "arguments" => '{"file":"/path/h.rb"}' } }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        # Expected batching:
+        # Batch 1: call_1, call_2, call_3 (independent reads)
+        # Batch 2: call_4 (write a.rb, conflicts with prior read), call_5, call_6 (reads on different paths)
+        # Batch 3: call_7 (execute_bash - barrier)
+        # Batch 4: call_8, call_9 (reads after barrier)
+        # Batch 5: call_10 (write f.rb, conflicts with prior read), call_11 (read on different path)
+        expect(batches.size).to eq(5)
+        expect(batches[0].map { |tc| tc["id"] }).to eq(%w[call_1 call_2 call_3])
+        expect(batches[1].map { |tc| tc["id"] }).to eq(%w[call_4 call_5 call_6])
+        expect(batches[2].map { |tc| tc["id"] }).to eq(["call_7"])
+        expect(batches[3].map { |tc| tc["id"] }).to eq(%w[call_8 call_9])
+        expect(batches[4].map { |tc| tc["id"] }).to eq(%w[call_10 call_11])
+      end
+
+      it "handles database tools (different resource type)" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "database_query",
+              "arguments" => '{"query":"SELECT * FROM users"}'
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "database_query",
+              "arguments" => '{"query":"SELECT * FROM posts"}'
+            }
+          },
+          {
+            "id" => "call_3",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => '{"file":"/path/to/file.rb"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        # Database queries and file reads can batch together (different resource types)
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(3)
+      end
+
+      it "handles tools with no extractable paths" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "file_glob",
+              "arguments" => '{"pattern":"*.rb"}'
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "file_grep",
+              "arguments" => '{"pattern":"TODO","path":"."}'
+            }
+          },
+          {
+            "id" => "call_3",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => '{"file":"/path/to/file.rb"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        # Tools without extractable paths can batch with other reads
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(3)
+      end
+
+      it "handles empty tool_calls array" do
+        tool_calls = []
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches).to eq([])
+      end
+
+      it "handles nil tool_calls" do
+        tool_calls = nil
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches).to eq([])
+      end
+
+      it "handles tools with invalid arguments" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => nil
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => '{"file":"/path/to/file.rb"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        # Tools with invalid arguments can still batch (treated as no paths)
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(2)
+      end
+
+      it "handles mixed file operations (copy, move, delete)" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "type" => "function",
+            "function" => {
+              "name" => "file_copy",
+              "arguments" => '{"source":"/a.rb","destination":"/b.rb"}'
+            }
+          },
+          {
+            "id" => "call_2",
+            "type" => "function",
+            "function" => {
+              "name" => "file_move",
+              "arguments" => '{"source":"/c.rb","destination":"/d.rb"}'
+            }
+          },
+          {
+            "id" => "call_3",
+            "type" => "function",
+            "function" => {
+              "name" => "file_delete",
+              "arguments" => '{"file":"/e.rb"}'
+            }
+          },
+          {
+            "id" => "call_4",
+            "type" => "function",
+            "function" => {
+              "name" => "file_read",
+              "arguments" => '{"file":"/a.rb"}'
+            }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        # First 3 writes can batch together (different paths)
+        # Read on /a.rb conflicts with copy that writes to /b.rb but reads from /a.rb
+        # So call_4 should be in a separate batch
+        expect(batches.size).to eq(2)
+        expect(batches[0].map { |tc| tc["id"] }).to eq(%w[call_1 call_2 call_3])
+        expect(batches[1].map { |tc| tc["id"] }).to eq(["call_4"])
+      end
+    end
   end
 end
