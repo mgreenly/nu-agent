@@ -458,6 +458,7 @@ module Nu
       def insert_char(char)
         @input_buffer.insert(@cursor_pos, char)
         @cursor_pos += 1
+        @saved_column = nil
       end
 
       def delete_backward
@@ -465,12 +466,14 @@ module Nu
 
         @input_buffer.slice!(@cursor_pos - 1)
         @cursor_pos -= 1
+        @saved_column = nil
       end
 
       def delete_forward
         return if @cursor_pos >= @input_buffer.length
 
         @input_buffer.slice!(@cursor_pos)
+        @saved_column = nil
       end
 
       def handle_escape_sequence(chars, index)
@@ -575,20 +578,24 @@ module Nu
         return if @cursor_pos >= @input_buffer.length
 
         @cursor_pos += 1
+        @saved_column = nil
       end
 
       def cursor_backward
         return if @cursor_pos.zero?
 
         @cursor_pos -= 1
+        @saved_column = nil
       end
 
       def cursor_to_start
         @cursor_pos = 0
+        @saved_column = nil
       end
 
       def cursor_to_end
         @cursor_pos = @input_buffer.length
+        @saved_column = nil
       end
 
       def kill_to_end

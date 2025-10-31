@@ -2135,4 +2135,81 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
     end
   end
+
+  # Phase 4: Reset @saved_column on horizontal movement and edits
+  describe "@saved_column reset behavior" do
+    context "horizontal cursor movements" do
+      it "resets @saved_column on cursor_forward" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:cursor_forward)
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+
+      it "resets @saved_column on cursor_backward" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:cursor_backward)
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+
+      it "resets @saved_column on cursor_to_start" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:cursor_to_start)
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+
+      it "resets @saved_column on cursor_to_end" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:cursor_to_end)
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+    end
+
+    context "edit operations" do
+      it "resets @saved_column on insert_char" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:insert_char, "x")
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+
+      it "resets @saved_column on delete_backward" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:delete_backward)
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+
+      it "resets @saved_column on delete_forward" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 3)
+        console.instance_variable_set(:@saved_column, 5)
+
+        console.send(:delete_forward)
+
+        expect(console.instance_variable_get(:@saved_column)).to be_nil
+      end
+    end
+  end
 end
