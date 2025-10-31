@@ -436,4 +436,119 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       expect(metrics).to be_nil
     end
   end
+
+  describe "#start_embedding_worker" do
+    context "when embedding_client is provided" do
+      let(:embedding_client) { instance_double("EmbeddingClient") }
+      let(:config_store) { instance_double(Nu::Agent::ConfigStore) }
+      let(:worker_manager) do
+        described_class.new(
+          application: application,
+          history: history,
+          summarizer: summarizer,
+          conversation_id: conversation_id,
+          status_mutex: status_mutex,
+          embedding_client: embedding_client
+        )
+      end
+
+      it "creates and starts an EmbeddingGenerator worker" do
+        mock_thread = instance_double(Thread)
+        mock_worker = instance_double(
+          Nu::Agent::Workers::EmbeddingGenerator,
+          start_worker: mock_thread
+        )
+
+        allow(history).to receive(:instance_variable_get).with(:@config_store).and_return(config_store)
+        expect(Nu::Agent::Workers::EmbeddingGenerator).to receive(:new).with(
+          history: history,
+          embedding_client: embedding_client,
+          application: application,
+          status_info: { status: worker_manager.embedding_status, mutex: status_mutex },
+          current_conversation_id: conversation_id,
+          config_store: config_store
+        ).and_return(mock_worker)
+
+        worker_manager.start_embedding_worker
+
+        expect(worker_manager.active_threads).to include(mock_thread)
+      end
+    end
+
+    context "when embedding_client is nil" do
+      it "does not create a worker" do
+        expect(Nu::Agent::Workers::EmbeddingGenerator).not_to receive(:new)
+        worker_manager.start_embedding_worker
+        expect(worker_manager.active_threads).to be_empty
+      end
+    end
+  end
+
+  describe "#pause_all" do
+    it "pauses all workers" do
+      mock_worker1 = instance_double(Nu::Agent::Workers::ConversationSummarizer, pause: nil)
+      mock_worker2 = instance_double(Nu::Agent::Workers::ExchangeSummarizer, pause: nil)
+
+      worker_manager.instance_variable_set(:@workers, [mock_worker1, mock_worker2])
+
+      expect(mock_worker1).to receive(:pause)
+      expect(mock_worker2).to receive(:pause)
+
+      worker_manager.pause_all
+    end
+  end
+
+  describe "#resume_all" do
+    it "resumes all workers" do
+      mock_worker1 = instance_double(Nu::Agent::Workers::ConversationSummarizer, resume: nil)
+      mock_worker2 = instance_double(Nu::Agent::Workers::ExchangeSummarizer, resume: nil)
+
+      worker_manager.instance_variable_set(:@workers, [mock_worker1, mock_worker2])
+
+      expect(mock_worker1).to receive(:resume)
+      expect(mock_worker2).to receive(:resume)
+
+      worker_manager.resume_all
+    end
+  end
+
+  describe "#wait_until_all_paused" do
+    it "returns true when all workers pause within timeout" do
+      mock_worker1 = instance_double(
+        Nu::Agent::Workers::ConversationSummarizer,
+        wait_until_paused: true
+      )
+      mock_worker2 = instance_double(
+        Nu::Agent::Workers::ExchangeSummarizer,
+        wait_until_paused: true
+      )
+
+      worker_manager.instance_variable_set(:@workers, [mock_worker1, mock_worker2])
+
+      expect(mock_worker1).to receive(:wait_until_paused).with(timeout: 3).and_return(true)
+      expect(mock_worker2).to receive(:wait_until_paused).with(timeout: 3).and_return(true)
+
+      result = worker_manager.wait_until_all_paused(timeout: 3)
+      expect(result).to be true
+    end
+
+    it "returns false when any worker fails to pause within timeout" do
+      mock_worker1 = instance_double(
+        Nu::Agent::Workers::ConversationSummarizer,
+        wait_until_paused: true
+      )
+      mock_worker2 = instance_double(
+        Nu::Agent::Workers::ExchangeSummarizer,
+        wait_until_paused: false
+      )
+
+      worker_manager.instance_variable_set(:@workers, [mock_worker1, mock_worker2])
+
+      expect(mock_worker1).to receive(:wait_until_paused).with(timeout: 5).and_return(true)
+      expect(mock_worker2).to receive(:wait_until_paused).with(timeout: 5).and_return(false)
+
+      result = worker_manager.wait_until_all_paused(timeout: 5)
+      expect(result).to be false
+    end
+  end
 end

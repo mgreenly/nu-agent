@@ -20,6 +20,17 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
     }
   end
 
+  let(:summarizer_worker) do
+    described_class.new(
+      history: history,
+      summarizer: summarizer,
+      application: application,
+      status_info: { status: summarizer_status, mutex: status_mutex },
+      current_conversation_id: 1,
+      config_store: config_store
+    )
+  end
+
   before do
     allow(config_store).to receive(:get_int).with("conversation_summarizer_verbosity", default: 0).and_return(0)
   end
@@ -237,6 +248,49 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
 
       # No summary should be saved due to shutdown
       expect(summarizer_status["completed"]).to eq(0)
+    end
+  end
+
+  describe "#load_verbosity" do
+    it "loads verbosity from config store" do
+      allow(config_store).to receive(:get_int).with("conversation_summarizer_verbosity", default: 0).and_return(2)
+      expect(summarizer_worker.send(:load_verbosity)).to eq(2)
+    end
+  end
+
+  describe "#debug_output" do
+    it "outputs debug messages when debug enabled and within verbosity level" do
+      allow(config_store).to receive(:get_int).with("conversation_summarizer_verbosity", default: 0).and_return(1)
+      allow(application).to receive(:debug).and_return(true)
+      allow(application).to receive(:output_line)
+
+      summarizer_worker.send(:debug_output, "Test message", level: 0)
+      expect(application).to have_received(:output_line).with("[ConversationSummarizer] Test message", type: :debug)
+    end
+  end
+
+  describe "error handling during failure recording" do
+    it "handles errors when recording failed job" do
+      conv = { "id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+
+      # Cause summarization to fail
+      allow(summarizer).to receive(:send_message).and_raise(StandardError.new("API error"))
+
+      # Cause failure recording to also fail
+      allow(history).to receive(:create_failed_job).and_raise(StandardError.new("DB error"))
+      allow(application).to receive(:debug).and_return(true)
+      allow(application).to receive(:output_line)
+
+      summarizer_worker.summarize_conversations
+
+      expect(summarizer_status["failed"]).to eq(1)
+      expect(application).to have_received(:output_line)
+        .with(/\[ConversationSummarizer\].*Failed to record failure/, type: :debug)
     end
   end
 end

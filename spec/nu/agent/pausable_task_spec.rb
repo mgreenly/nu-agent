@@ -290,4 +290,18 @@ RSpec.describe Nu::Agent::PausableTask do
       expect(thread.alive?).to be false
     end
   end
+
+  describe "#do_work" do
+    it "raises NotImplementedError when called on base class" do
+      # Create a minimal subclass that doesn't implement do_work
+      minimal_task_class = Class.new(Nu::Agent::PausableTask)
+
+      minimal_task = minimal_task_class.new(
+        status_info: { status: status_hash, mutex: status_mutex },
+        shutdown_flag: shutdown_flag
+      )
+
+      expect { minimal_task.send(:do_work) }.to raise_error(NotImplementedError, /must implement #do_work/)
+    end
+  end
 end

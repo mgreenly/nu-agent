@@ -362,4 +362,89 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
       end
     end
   end
+
+  describe "item processing error handling" do
+    let(:conversations) { [{ "id" => 2, "summary" => "Test conversation" }] }
+    let(:embedding_response) do
+      {
+        "embeddings" => [Array.new(1536, 0.1)],
+        "model" => "text-embedding-3-small",
+        "tokens" => 10,
+        "spend" => 0.0002
+      }
+    end
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(embedding_client).to receive(:generate_embedding).and_return(embedding_response)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(application).to receive(:debug).and_return(true)
+      allow(application).to receive(:output_line)
+    end
+
+    it "handles errors when storing embeddings and creates failed job record" do
+      allow(history).to receive(:upsert_conversation_embedding).and_raise(StandardError.new("Database error"))
+      allow(history).to receive(:create_failed_job)
+
+      pipeline.send(:process_embeddings)
+
+      expect(status["failed"]).to eq(1)
+      expect(status["completed"]).to eq(0)
+      expect(history).to have_received(:create_failed_job).with(
+        job_type: "embedding_generation",
+        ref_id: 2,
+        payload: "{\"item_type\":\"conversation\",\"item_id\":2,\"worker\":\"embedding_generator\"}",
+        error: "StandardError: Database error"
+      )
+      expect(application).to have_received(:output_line)
+        .with(/\[EmbeddingGenerator\].*Failed to process conversation:2/, type: :debug)
+    end
+
+    it "handles errors when recording failed job" do
+      allow(history).to receive(:upsert_conversation_embedding).and_raise(StandardError.new("Database error"))
+      allow(history).to receive(:create_failed_job).and_raise(StandardError.new("Failed job recording error"))
+
+      # Should not raise, just log the error
+      expect { pipeline.send(:process_embeddings) }.not_to raise_error
+
+      expect(status["failed"]).to eq(1)
+      expect(application).to have_received(:output_line)
+        .with(/\[EmbeddingGenerator\].*Failed to record failure/, type: :debug)
+    end
+  end
+
+  describe "shutdown during API call" do
+    let(:conversations) { [{ "id" => 2, "summary" => "Test conversation" }] }
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+    end
+
+    it "stops waiting for API response when shutdown is requested" do
+      # Simulate a slow API call
+      api_thread = Thread.new do
+        sleep(5)
+        { "embeddings" => [Array.new(1536, 0.1)], "model" => "test", "tokens" => 10, "spend" => 0.0 }
+      end
+
+      # Simulate shutdown after a short delay
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false, false, true)
+      allow(api_thread).to receive(:join).and_call_original
+
+      result = pipeline.send(:wait_for_api_response, api_thread)
+
+      # Should return nil because shutdown was requested
+      expect(result).to be_nil
+      api_thread.kill # Clean up the thread
+    end
+  end
 end

@@ -129,6 +129,18 @@ RSpec.describe Nu::Agent::PersonaManager do
       end
     end
 
+    context "with generic database error" do
+      it "raises an error with the original message" do
+        allow(connection).to receive(:query).and_raise(
+          DuckDB::Error.new("Some other database error")
+        )
+
+        expect do
+          manager.create(name: "test-persona", system_prompt: "Prompt")
+        end.to raise_error(Nu::Agent::Error, /Failed to create persona/)
+      end
+    end
+
     context "with empty name" do
       it "raises an error" do
         expect do

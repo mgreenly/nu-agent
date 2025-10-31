@@ -578,4 +578,78 @@ RSpec.describe Nu::Agent::Application do
       end
     end
   end
+
+  describe "#exchange_summarizer_status" do
+    it "delegates to worker_manager" do
+      allow(mock_worker_manager).to receive(:exchange_summarizer_status).and_return("test_status")
+      app = described_class.new(options: options)
+
+      result = app.exchange_summarizer_status
+      expect(result).to eq("test_status")
+    end
+  end
+
+  describe "#embedding_status" do
+    it "delegates to worker_manager" do
+      allow(mock_worker_manager).to receive(:embedding_status).and_return("embedding_status_value")
+      app = described_class.new(options: options)
+
+      result = app.embedding_status
+      expect(result).to eq("embedding_status_value")
+    end
+  end
+
+  describe "#print_help" do
+    it "prints help text using HelpTextBuilder" do
+      app = described_class.new(options: options)
+      help_text = "Help line 1\nHelp line 2\n"
+
+      allow(Nu::Agent::HelpTextBuilder).to receive(:build).and_return(help_text)
+      allow(app).to receive(:output_lines)
+
+      app.send(:print_help)
+
+      expect(mock_console).to have_received(:puts).with("")
+      expect(app).to have_received(:output_lines).with("Help line 1", "Help line 2", type: :debug)
+    end
+  end
+
+  describe "#reload_active_persona" do
+    it "reloads the active persona" do
+      app = described_class.new(options: options)
+
+      # Expect PersonaManager to be called again
+      new_persona_manager = instance_double(Nu::Agent::PersonaManager)
+      allow(Nu::Agent::PersonaManager).to receive(:new).and_return(new_persona_manager)
+      allow(new_persona_manager).to receive(:get_active).and_return({ "system_prompt" => "New prompt" })
+
+      app.reload_active_persona
+
+      expect(Nu::Agent::PersonaManager).to have_received(:new).at_least(:once)
+    end
+  end
+
+  describe "persona loading error handling" do
+    it "handles errors when loading persona gracefully with debug enabled" do
+      error_persona_manager = instance_double(Nu::Agent::PersonaManager)
+      allow(Nu::Agent::PersonaManager).to receive(:new).and_return(error_persona_manager)
+      allow(error_persona_manager).to receive(:get_active).and_raise(StandardError.new("Persona error"))
+
+      # Enable debug mode for the application
+      debug_options = instance_double(Nu::Agent::Options, debug: true, reset_model: nil)
+      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
+
+      # We need to capture output_line calls during initialization
+      output_calls = []
+      allow_any_instance_of(described_class).to receive(:output_line) do |_, *args|
+        output_calls << args
+      end
+
+      app = described_class.new(options: debug_options)
+
+      # Should not raise, persona should be nil
+      expect(app.instance_variable_get(:@active_persona_system_prompt)).to be_nil
+      expect(output_calls.any? { |call| call[0]&.include?("Warning: Could not load persona") }).to be true
+    end
+  end
 end
