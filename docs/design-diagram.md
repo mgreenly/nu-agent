@@ -57,7 +57,7 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │              Application (REPL Coordinator)              │   │
 │  │  • Lifecycle management • Command routing • Cleanup      │   │
-│  └──────────────────────────┬───────────────────────────────┘   │
+│  └─────────────────────────┬────────────────────────────────┘   │
 └────────────────────────────┬────────────────────────────────────┘
                              │
 ┌────────────────────────────▼────────────────────────────────────┐
@@ -101,7 +101,7 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 │ InputProc     │─────→ Is command? ──Yes──→ CommandRegistry
 └───┬───────────┘                                    │
     │                                                ▼
-    No (prompt)                              Execute /command
+No (prompt)                                  Execute /command
     │
     ▼
 ┌───────────────────────────────────────────────────────────┐
@@ -135,7 +135,6 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
            │ Resume Workers │──→ Background summarization
            └────────────────┘    & embedding generation
 ```
-
 ---
 
 ## Level 2: Component Architecture
@@ -154,7 +153,7 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 ║  │ • History    │  │ • BaseCmd    │  │ • Debug levels      │   ║
 ║  └──────────────┘  └──────────────┘  └─────────────────────┘   ║
 ╚════════════════════════════════════════════════════════════════╝
-                              │
+                             │
 ╔════════════════════════════▼════════════════════════════════════╗
 ║                      AGENT CORE                                 ║
 ╠═════════════════════════════════════════════════════════════════╣
@@ -465,69 +464,69 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Main Loop:                                                     │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ process_with_tools(messages, exchange_id)                 │ │
-│  │                                                            │ │
-│  │ loop do                                                    │ │
-│  │   │                                                        │ │
-│  │   1. LLM Request                                           │ │
-│  │      ├─ Send messages + tools                             │ │
-│  │      ├─ Track tokens                                      │ │
-│  │      └─ Calculate cost                                    │ │
-│  │      ↓                                                     │ │
-│  │   2. Check Response Type                                   │ │
-│  │      │                                                     │ │
-│  │      ├─ Text only? → Final answer, break                  │ │
-│  │      │                                                     │ │
-│  │      └─ Tool calls? ↓                                      │ │
-│  │         │                                                  │ │
-│  │   3. Execute Tools (parallel)                              │ │
-│  │      ├─ For each tool call:                               │ │
-│  │      │   ├─ Validate tool exists                          │ │
-│  │      │   ├─ Execute tool.execute()                        │ │
-│  │      │   ├─ Capture result/error                          │ │
-│  │      │   └─ Redact sensitive data                         │ │
-│  │      │                                                     │ │
-│  │   4. Save Messages                                         │ │
-│  │      ├─ Save assistant message (with tool calls)          │ │
-│  │      ├─ Save tool results (redacted)                      │ │
-│  │      └─ Append to messages array                          │ │
-│  │      ↓                                                     │ │
-│  │   5. Continue loop (next LLM request)                      │ │
-│  │      │                                                     │ │
-│  │ end                                                        │ │
-│  │   ↓                                                        │ │
-│  │ Return metrics:                                            │ │
-│  │   • total_input_tokens                                    │ │
-│  │   • total_output_tokens                                   │ │
-│  │   • total_cost                                            │ │
-│  │   • tool_call_count                                       │ │
-│  │   • request_count                                         │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ process_with_tools(messages, exchange_id)                 │  │
+│  │                                                           │  │
+│  │ loop do                                                   │  │
+│  │   │                                                       │  │
+│  │   1. LLM Request                                          │  │
+│  │      ├─ Send messages + tools                             │  │
+│  │      ├─ Track tokens                                      │  │
+│  │      └─ Calculate cost                                    │  │
+│  │      ↓                                                    │  │
+│  │   2. Check Response Type                                  │  │
+│  │      │                                                    │  │
+│  │      ├─ Text only? → Final answer, break                  │  │
+│  │      │                                                    │  │
+│  │      └─ Tool calls? ↓                                     │  │
+│  │         │                                                 │  │
+│  │   3. Execute Tools (parallel)                             │  │
+│  │      ├─ For each tool call:                               │  │
+│  │      │   ├─ Validate tool exists                          │  │
+│  │      │   ├─ Execute tool.execute()                        │  │
+│  │      │   ├─ Capture result/error                          │  │
+│  │      │   └─ Redact sensitive data                         │  │
+│  │      │                                                    │  │
+│  │   4. Save Messages                                        │  │
+│  │      ├─ Save assistant message (with tool calls)          │  │
+│  │      ├─ Save tool results (redacted)                      │  │
+│  │      └─ Append to messages array                          │  │
+│  │      ↓                                                    │  │
+│  │   5. Continue loop (next LLM request)                     │  │
+│  │      │                                                    │  │
+│  │ end                                                       │  │
+│  │   ↓                                                       │  │
+│  │ Return metrics:                                           │  │
+│  │   • total_input_tokens                                    │  │
+│  │   • total_output_tokens                                   │  │
+│  │   • total_cost                                            │  │
+│  │   • tool_call_count                                       │  │
+│  │   • request_count                                         │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Tool Execution Details:                                        │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ execute_tool(name, args, context)                         │ │
-│  │   ↓                                                        │ │
-│  │ 1. Look up tool in registry                               │ │
-│  │ 2. Call tool.execute(args, context)                       │ │
-│  │    Context includes:                                      │ │
-│  │    • history (db access)                                  │ │
-│  │    • conversation_id                                      │ │
-│  │    • model info                                           │ │
-│  │    • tool_registry                                        │ │
-│  │ 3. Return result or error                                 │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ execute_tool(name, args, context)                         │  │
+│  │   ↓                                                       │  │
+│  │ 1. Look up tool in registry                               │  │
+│  │ 2. Call tool.execute(args, context)                       │  │
+│  │    Context includes:                                      │  │
+│  │    • history (db access)                                  │  │
+│  │    • conversation_id                                      │  │
+│  │    • model info                                           │  │
+│  │    • tool_registry                                        │  │
+│  │ 3. Return result or error                                 │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Metrics Tracking:                                              │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ Accumulated per exchange:                                 │ │
-│  │ • Input tokens:  Sum of all requests                      │ │
-│  │ • Output tokens: Sum of all responses                     │ │
-│  │ • Cost:          Calculated via client.calculate_cost()   │ │
-│  │ • Tool calls:    Count of tool executions                 │ │
-│  │ • Requests:      Count of LLM API calls                   │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Accumulated per exchange:                                 │  │
+│  │ • Input tokens:  Sum of all requests                      │  │
+│  │ • Output tokens: Sum of all responses                     │  │
+│  │ • Cost:          Calculated via client.calculate_cost()   │  │
+│  │ • Tool calls:    Count of tool executions                 │  │
+│  │ • Requests:      Count of LLM API calls                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -541,26 +540,26 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Registration:                                                  │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ register_tool(tool_class)                                 │ │
-│  │   ↓                                                        │ │
-│  │ @tools[tool.name] = tool.new                              │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ register_tool(tool_class)                                 │  │
+│  │   ↓                                                       │  │
+│  │ @tools[tool.name] = tool.new                              │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Formatting (Provider-Specific):                                │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ format_for_anthropic() → Anthropic tool schema            │ │
-│  │ format_for_google()    → Google function schema           │ │
-│  │ format_for_openai()    → OpenAI function schema           │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ format_for_anthropic() → Anthropic tool schema            │  │
+│  │ format_for_google()    → Google function schema           │  │
+│  │ format_for_openai()    → OpenAI function schema           │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Execution:                                                     │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ execute(name, args, context)                              │ │
-│  │   ↓                                                        │ │
-│  │ tool = @tools[name]                                       │ │
-│  │ tool.execute(args, context)                               │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ execute(name, args, context)                              │  │
+│  │   ↓                                                       │  │
+│  │ tool = @tools[name]                                       │  │
+│  │ tool.execute(args, context)                               │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -576,14 +575,14 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 │  end                                                            │
 │                                                                 │
 │  Context Hash Contains:                                         │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ {                                                          │ │
-│  │   history:          History instance (db access)          │ │
-│  │   conversation_id:  Current conversation                  │ │
-│  │   model:            LLM model name                        │ │
-│  │   tool_registry:    Access to other tools                 │ │
-│  │ }                                                          │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ {                                                         │  │
+│  │   history:          History instance (db access)          │  │
+│  │   conversation_id:  Current conversation                  │  │
+│  │   model:            LLM model name                        │  │
+│  │   tool_registry:    Access to other tools                 │  │
+│  │ }                                                         │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -592,57 +591,57 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  File Operations (11 tools):                                    │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ file_read        → Read file contents                     │ │
-│  │ file_write       → Write/overwrite file                   │ │
-│  │ file_edit        → Edit with 8 operations:                │ │
-│  │   ├─ append          (add to end)                         │ │
-│  │   ├─ prepend         (add to start)                       │ │
-│  │   ├─ insert_after    (after pattern)                      │ │
-│  │   ├─ insert_before   (before pattern)                     │ │
-│  │   ├─ insert_line     (at line number)                     │ │
-│  │   ├─ replace         (pattern → new)                      │ │
-│  │   ├─ replace_line    (line # → new)                       │ │
-│  │   └─ replace_range   (lines N-M → new)                    │ │
-│  │ file_copy        → Copy file                              │ │
-│  │ file_move        → Move/rename file                       │ │
-│  │ file_delete      → Delete file                            │ │
-│  │ file_stat        → File metadata                          │ │
-│  │ file_glob        → Find files by pattern                  │ │
-│  │ file_grep        → Search file contents (ripgrep)         │ │
-│  │ file_tree        → Directory tree view                    │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ file_read        → Read file contents                     │  │
+│  │ file_write       → Write/overwrite file                   │  │
+│  │ file_edit        → Edit with 8 operations:                │  │
+│  │   ├─ append          (add to end)                         │  │
+│  │   ├─ prepend         (add to start)                       │  │
+│  │   ├─ insert_after    (after pattern)                      │  │
+│  │   ├─ insert_before   (before pattern)                     │  │
+│  │   ├─ insert_line     (at line number)                     │  │
+│  │   ├─ replace         (pattern → new)                      │  │
+│  │   ├─ replace_line    (line # → new)                       │  │
+│  │   └─ replace_range   (lines N-M → new)                    │  │
+│  │ file_copy        → Copy file                              │  │
+│  │ file_move        → Move/rename file                       │  │
+│  │ file_delete      → Delete file                            │  │
+│  │ file_stat        → File metadata                          │  │
+│  │ file_glob        → Find files by pattern                  │  │
+│  │ file_grep        → Search file contents (ripgrep)         │  │
+│  │ file_tree        → Directory tree view                    │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Directory Operations (3 tools):                                │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ dir_list         → List directory contents                │ │
-│  │ dir_create       → Create directory                       │ │
-│  │ dir_delete       → Delete directory                       │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ dir_list         → List directory contents                │  │
+│  │ dir_create       → Create directory                       │  │
+│  │ dir_delete       → Delete directory                       │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Execution Tools (2 tools):                                     │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ execute_bash     → Run bash commands                      │ │
-│  │ execute_python   → Run Python scripts                     │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ execute_bash     → Run bash commands                      │  │
+│  │ execute_python   → Run Python scripts                     │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Database Tools (4 tools):                                      │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ database_query   → Execute SQL queries                    │ │
-│  │ database_schema  → Show table schema                      │ │
-│  │ database_tables  → List all tables                        │ │
-│  │ database_message → Query message history                  │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ database_query   → Execute SQL queries                    │  │
+│  │ database_schema  → Show table schema                      │  │
+│  │ database_tables  → List all tables                        │  │
+│  │ database_message → Query message history                  │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Internet Tools (1 tool):                                       │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ search_internet  → Web search                             │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ search_internet  → Web search                             │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Meta Tools (1 tool):                                           │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ agent_summarizer → Summarize conversations/exchanges      │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ agent_summarizer → Summarize conversations/exchanges      │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -720,52 +719,52 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 │  └──────────────┬───────────────────────────────────────────┘   │
 │                 │                                               │
 │                 ▼                                               │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Step 3: ConversationSearchProcessor                      │  │
-│  │  • Search conversation summaries via vector similarity   │  │
-│  │  • Exclude current conversation                          │  │
-│  │  • Filter by similarity threshold (default: 0.7)         │  │
-│  │  • Limit results (default: 3)                            │  │
-│  │  • Uses VSS (HNSW index) if available                    │  │
-│  │  • Falls back to linear scan if VSS unavailable          │  │
-│  │  • Store in context.conversations                        │  │
-│  └──────────────┬───────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Step 3: ConversationSearchProcessor                      │   │
+│  │  • Search conversation summaries via vector similarity   │   │
+│  │  • Exclude current conversation                          │   │
+│  │  • Filter by similarity threshold (default: 0.7)         │   │
+│  │  • Limit results (default: 3)                            │   │
+│  │  • Uses VSS (HNSW index) if available                    │   │
+│  │  • Falls back to linear scan if VSS unavailable          │   │
+│  │  • Store in context.conversations                        │   │
+│  └──────────────┬───────────────────────────────────────────┘   │
 │                 │                                               │
 │                 ▼                                               │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Step 4: ExchangeSearchProcessor                          │  │
-│  │  • Search exchange summaries via vector similarity       │  │
-│  │  • Search within found conversations + current           │  │
-│  │  • Filter by similarity threshold                        │  │
-│  │  • Limit results per conversation (default: 10)          │  │
-│  │  • Store in context.exchanges                            │  │
-│  └──────────────┬───────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Step 4: ExchangeSearchProcessor                          │   │
+│  │  • Search exchange summaries via vector similarity       │   │
+│  │  • Search within found conversations + current           │   │
+│  │  • Filter by similarity threshold                        │   │
+│  │  • Limit results per conversation (default: 10)          │   │
+│  │  • Store in context.exchanges                            │   │
+│  └──────────────┬───────────────────────────────────────────┘   │
 │                 │                                               │
 │                 ▼                                               │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Step 5: ContextFormatterProcessor                        │  │
-│  │  • Format results as markdown                            │  │
-│  │  • Structure:                                            │  │
-│  │    ## Related Conversations                              │  │
-│  │    - Conversation 1 summary                              │  │
-│  │    - Conversation 2 summary                              │  │
-│  │                                                           │  │
-│  │    ## Relevant Exchanges                                 │  │
-│  │    ### From Conversation 1                               │  │
-│  │    - Exchange 1 summary                                  │  │
-│  │    - Exchange 2 summary                                  │  │
-│  │                                                           │  │
-│  │  • Store in context.formatted_context                    │  │
-│  └──────────────┬───────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Step 5: ContextFormatterProcessor                        │   │
+│  │  • Format results as markdown                            │   │
+│  │  • Structure:                                            │   │
+│  │    ## Related Conversations                              │   │
+│  │    - Conversation 1 summary                              │   │
+│  │    - Conversation 2 summary                              │   │
+│  │                                                          │   │
+│  │    ## Relevant Exchanges                                 │   │
+│  │    ### From Conversation 1                               │   │
+│  │    - Exchange 1 summary                                  │   │
+│  │    - Exchange 2 summary                                  │   │
+│  │                                                          │   │
+│  │  • Store in context.formatted_context                    │   │
+│  └──────────────┬───────────────────────────────────────────┘   │
 │                 │                                               │
 │                 ▼                                               │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Output: RAGContext                                       │  │
-│  │  • query_embedding: FLOAT[1536]                          │  │
-│  │  • conversations: Array of matching conversations        │  │
-│  │  • exchanges: Array of matching exchanges                │  │
-│  │  • formatted_context: Markdown string                    │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Output: RAGContext                                       │   │
+│  │  • query_embedding: FLOAT[1536]                          │   │
+│  │  • conversations: Array of matching conversations        │   │
+│  │  • exchanges: Array of matching exchanges                │   │
+│  │  • formatted_context: Markdown string                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -775,46 +774,46 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Storage:                                                       │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ DuckDB Table: text_embedding_3_small                      │ │
-│  │ Columns:                                                   │ │
-│  │  • id (VARCHAR)       - conversation/exchange UUID        │ │
-│  │  • embedding (FLOAT[1536]) - Vector                       │ │
-│  │  • text (VARCHAR)     - Original summary                  │ │
-│  │  • type (VARCHAR)     - 'conversation' or 'exchange'      │ │
-│  │                                                            │ │
-│  │ Index: HNSW (if VSS extension available)                  │ │
-│  │  • M = 16 (connections per layer)                         │ │
-│  │  • ef_construction = 128                                  │ │
-│  │  • ef_search = 64                                         │ │
-│  │  • Metric: cosine distance                                │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ DuckDB Table: text_embedding_3_small                      │  │
+│  │ Columns:                                                  │  │
+│  │  • id (VARCHAR)       - conversation/exchange UUID        │  │
+│  │  • embedding (FLOAT[1536]) - Vector                       │  │
+│  │  • text (VARCHAR)     - Original summary                  │  │
+│  │  • type (VARCHAR)     - 'conversation' or 'exchange'      │  │
+│  │                                                           │  │
+│  │ Index: HNSW (if VSS extension available)                  │  │
+│  │  • M = 16 (connections per layer)                         │  │
+│  │  • ef_construction = 128                                  │  │
+│  │  • ef_search = 64                                         │  │
+│  │  • Metric: cosine distance                                │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Search Algorithm:                                              │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ IF VSS available:                                         │ │
-│  │   Use HNSW index for approximate nearest neighbor        │ │
-│  │   Fast: O(log N) average case                            │ │
-│  │ ELSE:                                                     │ │
-│  │   Linear scan with cosine similarity                     │ │
-│  │   Slower: O(N) but works without extension               │ │
-│  │                                                            │ │
-│  │ Cosine Similarity:                                        │ │
-│  │   similarity = dot(A, B) / (norm(A) * norm(B))           │ │
-│  │   Range: [-1, 1], higher = more similar                  │ │
-│  │                                                            │ │
-│  │ Filtering:                                                │ │
-│  │   • threshold: minimum similarity (default 0.7)          │ │
-│  │   • limit: max results to return                         │ │
-│  │   • exclude: filter out specific IDs                     │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ IF VSS available:                                         │  │
+│  │   Use HNSW index for approximate nearest neighbor         │  │
+│  │   Fast: O(log N) average case                             │  │
+│  │ ELSE:                                                     │  │
+│  │   Linear scan with cosine similarity                      │  │
+│  │   Slower: O(N) but works without extension                │  │
+│  │                                                           │  │
+│  │ Cosine Similarity:                                        │  │
+│  │   similarity = dot(A, B) / (norm(A) * norm(B))            │  │
+│  │   Range: [-1, 1], higher = more similar                   │  │
+│  │                                                           │  │
+│  │ Filtering:                                                │  │
+│  │   • threshold: minimum similarity (default 0.7)           │  │
+│  │   • limit: max results to return                          │  │
+│  │   • exclude: filter out specific IDs                      │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Configuration (stored in appconfig):                           │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ rag.exchanges_per_conversation (default: 3)              │ │
-│  │ rag.exchange_capacity (default: 10)                      │ │
-│  │ rag.similarity_threshold (default: 0.7)                  │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ rag.exchanges_per_conversation (default: 3)               │  │
+│  │ rag.exchange_capacity (default: 10)                       │  │
+│  │ rag.similarity_threshold (default: 0.7)                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -831,29 +830,29 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 │    ↓                                                            │
 │  Detect provider from model name prefix/pattern                 │
 │    ↓                                                            │
-│  ┌──────────────┬──────────────┬──────────────┬─────────────┐  │
-│  │  claude-*    │   gemini-*   │    gpt-*     │   grok-*    │  │
-│  │      ↓       │       ↓      │       ↓      │      ↓      │  │
-│  │  Anthropic   │    Google    │   OpenAI     │    xAI      │  │
-│  └──────────────┴──────────────┴──────────────┴─────────────┘  │
+│  ┌──────────────┬──────────────┬──────────────┬─────────────┐   │
+│  │  claude-*    │   gemini-*   │    gpt-*     │   grok-*    │   │
+│  │      ↓       │       ↓      │       ↓      │      ↓      │   │
+│  │  Anthropic   │    Google    │   OpenAI     │    xAI      │   │
+│  └──────────────┴──────────────┴──────────────┴─────────────┘   │
 │                                                                 │
 │  Unified Client Interface:                                      │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ send_message(messages:, tools:, **options)                │ │
-│  │   → { content:, tool_calls:, stop_reason: }               │ │
-│  │                                                            │ │
-│  │ format_tools(tool_registry)                               │ │
-│  │   → Provider-specific tool schema                         │ │
-│  │                                                            │ │
-│  │ calculate_cost(input_tokens:, output_tokens:)             │ │
-│  │   → Float (USD)                                           │ │
-│  │                                                            │ │
-│  │ max_context                                               │ │
-│  │   → Integer (token limit)                                 │ │
-│  │                                                            │ │
-│  │ model_name                                                │ │
-│  │   → String                                                │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ send_message(messages:, tools:, **options)                │  │
+│  │   → { content:, tool_calls:, stop_reason: }               │  │
+│  │                                                           │  │
+│  │ format_tools(tool_registry)                               │  │
+│  │   → Provider-specific tool schema                         │  │
+│  │                                                           │  │
+│  │ calculate_cost(input_tokens:, output_tokens:)             │  │
+│  │   → Float (USD)                                           │  │
+│  │                                                           │  │
+│  │ max_context                                               │  │
+│  │   → Integer (token limit)                                 │  │
+│  │                                                           │  │
+│  │ model_name                                                │  │
+│  │   → String                                                │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -861,86 +860,86 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 │                    Provider Implementations                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ Anthropic Client (clients/anthropic.rb)                   │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ Models:                                                    │ │
-│  │  • claude-haiku-4-5   ($0.40/$2.00 per 1M tokens)         │ │
-│  │  • claude-sonnet-4-5  ($1.50/$7.50)                       │ │
-│  │  • claude-opus-4-1    ($7.50/$37.50)                      │ │
-│  │                                                            │ │
-│  │ Context: 200,000 tokens                                    │ │
-│  │                                                            │ │
-│  │ API Format:                                                │ │
-│  │  • Messages API                                            │ │
-│  │  • Native tool use (function calling)                     │ │
-│  │  • System prompt support                                  │ │
-│  │  • Streaming support                                      │ │
-│  │                                                            │ │
-│  │ Tool Format:                                               │ │
-│  │  { name:, description:, input_schema: }                   │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Anthropic Client (clients/anthropic.rb)                   │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ Models:                                                   │  │
+│  │  • claude-haiku-4-5   ($0.40/$2.00 per 1M tokens)         │  │
+│  │  • claude-sonnet-4-5  ($1.50/$7.50)                       │  │
+│  │  • claude-opus-4-1    ($7.50/$37.50)                      │  │
+│  │                                                           │  │
+│  │ Context: 200,000 tokens                                   │  │
+│  │                                                           │  │
+│  │ API Format:                                               │  │
+│  │  • Messages API                                           │  │
+│  │  • Native tool use (function calling)                     │  │
+│  │  • System prompt support                                  │  │
+│  │  • Streaming support                                      │  │
+│  │                                                           │  │
+│  │ Tool Format:                                              │  │
+│  │  { name:, description:, input_schema: }                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ Google Client (clients/google.rb)                         │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ Models:                                                    │ │
-│  │  • gemini-2.5-flash-lite  (0k context, cheapest)          │ │
-│  │  • gemini-2.5-flash       (1M context)                    │ │
-│  │  • gemini-2.5-pro         (2M context, most capable)      │ │
-│  │                                                            │ │
-│  │ API Format:                                                │ │
-│  │  • Gemini API                                              │ │
-│  │  • Function declarations                                  │ │
-│  │  • System instructions                                    │ │
-│  │                                                            │ │
-│  │ Tool Format:                                               │ │
-│  │  { name:, description:, parameters: }                     │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Google Client (clients/google.rb)                         │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ Models:                                                   │  │
+│  │  • gemini-2.5-flash-lite  (0k context, cheapest)          │  │
+│  │  • gemini-2.5-flash       (1M context)                    │  │
+│  │  • gemini-2.5-pro         (2M context, most capable)      │  │
+│  │                                                           │  │
+│  │ API Format:                                               │  │
+│  │  • Gemini API                                             │  │
+│  │  • Function declarations                                  │  │
+│  │  • System instructions                                    │  │
+│  │                                                           │  │
+│  │ Tool Format:                                              │  │
+│  │  { name:, description:, parameters: }                     │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ OpenAI Client (clients/openai.rb)                         │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ Models:                                                    │ │
-│  │  • gpt-5-nano-2025-08-07  (Fast, cheap)                   │ │
-│  │  • gpt-5-mini             (Balanced)                      │ │
-│  │  • gpt-5                  (Most capable)                  │ │
-│  │                                                            │ │
-│  │ Context: Varies by model                                   │ │
-│  │                                                            │ │
-│  │ API Format:                                                │ │
-│  │  • Chat Completions API                                    │ │
-│  │  • Function calling                                       │ │
-│  │  • System messages                                        │ │
-│  │                                                            │ │
-│  │ Tool Format:                                               │ │
-│  │  { type: "function",                                      │ │
-│  │    function: { name:, description:, parameters: } }       │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ OpenAI Client (clients/openai.rb)                         │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ Models:                                                   │  │
+│  │  • gpt-5-nano-2025-08-07  (Fast, cheap)                   │  │
+│  │  • gpt-5-mini             (Balanced)                      │  │
+│  │  • gpt-5                  (Most capable)                  │  │
+│  │                                                           │  │
+│  │ Context: Varies by model                                  │  │
+│  │                                                           │  │
+│  │ API Format:                                               │  │
+│  │  • Chat Completions API                                   │  │
+│  │  • Function calling                                       │  │
+│  │  • System messages                                        │  │
+│  │                                                           │  │
+│  │ Tool Format:                                              │  │
+│  │  { type: "function",                                      │  │
+│  │    function: { name:, description:, parameters: } }       │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ xAI Client (clients/xai.rb)                               │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ Models:                                                    │ │
-│  │  • grok-3           (General purpose)                     │ │
-│  │  • grok-code-fast-1 (Code-focused)                        │ │
-│  │                                                            │ │
-│  │ API: OpenAI-compatible                                     │ │
-│  │      (uses OpenAI client with xAI base URL)               │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ xAI Client (clients/xai.rb)                               │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ Models:                                                   │  │
+│  │  • grok-3           (General purpose)                     │  │
+│  │  • grok-code-fast-1 (Code-focused)                        │  │
+│  │                                                           │  │
+│  │ API: OpenAI-compatible                                    │  │
+│  │      (uses OpenAI client with xAI base URL)               │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ OpenAI Embeddings (clients/openai_embeddings.rb)         │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ Model: text-embedding-3-small                             │ │
-│  │  • Dimensions: 1536                                       │ │
-│  │  • Cost: $0.02 per 1M tokens                              │ │
-│  │  • Batch support (up to 100 texts)                        │ │
-│  │                                                            │ │
-│  │ Usage:                                                     │ │
-│  │  embed(text) → FLOAT[1536]                                │ │
-│  │  embed_batch(texts[]) → Array of vectors                  │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ OpenAI Embeddings (clients/openai_embeddings.rb)          │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ Model: text-embedding-3-small                             │  │
+│  │  • Dimensions: 1536                                       │  │
+│  │  • Cost: $0.02 per 1M tokens                              │  │
+│  │  • Batch support (up to 100 texts)                        │  │
+│  │                                                           │  │
+│  │ Usage:                                                    │  │
+│  │  embed(text) → FLOAT[1536]                                │  │
+│  │  embed_batch(texts[]) → Array of vectors                  │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -949,14 +948,14 @@ This document provides a multi-level architectural view of the Nu::Agent codebas
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Internal Format (Database):                                    │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ {                                                          │ │
-│  │   role: "user" | "assistant" | "tool" | "tool_result",   │ │
-│  │   content: "text or JSON",                                │ │
-│  │   tool_call_id: "uuid" (for tool messages),               │ │
-│  │   tool_name: "name" (for tool messages)                   │ │
-│  │ }                                                          │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ {                                                         │  │
+│  │   role: "user" | "assistant" | "tool" | "tool_result",    │  │
+│  │   content: "text or JSON",                                │  │
+│  │   tool_call_id: "uuid" (for tool messages),               │  │
+│  │   tool_name: "name" (for tool messages)                   │  │
+│  │ }                                                         │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Each client translates to/from provider-specific formats       │
 │                                                                 │
