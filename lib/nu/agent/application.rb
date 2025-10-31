@@ -84,11 +84,23 @@ module Nu
       end
 
       # Reopen the database after closing it (e.g., for backup operations)
-      # This re-initializes the History object but does NOT re-initialize
-      # dependent components (console, formatter, workers) as they maintain
-      # their own references to the history object
+      # This re-initializes the History object and updates all dependent
+      # components to reference the new history object
       def reopen_database
         @history = History.new
+
+        # Update component references to use the new history object
+        @console.instance_variable_set(:@db_history, @history)
+        @formatter.instance_variable_set(:@history, @history)
+        @worker_manager.instance_variable_set(:@history, @history)
+
+        # Update worker instances to use the new history object
+        worker_instances = @worker_manager.instance_variable_get(:@worker_instances)
+        return unless worker_instances
+
+        worker_instances.each_value do |worker|
+          worker.instance_variable_set(:@history, @history) if worker.instance_variable_defined?(:@history)
+        end
       end
 
       private

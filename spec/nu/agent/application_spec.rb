@@ -460,4 +460,77 @@ RSpec.describe Nu::Agent::Application do
       expect { app.send(:setup_signal_handlers) }.not_to raise_error
     end
   end
+
+  describe "#reopen_database" do
+    let(:new_history) do
+      instance_double(
+        Nu::Agent::History,
+        get_config: nil,
+        set_config: nil,
+        create_conversation: 1,
+        close: nil,
+        db_path: "/tmp/test_new.db"
+      )
+    end
+
+    it "creates a new History object" do
+      app = described_class.new(options: options)
+      old_history = app.history
+
+      # Mock History.new to return a new instance
+      allow(Nu::Agent::History).to receive(:new).and_return(new_history)
+
+      app.reopen_database
+
+      expect(app.history).to eq(new_history)
+      expect(app.history).not_to eq(old_history)
+    end
+
+    it "updates console's db_history reference" do
+      app = described_class.new(options: options)
+      allow(Nu::Agent::History).to receive(:new).and_return(new_history)
+
+      app.reopen_database
+
+      console_history = app.console.instance_variable_get(:@db_history)
+      expect(console_history).to eq(new_history)
+    end
+
+    it "updates formatter's history reference" do
+      app = described_class.new(options: options)
+      allow(Nu::Agent::History).to receive(:new).and_return(new_history)
+
+      app.reopen_database
+
+      formatter_history = app.formatter.instance_variable_get(:@history)
+      expect(formatter_history).to eq(new_history)
+    end
+
+    it "updates worker_manager's history reference" do
+      app = described_class.new(options: options)
+      allow(Nu::Agent::History).to receive(:new).and_return(new_history)
+
+      app.reopen_database
+
+      worker_manager_history = app.worker_manager.instance_variable_get(:@history)
+      expect(worker_manager_history).to eq(new_history)
+    end
+
+    it "updates worker instances' history references" do
+      app = described_class.new(options: options)
+      allow(Nu::Agent::History).to receive(:new).and_return(new_history)
+
+      # Create a mock worker with history reference
+      mock_worker = double("Worker")
+      allow(mock_worker).to receive(:instance_variable_defined?).with(:@history).and_return(true)
+      allow(mock_worker).to receive(:instance_variable_set).with(:@history, new_history)
+
+      worker_instances = { "test-worker" => mock_worker }
+      allow(app.worker_manager).to receive(:instance_variable_get).with(:@worker_instances).and_return(worker_instances)
+
+      app.reopen_database
+
+      expect(mock_worker).to have_received(:instance_variable_set).with(:@history, new_history)
+    end
+  end
 end
