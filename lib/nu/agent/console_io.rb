@@ -398,8 +398,12 @@ module Nu
           char = chars[i]
 
           case char
-          when "\r", "\n"
-            # Enter pressed
+          when "\r"
+            # Enter key - insert newline for multiline editing
+            insert_char("\n")
+
+          when "\n"
+            # Ctrl+J - submit input
             return :submit
 
           when "\x03" # Ctrl-C

@@ -175,14 +175,9 @@ RSpec.describe Nu::Agent::ConsoleIO do
   end
 
   describe "#parse_input (Phase 1)" do
-    context "with Enter key" do
+    context "with Ctrl+J (submit key)" do
       it "returns :submit" do
         result = console.send(:parse_input, "\n")
-        expect(result).to eq(:submit)
-      end
-
-      it "returns :submit for carriage return" do
-        result = console.send(:parse_input, "\r")
         expect(result).to eq(:submit)
       end
     end
@@ -1808,6 +1803,47 @@ RSpec.describe Nu::Agent::ConsoleIO do
       console.instance_variable_set(:@input_buffer, String.new("line\n"))
       result = console.send(:get_position_from_line_column, 1, 0)
       expect(result).to eq(5)
+    end
+  end
+
+  # Phase 3: Multiline submit key handling
+  describe "#parse_input (multiline submit keys)" do
+    context "with Enter key (\\r)" do
+      it "inserts newline character into buffer" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        result = console.send(:parse_input, "\r")
+        expect(result).to be_nil
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello\n")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+      end
+
+      it "inserts newline in middle of buffer" do
+        console.instance_variable_set(:@input_buffer, String.new("helloworld"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        result = console.send(:parse_input, "\r")
+        expect(result).to be_nil
+        expect(console.instance_variable_get(:@input_buffer)).to eq("hello\nworld")
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+      end
+
+      it "creates multiline content when pressed multiple times" do
+        console.instance_variable_set(:@input_buffer, String.new("line1"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        console.send(:parse_input, "\r")
+        console.instance_variable_set(:@input_buffer, "#{console.instance_variable_get(:@input_buffer)}line2")
+        console.instance_variable_set(:@cursor_pos, console.instance_variable_get(:@input_buffer).length)
+        console.send(:parse_input, "\r")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2\n")
+      end
+
+      it "does not return :submit" do
+        console.instance_variable_set(:@input_buffer, String.new("test"))
+        console.instance_variable_set(:@cursor_pos, 4)
+        result = console.send(:parse_input, "\r")
+        expect(result).not_to eq(:submit)
+        expect(result).to be_nil
+      end
     end
   end
 end
