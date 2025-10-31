@@ -281,4 +281,18 @@ RSpec.describe Nu::Agent::Tools::ExecuteBash do
       end
     end
   end
+
+  describe "metadata" do
+    describe "#operation_type" do
+      it "returns :write" do
+        expect(tool.operation_type).to eq(:write)
+      end
+    end
+
+    describe "#scope" do
+      it "returns :unconfined" do
+        expect(tool.scope).to eq(:unconfined)
+      end
+    end
+  end
 end

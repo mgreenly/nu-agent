@@ -201,4 +201,18 @@ RSpec.describe Nu::Agent::Tools::FileWrite do
       end
     end
   end
+
+  describe "metadata" do
+    describe "#operation_type" do
+      it "returns :write" do
+        expect(tool.operation_type).to eq(:write)
+      end
+    end
+
+    describe "#scope" do
+      it "returns :confined" do
+        expect(tool.scope).to eq(:confined)
+      end
+    end
+  end
 end

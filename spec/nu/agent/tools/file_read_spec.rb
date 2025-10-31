@@ -322,4 +322,18 @@ RSpec.describe Nu::Agent::Tools::FileRead do
       end
     end
   end
+
+  describe "metadata" do
+    describe "#operation_type" do
+      it "returns :read" do
+        expect(tool.operation_type).to eq(:read)
+      end
+    end
+
+    describe "#scope" do
+      it "returns :confined" do
+        expect(tool.scope).to eq(:confined)
+      end
+    end
+  end
 end
