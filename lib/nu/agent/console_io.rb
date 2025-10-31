@@ -837,6 +837,33 @@ module Nu
         @cursor_pos = get_position_from_line_column(target_line, target_col)
       end
 
+      def cursor_down_or_history_next
+        # If buffer is empty, navigate history
+        if @input_buffer.empty?
+          history_next
+          return
+        end
+
+        # Otherwise, move cursor down one line
+        current_line, current_col = get_line_and_column(@cursor_pos)
+        total_lines = lines.length
+
+        # Already on last line - can't move down
+        return if current_line >= total_lines - 1
+
+        # Save column on first vertical movement
+        @saved_column = current_col if @saved_column.nil?
+
+        # Use saved column for target, or current column if not saved
+        target_col = @saved_column || current_col
+
+        # Move to next line
+        target_line = current_line + 1
+
+        # Calculate new position, clamping to target line's length
+        @cursor_pos = get_position_from_line_column(target_line, target_col)
+      end
+
       def flush_stdin
         # Drain all buffered input
         loop do
