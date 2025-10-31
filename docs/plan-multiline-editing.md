@@ -351,26 +351,26 @@ Each task must be tracked as:
 - ✅ Column memory maintained via @saved_column (3 tests)
 - ✅ All quality gates pass (tests, lint, coverage)
 
-#### Task 4.2: Implement cursor_down_or_history_next ⏳
-**TDD Steps**:
-1. Write spec: empty buffer + down arrow → expect history navigation
-2. Write spec: single line buffer + down arrow → expect no movement
-3. Write spec: multiline buffer, cursor on line 0 + down → expect move to line 1
-4. Write spec: multiline buffer, cursor on last line + down → expect no movement
-5. Write spec: verify @saved_column behavior
-6. Implement cursor_down_or_history_next method
-7. Run tests until green
-8. Refactor if needed
-9. Run lint, fix any issues
-10. Run coverage check
-11. Commit: `[Phase 4.2] Implement cursor_down_or_history_next navigation`
-12. Update this document with ✅ DONE timestamp
+#### Task 4.2: Implement cursor_down_or_history_next ✅ DONE (2025-10-31 16:53)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: empty buffer + down arrow → expect history navigation (2 tests)
+2. ✅ Write spec: single line buffer + down arrow → expect no movement
+3. ✅ Write spec: multiline buffer, cursor on line 0 + down → expect move to line 1
+4. ✅ Write spec: multiline buffer, cursor on last line + down → expect no movement
+5. ✅ Write spec: verify @saved_column behavior (3 tests covering save/use/restore)
+6. ✅ Implement cursor_down_or_history_next method
+7. ✅ Run tests until green (10 specs pass)
+8. ✅ Refactor: no changes needed
+9. ✅ Run lint: no offenses detected
+10. ✅ Run coverage check: 98.17% line / 90.1% branch (thresholds met)
+11. ✅ Commit: `[Phase 4.2] Implement cursor_down_or_history_next navigation`
+12. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Empty buffer navigates history (existing behavior)
-- Non-empty buffer navigates between lines
-- Column memory maintained via @saved_column
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Empty buffer navigates history (existing behavior preserved)
+- ✅ Non-empty buffer navigates between lines (10 test cases)
+- ✅ Column memory maintained via @saved_column (3 tests)
+- ✅ All quality gates pass (tests, lint, coverage)
 
 #### Task 4.3: Update handle_csi_sequence to use new navigation methods ⏳
 **TDD Steps**:
@@ -576,7 +576,7 @@ WHERE id = 1
 
 ### Phase 4: Up/Down navigation logic
 - Task 4.1: Implement cursor_up_or_history_prev - ✅ DONE (2025-10-31 16:46)
-- Task 4.2: Implement cursor_down_or_history_next - ⏳
+- Task 4.2: Implement cursor_down_or_history_next - ✅ DONE (2025-10-31 16:53)
 - Task 4.3: Update handle_csi_sequence to use new navigation methods - ⏳
 - Task 4.4: Reset @saved_column on horizontal movement and edits - ⏳
 
