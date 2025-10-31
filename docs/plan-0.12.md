@@ -215,6 +215,39 @@ Implementation Notes
 - Generator allows duplicate base names with different versions (like Rails)
 - All new code passes RuboCop with zero offenses
 
+## Next Steps: Manual Testing and Validation
+
+All 7 phases of v0.12 implementation are complete. Next steps:
+
+1. **Manual Testing Session**
+   - Test event-driven message display in chat loop
+   - Verify ConsoleIO state transitions (Idle → Reading → Streaming → etc.)
+   - Exercise admin commands (/admin failures, /admin show, /admin retry, /admin purge)
+   - Test worker commands (/worker exchange-summarizer status with metrics)
+   - Verify redaction is working (check for API key/email filtering)
+   - Test RAG retrieval with cache (verify cache hits/misses in logs)
+   - Generate a new migration with `rake migration:generate` and verify it works
+
+2. **Performance Validation**
+   - Measure CPU usage reduction from event-driven vs polling
+   - Check RAG retrieval p90 latency with VSS
+   - Verify cache improves p90 on repeated queries
+   - Monitor worker processing metrics (p50/p90/p99)
+
+3. **Integration Testing**
+   - Multi-exchange conversations with automatic RAG
+   - Background workers processing summaries and embeddings
+   - Failed job recording and retry flow
+   - Redaction + purge workflow end-to-end
+
+4. **Documentation Review**
+   - Verify docs/migrations.md is complete and accurate
+   - Update README if needed with v0.12 features
+
+5. **Tag and Release**
+   - Tag commit as v0.12.0
+   - Create release notes highlighting UX, operability, and privacy improvements
+
 Success criteria
 - UX: Smooth, non-polling message display; clean console behavior across states; responsive streaming.
 - Operability: Operators can view and retry failed jobs; metrics visible with p90s for workers and RAG.
