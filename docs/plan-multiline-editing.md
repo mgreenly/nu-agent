@@ -235,20 +235,21 @@ Each task must be tracked as:
 - ✅ @last_line_count tracks current line count
 - ✅ All quality gates pass (2174 examples, 0 failures)
 
-#### Task 2.3: Update clear_screen for multiline support ⏳
-**TDD Steps**:
-1. Write spec: clear_screen with multiline buffer → expect all lines rendered
-2. Implement multiline rendering after \e[2J\e[H
-3. Run tests until green
-4. Run lint, fix any issues
-5. Run coverage check
-6. Commit: `[Phase 2.3] Update clear_screen for multiline support`
-7. Update this document with ✅ DONE timestamp
+#### Task 2.3: Update clear_screen for multiline support ✅ DONE (2025-10-31 16:00)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: clear_screen with multiline buffer → expect all lines rendered
+2. ✅ Write spec: verify cursor positioning in multiline content
+3. ✅ Implement multiline rendering after \e[2J\e[H
+4. ✅ Run tests until green (5 specs pass, including 3 new multiline tests)
+5. ✅ Run lint (no offenses detected)
+6. ✅ Run coverage check (98.17% line / 90.15% branch)
+7. ✅ Commit: `[Phase 2.3] Update clear_screen for multiline support`
+8. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Screen clears and redisplays multiline input correctly
-- Tests verify multiline rendering
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Screen clears and redisplays multiline input correctly
+- ✅ Tests verify multiline rendering (single line, multiline, cursor positioning)
+- ✅ All quality gates pass (2177 examples, 0 failures)
 
 #### Task 2.4: Update handle_output_for_input_mode for multiline ⏳
 **TDD Steps**:
@@ -561,7 +562,7 @@ WHERE id = 1
 ### Phase 2: Multiline display rendering
 - Task 2.1: Add @last_line_count instance variable - ✅ DONE (2025-10-31 15:37)
 - Task 2.2: Update redraw_input_line for multiline rendering - ✅ DONE (2025-10-31 15:47)
-- Task 2.3: Update clear_screen for multiline support - ⏳
+- Task 2.3: Update clear_screen for multiline support - ✅ DONE (2025-10-31 16:00)
 - Task 2.4: Update handle_output_for_input_mode for multiline - ⏳
 
 ### Phase 3: Submit key handling
