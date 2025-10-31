@@ -149,27 +149,27 @@ Each task must be tracked as:
 - ✅ Properly clamps position to buffer length
 - ✅ All quality gates pass (tests, lint, coverage)
 
-#### Task 1.3: Add get_position_from_line_column(line, col) method ⏳
-**TDD Steps**:
-1. Write spec: line=0, col=0 on "hello" → expect `0`
-2. Write spec: line=0, col=3 on "hello" → expect `3`
-3. Write spec: line=1, col=0 on "line1\nline2" → expect `6`
-4. Write spec: line=1, col=5 on "line1\nline2" → expect `11`
-5. Write spec: col beyond line length → expect clamping to line end
-6. Write spec: verify round-trip with get_line_and_column
-7. Implement method: sum line lengths + newlines, add column offset
-8. Run tests until green
-9. Refactor if needed
-10. Run lint, fix any issues
-11. Run coverage check
-12. Commit: `[Phase 1.3] Add get_position_from_line_column method`
-13. Update this document with ✅ DONE timestamp
+#### Task 1.3: Add get_position_from_line_column(line, col) method ✅ DONE (2025-10-31 15:21)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: line=0, col=0 on "hello" → expect `0`
+2. ✅ Write spec: line=0, col=3 on "hello" → expect `3`
+3. ✅ Write spec: line=1, col=0 on "line1\nline2" → expect `6`
+4. ✅ Write spec: line=1, col=5 on "line1\nline2" → expect `11`
+5. ✅ Write spec: col beyond line length → expect clamping to line end
+6. ✅ Write spec: verify round-trip with get_line_and_column
+7. ✅ Implement method: sum line lengths + newlines, add column offset
+8. ✅ Run tests until green (10 specs pass)
+9. ✅ Refactor: fixed RuboCop issues (used clamp instead of nested min/max)
+10. ✅ Run lint: no offenses detected
+11. ✅ Run coverage check: 98.16% line / 90.07% branch (thresholds met)
+12. ✅ Commit: `[Phase 1.3] Add get_position_from_line_column method`
+13. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Returns byte position as integer
-- Clamps column to target line's length
-- Round-trip test: pos → (line, col) → pos yields same position
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Returns byte position as integer
+- ✅ Clamps column to target line's length
+- ✅ Round-trip test: pos → (line, col) → pos yields same position (verified with 6 test positions)
+- ✅ All quality gates pass (tests, lint, coverage)
 
 #### Task 1.4: Add @saved_column instance variable ⏳
 **TDD Steps**:
@@ -555,7 +555,7 @@ WHERE id = 1
 ### Phase 1: Line/column calculation helpers
 - Task 1.1: Add lines method - ✅ DONE (2025-10-31 15:01)
 - Task 1.2: Add get_line_and_column(pos) method - ✅ DONE (2025-10-31 15:10)
-- Task 1.3: Add get_position_from_line_column(line, col) method - ⏳
+- Task 1.3: Add get_position_from_line_column(line, col) method - ✅ DONE (2025-10-31 15:21)
 - Task 1.4: Add @saved_column instance variable - ⏳
 
 ### Phase 2: Multiline display rendering
