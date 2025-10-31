@@ -418,22 +418,22 @@ Each task must be tracked as:
 **Goal**: Comprehensive testing and edge case handling.
 **Files**: `spec/nu/agent/console_io_spec.rb`, `lib/nu/agent/console_io.rb`
 
-#### Task 5.1: Add integration tests for multiline workflows ⏳
-**TDD Steps**:
-1. Write spec: type multiline input using Enter, navigate, submit with Ctrl+J
-2. Write spec: edit multiline input (insert/delete in middle of lines)
-3. Write spec: load multiline history entry, navigate within it
-4. Write spec: background output arrives during multiline editing
-5. Run tests until green
-6. Run lint, fix any issues
-7. Run coverage check
-8. Commit: `[Phase 5.1] Add integration tests for multiline workflows`
-9. Update this document with ✅ DONE timestamp
+#### Task 5.1: Add integration tests for multiline workflows ✅ DONE (2025-10-31 17:58)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: type multiline input using Enter, navigate, submit with Ctrl+J
+2. ✅ Write spec: edit multiline input (insert/delete in middle of lines)
+3. ✅ Write spec: load multiline history entry, navigate within it
+4. ✅ Write spec: background output arrives during multiline editing
+5. ✅ Run tests until green (2226 examples, 0 failures)
+6. ✅ Run lint, fix any issues (no offenses detected)
+7. ✅ Run coverage check (98.17% line / 90.1% branch)
+8. ✅ Commit: `[Phase 5.1] Add integration tests for multiline workflows`
+9. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Full user workflows tested end-to-end
-- All integration tests pass
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Full user workflows tested end-to-end (11 comprehensive integration tests)
+- ✅ All integration tests pass
+- ✅ All quality gates pass
 
 #### Task 5.2: Add edge case tests ⏳
 **TDD Steps**:
@@ -584,7 +584,7 @@ WHERE id = 1
 - Task 4.4: Reset @saved_column on horizontal movement and edits - ✅ DONE (2025-10-31 17:32)
 
 ### Phase 5: Integration testing and edge cases
-- Task 5.1: Add integration tests for multiline workflows - ⏳
+- Task 5.1: Add integration tests for multiline workflows - ✅ DONE (2025-10-31 17:58)
 - Task 5.2: Add edge case tests - ⏳
 - Task 5.3: Verify no regressions in existing tests - ⏳
 - Task 5.4: Manual testing and documentation - ⏳
