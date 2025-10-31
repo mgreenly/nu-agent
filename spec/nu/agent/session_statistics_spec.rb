@@ -171,8 +171,11 @@ RSpec.describe Nu::Agent::SessionStatistics do
         end
 
         it "displays elapsed time when exchange_start_time is provided" do
-          start_time = Time.now - 2.5
+          current_time = Time.now
+          start_time = current_time - 2.5
           expected_output = "\e[90mElapsed time: 2.50s\e[0m"
+
+          allow(Time).to receive(:now).and_return(current_time)
 
           expect(console).to receive(:puts).with("").ordered
           expect(console).to receive(:puts).with(anything).ordered # token stats
