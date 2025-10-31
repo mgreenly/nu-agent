@@ -372,21 +372,24 @@ Each task must be tracked as:
 - ✅ Column memory maintained via @saved_column (3 tests)
 - ✅ All quality gates pass (tests, lint, coverage)
 
-#### Task 4.3: Update handle_csi_sequence to use new navigation methods ⏳
-**TDD Steps**:
-1. Write spec: "A" sequence → calls cursor_up_or_history_prev
-2. Write spec: "B" sequence → calls cursor_down_or_history_next
-3. Update handle_csi_sequence for "A" and "B" cases
-4. Run tests until green
-5. Run lint, fix any issues
-6. Run coverage check
-7. Commit: `[Phase 4.3] Wire up new navigation methods to CSI sequences`
-8. Update this document with ✅ DONE timestamp
+#### Task 4.3: Update handle_csi_sequence to use new navigation methods ✅ DONE (2025-10-31 17:18)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: "A" sequence → calls cursor_up_or_history_prev (removed redundant tests)
+2. ✅ Write spec: "B" sequence → calls cursor_down_or_history_next (removed redundant tests)
+3. ✅ Update handle_csi_sequence for "A" and "B" cases
+4. ✅ Fix logic: continue with history if already in history mode (@history_pos != nil)
+5. ✅ Update tests to reflect new behavior (non-empty buffer does line navigation)
+6. ✅ Run tests until green (2209 examples, 0 failures)
+7. ✅ Run lint (no offenses detected)
+8. ✅ Run coverage check (98.17% line / 90.1% branch)
+9. ✅ Commit: `[Phase 4.3] Wire up new navigation methods to CSI sequences`
+10. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Arrow keys use new smart navigation
-- Existing behavior preserved for empty buffer
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Arrow keys use new smart navigation
+- ✅ Existing behavior preserved for empty buffer
+- ✅ History navigation continues when in history mode
+- ✅ All quality gates pass
 
 #### Task 4.4: Reset @saved_column on horizontal movement and edits ⏳
 **TDD Steps**:
@@ -577,7 +580,7 @@ WHERE id = 1
 ### Phase 4: Up/Down navigation logic
 - Task 4.1: Implement cursor_up_or_history_prev - ✅ DONE (2025-10-31 16:46)
 - Task 4.2: Implement cursor_down_or_history_next - ✅ DONE (2025-10-31 16:53)
-- Task 4.3: Update handle_csi_sequence to use new navigation methods - ⏳
+- Task 4.3: Update handle_csi_sequence to use new navigation methods - ✅ DONE (2025-10-31 17:18)
 - Task 4.4: Reset @saved_column on horizontal movement and edits - ⏳
 
 ### Phase 5: Integration testing and edge cases
