@@ -1574,6 +1574,124 @@ RSpec.describe Nu::Agent::ConsoleIO do
     end
   end
 
+  describe "#cursor_up_or_history_prev" do
+    context "when buffer is empty" do
+      it "navigates history backward" do
+        console.instance_variable_set(:@history, %w[first second third])
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@history_pos, nil)
+
+        console.send(:cursor_up_or_history_prev)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("third")
+        expect(console.instance_variable_get(:@history_pos)).to eq(2)
+      end
+
+      it "does nothing when history is empty" do
+        console.instance_variable_set(:@history, [])
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+        console.instance_variable_set(:@history_pos, nil)
+
+        console.send(:cursor_up_or_history_prev)
+
+        expect(console.instance_variable_get(:@input_buffer)).to eq("")
+        expect(console.instance_variable_get(:@history_pos)).to be_nil
+      end
+    end
+
+    context "when buffer is single line" do
+      it "does not move cursor (already at line 0)" do
+        console.instance_variable_set(:@input_buffer, String.new("hello world"))
+        console.instance_variable_set(:@cursor_pos, 6)  # in middle of line
+
+        console.send(:cursor_up_or_history_prev)
+
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
+      end
+    end
+
+    context "when buffer is multiline" do
+      it "moves cursor from line 1 to line 0" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+        console.instance_variable_set(:@cursor_pos, 8)  # "line1\nli|ne2" - on line 1, col 2
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should move to line 0, column 2: "li|ne1\nline2"
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(2)
+      end
+
+      it "moves cursor from line 2 to line 1" do
+        console.instance_variable_set(:@input_buffer, String.new("first\nsecond\nthird"))
+        console.instance_variable_set(:@cursor_pos, 15) # on "third", col 2
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should move to line 1 ("second"), col 2
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(8)
+      end
+
+      it "does not move cursor when already on line 0" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+        console.instance_variable_set(:@cursor_pos, 3) # on line 0
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should stay at same position
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(3)
+      end
+
+      it "clamps column when target line is shorter" do
+        console.instance_variable_set(:@input_buffer, String.new("short\nlonger line"))
+        console.instance_variable_set(:@cursor_pos, 17) # on "longer line", col 10 (near end)
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should move to line 0, but clamp to end of "short" (length 5)
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(5)
+      end
+    end
+
+    context "column memory (@saved_column)" do
+      it "saves column on first vertical movement" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 14) # line 2, col 2
+        console.instance_variable_set(:@saved_column, nil)
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should save column 2
+        expect(console.instance_variable_get(:@saved_column)).to eq(2)
+      end
+
+      it "uses saved column on subsequent vertical movements" do
+        console.instance_variable_set(:@input_buffer, String.new("long line here\nshort\nlong again"))
+        console.instance_variable_set(:@cursor_pos, 29) # line 2, col 10
+        console.instance_variable_set(:@saved_column, 10)
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should try to use saved column 10, but "short" only has 5 chars, so clamp
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(20) # end of "short"
+        expect(console.instance_variable_get(:@saved_column)).to eq(10) # preserved
+      end
+
+      it "restores column when moving to line long enough" do
+        console.instance_variable_set(:@input_buffer, String.new("first line\nshort\nthird line"))
+        console.instance_variable_set(:@cursor_pos, 16) # on "short", end of line (line 1, col 5)
+        console.instance_variable_set(:@saved_column, 8) # Remember col 8 from before
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Move up from "short" to "first line" - should restore saved col 8
+        expect(console.instance_variable_get(:@cursor_pos)).to eq(8)
+        expect(console.instance_variable_get(:@saved_column)).to eq(8) # preserved
+      end
+    end
+  end
+
   describe "#readline integration" do
     it "reads a line of input and returns it" do
       # Mock readline to call handle_readline_select once and return a result
