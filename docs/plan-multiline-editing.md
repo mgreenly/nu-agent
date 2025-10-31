@@ -207,33 +207,33 @@ Each task must be tracked as:
 - ✅ Tests verify initialization
 - ✅ All quality gates pass
 
-#### Task 2.2: Update redraw_input_line for multiline rendering ⏳
-**TDD Steps**:
-1. Write spec: single line input → expect prompt + text on one line
-2. Write spec: two line input "line1\nline2" → expect two lines displayed
-3. Write spec: verify cursor positioning after multiline render
-4. Write spec: verify @last_line_count updated correctly
-5. Implement multiline rendering logic:
-   - Get lines using get_lines
+#### Task 2.2: Update redraw_input_line for multiline rendering ✅ DONE (2025-10-31 15:47)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: single line input → expect prompt + text on one line
+2. ✅ Write spec: two line input "line1\nline2" → expect two lines displayed
+3. ✅ Write spec: verify cursor positioning after multiline render
+4. ✅ Write spec: verify @last_line_count updated correctly
+5. ✅ Implement multiline rendering logic:
+   - Get lines using lines method
    - Calculate cursor position using get_line_and_column
-   - Move up (@last_line_count - 1) times
-   - Clear to end of screen
+   - Move up (@last_line_count - 1) times when @last_line_count > 1
+   - Clear to end of screen with \e[J
    - Render each line (first with prompt, others with \r\n)
    - Update @last_line_count
-   - Position cursor at correct line/column
-6. Run tests until green
-7. Refactor for clarity (extract helper methods if needed)
-8. Run lint, fix any issues
-9. Run coverage check
-10. Commit: `[Phase 2.2] Update redraw_input_line for multiline rendering`
-11. Update this document with ✅ DONE timestamp
+   - Position cursor at correct line/column (move up from bottom, then set column)
+6. ✅ Run tests until green (11 new specs, all pass)
+7. ✅ Refactor: RuboCop auto-corrected to use modifier if and move @stdout.write(line) outside conditional
+8. ✅ Run lint: no offenses
+9. ✅ Run coverage check: 98.17% line / 90.12% branch (thresholds met)
+10. ✅ Commit: `[Phase 2.2] Update redraw_input_line for multiline rendering`
+11. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Single line input still works (no regression)
-- Multiline input displays all lines correctly
-- Cursor positioned at correct 2D location
-- @last_line_count tracks current line count
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Single line input still works (no regression)
+- ✅ Multiline input displays all lines correctly
+- ✅ Cursor positioned at correct 2D location (tested with various scenarios)
+- ✅ @last_line_count tracks current line count
+- ✅ All quality gates pass (2174 examples, 0 failures)
 
 #### Task 2.3: Update clear_screen for multiline support ⏳
 **TDD Steps**:
@@ -560,7 +560,7 @@ WHERE id = 1
 
 ### Phase 2: Multiline display rendering
 - Task 2.1: Add @last_line_count instance variable - ✅ DONE (2025-10-31 15:37)
-- Task 2.2: Update redraw_input_line for multiline rendering - ⏳
+- Task 2.2: Update redraw_input_line for multiline rendering - ✅ DONE (2025-10-31 15:47)
 - Task 2.3: Update clear_screen for multiline support - ⏳
 - Task 2.4: Update handle_output_for_input_mode for multiline - ⏳
 
