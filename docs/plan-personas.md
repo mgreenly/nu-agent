@@ -2,7 +2,8 @@ Nu-Agent: Switchable Agent Personas Plan
 
 Last Updated: 2025-10-30
 GitHub Issue: #12
-Plan Status: Phase 8 - IN PROGRESS ⏳ (Manual testing of refactored command structure)
+Plan Status: Phase 8 - READY FOR MANUAL TESTING ⏳
+Next: Phase 9 - Bug fixes ({{DATE}} placeholder, /personas alias)
 
 ## Progress Summary
 
@@ -795,7 +796,61 @@ Success Criteria:
 - ⏳ Error messages are clear and helpful
 - ⏳ No crashes or unexpected behavior
 
-Success criteria - Phases 1-7 COMPLETE ✅, Phase 8 IN PROGRESS ⏳
+Phase 9: Bug Fixes and Enhancements (1 hr)
+-------------------------------------------
+Goal: Fix identified issues and add requested enhancements.
+
+**Issue 1: {{DATE}} Placeholder in Migration**
+Problem: Migration hardcodes the date at migration time instead of using {{DATE}} placeholder.
+- Migration line 32: `current_date = Time.now.strftime("%Y-%m-%d")`
+- Default personas contain hardcoded date (e.g., "Today is 2025-10-30")
+- Should use "Today is {{DATE}}" placeholder for runtime replacement
+
+Tasks:
+1. Update migration 006_create_personas_table.rb:
+   - Change all persona system_prompt values to use "{{DATE}}" placeholder
+   - Remove `current_date` variable and hardcoded date interpolation
+2. Create data migration or manual fix for existing databases:
+   - Option A: Create migration 007 to UPDATE existing personas
+   - Option B: Document manual fix in plan (users re-run migration on fresh db)
+   - Decision: Use Option B (simpler, affects only early adopters)
+3. Test with fresh database:
+   - Delete db/memory.db
+   - Run agent to trigger migration
+   - Verify personas contain {{DATE}} placeholder
+   - Switch to persona and send message
+   - Verify LLM receives current date (not hardcoded date)
+4. Update tests if needed to verify {{DATE}} placeholder exists
+
+**Issue 2: Add /personas Alias**
+Add convenient alias for listing personas.
+
+Tasks:
+1. Register "/personas" command in application.rb:
+   - Point to PersonaCommand (same as "/persona")
+   - Add registration after "/persona" line
+2. Update PersonaCommand to handle both commands:
+   - When invoked via "/personas" with no args, show list (not help)
+   - When invoked via "/persona" with no args, show help (existing behavior)
+   - Detect which command was used via input parameter
+3. Update help_command.rb:
+   - Add "/personas" to command list
+   - Show: `/personas - List all available personas`
+4. Add tests for /personas command:
+   - Test "/personas" shows list
+   - Test "/personas" with no arguments
+   - Verify it matches "/persona list" output
+5. Update plan documentation with /personas examples
+
+Success Criteria:
+- ⏳ Migration creates personas with {{DATE}} placeholder
+- ⏳ LLM receives current date at runtime
+- ⏳ /personas command lists all personas
+- ⏳ /personas behaves identically to /persona list
+- ⏳ All tests pass with maintained coverage
+- ⏳ Zero RuboCop violations
+
+Success criteria - Phases 1-7 COMPLETE ✅, Phase 8-9 PENDING ⏳
 ================
 - ✅ Database: personas table exists with 5 default personas
 - ✅ Command: `/persona` shows help (Phase 7 complete)
@@ -860,6 +915,15 @@ Available commands:
 
 # List available personas
 > /persona list
+Available personas (* = active):
+  * default         - General-purpose assistant
+    developer       - Focused software development
+    writer          - Creative writing assistant
+    researcher      - Thorough research and analysis
+    teacher         - Patient teaching and explanations
+
+# Alternative: use /personas alias for quick listing
+> /personas
 Available personas (* = active):
   * default         - General-purpose assistant
     developer       - Focused software development
