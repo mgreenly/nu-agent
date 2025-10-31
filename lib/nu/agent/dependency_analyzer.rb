@@ -59,6 +59,13 @@ module Nu
         return true if current_batch.empty?
 
         tool_info = extract_tool_info(tool_call)
+
+        # Unconfined write tools must run in isolation
+        return false if unconfined_write?(tool_info)
+
+        # Cannot batch with an unconfined write tool
+        return false if current_batch.any? { |tc| unconfined_write?(extract_tool_info(tc)) }
+
         !path_conflict?(tool_info, current_batch, path_writes)
       end
 
@@ -83,6 +90,7 @@ module Nu
 
         {
           operation_type: metadata[:operation_type],
+          scope: metadata[:scope],
           affected_paths: affected_paths
         }
       end
@@ -90,6 +98,11 @@ module Nu
       # Default metadata for unknown tools
       def default_metadata
         { operation_type: :read, scope: :confined }
+      end
+
+      # Check if a tool is an unconfined write operation (barrier)
+      def unconfined_write?(tool_info)
+        tool_info[:operation_type] == :write && tool_info[:scope] == :unconfined
       end
 
       # Check if tool has a path conflict with current batch
