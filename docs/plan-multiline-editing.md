@@ -251,21 +251,22 @@ Each task must be tracked as:
 - ✅ Tests verify multiline rendering (single line, multiline, cursor positioning)
 - ✅ All quality gates pass (2177 examples, 0 failures)
 
-#### Task 2.4: Update handle_output_for_input_mode for multiline ⏳
-**TDD Steps**:
-1. Write spec: background output during multiline editing → verify clean redraw
-2. Update method to clear multiline area before output, redraw after
-3. Run tests until green
-4. Run lint, fix any issues
-5. Run coverage check
-6. Commit: `[Phase 2.4] Update handle_output_for_input_mode for multiline support`
-7. Update this document with ✅ DONE timestamp
+#### Task 2.4: Update handle_output_for_input_mode for multiline ✅ DONE (2025-10-31 16:08)
+**TDD Steps**: ✅ COMPLETED
+1. ✅ Write spec: background output during multiline editing → verify clean redraw
+2. ✅ Update method to clear multiline area before output, redraw after
+3. ✅ Refactor: Extract do_redraw_input_line private method to avoid mutex deadlock
+4. ✅ Run tests until green (2180 examples, 0 failures)
+5. ✅ Run lint (no offenses detected)
+6. ✅ Run coverage check (98.17% line / 90.16% branch)
+7. ✅ Commit: `[Phase 2.4] Update handle_output_for_input_mode for multiline support`
+8. ✅ Update this document with ✅ DONE timestamp
 
-**Acceptance criteria**:
-- Background output doesn't corrupt multiline display
-- Input area properly cleared and redrawn
-- Cursor repositioned correctly
-- All quality gates pass
+**Acceptance criteria**: ✅ ALL MET
+- ✅ Background output doesn't corrupt multiline display
+- ✅ Input area properly cleared and redrawn (moves up, clears to end of screen)
+- ✅ Cursor repositioned correctly via do_redraw_input_line
+- ✅ All quality gates pass (tests, lint, coverage)
 
 ### Phase 3: Submit key handling
 **Status**: Not started
@@ -563,7 +564,7 @@ WHERE id = 1
 - Task 2.1: Add @last_line_count instance variable - ✅ DONE (2025-10-31 15:37)
 - Task 2.2: Update redraw_input_line for multiline rendering - ✅ DONE (2025-10-31 15:47)
 - Task 2.3: Update clear_screen for multiline support - ✅ DONE (2025-10-31 16:00)
-- Task 2.4: Update handle_output_for_input_mode for multiline - ⏳
+- Task 2.4: Update handle_output_for_input_mode for multiline - ✅ DONE (2025-10-31 16:08)
 
 ### Phase 3: Submit key handling
 - Task 3.1: Update parse_input to make Enter insert newline - ⏳
