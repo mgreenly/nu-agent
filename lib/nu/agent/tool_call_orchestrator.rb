@@ -104,20 +104,64 @@ module Nu
         batches = @dependency_analyzer.analyze(response["tool_calls"])
 
         # Execute batches sequentially, but tools within each batch run in parallel
-        batches.each do |batch|
-          results = @parallel_executor.execute_batch(batch)
+        batches.each_with_index do |batch, batch_index|
+          batch_number = batch_index + 1 # Batch numbers start at 1 for display
+
+          # Display tool call requests with batch/thread info
+          if @application&.respond_to?(:debug) && @application.debug
+            batch.each_with_index do |tool_call, index|
+              thread_number = index + 1
+              display_tool_call_with_context(
+                tool_call,
+                batch: batch_number,
+                thread: thread_number,
+                index: find_tool_call_index(response["tool_calls"], tool_call),
+                total: response["tool_calls"].length
+              )
+            end
+          end
+
+          # Execute batch with batch number for tracking
+          results = @parallel_executor.execute_batch(batch, batch_number: batch_number)
 
           # Process results in original order
           results.each do |result_data|
             tool_call = result_data[:tool_call]
             result = result_data[:result]
+            batch = result_data[:batch]
+            thread = result_data[:thread]
             tool_result_data = build_tool_result_data(tool_call, result)
 
             save_tool_result_message(tool_call, tool_result_data)
-            display_tool_result_message(tool_result_data)
+
+            # Display tool result with batch/thread info if debug enabled
+            if @application&.respond_to?(:debug) && @application.debug && batch && thread
+              display_tool_result_with_context(tool_result_data, batch: batch, thread: thread)
+            else
+              display_tool_result_message(tool_result_data)
+            end
+
             add_tool_result_to_messages(messages, tool_call, result)
           end
         end
+      end
+
+      def find_tool_call_index(all_tool_calls, target_tool_call)
+        all_tool_calls.index { |tc| tc["id"] == target_tool_call["id"] }&.+(1) || 0
+      end
+
+      def display_tool_call_with_context(tool_call, batch:, thread:, index:, total:)
+        tool_call_formatter = @formatter.instance_variable_get(:@tool_call_formatter)
+        tool_call_formatter.display(tool_call, batch: batch, thread: thread, index: index, total: total)
+      end
+
+      def display_tool_result_with_context(tool_result_data, batch:, thread:)
+        tool_result_formatter = @formatter.instance_variable_get(:@tool_result_formatter)
+        # Build message structure expected by formatter
+        message = {
+          "tool_result" => tool_result_data
+        }
+        tool_result_formatter.display(message, batch: batch, thread: thread)
       end
 
       def save_tool_call_message(response)
