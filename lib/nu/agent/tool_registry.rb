@@ -5,15 +5,21 @@ module Nu
     class ToolRegistry
       def initialize
         @tools = {}
+        @metadata = {}
         register_default_tools
       end
 
       def register(tool)
         @tools[tool.name] = tool
+        @metadata[tool.name] = extract_metadata(tool)
       end
 
       def find(name)
         @tools[name]
+      end
+
+      def metadata_for(name)
+        @metadata[name]
       end
 
       def all
@@ -71,6 +77,21 @@ module Nu
       end
 
       private
+
+      def extract_metadata(tool)
+        {
+          operation_type: extract_operation_type(tool),
+          scope: extract_scope(tool)
+        }
+      end
+
+      def extract_operation_type(tool)
+        tool.respond_to?(:operation_type) ? tool.operation_type : :read
+      end
+
+      def extract_scope(tool)
+        tool.respond_to?(:scope) ? tool.scope : :confined
+      end
 
       def register_default_tools
         default_tool_classes.each { |tool_class| register(tool_class.new) }
