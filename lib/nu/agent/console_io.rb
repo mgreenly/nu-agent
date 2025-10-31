@@ -491,11 +491,11 @@ module Nu
         char = chars[index]
 
         case char
-        when "A" # Up arrow - navigate history backward
-          history_prev
+        when "A" # Up arrow - navigate history or move up in multiline
+          cursor_up_or_history_prev
           index
-        when "B" # Down arrow - navigate history forward
-          history_next
+        when "B" # Down arrow - navigate history or move down in multiline
+          cursor_down_or_history_next
           index
         when "C" # Right arrow
           cursor_forward
@@ -812,8 +812,8 @@ module Nu
       end
 
       def cursor_up_or_history_prev
-        # If buffer is empty, navigate history
-        if @input_buffer.empty?
+        # If buffer is empty OR we're actively navigating history, continue with history
+        if @input_buffer.empty? || !@history_pos.nil?
           history_prev
           return
         end
@@ -838,8 +838,8 @@ module Nu
       end
 
       def cursor_down_or_history_next
-        # If buffer is empty, navigate history
-        if @input_buffer.empty?
+        # If buffer is empty OR we're actively navigating history, continue with history
+        if @input_buffer.empty? || !@history_pos.nil?
           history_next
           return
         end

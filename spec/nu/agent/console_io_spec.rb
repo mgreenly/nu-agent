@@ -854,14 +854,17 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(console.instance_variable_get(:@history_pos)).to eq(2)
       end
 
-      it "saves current input when entering history" do
+      it "does not enter history when buffer is non-empty (single line)" do
         console.instance_variable_set(:@history, %w[first second])
         console.instance_variable_set(:@input_buffer, String.new("partially typed"))
         console.instance_variable_set(:@cursor_pos, 15)
 
         console.send(:parse_input, "\e[A")
 
-        expect(console.instance_variable_get(:@saved_input)).to eq("partially typed")
+        # With new behavior: non-empty buffer means line navigation, not history
+        # Single line buffer means up arrow does nothing
+        expect(console.instance_variable_get(:@input_buffer)).to eq("partially typed")
+        expect(console.instance_variable_get(:@history_pos)).to be_nil
       end
 
       it "navigates backwards through history on repeated up arrows" do
@@ -911,16 +914,17 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(console.instance_variable_get(:@input_buffer)).to eq("third")
       end
 
-      it "restores saved input when navigating past end of history" do
+      it "does not enter history when buffer is non-empty (line navigation)" do
         console.instance_variable_set(:@history, %w[first second])
         console.instance_variable_set(:@input_buffer, String.new("my input"))
         console.instance_variable_set(:@cursor_pos, 8)
 
-        # Enter history
+        # With new behavior: non-empty buffer means line navigation, not history
+        # Single line buffer means up/down arrows do nothing
         console.send(:parse_input, "\e[A")
-        expect(console.instance_variable_get(:@input_buffer)).to eq("second")
+        expect(console.instance_variable_get(:@input_buffer)).to eq("my input")
+        expect(console.instance_variable_get(:@history_pos)).to be_nil
 
-        # Navigate back past end
         console.send(:parse_input, "\e[B")
         expect(console.instance_variable_get(:@input_buffer)).to eq("my input")
         expect(console.instance_variable_get(:@history_pos)).to be_nil
