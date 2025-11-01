@@ -113,7 +113,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ExchangeSummarizerCommand do
         allow(worker_manager).to receive(:worker_enabled?).with("exchange-summarizer").and_return(true)
         allow(worker_manager).to receive(:worker_metrics).with("exchange-summarizer").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return("claude-sonnet-4-5")
-        allow(history).to receive(:get_int).with("exchange_summarizer_verbosity", 0).and_return(1)
+        allow(history).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(1)
       end
 
       it "displays detailed worker status" do

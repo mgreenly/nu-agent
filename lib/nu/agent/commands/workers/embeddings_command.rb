@@ -120,7 +120,7 @@ module Nu
           end
 
           def show_current_batch
-            batch_size = app.history.get_int("embedding_batch_size", 10)
+            batch_size = app.history.get_int("embedding_batch_size", default: 10)
             app.console.puts("")
             app.output_line("#{WORKER_NAME} batch size: #{batch_size}", type: :command)
           end
@@ -153,7 +153,7 @@ module Nu
           end
 
           def show_current_rate
-            rate_limit = app.history.get_int("embedding_rate_limit_ms", 100)
+            rate_limit = app.history.get_int("embedding_rate_limit_ms", default: 100)
             app.console.puts("")
             app.output_line("#{WORKER_NAME} rate limit: #{rate_limit}ms", type: :command)
           end
@@ -225,9 +225,9 @@ module Nu
             status = app.worker_manager.worker_status(WORKER_NAME)
             enabled = app.worker_manager.worker_enabled?(WORKER_NAME) ? "yes" : "no"
             state = status["running"] ? "running" : "idle"
-            verbosity = app.history.get_int("embeddings_verbosity", 0)
-            batch_size = app.history.get_int("embedding_batch_size", 10)
-            rate_limit = app.history.get_int("embedding_rate_limit_ms", 100)
+            verbosity = app.history.get_int("embeddings_verbosity", default: 0)
+            batch_size = app.history.get_int("embedding_batch_size", default: 10)
+            rate_limit = app.history.get_int("embedding_rate_limit_ms", default: 100)
 
             <<~STATUS
               Embeddings Worker Status:

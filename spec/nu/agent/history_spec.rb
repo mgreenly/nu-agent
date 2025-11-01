@@ -351,6 +351,20 @@ RSpec.describe Nu::Agent::History do
       history.set_config("key", "value2")
       expect(history.get_config("key")).to eq("value2")
     end
+
+    it "get_int with keyword argument returns Integer, not Hash" do
+      # Regression test for bug where get_int("key", default: 0) returned {default: 0} instead of 0
+      result = history.get_int("nonexistent_key", default: 0)
+      expect(result).to be_a(Integer)
+      expect(result).to eq(0)
+    end
+
+    it "get_int with stored value returns Integer" do
+      history.set_config("int_key", "42")
+      result = history.get_int("int_key", default: 0)
+      expect(result).to be_a(Integer)
+      expect(result).to eq(42)
+    end
   end
 
   describe "worker tracking" do

@@ -112,7 +112,7 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
         allow(worker_manager).to receive(:worker_status).with("conversation-summarizer").and_return(status)
         allow(worker_manager).to receive(:worker_enabled?).with("conversation-summarizer").and_return(true)
         allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return("claude-sonnet-4-5")
-        allow(history).to receive(:get_int).with("conversation_summarizer_verbosity", 0).and_return(1)
+        allow(history).to receive(:get_int).with("conversation_summarizer_verbosity", default: 0).and_return(1)
       end
 
       it "displays detailed worker status" do

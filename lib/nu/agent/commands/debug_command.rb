@@ -30,12 +30,12 @@ module Nu
             "Current: debug=#{app.debug ? 'on' : 'off'}",
             "",
             "Control specific debug output with subsystem commands:",
-            "  /llm verbosity <level>        - LLM API interactions",
-            "  /tools verbosity <level>      - Tool calls and results",
-            "  /messages verbosity <level>   - Message tracking",
-            "  /search verbosity <level>     - Search internals",
-            "  /stats verbosity <level>      - Statistics/costs",
-            "  /spellcheck verbosity <level> - Spell checker",
+            "  /llm verbosity <level>              - LLM API interactions",
+            "  /tools-debug verbosity <level>      - Tool calls and results",
+            "  /messages verbosity <level>         - Message tracking",
+            "  /search verbosity <level>           - Search internals",
+            "  /stats verbosity <level>            - Statistics/costs",
+            "  /spellcheck-debug verbosity <level> - Spell checker",
             "",
             "Use /<subsystem> help to see verbosity levels."
           ]

@@ -111,9 +111,9 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
       before do
         allow(worker_manager).to receive(:worker_status).with("embeddings").and_return(status)
         allow(worker_manager).to receive(:worker_enabled?).with("embeddings").and_return(true)
-        allow(history).to receive(:get_int).with("embeddings_verbosity", 0).and_return(2)
-        allow(history).to receive(:get_int).with("embedding_batch_size", 10).and_return(20)
-        allow(history).to receive(:get_int).with("embedding_rate_limit_ms", 100).and_return(150)
+        allow(history).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(2)
+        allow(history).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(20)
+        allow(history).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(150)
       end
 
       it "displays detailed worker status" do
@@ -217,7 +217,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
     context "with 'batch' subcommand" do
       context "without size argument" do
         it "shows current batch size" do
-          allow(history).to receive(:get_int).with("embedding_batch_size", 10).and_return(15)
+          allow(history).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(15)
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings batch size: 15",
@@ -227,7 +227,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         end
 
         it "returns :continue" do
-          allow(history).to receive(:get_int).with("embedding_batch_size", 10).and_return(15)
+          allow(history).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(15)
           expect(command.execute_subcommand("batch", [])).to eq(:continue)
         end
       end
@@ -277,7 +277,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
     context "with 'rate' subcommand" do
       context "without limit argument" do
         it "shows current rate limit" do
-          allow(history).to receive(:get_int).with("embedding_rate_limit_ms", 100).and_return(200)
+          allow(history).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(200)
           expect(console).to receive(:puts).with("")
           expect(application).to receive(:output_line).with(
             "embeddings rate limit: 200ms",
@@ -287,7 +287,7 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
         end
 
         it "returns :continue" do
-          allow(history).to receive(:get_int).with("embedding_rate_limit_ms", 100).and_return(200)
+          allow(history).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(200)
           expect(command.execute_subcommand("rate", [])).to eq(:continue)
         end
       end

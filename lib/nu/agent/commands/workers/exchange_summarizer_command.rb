@@ -178,7 +178,7 @@ module Nu
             enabled = app.worker_manager.worker_enabled?(WORKER_NAME) ? "yes" : "no"
             state = status["running"] ? "running" : "idle"
             model = app.history.get_config("exchange_summarizer_model")
-            verbosity = app.history.get_int("exchange_summarizer_verbosity", 0)
+            verbosity = app.history.get_int("exchange_summarizer_verbosity", default: 0)
 
             result = <<~STATUS
               Exchange Summarizer Status:

@@ -26,12 +26,12 @@ module Nu
             /tools                         - List available tools
 
           Debug Subsystems:
-            /llm verbosity <level>         - Control LLM API debug output
-            /tools verbosity <level>       - Control tool call/result debug output
-            /messages verbosity <level>    - Control message tracking debug output
-            /search verbosity <level>      - Control search internals debug output
-            /stats verbosity <level>       - Control statistics/cost debug output
-            /spellcheck verbosity <level>  - Control spell checker debug output
+            /llm verbosity <level>              - Control LLM API debug output
+            /tools-debug verbosity <level>      - Control tool call/result debug output
+            /messages verbosity <level>         - Control message tracking debug output
+            /search verbosity <level>           - Control search internals debug output
+            /stats verbosity <level>            - Control statistics/cost debug output
+            /spellcheck-debug verbosity <level> - Control spell checker debug output
 
             Use /<subsystem> help for details on verbosity levels
         HELP

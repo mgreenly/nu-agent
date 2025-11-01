@@ -197,7 +197,7 @@ module Nu
         @config_store.get_config(key, default: default)
       end
 
-      def get_int(key, default = nil)
+      def get_int(key, default: nil)
         @config_store.get_int(key, default: default)
       end
 
