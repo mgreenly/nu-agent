@@ -140,13 +140,13 @@ end
    - COMMIT: "Add with_rag_content to LlmRequestBuilder" ✓
    - UPDATE: Mark task 1.4 complete in plan ✓
 
-**Task 1.5: Implement `with_user_query` method**
-   - RED: Write test for user query setting
-   - GREEN: Implement method
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add with_user_query to LlmRequestBuilder"
-   - UPDATE: Mark task 1.5 complete in plan
+**Task 1.5: Implement `with_user_query` method** ✓ COMPLETE
+   - RED: Write test for user query setting ✓
+   - GREEN: Implement method ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add with_user_query to LlmRequestBuilder" ✓
+   - UPDATE: Mark task 1.5 complete in plan ✓
 
 **Task 1.6: Implement `with_tools` method**
    - RED: Write test for tools setting
