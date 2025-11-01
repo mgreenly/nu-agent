@@ -51,4 +51,16 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
       expect(builder.rag_content).to eq(rag_content)
     end
   end
+
+  describe "#with_user_query" do
+    it "stores the user query and returns self for chaining" do
+      builder = described_class.new
+      query = "What is the weather today?"
+
+      result = builder.with_user_query(query)
+
+      expect(result).to be(builder)
+      expect(builder.user_query).to eq(query)
+    end
+  end
 end
