@@ -56,6 +56,13 @@ RSpec.configure do |config|
     DatabaseHelper.truncate_all_tables(history.connection)
   end
 
+  # Clean up thread-local connections after each test
+  # This prevents connection pool accumulation from concurrent tests
+  config.after do
+    history = DatabaseHelper.get_test_history
+    DatabaseHelper.cleanup_connections(history)
+  end
+
   # Clean up the test database after all tests complete
   config.after(:suite) do
     db_path = "db/test.db"

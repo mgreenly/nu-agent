@@ -91,6 +91,34 @@ module DatabaseHelper
       end
     end
 
+    # Clean up thread-local connections from the History instance's connection pool
+    # This prevents accumulation of stale connections from concurrent tests
+    #
+    # @param history [Nu::Agent::History] History instance
+    # @return [void]
+    def cleanup_connections(history)
+      main_thread_id = Thread.current.object_id
+
+      history.instance_variable_get(:@connection_mutex).synchronize do
+        connections = history.instance_variable_get(:@connections)
+
+        # Close all connections except the main thread's connection
+        connections.each do |thread_id, conn|
+          next if thread_id == main_thread_id
+
+          begin
+            conn.close
+          rescue StandardError => e
+            # Ignore errors when closing stale connections
+            warn "Warning: Error closing connection for thread #{thread_id}: #{e.message}" if ENV["DEBUG"]
+          end
+        end
+
+        # Remove all closed connections from the pool
+        connections.keep_if { |thread_id, _conn| thread_id == main_thread_id }
+      end
+    end
+
     private
 
     # Order tables by dependencies (child tables before parent tables)
