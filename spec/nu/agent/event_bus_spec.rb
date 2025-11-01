@@ -123,7 +123,10 @@ RSpec.describe Nu::Agent::EventBus do
       event_bus.subscribe(:test_event, &callback1)
       event_bus.subscribe(:test_event, &callback2)
 
-      expect { event_bus.publish(:test_event, "test") }.not_to raise_error
+      # Silence the expected warning output during this test
+      silence_stream($stderr) do
+        expect { event_bus.publish(:test_event, "test") }.not_to raise_error
+      end
       expect(results).to eq(["test"])
     end
   end

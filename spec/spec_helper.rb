@@ -41,6 +41,16 @@ ensure
   original_stderr.close
 end
 
+# Helper to silence a specific stream during tests
+def silence_stream(stream)
+  original_stream = stream.dup
+  stream.reopen(File.new(File::NULL, "w"))
+  yield
+ensure
+  stream.reopen(original_stream)
+  original_stream.close
+end
+
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = ".rspec_status"
