@@ -34,6 +34,33 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
     let(:messages) { [{ "role" => "user", "content" => "Hello" }] }
     let(:tools) { [] }
 
+    context "when calling client" do
+      it "passes internal format to client.send_message as single hash argument" do
+        final_response = {
+          "content" => "Hello there!",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001
+        }
+
+        system_prompt = "You are a helpful assistant"
+
+        # Verify client receives a single hash arg, not keyword args
+        # Current implementation uses **params which would fail this
+        allow(client).to receive(:send_message) do |arg|
+          # Fail if called with keyword arguments instead of single hash
+          raise "Expected hash argument, got keyword args" unless arg.is_a?(Hash)
+
+          expect(arg[:messages]).to eq(messages)
+          expect(arg[:tools]).to eq(tools)
+          expect(arg[:system_prompt]).to eq(system_prompt)
+          final_response
+        end
+
+        orchestrator.execute(messages: messages, tools: tools, system_prompt: system_prompt)
+      end
+    end
+
     context "when API returns an error" do
       it "saves error message and returns error result" do
         error_response = {

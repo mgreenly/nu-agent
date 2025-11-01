@@ -39,13 +39,9 @@ module Nu
         }
 
         loop do
-          # Send request to LLM
-          send_params = { messages: messages, tools: tools }
-          send_params[:system_prompt] = system_prompt if system_prompt
-
           start_time = Time.now
           output_debug("API Request to #{@client.name}/#{@client.model}", verbosity: 2)
-          response = @client.send_message(**send_params)
+          response = @client.send_message(build_internal_request(messages, tools, system_prompt))
           duration = Time.now - start_time
           output_debug("API Response received after #{format_duration(duration)}", verbosity: 2)
 
@@ -69,6 +65,12 @@ module Nu
       end
 
       private
+
+      def build_internal_request(messages, tools, system_prompt)
+        request = { messages: messages, tools: tools }
+        request[:system_prompt] = system_prompt if system_prompt
+        request
+      end
 
       def handle_error_response(response, _metrics)
         # Save error message (unredacted so user can see it)

@@ -182,13 +182,13 @@ end
    - COMMIT: "Integrate LlmRequestBuilder into orchestrator" ✓
    - UPDATE: Mark task 2.1 complete in plan ✓
 
-**Task 2.2: Remove "Available Tools" section from message content**
-   - RED: Update tests to expect no "Available Tools" in message content
-   - GREEN: Remove "Available Tools" section generation (lines ~217-219)
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Remove duplicate Available Tools section from messages"
-   - UPDATE: Mark task 2.2 complete in plan
+**Task 2.2: Remove "Available Tools" section from message content** ✓ COMPLETE
+   - RED: Update tests to expect no "Available Tools" in message content ✓
+   - GREEN: Remove "Available Tools" section generation (lines ~217-219) ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Remove duplicate Available Tools section from messages" ✓
+   - UPDATE: Mark task 2.2 complete in plan ✓
 
 **Task 2.3: Update orchestrator to pass internal format to clients**
    - RED: Update tests to verify internal format passed to clients
