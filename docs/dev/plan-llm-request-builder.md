@@ -124,13 +124,13 @@ end
    - COMMIT: "Add with_system_prompt to LlmRequestBuilder" ✓
    - UPDATE: Mark task 1.2 complete in plan ✓
 
-**Task 1.3: Implement `with_history` method**
-   - RED: Write test for history setting
-   - GREEN: Implement method
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add with_history to LlmRequestBuilder"
-   - UPDATE: Mark task 1.3 complete in plan
+**Task 1.3: Implement `with_history` method** ✓ COMPLETE
+   - RED: Write test for history setting ✓
+   - GREEN: Implement method ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add with_history to LlmRequestBuilder" ✓
+   - UPDATE: Mark task 1.3 complete in plan ✓
 
 **Task 1.4: Implement `with_rag_content` method**
    - RED: Write test for RAG content setting
