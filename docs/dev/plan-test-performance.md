@@ -110,6 +110,15 @@ Implement a "**schema once, truncate between**" strategy:
 - [x] **CONCLUSION:** No refactoring needed - already optimized
 - [x] **UPDATE:** Mark this task complete in plan
 
+#### Task 3.5: Fix connection pool cleanup for concurrent tests
+- [x] **ISSUE DISCOVERED:** Concurrent write tests failing with "Database connection closed?" errors
+- [x] **ROOT CAUSE:** History connection pool accumulating stale connections from test threads
+- [x] **GREEN:** Add `DatabaseHelper.cleanup_connections` method to close non-main-thread connections
+- [x] **GREEN:** Add `after(:each)` hook in spec_helper.rb to call cleanup_connections
+- [x] **VERIFY:** `rake test && rake lint && rake coverage` - all pass
+- [x] **COMMIT:** "Fix connection pool cleanup for concurrent test isolation"
+- [x] **UPDATE:** Mark this task complete in plan
+
 ### Phase 4: Add In-Memory Database Option
 
 **Goal:** Enable fast in-memory database for tests that don't need persistence.
