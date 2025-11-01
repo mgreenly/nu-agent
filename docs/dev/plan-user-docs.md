@@ -120,7 +120,6 @@ docs/
      - `/tools` - Show available tools
      - `/debug` - Toggle debug mode
      - `/verbosity` - Set verbosity level
-     - `/spellcheck` - Toggle spell checking
      - `/redaction` - Toggle redaction mode
      - `/persona` - Manage personas
      - `/rag` - RAG configuration
@@ -217,7 +216,7 @@ docs/
 **Content Sections:**
 1. **Understanding Models**
    - What models are available
-   - Model roles: orchestrator, spellchecker, summarizer
+   - Model roles: orchestrator, summarizer
    - When each model is used
    - Cost implications
 
@@ -231,7 +230,6 @@ docs/
 3. **Model Configuration**
    - Viewing current models: `/models`
    - Switching orchestrator: `/model orchestrator <name>`
-   - Switching spellchecker: `/model spellchecker <name>`
    - Switching summarizer: `/model summarizer <name>`
    - Model aliases and shortcuts
 

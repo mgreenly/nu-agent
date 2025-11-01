@@ -1,5 +1,9 @@
 # Plan: Fix Output System Architecture Issues
 
+**⚠️ OBSOLETE**: This plan is now obsolete as the spell checker functionality referenced throughout has been removed (Issue #29). This document is retained for historical reference only.
+
+---
+
 ## Overview
 
 This plan addresses two fundamental architectural issues with the application's output system:

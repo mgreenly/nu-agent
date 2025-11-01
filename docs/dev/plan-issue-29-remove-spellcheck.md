@@ -160,29 +160,29 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 3.4 Clean up History references
 **TDD Approach:** Remove comments and verify tests still pass
 
-- [ ] Remove spell_checker comments in `lib/nu/agent/history.rb` (lines 163, 174)
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/history_spec.rb` - should still pass (just comments)
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
+- [x] Remove spell_checker comments in `lib/nu/agent/history.rb` (lines 163, 174)
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/history_spec.rb` - passed (110 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rspec` - all tests pass (2477 examples, 0 failures, 1 pending)
 
 ### 3.5 Clean up ExchangeMigrator references
 **TDD Approach:** Remove spell_checker filtering logic
 
-- [ ] Remove spell_checker exclusion in `lib/nu/agent/exchange_migrator.rb` (line 51-52 comment, may affect line 52 logic)
-- [ ] Review if the condition `msg["actor"] != "spell_checker"` needs removal or just the comment
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/exchange_migrator_spec.rb` - should pass before changes
-- [ ] Make changes
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/exchange_migrator_spec.rb` - should still pass
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
+- [x] Remove spell_checker exclusion in `lib/nu/agent/exchange_migrator.rb` (line 51-52 comment, may affect line 52 logic)
+- [x] Review if the condition `msg["actor"] != "spell_checker"` needs removal or just the comment
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/exchange_migrator_spec.rb` - passed (9 examples, 0 failures)
+- [x] Make changes - removed comment and condition, also removed spell_checker test from exchange_migrator_spec.rb and history_spec.rb
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/exchange_migrator_spec.rb` - passed (8 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rspec` - all tests pass (2475 examples, 0 failures, 1 pending)
 
 ### 3.6 Remove from HelpTextBuilder
 **TDD Approach:** Update tests, then remove help text
 
-- [ ] Search for spellcheck references in `lib/nu/agent/help_text_builder.rb`
-- [ ] Remove `/spellcheck` command from help text
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/help_text_builder_spec.rb` - may fail
-- [ ] Update `help_text_builder_spec.rb` to remove spellcheck expectations
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/help_text_builder_spec.rb` - should pass
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
+- [x] Search for spellcheck references in `lib/nu/agent/help_text_builder.rb`
+- [x] Remove `/spellcheck` command from help text - removed 3 spellcheck references (lines 19, 24, 34)
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/help_text_builder_spec.rb` - N/A (removed expectations first)
+- [x] Update `help_text_builder_spec.rb` to remove spellcheck expectations
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/help_text_builder_spec.rb` - passed (5 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rspec` - all tests pass (2475 examples, 0 failures, 1 pending)
 
 **✅ Phase 3 Complete - Update this plan document and commit progress before proceeding!**
 
@@ -193,15 +193,16 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 4.1 Search and clean up test references
 **TDD Approach:** Identify all test references and clean them up
 
-- [ ] Run: `grep -r "spell" spec/ --include="*.rb" -n`
-- [ ] Review each file with spell checker references:
-  - [ ] `spec/nu/agent/chat_loop_orchestrator_spec.rb`
-  - [ ] `spec/nu/agent/application_console_integration_spec.rb`
-  - [ ] Any other specs found
-- [ ] Remove or update tests that reference spell checker functionality
-- [ ] **Green:** Run `bundle exec rspec` - all tests should pass
-- [ ] **Gateway:** Run `bundle exec rubocop` - should pass
-- [ ] **Gateway:** Check coverage - should maintain or improve coverage
+- [x] Run: `grep -r "spell" spec/ --include="*.rb" -n`
+- [x] Review each file with spell checker references:
+  - [x] `spec/nu/agent/application_console_integration_spec.rb` - removed 3 references
+  - [x] `spec/nu/agent/commands/verbosity_command_spec.rb` - removed multiple references
+  - [x] `spec/nu/agent/commands/debug_command_spec.rb` - removed 1 reference
+  - [x] `lib/nu/agent/commands/verbosity_command.rb` - removed spellcheck subsystem definition
+- [x] Remove or update tests that reference spell checker functionality
+- [x] **Green:** Run `bundle exec rspec` - all tests pass (2474 examples, 0 failures, 1 pending)
+- [x] **Gateway:** Run `bundle exec rubocop` - passed (272 files, 2 auto-corrected offenses)
+- [x] **Gateway:** Check coverage - maintained (99.45% line, 91.29% branch)
 
 **✅ Phase 4 Complete - Update this plan document and commit progress before proceeding!**
 
@@ -212,22 +213,22 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 5.1 Consider database migration for config cleanup
 **Note:** This is optional - old config values won't hurt anything
 
-- [ ] Consider if we need to remove `model_spellchecker` and `spell_check_enabled` from config table
-- [ ] If yes, create a database migration
-- [ ] Test migration on a copy of a real database
-- [ ] Document migration in CHANGELOG.md
+- [x] Consider if we need to remove `model_spellchecker` and `spell_check_enabled` from config table - SKIPPED (not necessary, documented in CHANGELOG)
 
-**✅ Phase 5 Complete (or Skipped) - Update this plan document and commit progress before proceeding!**
+**✅ Phase 5 Complete (Skipped) - Optional database cleanup not needed**
 
 ---
 
 ## Phase 6: Documentation Cleanup
 
 ### 6.1 Update documentation
-- [ ] Search for "spell" in `docs/` folder: `grep -r "spell" docs/ -i`
-- [ ] Update any documentation mentioning spell checker
-- [ ] Update CHANGELOG.md with removal note
-- [ ] Search README.md for spell checker mentions
+- [x] Search for "spell" in `docs/` folder: `grep -r "spell" docs/ -i`
+- [x] Update any documentation mentioning spell checker
+  - Updated `docs/dev/plan-user-docs.md` - removed /spellcheck references
+  - Updated `docs/dev/architecture-analysis.md` - removed SpellChecker references
+  - Updated `docs/plan-fix-paper-trail-chronology.md` - marked as obsolete
+- [x] Update CHANGELOG.md with removal note - added [Unreleased] section
+- [x] Search README.md for spell checker mentions - no matches found
 
 **✅ Phase 6 Complete - Update this plan document and commit progress before proceeding!**
 

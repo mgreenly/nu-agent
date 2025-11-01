@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+
+- **Spell checker functionality**: Removed spell checker feature and all related code (Issue #29)
+  - Removed `/spellcheck` command
+  - Removed `/debug spellcheck` debug command
+  - Removed `SpellChecker` class and implementation
+  - Removed spell checker from `Application`, `ConfigurationLoader`, and `SessionInfo`
+  - Removed spell checker subsystem from `VerbosityCommand`
+  - Removed all spell checker tests and documentation
+  - Note: Old database config values (`model_spellchecker`, `spell_check_enabled`) will remain but are unused
+
 ## [0.13.0] - 2025-10-31
 
 ### Fixed

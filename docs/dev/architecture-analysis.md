@@ -50,7 +50,7 @@ Nu-Agent is a REPL-based AI agent orchestrator that manages conversations with m
 ┌─────────────────────────────────────────────────────────┐
 │  Service Layer                                          │
 │  - ToolRegistry (23 tools)                              │
-│  - SpellChecker, DocumentBuilder                        │
+│  - DocumentBuilder                                      │
 │  - BackgroundWorkerManager (Thread Lifecycle)           │
 │  - SessionStatistics (Metrics & Reporting)              │
 │  - WorkerToken (Safe Worker Lifecycle)                  │
@@ -215,7 +215,7 @@ end
 
 ### 3. **Chain of Responsibility** - RAG Pipeline ⚠
 **Current State**: Procedural pipeline in ChatLoopOrchestrator
-- Spell check → Message retrieval → Context building
+- Message retrieval → Context building
 - Hardcoded sequence
 
 **Recommendation**: Implement Chain of Responsibility
@@ -225,14 +225,12 @@ class ContextProcessor
   def set_next(processor)
 end
 
-class SpellCheckProcessor < ContextProcessor; end
 class MessageRetrievalProcessor < ContextProcessor; end
 class ContextBuildingProcessor < ContextProcessor; end
 
 # Usage
-pipeline = SpellCheckProcessor.new
-pipeline.set_next(MessageRetrievalProcessor.new)
-  .set_next(ContextBuildingProcessor.new)
+pipeline = MessageRetrievalProcessor.new
+pipeline.set_next(ContextBuildingProcessor.new)
 ```
 
 **Benefits**:
