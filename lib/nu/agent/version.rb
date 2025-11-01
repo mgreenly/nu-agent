@@ -7,6 +7,6 @@
 
 module Nu
   module Agent
-    VERSION = "0.10.0"
+    VERSION = "0.13.0"
   end
 end
