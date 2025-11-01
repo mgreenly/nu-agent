@@ -45,6 +45,44 @@ module Nu
         @metadata = metadata
         self
       end
+
+      def build
+        validate_required_fields
+
+        {
+          system_prompt: @system_prompt,
+          messages: construct_messages,
+          tools: @tools,
+          metadata: construct_metadata
+        }.compact
+      end
+
+      private
+
+      def validate_required_fields
+        raise ArgumentError, "system_prompt is required" if @system_prompt.nil?
+
+        return unless @user_query.nil? && @history.nil?
+
+        raise ArgumentError,
+              "messages are required (provide user_query and/or history)"
+      end
+
+      def construct_messages
+        messages = @history ? @history.dup : []
+        messages << { role: "user", content: @user_query } if @user_query
+        messages
+      end
+
+      def construct_metadata
+        return nil if @rag_content.nil? && @metadata.nil?
+
+        meta = {}
+        meta[:rag_content] = @rag_content if @rag_content
+        meta[:user_query] = @user_query if @user_query
+        meta.merge!(@metadata) if @metadata
+        meta
+      end
     end
   end
 end
