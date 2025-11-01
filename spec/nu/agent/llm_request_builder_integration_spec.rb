@@ -363,5 +363,351 @@ RSpec.describe "LLM Request Builder Integration" do
       ).once
     end
   end
+
+  describe "tool calling loop flow" do
+    let(:mock_anthropic_client) { instance_double(Anthropic::Client) }
+    let(:mock_openai_client) { instance_double(OpenAI::Client) }
+
+    let(:anthropic_tools) do
+      [
+        {
+          "name" => "get_weather",
+          "description" => "Get weather for a location",
+          "input_schema" => {
+            "type" => "object",
+            "properties" => {
+              "location" => { "type" => "string" }
+            },
+            "required" => ["location"]
+          }
+        }
+      ]
+    end
+
+    let(:openai_tools) do
+      [
+        {
+          type: "function",
+          function: {
+            name: "get_weather",
+            description: "Get weather for a location",
+            parameters: {
+              type: "object",
+              properties: {
+                location: { type: "string" }
+              },
+              required: ["location"]
+            }
+          }
+        }
+      ]
+    end
+
+    before do
+      allow(Anthropic::Client).to receive(:new).and_return(mock_anthropic_client)
+      allow(OpenAI::Client).to receive(:new).and_return(mock_openai_client)
+    end
+
+    context "with Anthropic client" do
+      let(:client) { Nu::Agent::Clients::Anthropic.new(api_key: "test_key") }
+
+      let(:tool_call_response) do
+        {
+          "content" => [
+            {
+              "type" => "tool_use",
+              "id" => "tool_123",
+              "name" => "get_weather",
+              "input" => { "location" => "San Francisco" }
+            }
+          ],
+          "usage" => {
+            "input_tokens" => 100,
+            "output_tokens" => 50
+          },
+          "stop_reason" => "tool_use"
+        }
+      end
+
+      let(:final_response) do
+        {
+          "content" => [{ "type" => "text", "text" => "The weather in San Francisco is sunny." }],
+          "usage" => {
+            "input_tokens" => 150,
+            "output_tokens" => 20
+          },
+          "stop_reason" => "end_turn"
+        }
+      end
+
+      before do
+        allow(mock_anthropic_client).to receive(:messages).and_return(
+          tool_call_response,
+          final_response
+        )
+      end
+
+      it "properly passes tools through all layers in tool calling flow" do
+        # Step 1: Initial request with tools
+        builder1 = Nu::Agent::LlmRequestBuilder.new
+        request1 = builder1
+                   .with_system_prompt("You are a helpful assistant.")
+                   .with_user_query("What's the weather in San Francisco?")
+                   .with_tools(anthropic_tools)
+                   .build
+
+        # Verify tools are in the internal format
+        expect(request1[:tools]).to eq(anthropic_tools)
+
+        # Send first request
+        response1 = client.send_request(request1)
+
+        # Verify tools were passed to the API
+        expect(mock_anthropic_client).to have_received(:messages).with(
+          hash_including(
+            parameters: hash_including(
+              tools: anthropic_tools
+            )
+          )
+        )
+
+        # Verify response contains tool call
+        expect(response1["tool_calls"]).to be_a(Array)
+        expect(response1["tool_calls"].first["name"]).to eq("get_weather")
+        expect(response1["tool_calls"].first["arguments"]).to eq({ "location" => "San Francisco" })
+
+        # Step 2: Add tool result to history and send follow-up
+        history_with_tool = [
+          { "actor" => "user", "role" => "user", "content" => "What's the weather in San Francisco?" },
+          { "actor" => "orchestrator", "role" => "assistant", "content" => response1["content"],
+            "tool_calls" => response1["tool_calls"] },
+          {
+            "actor" => "orchestrator",
+            "role" => "tool",
+            "tool_call_id" => "tool_123",
+            "content" => "Sunny, 72°F",
+            "tool_result" => { "name" => "get_weather", "result" => "Sunny, 72°F" }
+          }
+        ]
+
+        builder2 = Nu::Agent::LlmRequestBuilder.new
+        request2 = builder2
+                   .with_system_prompt("You are a helpful assistant.")
+                   .with_history(history_with_tool)
+                   .with_tools(anthropic_tools)
+                   .build
+
+        # Verify tools still in internal format
+        expect(request2[:tools]).to eq(anthropic_tools)
+
+        # Send second request
+        response2 = client.send_request(request2)
+
+        # Verify tools were passed again and messages include tool call and result
+        expect(mock_anthropic_client).to have_received(:messages).twice
+
+        # Verify the second call included tools
+        expect(mock_anthropic_client).to have_received(:messages).with(
+          hash_including(
+            parameters: hash_including(
+              tools: anthropic_tools
+            )
+          )
+        ).at_least(:once)
+
+        # Verify final response
+        expect(response2["content"]).to eq("The weather in San Francisco is sunny.")
+      end
+    end
+
+    context "with OpenAI client" do
+      let(:client) { Nu::Agent::Clients::OpenAI.new(api_key: "test_key") }
+
+      let(:tool_call_response) do
+        {
+          "choices" => [{
+            "message" => {
+              "role" => "assistant",
+              "content" => nil,
+              "tool_calls" => [
+                {
+                  "id" => "call_123",
+                  "type" => "function",
+                  "function" => {
+                    "name" => "get_weather",
+                    "arguments" => '{"location":"San Francisco"}'
+                  }
+                }
+              ]
+            },
+            "finish_reason" => "tool_calls"
+          }],
+          "usage" => {
+            "prompt_tokens" => 100,
+            "completion_tokens" => 50
+          }
+        }
+      end
+
+      let(:final_response) do
+        {
+          "choices" => [{
+            "message" => { "content" => "The weather in San Francisco is sunny." },
+            "finish_reason" => "stop"
+          }],
+          "usage" => {
+            "prompt_tokens" => 150,
+            "completion_tokens" => 20
+          }
+        }
+      end
+
+      before do
+        allow(mock_openai_client).to receive(:chat).and_return(
+          tool_call_response,
+          final_response
+        )
+      end
+
+      it "properly passes tools through all layers in tool calling flow" do
+        # Step 1: Initial request with tools
+        builder1 = Nu::Agent::LlmRequestBuilder.new
+        request1 = builder1
+                   .with_system_prompt("You are a helpful assistant.")
+                   .with_user_query("What's the weather in San Francisco?")
+                   .with_tools(openai_tools)
+                   .build
+
+        # Verify tools are in the internal format
+        expect(request1[:tools]).to eq(openai_tools)
+
+        # Send first request
+        response1 = client.send_request(request1)
+
+        # Verify tools were passed to the API
+        expect(mock_openai_client).to have_received(:chat).with(
+          hash_including(
+            parameters: hash_including(
+              tools: openai_tools
+            )
+          )
+        )
+
+        # Verify response contains tool call
+        expect(response1["tool_calls"]).to be_a(Array)
+        expect(response1["tool_calls"].first["name"]).to eq("get_weather")
+        expect(response1["tool_calls"].first["arguments"]).to eq({ "location" => "San Francisco" })
+
+        # Step 2: Add tool result to history and send follow-up
+        history_with_tool = [
+          { "actor" => "user", "role" => "user", "content" => "What's the weather in San Francisco?" },
+          { "actor" => "orchestrator", "role" => "assistant", "content" => response1["content"],
+            "tool_calls" => response1["tool_calls"] },
+          {
+            "actor" => "orchestrator",
+            "role" => "tool",
+            "tool_call_id" => "call_123",
+            "content" => "Sunny, 72°F",
+            "tool_result" => { "name" => "get_weather", "result" => "Sunny, 72°F" }
+          }
+        ]
+
+        builder2 = Nu::Agent::LlmRequestBuilder.new
+        request2 = builder2
+                   .with_system_prompt("You are a helpful assistant.")
+                   .with_history(history_with_tool)
+                   .with_tools(openai_tools)
+                   .build
+
+        # Verify tools still in internal format
+        expect(request2[:tools]).to eq(openai_tools)
+
+        # Send second request
+        response2 = client.send_request(request2)
+
+        # Verify tools were passed again
+        expect(mock_openai_client).to have_received(:chat).twice
+
+        # Verify final response
+        expect(response2["content"]).to eq("The weather in San Francisco is sunny.")
+      end
+    end
+
+    it "maintains tools parameter across multiple tool calls" do
+      client = Nu::Agent::Clients::Anthropic.new(api_key: "test_key")
+
+      allow(mock_anthropic_client).to receive(:messages).and_return(
+        {
+          "content" => [
+            { "type" => "tool_use", "id" => "tool_1", "name" => "get_weather", "input" => { "location" => "SF" } }
+          ],
+          "usage" => { "input_tokens" => 100, "output_tokens" => 50 },
+          "stop_reason" => "tool_use"
+        },
+        {
+          "content" => [
+            { "type" => "tool_use", "id" => "tool_2", "name" => "get_weather", "input" => { "location" => "NYC" } }
+          ],
+          "usage" => { "input_tokens" => 150, "output_tokens" => 60 },
+          "stop_reason" => "tool_use"
+        },
+        {
+          "content" => [{ "type" => "text", "text" => "Both cities have good weather." }],
+          "usage" => { "input_tokens" => 200, "output_tokens" => 30 },
+          "stop_reason" => "end_turn"
+        }
+      )
+
+      # Call 1: Initial request with tools
+      request1 = Nu::Agent::LlmRequestBuilder.new
+                                             .with_system_prompt("You are a helpful assistant.")
+                                             .with_user_query("Compare weather in SF and NYC")
+                                             .with_tools(anthropic_tools)
+                                             .build
+
+      response1 = client.send_request(request1)
+
+      # Call 2: Add first tool result
+      history2 = [
+        { "actor" => "user", "role" => "user", "content" => "Compare weather in SF and NYC" },
+        { "actor" => "orchestrator", "role" => "assistant", "content" => response1["content"],
+          "tool_calls" => response1["tool_calls"] },
+        { "actor" => "orchestrator", "role" => "tool", "tool_call_id" => "tool_1", "content" => "Sunny",
+          "tool_result" => { "name" => "get_weather", "result" => "Sunny" } }
+      ]
+
+      request2 = Nu::Agent::LlmRequestBuilder.new
+                                             .with_system_prompt("You are a helpful assistant.")
+                                             .with_history(history2)
+                                             .with_tools(anthropic_tools)
+                                             .build
+
+      response2 = client.send_request(request2)
+
+      # Call 3: Add second tool result
+      history3 = history2 + [
+        { "actor" => "orchestrator", "role" => "assistant", "content" => response2["content"],
+          "tool_calls" => response2["tool_calls"] },
+        { "actor" => "orchestrator", "role" => "tool", "tool_call_id" => "tool_2", "content" => "Rainy",
+          "tool_result" => { "name" => "get_weather", "result" => "Rainy" } }
+      ]
+
+      request3 = Nu::Agent::LlmRequestBuilder.new
+                                             .with_system_prompt("You are a helpful assistant.")
+                                             .with_history(history3)
+                                             .with_tools(anthropic_tools)
+                                             .build
+
+      response3 = client.send_request(request3)
+
+      # Verify tools parameter was passed in all three calls
+      expect(mock_anthropic_client).to have_received(:messages).with(
+        hash_including(parameters: hash_including(tools: anthropic_tools))
+      ).exactly(3).times
+
+      # Verify final response
+      expect(response3["content"]).to eq("Both cities have good weather.")
+    end
+  end
 end
 # rubocop:enable RSpec/DescribeClass, RSpec/ExampleLength
