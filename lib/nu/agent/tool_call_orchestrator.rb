@@ -42,7 +42,12 @@ module Nu
           # Send request to LLM
           send_params = { messages: messages, tools: tools }
           send_params[:system_prompt] = system_prompt if system_prompt
+
+          start_time = Time.now
+          output_debug("API Request to #{@client.name}/#{@client.model}", verbosity: 2)
           response = @client.send_message(**send_params)
+          duration = Time.now - start_time
+          output_debug("API Response received after #{format_duration(duration)}", verbosity: 2)
 
           # Check for errors first
           if response["error"]
@@ -370,6 +375,15 @@ module Nu
         return false unless metadata
 
         metadata[:operation_type] == :write && metadata[:scope] == :unconfined
+      end
+
+      # Format duration for display
+      def format_duration(duration)
+        if duration < 1.0
+          "#{(duration * 1000).round}ms"
+        else
+          "#{format('%.2f', duration)}s"
+        end
       end
     end
     # rubocop:enable Metrics/ClassLength

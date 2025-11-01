@@ -194,12 +194,14 @@ RSpec.describe "Parallel Tool Execution End-to-End" do
     end
   end
 
-  let(:client) { instance_double(Nu::Agent::Clients::Anthropic, model: "claude-sonnet-4-5") }
+  let(:client) { instance_double(Nu::Agent::Clients::Anthropic, model: "claude-sonnet-4-5", name: "Anthropic") }
   let(:history) { instance_double(Nu::Agent::History) }
   let(:formatter) { instance_double(Nu::Agent::Formatter) }
   let(:console) { instance_double(Nu::Agent::ConsoleIO) }
   let(:tool_registry) { Nu::Agent::ToolRegistry.new }
-  let(:application) { instance_double(Nu::Agent::Application, formatter: formatter, console: console) }
+  let(:application) do
+    instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: false, verbosity: 0)
+  end
   let(:execution_tracker) { ExecutionTracker.new }
 
   let(:file_read_tool) { TestFileReadTool.new.tap { |t| t.tracker = execution_tracker } }

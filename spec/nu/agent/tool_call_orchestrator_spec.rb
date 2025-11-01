@@ -3,7 +3,7 @@
 require "spec_helper"
 
 RSpec.describe Nu::Agent::ToolCallOrchestrator do
-  let(:client) { instance_double(Nu::Agent::Clients::Anthropic, model: "claude-sonnet-4-5") }
+  let(:client) { instance_double(Nu::Agent::Clients::Anthropic, model: "claude-sonnet-4-5", name: "Anthropic") }
   let(:history) { instance_double(Nu::Agent::History) }
   let(:formatter) { instance_double(Nu::Agent::Formatter) }
   let(:console) { instance_double(Nu::Agent::ConsoleIO) }
@@ -16,7 +16,9 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
                                                            })
     end
   end
-  let(:application) { instance_double(Nu::Agent::Application, formatter: formatter, console: console) }
+  let(:application) do
+    instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: false, verbosity: 0)
+  end
 
   let(:orchestrator) do
     described_class.new(
