@@ -42,12 +42,17 @@ Add new "thread" subsystem with levels:
 - Coverage: 99.46% line / 91.28% branch (passes enforcement)
 - Lint: 0 violations
 
-### Phase 3: Update existing tests
-- [ ] Review all formatter_spec tests that stub display_thread_event
-- [ ] Update tests to properly stub thread_verbosity if needed
-- [ ] Ensure all tests pass
-- [ ] Run `rake test`, `rake lint`, `rake coverage`
-- [ ] Commit
+### Phase 3: Update existing tests ✅ COMPLETE
+- [x] Review all formatter_spec tests that stub display_thread_event
+- [x] Update tests to properly stub thread_verbosity if needed
+- [x] Ensure all tests pass
+- [x] Run `rake test`, `rake lint`, `rake coverage`
+- [x] Commit
+
+**Note**: Completed as part of Phase 2. Updated 2 existing tests that were failing:
+- Line 484: "adds blank line before thread event output"
+- Line 1476: "handles thread event display when workers become idle"
+Both now properly stub thread_verbosity = 1
 
 ### Phase 4: Manual validation
 - [ ] Test `/verbosity` shows thread subsystem
