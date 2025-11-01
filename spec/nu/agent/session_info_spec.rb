@@ -5,7 +5,6 @@ require "nu/agent/session_info"
 
 RSpec.describe Nu::Agent::SessionInfo do
   let(:orchestrator) { double("orchestrator", model: "claude-sonnet-4-5") }
-  let(:spellchecker) { double("spellchecker", model: "claude-haiku-4-5") }
   let(:summarizer) { double("summarizer", model: "claude-haiku-4-5") }
   let(:history) { double("history", db_path: "/tmp/test.db") }
   let(:summarizer_status) do
@@ -16,7 +15,6 @@ RSpec.describe Nu::Agent::SessionInfo do
   let(:application) do
     double("application",
            orchestrator: orchestrator,
-           spellchecker: spellchecker,
            summarizer: summarizer,
            history: history,
            debug: true,
@@ -24,8 +22,7 @@ RSpec.describe Nu::Agent::SessionInfo do
            redact: false,
            summarizer_enabled: false,
            summarizer_status: summarizer_status,
-           status_mutex: status_mutex,
-           spell_check_enabled: true)
+           status_mutex: status_mutex)
   end
 
   describe ".build" do
@@ -42,7 +39,6 @@ RSpec.describe Nu::Agent::SessionInfo do
       expect(info_text).to include("Models:")
       expect(info_text).to include("Orchestrator:")
       expect(info_text).to include("claude-sonnet-4-5")
-      expect(info_text).to include("Spellchecker:")
       expect(info_text).to include("Summarizer:")
     end
 
@@ -97,12 +93,6 @@ RSpec.describe Nu::Agent::SessionInfo do
       expect(info_text).to include("completed")
       expect(info_text).to include("10/10")
       expect(info_text).to include("1 failed")
-    end
-
-    it "includes spellcheck status" do
-      info_text = described_class.build(application)
-
-      expect(info_text).to include("Spellcheck:")
     end
 
     it "includes database path" do

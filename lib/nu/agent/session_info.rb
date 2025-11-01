@@ -27,7 +27,6 @@ module Nu
         [
           "Models:",
           "  Orchestrator:  #{application.orchestrator.model}",
-          "  Spellchecker:  #{application.spellchecker.model}",
           "  Summarizer:    #{application.summarizer.model}",
           ""
         ]
@@ -79,7 +78,6 @@ module Nu
 
       def self.build_footer_lines(application)
         [
-          "Spellcheck:    #{application.spell_check_enabled ? 'on' : 'off'}",
           "Database:      #{File.expand_path(application.history.db_path)}"
         ]
       end

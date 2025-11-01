@@ -135,11 +135,12 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 3.2 Remove from SessionInfo
 **TDD Approach:** Update tests, then remove display logic
 
-- [ ] Remove spellchecker display from `lib/nu/agent/session_info.rb` (line 30, line 82)
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/session_info_spec.rb` - may fail
-- [ ] Update `session_info_spec.rb` to remove spellchecker expectations
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/session_info_spec.rb` - should pass
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
+- [x] Remove spellchecker display from `lib/nu/agent/session_info.rb` (line 30, line 82)
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/session_info_spec.rb` - passed (9 examples, 0 failures)
+- [x] Update `session_info_spec.rb` to remove spellchecker expectations
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/session_info_spec.rb` - passed (8 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rspec` - all tests pass (2486 examples, 0 failures, 1 pending)
+- [x] **Gateway:** Run `bundle exec rubocop` - passed (272 files, no offenses)
 
 ### 3.3 Remove from Formatter
 **TDD Approach:** Update tests, then remove formatting logic
