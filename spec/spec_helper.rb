@@ -101,8 +101,8 @@ RSpec.configure do |config|
     next if db_path == ":memory:"
 
     # Clean up the database file and any DuckDB auxiliary files
-    FileUtils.rm_rf(db_path) if File.exist?(db_path)
-    FileUtils.rm_f("#{db_path}.wal") if File.exist?("#{db_path}.wal")
-    FileUtils.rm_f("#{db_path}-shm") if File.exist?("#{db_path}-shm")
+    FileUtils.rm_rf(db_path)
+    FileUtils.rm_f("#{db_path}.wal")
+    FileUtils.rm_f("#{db_path}-shm")
   end
 end
