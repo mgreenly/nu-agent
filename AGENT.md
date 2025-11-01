@@ -12,6 +12,8 @@
 - Commit after each completed task
 - Update plan document progress after each task
 - All plan files must include a final step for manual validation
+- Always include the plan file name in work summaries
+- Manual test/validation steps in plans are for human verification only
 
 ## TDD: Red → Green → Refactor
 1. Write failing test first
