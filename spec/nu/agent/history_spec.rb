@@ -1275,7 +1275,7 @@ RSpec.describe Nu::Agent::History do
     end
 
     it "returns default when key not found" do
-      expect(history.get_int("nonexistent", 10)).to eq(10)
+      expect(history.get_int("nonexistent", default: 10)).to eq(10)
     end
   end
 
