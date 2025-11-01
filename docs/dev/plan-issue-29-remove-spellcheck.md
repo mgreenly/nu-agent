@@ -48,13 +48,14 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 1.2 Remove `/debug spellcheck` debug command
 **TDD Approach:** Tests should fail when command is removed
 
-- [ ] **Red:** Run tests - `spellcheck_debug_command_spec.rb` should pass
-- [ ] Remove `lib/nu/agent/commands/subsystems/spellcheck_debug_command.rb`
-- [ ] Remove require in `lib/nu/agent.rb` (line 82)
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/commands/subsystems/spellcheck_debug_command_spec.rb` - should fail
-- [ ] Remove `spec/nu/agent/commands/subsystems/spellcheck_debug_command_spec.rb`
-- [ ] **Green:** Run `bundle exec rspec` - all tests should pass
-- [ ] **Gateway:** Run `bundle exec rubocop` - should pass
+- [x] **Red:** Run tests - `spellcheck_debug_command_spec.rb` should pass (2 examples, 0 failures)
+- [x] Remove `lib/nu/agent/commands/subsystems/spellcheck_debug_command.rb`
+- [x] Remove require in `lib/nu/agent.rb` (line 81)
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/commands/subsystems/spellcheck_debug_command_spec.rb` - should fail
+- [x] Remove `spec/nu/agent/commands/subsystems/spellcheck_debug_command_spec.rb`
+- [x] Remove command registration in `lib/nu/agent/application.rb` (line 209)
+- [x] **Green:** Run `bundle exec rspec` - all tests should pass (2499 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rubocop` - should pass (274 files, no offenses)
 
 **✅ Phase 1 Complete - Update this plan document and commit progress before proceeding!**
 
