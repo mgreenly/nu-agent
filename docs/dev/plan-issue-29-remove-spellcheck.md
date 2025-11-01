@@ -145,12 +145,17 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 3.3 Remove from Formatter
 **TDD Approach:** Update tests, then remove formatting logic
 
-- [ ] Remove spell_checker message handling in `lib/nu/agent/formatter.rb` (lines 132-134)
-- [ ] Remove `display_spell_checker_message` method (around line 318)
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/formatter_spec.rb` - may fail
-- [ ] Update `formatter_spec.rb` to remove spell_checker message expectations
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/formatter_spec.rb` - should pass
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
+- [x] Remove spell_checker message handling in `lib/nu/agent/formatter.rb` (lines 132-134)
+- [x] Remove `display_spell_checker_message` method (around line 318)
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/formatter_spec.rb` - passed (85 examples, 0 failures)
+- [x] Update `formatter_spec.rb` to remove spell_checker message expectations
+  - Removed spellcheck_verbosity stub from before block
+  - Removed "spell checker messages" context (2 tests)
+  - Removed "spell checker message when not in debug mode" describe block (2 tests)
+  - Removed "spell checker subsystem verbosity control" describe block (5 tests)
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/formatter_spec.rb` - passed (76 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rspec` - all tests pass (2477 examples, 0 failures, 1 pending)
+- [x] **Gateway:** Run `bundle exec rubocop` - passed (272 files, 1 auto-corrected offense)
 
 ### 3.4 Clean up History references
 **TDD Approach:** Remove comments and verify tests still pass

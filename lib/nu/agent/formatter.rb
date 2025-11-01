@@ -129,12 +129,6 @@ module Nu
       end
 
       def display_message(message)
-        # Only show spell_checker messages when debug is on and spellcheck_verbosity >= 1
-        if message["actor"] == "spell_checker"
-          display_spell_checker_message(message) if SubsystemDebugger.should_output?(@application, "spellcheck", 1)
-          return
-        end
-
         # Error messages
         if message["error"]
           display_error(message)
@@ -313,15 +307,6 @@ module Nu
           end
         end
         normalized
-      end
-
-      def display_spell_checker_message(message)
-        role_label = message["role"] == "user" ? "Spell Check Request" : "Spell Check Result"
-        @console.puts("")
-        @console.puts("\e[90m[#{role_label}]\e[0m")
-        return unless message["content"] && !message["content"].strip.empty?
-
-        @console.puts("\e[90m#{message['content']}\e[0m")
       end
 
       def display_tool_call(tool_call, index: nil, total: nil)
