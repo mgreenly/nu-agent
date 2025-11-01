@@ -132,11 +132,11 @@ Implement a "**schema once, truncate between**" strategy:
 - [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 4.2: Document and benchmark in-memory option
-- [ ] **GREEN:** Document trade-offs (speed vs debuggability) in comments
-- [ ] **GREEN:** Add benchmark code to measure performance improvement
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Document in-memory option and add benchmarking"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **GREEN:** Document trade-offs (speed vs debuggability) in comments
+- [x] **GREEN:** Add benchmark code to measure performance improvement
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Document in-memory option and add benchmarking"
+- [x] **UPDATE:** Mark this task complete in plan
 
 ### Phase 5: Optimization and Edge Cases
 
