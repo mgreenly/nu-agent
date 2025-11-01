@@ -65,13 +65,11 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
 
     # Setup default config responses
     allow(mock_history).to receive(:get_config).with("model_orchestrator").and_return("test-model")
-    allow(mock_history).to receive(:get_config).with("model_spellchecker").and_return("test-model")
     allow(mock_history).to receive(:get_config).with("model_summarizer").and_return("test-model")
     allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("false")
     allow(mock_history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
     allow(mock_history).to receive(:get_config).with("redaction", default: "true").and_return("true")
     allow(mock_history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("false")
-    allow(mock_history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
   end
 
   describe "#initialize" do
@@ -244,7 +242,6 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity llm (0-4) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity messages (0-3) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity search (0-2) = 0\e[0m").ordered
-        expect(mock_console).to receive(:puts).with("\e[90m/verbosity spellcheck (0-1) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity stats (0-2) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity tools (0-3) = 0\e[0m").ordered
 

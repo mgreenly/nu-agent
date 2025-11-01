@@ -24,7 +24,6 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(2)
         allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(1)
         allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(0)
-        allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("thread_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(3)
@@ -34,7 +33,6 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(application).to receive(:output_line).with("/verbosity llm (0-4) = 2", type: :command)
         expect(application).to receive(:output_line).with("/verbosity messages (0-3) = 1", type: :command)
         expect(application).to receive(:output_line).with("/verbosity search (0-2) = 0", type: :command)
-        expect(application).to receive(:output_line).with("/verbosity spellcheck (0-1) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity stats (0-2) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity thread (0-1) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity tools (0-3) = 3", type: :command)
@@ -103,13 +101,6 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
           .with("  2: Add search stats (files searched, matches found)", type: :command)
         expect(application).to receive(:output_line).with("", type: :command)
 
-        # spellcheck subsystem - all levels
-        expect(application).to receive(:output_line).with("spellcheck (0-1):", type: :command)
-        expect(application).to receive(:output_line).with("  0: No spell checker output", type: :command)
-        expect(application).to receive(:output_line)
-          .with("  1: Show spell checker requests and responses", type: :command)
-        expect(application).to receive(:output_line).with("", type: :command)
-
         # stats subsystem - all levels
         expect(application).to receive(:output_line).with("stats (0-2):", type: :command)
         expect(application).to receive(:output_line).with("  0: No statistics output", type: :command)
@@ -146,7 +137,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Unknown subsystem: unknown", type: :command)
         expect(application).to receive(:output_line)
-          .with("Available subsystems: console, llm, messages, search, spellcheck, stats, thread, tools",
+          .with("Available subsystems: console, llm, messages, search, stats, thread, tools",
                 type: :command)
         expect(application).to receive(:output_line).with("Use: /verbosity help", type: :command)
 
@@ -204,7 +195,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Unknown subsystem: unknown", type: :command)
         expect(application).to receive(:output_line)
-          .with("Available subsystems: console, llm, messages, search, spellcheck, stats, thread, tools",
+          .with("Available subsystems: console, llm, messages, search, stats, thread, tools",
                 type: :command)
         expect(application).to receive(:output_line).with("Use: /verbosity help", type: :command)
 
@@ -234,12 +225,6 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(history).to receive(:set_config).with("stats_verbosity", "1")
 
         command.execute("/verbosity stats 1")
-      end
-
-      it "loads config with correct key format" do
-        expect(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(1)
-
-        command.execute("/verbosity spellcheck")
       end
     end
   end

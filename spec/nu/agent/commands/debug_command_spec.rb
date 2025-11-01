@@ -34,7 +34,6 @@ RSpec.describe Nu::Agent::Commands::DebugCommand do
         expect(console).to receive(:puts).with("\e[90m  /messages verbosity <level>         - Message tracking\e[0m")
         expect(console).to receive(:puts).with("\e[90m  /search verbosity <level>           - Search internals\e[0m")
         expect(console).to receive(:puts).with("\e[90m  /stats verbosity <level>            - Statistics/costs\e[0m")
-        expect(console).to receive(:puts).with("\e[90m  /spellcheck-debug verbosity <level> - Spell checker\e[0m")
         expect(console).to receive(:puts).with("\e[90m\e[0m")
         expect(console).to receive(:puts).with("\e[90mUse /<subsystem> help to see verbosity levels.\e[0m")
         command.execute("/debug")

@@ -665,7 +665,6 @@ RSpec.describe Nu::Agent::History do
         expect(ex["spend"]).to be_within(0.000001).of(0.001)
         expect(ex["message_count"]).to eq(2)
       end
-
     end
 
     describe "messages with exchange_id" do

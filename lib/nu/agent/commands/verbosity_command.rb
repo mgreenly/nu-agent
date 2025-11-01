@@ -47,12 +47,6 @@ module Nu
               2 => "Add timing, cache hit rates, detailed breakdown"
             }
           },
-          "spellcheck" => {
-            levels: {
-              0 => "No spell checker output",
-              1 => "Show spell checker requests and responses"
-            }
-          },
           "console" => {
             levels: {
               0 => "No console debug output",
