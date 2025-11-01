@@ -20,6 +20,7 @@ SimpleCov.start do
 end
 
 require "nu/agent"
+require "support/database_helper"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -30,5 +31,34 @@ RSpec.configure do |config|
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
+  end
+
+  # Test Database Lifecycle Management
+  # ====================================
+  # Implements a "schema once, truncate between" strategy for fast test execution:
+  # 1. before(:suite) - Create database schema and run migrations once
+  # 2. before(:each) - Truncate all tables (except schema_version) before each test
+  # 3. after(:suite) - Clean up test database file after all tests complete
+  #
+  # This approach provides:
+  # - Fast test execution (truncate is ~100x faster than schema recreation)
+  # - Test isolation (each test starts with clean tables)
+  # - Consistent migrations (schema_version table is preserved)
+
+  # Set up the test database once at the start of the test suite
+  config.before(:suite) do
+    DatabaseHelper.setup_test_database
+  end
+
+  # Truncate all tables before each test to ensure test isolation
+  config.before do
+    history = DatabaseHelper.get_test_history
+    DatabaseHelper.truncate_all_tables(history.connection)
+  end
+
+  # Clean up the test database after all tests complete
+  config.after(:suite) do
+    db_path = "db/test.db"
+    FileUtils.rm_rf(db_path)
   end
 end
