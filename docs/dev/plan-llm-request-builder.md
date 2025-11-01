@@ -156,13 +156,13 @@ end
    - COMMIT: "Add with_tools to LlmRequestBuilder" ✓
    - UPDATE: Mark task 1.6 complete in plan ✓
 
-**Task 1.7: Implement `with_metadata` method**
-   - RED: Write test for metadata setting
-   - GREEN: Implement method
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add with_metadata to LlmRequestBuilder"
-   - UPDATE: Mark task 1.7 complete in plan
+**Task 1.7: Implement `with_metadata` method** ✓ COMPLETE
+   - RED: Write test for metadata setting ✓
+   - GREEN: Implement method ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add with_metadata to LlmRequestBuilder" ✓
+   - UPDATE: Mark task 1.7 complete in plan ✓
 
 **Task 1.8: Implement `build` method with validation**
    - RED: Write tests for build process and validation errors
