@@ -175,9 +175,9 @@ RSpec.describe Nu::Agent::ConsoleIO do
   end
 
   describe "#parse_input (Phase 1)" do
-    context "with Ctrl+J (submit key)" do
+    context "with Enter (submit key)" do
       it "returns :submit" do
-        result = console.send(:parse_input, "\n")
+        result = console.send(:parse_input, "\r")
         expect(result).to eq(:submit)
       end
     end
@@ -1250,7 +1250,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
     end
 
     it "handles stdin input with submit" do
-      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\n")
+      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\r")
       allow(IO).to receive(:select).with([stdin, pipe_read], nil, nil).and_return([[stdin], [], []])
 
       result = console.send(:handle_readline_select, "> ")
@@ -1288,7 +1288,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "#handle_stdin_input" do
     it "processes submit action" do
       console.instance_variable_set(:@input_buffer, String.new("test"))
-      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\n")
+      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\r")
 
       result = console.send(:handle_stdin_input, "> ")
       expect(result).to eq("test")
@@ -1955,7 +1955,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "#readline integration" do
     it "reads a line of input and returns it" do
       # Mock readline to call handle_readline_select once and return a result
-      allow(stdin).to receive(:read_nonblock).with(1024).and_return("hello\n")
+      allow(stdin).to receive(:read_nonblock).with(1024).and_return("hello\r")
       allow(IO).to receive(:select).with([stdin, pipe_read], nil, nil).and_return([[stdin], [], []])
 
       # Run readline in a thread with a timeout
@@ -1975,7 +1975,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       console.instance_variable_set(:@cursor_pos, 3)
       console.instance_variable_set(:@history_pos, 5)
 
-      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\n")
+      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\r")
       allow(IO).to receive(:select).with([stdin, pipe_read], nil, nil).and_return([[stdin], [], []])
 
       result = nil
@@ -1996,7 +1996,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       # First read returns empty string (simulating EOF condition), but since parse_input
       # with Ctrl-D on empty buffer just does nothing, we need actual EOF
       # Let's just test that parse_input with \x04 on empty buffer continues
-      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\x04", "\n")
+      allow(stdin).to receive(:read_nonblock).with(1024).and_return("\x04", "\r")
       allow(IO).to receive(:select).with([stdin, pipe_read], nil, nil).and_return([[stdin], [], []], [[stdin], [], []])
 
       result = nil
@@ -2187,10 +2187,34 @@ RSpec.describe Nu::Agent::ConsoleIO do
   # Phase 3: Multiline submit key handling
   describe "#parse_input (multiline submit keys)" do
     context "with Enter key (\\r)" do
-      it "inserts newline character into buffer" do
+      it "returns :submit action" do
         console.instance_variable_set(:@input_buffer, String.new("hello"))
         console.instance_variable_set(:@cursor_pos, 5)
         result = console.send(:parse_input, "\r")
+        expect(result).to eq(:submit)
+      end
+
+      it "submits multiline content with embedded newlines" do
+        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+        console.instance_variable_set(:@cursor_pos, 17)
+        result = console.send(:parse_input, "\r")
+        expect(result).to eq(:submit)
+        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2\nline3")
+      end
+
+      it "can submit empty buffer" do
+        console.instance_variable_set(:@input_buffer, String.new(""))
+        console.instance_variable_set(:@cursor_pos, 0)
+        result = console.send(:parse_input, "\r")
+        expect(result).to eq(:submit)
+      end
+    end
+
+    context "with Shift+Enter or Ctrl+J (\\n)" do
+      it "inserts newline character into buffer" do
+        console.instance_variable_set(:@input_buffer, String.new("hello"))
+        console.instance_variable_set(:@cursor_pos, 5)
+        result = console.send(:parse_input, "\n")
         expect(result).to be_nil
         expect(console.instance_variable_get(:@input_buffer)).to eq("hello\n")
         expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
@@ -2199,7 +2223,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       it "inserts newline in middle of buffer" do
         console.instance_variable_set(:@input_buffer, String.new("helloworld"))
         console.instance_variable_set(:@cursor_pos, 5)
-        result = console.send(:parse_input, "\r")
+        result = console.send(:parse_input, "\n")
         expect(result).to be_nil
         expect(console.instance_variable_get(:@input_buffer)).to eq("hello\nworld")
         expect(console.instance_variable_get(:@cursor_pos)).to eq(6)
@@ -2208,67 +2232,19 @@ RSpec.describe Nu::Agent::ConsoleIO do
       it "creates multiline content when pressed multiple times" do
         console.instance_variable_set(:@input_buffer, String.new("line1"))
         console.instance_variable_set(:@cursor_pos, 5)
-        console.send(:parse_input, "\r")
+        console.send(:parse_input, "\n")
         console.instance_variable_set(:@input_buffer, "#{console.instance_variable_get(:@input_buffer)}line2")
         console.instance_variable_set(:@cursor_pos, console.instance_variable_get(:@input_buffer).length)
-        console.send(:parse_input, "\r")
+        console.send(:parse_input, "\n")
         expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2\n")
       end
 
       it "does not return :submit" do
         console.instance_variable_set(:@input_buffer, String.new("test"))
         console.instance_variable_set(:@cursor_pos, 4)
-        result = console.send(:parse_input, "\r")
+        result = console.send(:parse_input, "\n")
         expect(result).not_to eq(:submit)
         expect(result).to be_nil
-      end
-    end
-
-    context "with Ctrl+J (\\n)" do
-      it "returns :submit action" do
-        console.instance_variable_set(:@input_buffer, String.new("hello"))
-        console.instance_variable_set(:@cursor_pos, 5)
-        result = console.send(:parse_input, "\n")
-        expect(result).to eq(:submit)
-      end
-
-      it "submits multiline content with embedded newlines" do
-        console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
-        console.instance_variable_set(:@cursor_pos, 17)
-        result = console.send(:parse_input, "\n")
-        expect(result).to eq(:submit)
-        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2\nline3")
-      end
-
-      it "can submit empty buffer" do
-        console.instance_variable_set(:@input_buffer, String.new(""))
-        console.instance_variable_set(:@cursor_pos, 0)
-        result = console.send(:parse_input, "\n")
-        expect(result).to eq(:submit)
-      end
-    end
-
-    context "with Ctrl+Enter (\\e[13;5~)" do
-      it "returns :submit action" do
-        console.instance_variable_set(:@input_buffer, String.new("hello"))
-        console.instance_variable_set(:@cursor_pos, 5)
-        result = console.send(:parse_input, "\e[13;5~")
-        expect(result).to eq(:submit)
-      end
-
-      it "submits multiline content with embedded newlines" do
-        console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
-        console.instance_variable_set(:@cursor_pos, 11)
-        result = console.send(:parse_input, "\e[13;5~")
-        expect(result).to eq(:submit)
-        expect(console.instance_variable_get(:@input_buffer)).to eq("line1\nline2")
-      end
-
-      it "can submit empty buffer" do
-        console.instance_variable_set(:@input_buffer, String.new(""))
-        console.instance_variable_set(:@cursor_pos, 0)
-        result = console.send(:parse_input, "\e[13;5~")
-        expect(result).to eq(:submit)
       end
     end
   end
@@ -2377,8 +2353,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
         "WHERE id = 1".each_char { |c| console.send(:insert_char, c) }
         expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\nWHERE id = 1")
 
-        # Submit with Ctrl+J
-        result = console.send(:parse_input, "\n")
+        # Submit with Enter
+        result = console.send(:parse_input, "\r")
         expect(result).to eq(:submit)
         expect(console.instance_variable_get(:@input_buffer)).to eq("SELECT *\nFROM users\nWHERE id = 1")
       end

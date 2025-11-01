@@ -52,6 +52,18 @@ module Nu
               0 => "No spell checker output",
               1 => "Show spell checker requests and responses"
             }
+          },
+          "console" => {
+            levels: {
+              0 => "No console debug output",
+              1 => "Show state transitions"
+            }
+          },
+          "thread" => {
+            levels: {
+              0 => "No thread debug output",
+              1 => "Show thread start/stop messages"
+            }
           }
         }.freeze
 

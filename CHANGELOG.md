@@ -5,6 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-10-31
+
+### Added
+
+- **Switchable Agent Personas** (Issue #12): Custom system prompts for different agent behaviors
+  - `PersonaManager` class for CRUD operations on personas
+  - Database schema with `personas` table (name, system_prompt, is_default)
+  - `/persona` command for managing personas (list, show, create, edit, delete, switch)
+  - Editor integration for creating/editing personas in $EDITOR
+  - `{{DATE}}` placeholder support in system prompts (auto-replaced with current date)
+  - `/personas` alias for convenience
+  - Active persona automatically loaded and applied to all LLM calls
+  - Default persona system for fallback behavior
+  - 61 new tests for PersonaManager and PersonaCommand
+
+- **Parallel Tool Execution** (Issue #33): Concurrent execution of independent tool calls
+  - **Tool Metadata System**: Extended ToolRegistry with operation_type (:read/:write) and scope (:confined/:unconfined)
+  - **Dependency Analysis**: `PathExtractor` for extracting file paths from tool arguments
+  - **Dependency Batching**: `DependencyAnalyzer` for grouping independent tool calls into batches
+    - Read operations can run in parallel with other reads
+    - Write operations must wait for prior writes to the same path
+    - Unconfined tools (execute_bash) act as barriers, running in isolation
+  - **Parallel Execution Engine**: `ParallelExecutor` using Ruby threads for concurrent execution
+    - Thread-safe execution with proper exception handling
+    - Results collected and returned in original order
+    - Thread-safe History writes during parallel execution
+  - **Observability**: Batch/thread visibility in debug output
+    - Per-tool execution timing with start/end timestamps
+    - API request timing visibility
+    - Batch and thread numbering in formatted output
+  - **Format Compatibility**: Support for both flat and nested tool_use formats from API clients
+  - **Performance**: Comprehensive benchmarking suite for parallel execution scenarios
+  - 156 new tests for parallel execution (PathExtractor, DependencyAnalyzer, ParallelExecutor, integration)
+
+- **Multiline Editing Support** (Issue #22, #32): Full multiline input editing in ConsoleIO
+  - **Line Navigation**: Arrow up/down for navigating within multiline input
+  - **History Integration**: Arrow up on first line accesses history, arrow down on last line returns to current input
+  - **Cursor Management**: Saved column position maintained during vertical navigation
+  - **Display Rendering**: Proper multiline rendering with line wrapping support
+  - **Submit Behavior**:
+    - Enter key inserts newline
+    - Ctrl+J or Ctrl+Enter submits multiline input
+  - **Edge Case Handling**: Fixed terminal wrapping, cursor positioning, and display bugs
+  - **Testing**: 45+ integration tests for multiline workflows
+  - Manual testing checklist for comprehensive validation
+
+- **Granular Verbosity Control** (Issue #23): Subsystem-specific debug output control
+  - **Subsystem Commands**: Individual commands for controlling debug output per subsystem
+    - `/llm` - LLM request/response debug output (3 levels)
+    - `/messages` - Message tracking/routing debug output (3 levels)
+    - `/tools` - Tool call/result debug output (3 levels)
+    - `/search` - Search command debug output (3 levels)
+    - `/stats` - Statistics/timing/cost debug output (3 levels)
+    - `/spellcheck` - Spell checker debug output (3 levels)
+  - **SubsystemCommand Base Class**: Reusable pattern for subsystem commands with status/on/off/level support
+  - **SubsystemDebugger Helper**: Centralized module for subsystem-specific debug checks
+  - **Enhanced /verbosity Command**: Query all subsystem verbosity levels
+  - **Configuration Storage**: Subsystem verbosity stored in appconfig as `<subsystem>_verbosity`
+  - **Migration**: Converted parallel execution verbosity from global to subsystem-specific
+  - **Testing**: 125+ new tests for subsystem commands and verbosity control
+  - Thread-safety fixes for DuckDB access in SubsystemDebugger
+
+### Changed
+
+- **Test Coverage**: Increased to 99.61% line coverage / 91.59% branch coverage (from 98.91% / 90.76% in v0.11.0)
+  - 2,430 total tests (up from 1,839)
+  - Added 591 new test cases
+- **Development Guidelines**:
+  - Added git rebase guidelines to AGENT.md
+  - Added plan execution guidelines with manual validation requirements
+  - Prohibited use of git stash in development workflow
+- **Documentation Organization**:
+  - Moved developer documentation to `docs/dev/` subdirectory
+  - Removed version number references from issues and plans for version-agnostic tracking
+- **Debug Output Routing**: All API debug output now routed through ConsoleIO instead of STDERR
+- **Output Visibility**: Fixed spinner visibility during parallel tool execution API waits
+- **Code Quality**: Zero RuboCop violations maintained across all new code
+
+### Fixed
+
+- **Line Wrap Bug** (Issue #32): Fixed terminal line wrapping and display rendering issues
+  - Multiline redraw bug: track cursor position between redraws
+  - Navigation logic: empty buffer = history, non-empty = lines
+  - Critical bug: treat 0 as valid cursor line, not uninitialized
+  - Multiline submit display: clear from first line
+- **Parallel Execution Streaming**: Fixed streaming output for parallel tool execution
+- **Timing Display**: Fixed timing display to show actual timestamps instead of offsets
+- **DuckDB Thread Safety**: Fixed thread-safety issue in SubsystemDebugger with flaky tests
+- **Help Text**: Fixed subsystem command names in help output
+- **Coverage Thresholds**: Maintained 0.02% margin above required thresholds
+
+### Technical Details
+
+- **Database Migrations**:
+  - Migration 006: `personas` table with default persona support
+  - All migrations idempotent and reversible
+- **Performance**:
+  - Parallel tool execution reduces latency for independent operations
+  - Benchmarking suite for performance validation
+- **Code Organization**:
+  - Persona classes in `lib/nu/agent/persona_manager.rb` and `lib/nu/agent/persona_editor.rb`
+  - Parallel execution in `lib/nu/agent/parallel_executor.rb` and `lib/nu/agent/dependency_analyzer.rb`
+  - Subsystem commands in `lib/nu/agent/commands/subsystems/`
+  - SubsystemDebugger in `lib/nu/agent/subsystem_debugger.rb`
+- **Documentation**:
+  - Added `manual-testing-checklist.md` for multiline editing validation
+  - Added `docs/plan-granular-verbosity.md` with implementation details
+  - Updated help text for all new commands
+
+### References
+
+- Closes Issue #12: Add switchable agent personas with custom system prompts
+- Closes Issue #22: Minimal multiline editing support for ConsoleIO
+- Closes Issue #23: Granular debug verbosity control
+- Closes Issue #32: Fix line wrap bug in user prompt input
+- Closes Issue #33: Implement parallel tool execution
+
 ## [0.12.0] - 2025-10-31
 
 ### Added
@@ -375,6 +492,7 @@ _(Earlier changelog entries to be added)_
 
 ---
 
+[0.13.0]: https://github.com/mgreenly/nu-agent/compare/v0.11.0...v0.13.0
 [0.12.0]: https://github.com/mgreenly/nu-agent/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/mgreenly/nu-agent/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mgreenly/nu-agent/compare/v0.9.0...v0.10.0

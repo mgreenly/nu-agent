@@ -20,19 +20,23 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
   describe "#execute" do
     context "with no arguments" do
       it "shows all subsystems with their current levels" do
+        allow(history).to receive(:get_int).with("console_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(2)
         allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(1)
         allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("spellcheck_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("stats_verbosity", default: 0).and_return(0)
+        allow(history).to receive(:get_int).with("thread_verbosity", default: 0).and_return(0)
         allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(3)
 
         expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("/verbosity console (0-1) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity llm (0-4) = 2", type: :command)
         expect(application).to receive(:output_line).with("/verbosity messages (0-3) = 1", type: :command)
         expect(application).to receive(:output_line).with("/verbosity search (0-2) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity spellcheck (0-1) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity stats (0-2) = 0", type: :command)
+        expect(application).to receive(:output_line).with("/verbosity thread (0-1) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity tools (0-3) = 3", type: :command)
 
         command.execute("/verbosity")
@@ -142,7 +146,8 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Unknown subsystem: unknown", type: :command)
         expect(application).to receive(:output_line)
-          .with("Available subsystems: llm, messages, search, spellcheck, stats, tools", type: :command)
+          .with("Available subsystems: console, llm, messages, search, spellcheck, stats, thread, tools",
+                type: :command)
         expect(application).to receive(:output_line).with("Use: /verbosity help", type: :command)
 
         command.execute("/verbosity unknown")
@@ -199,7 +204,8 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Unknown subsystem: unknown", type: :command)
         expect(application).to receive(:output_line)
-          .with("Available subsystems: llm, messages, search, spellcheck, stats, tools", type: :command)
+          .with("Available subsystems: console, llm, messages, search, spellcheck, stats, thread, tools",
+                type: :command)
         expect(application).to receive(:output_line).with("Use: /verbosity help", type: :command)
 
         command.execute("/verbosity unknown 2")
