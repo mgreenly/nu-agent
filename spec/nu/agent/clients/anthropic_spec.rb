@@ -404,4 +404,101 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
       end.to raise_error(Nu::Agent::Error, /Error loading API key: Permission denied/)
     end
   end
+
+  describe "#send_request" do
+    let(:internal_request) do
+      {
+        system_prompt: "You are a helpful assistant.",
+        messages: [
+          { "role" => "user", "content" => "Hello" },
+          { "role" => "assistant", "content" => "Hi there!" },
+          { "role" => "user", "content" => "How are you?" }
+        ],
+        tools: [{ "name" => "file_read", "parameters" => {} }],
+        metadata: {
+          rag_content: { redactions: ["secret"] },
+          user_query: "How are you?"
+        }
+      }
+    end
+
+    let(:anthropic_response) do
+      {
+        "content" => [{ "type" => "text", "text" => "I'm doing well!" }],
+        "usage" => {
+          "input_tokens" => 20,
+          "output_tokens" => 8
+        },
+        "stop_reason" => "end_turn"
+      }
+    end
+
+    before do
+      allow(mock_anthropic_client).to receive(:messages).and_return(anthropic_response)
+    end
+
+    it "accepts internal format request" do
+      expect(mock_anthropic_client).to receive(:messages).with(
+        parameters: hash_including(
+          model: "claude-sonnet-4-5",
+          system: "You are a helpful assistant.",
+          messages: [
+            { role: "user", content: "Hello" },
+            { role: "assistant", content: "Hi there!" },
+            { role: "user", content: "How are you?" }
+          ],
+          tools: [{ "name" => "file_read", "parameters" => {} }]
+        )
+      )
+
+      client.send_request(internal_request)
+    end
+
+    it "returns normalized response" do
+      response = client.send_request(internal_request)
+
+      expect(response).to include(
+        "content" => "I'm doing well!",
+        "model" => "claude-sonnet-4-5",
+        "tokens" => {
+          "input" => 20,
+          "output" => 8
+        },
+        "finish_reason" => "end_turn"
+      )
+    end
+
+    it "works without tools" do
+      request_without_tools = internal_request.dup
+      request_without_tools.delete(:tools)
+
+      expect(mock_anthropic_client).to receive(:messages).with(
+        parameters: hash_not_including(:tools)
+      )
+
+      client.send_request(request_without_tools)
+    end
+
+    it "works without metadata" do
+      request_without_metadata = internal_request.dup
+      request_without_metadata.delete(:metadata)
+
+      response = client.send_request(request_without_metadata)
+
+      expect(response).to include("content" => "I'm doing well!")
+    end
+
+    it "handles nil system_prompt" do
+      request_without_system = internal_request.dup
+      request_without_system.delete(:system_prompt)
+
+      expect(mock_anthropic_client).to receive(:messages).with(
+        parameters: hash_including(
+          system: nil
+        )
+      )
+
+      client.send_request(request_without_system)
+    end
+  end
 end

@@ -55,6 +55,16 @@ module Nu
           @client = AnthropicGem::Client.new(access_token: @api_key.value)
         end
 
+        def send_request(internal_request)
+          # Extract components from internal format
+          system_prompt = internal_request[:system_prompt]
+          messages = internal_request[:messages]
+          tools = internal_request[:tools]
+
+          # Use existing send_message implementation
+          send_message(messages: messages, system_prompt: system_prompt, tools: tools)
+        end
+
         def send_message(messages:, system_prompt: SYSTEM_PROMPT, tools: nil)
           formatted_messages = format_messages(messages)
           processed_prompt = replace_date_placeholder(system_prompt)
