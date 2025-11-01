@@ -174,13 +174,13 @@ end
 
 ### Phase 2: Update Orchestrator [2-3 hours]
 
-**Task 2.1: Integrate builder into `prepare_llm_request`**
-   - RED: Write test for orchestrator using builder
-   - GREEN: Update `prepare_llm_request` to use `LlmRequestBuilder`
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Integrate LlmRequestBuilder into orchestrator"
-   - UPDATE: Mark task 2.1 complete in plan
+**Task 2.1: Integrate builder into `prepare_llm_request`** ✓ COMPLETE
+   - RED: Write test for orchestrator using builder ✓
+   - GREEN: Update `prepare_llm_request` to use `LlmRequestBuilder` ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Integrate LlmRequestBuilder into orchestrator" ✓
+   - UPDATE: Mark task 2.1 complete in plan ✓
 
 **Task 2.2: Remove "Available Tools" section from message content**
    - RED: Update tests to expect no "Available Tools" in message content
