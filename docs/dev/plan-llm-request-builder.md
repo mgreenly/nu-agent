@@ -200,13 +200,13 @@ end
 
 ### Phase 3: Update Debug Display [2-3 hours]
 
-**Task 3.1: Create YAML formatter with verbosity level 0 (nothing)**
-   - RED: Write test for verbosity level 0
-   - GREEN: Create basic `llm_request_formatter.rb` with level 0 support
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add LlmRequestFormatter with verbosity level 0"
-   - UPDATE: Mark task 3.1 complete in plan
+**Task 3.1: Create YAML formatter with verbosity level 0 (nothing)** ✓ COMPLETE
+   - RED: Write test for verbosity level 0 ✓
+   - GREEN: Create basic `llm_request_formatter.rb` with level 0 support ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add LlmRequestFormatter with verbosity level 0" ✓
+   - UPDATE: Mark task 3.1 complete in plan ✓
 
 **Task 3.2: Add verbosity level 1 (final user message)**
    - RED: Write test for verbosity level 1

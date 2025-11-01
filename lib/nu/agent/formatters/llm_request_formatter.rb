@@ -11,10 +11,18 @@ module Nu
           @application = application
         end
 
-        def display_yaml(_internal_request)
-          # Only show LLM request at verbosity level 1+
+        def display_yaml(internal_request)
           # Verbosity level 0 displays nothing (early return)
-          # TODO: Implement verbosity levels 1-5 in subsequent tasks
+          return unless should_output?(1)
+
+          # Display YAML formatted request based on verbosity level
+          @console.puts("\e[90m--- LLM Request ---\e[0m")
+
+          # Verbosity level 1: Show only final user message
+          final_message = internal_request[:messages]&.last
+          display_yaml_content({ final_message: final_message }) if final_message
+
+          # TODO: Implement verbosity levels 2-5 in Task 3.3
         end
 
         def display(messages, tools = nil, markdown_document = nil)
@@ -32,6 +40,15 @@ module Nu
           return false unless @application
 
           SubsystemDebugger.should_output?(@application, "llm", level)
+        end
+
+        def display_yaml_content(data)
+          require "yaml"
+          yaml_output = YAML.dump(data)
+          # Output each line in gray
+          yaml_output.each_line do |line|
+            @console.puts("\e[90m#{line.chomp}\e[0m")
+          end
         end
 
         def display_tools(tools)
