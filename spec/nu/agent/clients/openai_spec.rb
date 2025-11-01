@@ -544,4 +544,105 @@ RSpec.describe Nu::Agent::Clients::OpenAI do
       expect(result["tool_calls"]).to be_nil
     end
   end
+
+  describe "#send_request" do
+    let(:internal_request) do
+      {
+        system_prompt: "You are a helpful assistant.",
+        messages: [
+          { "role" => "user", "content" => "Hello" },
+          { "role" => "assistant", "content" => "Hi there!" },
+          { "role" => "user", "content" => "How are you?" }
+        ],
+        tools: [{ "name" => "file_read", "parameters" => {} }],
+        metadata: {
+          rag_content: { redactions: ["secret"] },
+          user_query: "How are you?"
+        }
+      }
+    end
+
+    let(:openai_response) do
+      {
+        "choices" => [{
+          "message" => {
+            "content" => "I'm doing well!"
+          },
+          "finish_reason" => "stop"
+        }],
+        "usage" => {
+          "prompt_tokens" => 25,
+          "completion_tokens" => 8
+        }
+      }
+    end
+
+    before do
+      allow(mock_openai_client).to receive(:chat).and_return(openai_response)
+    end
+
+    it "accepts internal format request" do
+      expect(mock_openai_client).to receive(:chat).with(
+        parameters: hash_including(
+          model: "gpt-5",
+          messages: array_including(
+            { role: "system", content: "You are a helpful assistant." },
+            { role: "user", content: "Hello" },
+            { role: "assistant", content: "Hi there!" },
+            { role: "user", content: "How are you?" }
+          ),
+          tools: [{ "name" => "file_read", "parameters" => {} }]
+        )
+      )
+
+      client.send_request(internal_request)
+    end
+
+    it "returns normalized response" do
+      response = client.send_request(internal_request)
+
+      expect(response).to include(
+        "content" => "I'm doing well!",
+        "model" => "gpt-5",
+        "tokens" => {
+          "input" => 25,
+          "output" => 8
+        },
+        "finish_reason" => "stop"
+      )
+    end
+
+    it "works without tools" do
+      request_without_tools = internal_request.dup
+      request_without_tools.delete(:tools)
+
+      expect(mock_openai_client).to receive(:chat).with(
+        parameters: hash_not_including(:tools)
+      )
+
+      client.send_request(request_without_tools)
+    end
+
+    it "works without metadata" do
+      request_without_metadata = internal_request.dup
+      request_without_metadata.delete(:metadata)
+
+      response = client.send_request(request_without_metadata)
+
+      expect(response).to include("content" => "I'm doing well!")
+    end
+
+    it "handles nil system_prompt" do
+      request_without_system = internal_request.dup
+      request_without_system.delete(:system_prompt)
+
+      expect(mock_openai_client).to receive(:chat) do |args|
+        messages = args[:parameters][:messages]
+        # Should not have a system message
+        expect(messages.first[:role]).not_to eq("system")
+      end.and_return(openai_response)
+
+      client.send_request(request_without_system)
+    end
+  end
 end
