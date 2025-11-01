@@ -28,7 +28,6 @@ module Nu
               /info                          - Show current session information
               /migrate-exchanges             - Create exchanges from existing messages (one-time migration)
               /model orchestrator <name>     - Switch orchestrator model
-              /model spellchecker <name>     - Switch spellchecker model
               /model summarizer <name>       - Switch summarizer model
               /models                        - List available models
               /persona [<name>|<command>]    - Manage agent personas (use /persona for details)
@@ -36,7 +35,6 @@ module Nu
               /rag <query>                   - Search conversation history using RAG
               /redaction <on|off>            - Enable/disable redaction of tool results in context
               /reset                         - Start a new conversation
-              /spellcheck <on|off>           - Enable/disable automatic spell checking of user input
               /tools                         - List available tools
               /verbosity <number>            - Set verbosity level for debug output (default: 0)
                                                - Level 0: Thread lifecycle events + tool names only
