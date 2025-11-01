@@ -48,8 +48,8 @@ module Nu
         exchange_messages = []
 
         messages.each do |msg|
-          # Start new exchange on user messages (excluding spell_checker)
-          if msg["role"] == "user" && msg["actor"] != "spell_checker"
+          # Start new exchange on user messages
+          if msg["role"] == "user"
             # Finalize previous exchange if exists
             finalize_current_exchange(current_exchange_id, exchange_messages, stats) if current_exchange_id
 

@@ -51,18 +51,6 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
       expect(stats[:messages_updated]).to eq(4)
     end
 
-    it "skips spell_checker messages when creating exchanges" do
-      conv_id = conversation_repo.create_conversation
-
-      message_repo.add_message(conversation_id: conv_id, actor: "user", role: "user", content: "Test")
-      message_repo.add_message(conversation_id: conv_id, actor: "spell_checker", role: "user", content: "Correction")
-      message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant", content: "Response")
-
-      stats = migrator.migrate_exchanges
-
-      expect(stats[:exchanges_created]).to eq(1) # Only one real user message
-    end
-
     it "updates message exchange_ids" do
       conv_id = conversation_repo.create_conversation
 

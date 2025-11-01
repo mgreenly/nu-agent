@@ -666,22 +666,6 @@ RSpec.describe Nu::Agent::History do
         expect(ex["message_count"]).to eq(2)
       end
 
-      it "excludes spell_checker messages from exchange boundaries" do
-        history.add_message(conversation_id: conversation_id, actor: "spell_checker", role: "user", content: "Check")
-        history.add_message(conversation_id: conversation_id, actor: "spell_checker", role: "assistant",
-                            content: "Checked")
-        history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Real question")
-        history.add_message(conversation_id: conversation_id, actor: "orchestrator", role: "assistant",
-                            content: "Answer")
-
-        stats = history.migrate_exchanges
-
-        # Should create only 1 exchange (spell_checker messages don't start exchanges)
-        expect(stats[:exchanges_created]).to eq(1)
-
-        exchanges = history.get_conversation_exchanges(conversation_id: conversation_id)
-        expect(exchanges.first["user_message"]).to eq("Real question")
-      end
     end
 
     describe "messages with exchange_id" do
