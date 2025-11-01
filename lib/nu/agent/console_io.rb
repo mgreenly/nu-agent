@@ -37,7 +37,7 @@ module Nu
         @saved_input = String.new("")
         @saved_column = nil
         @last_line_count = 1
-        @last_cursor_line = 0
+        @last_cursor_line = nil
         @submit_requested = false
 
         # Database history (optional)
@@ -656,7 +656,8 @@ module Nu
         # Move up to start of previous multiline display and clear
         # Use @last_cursor_line to know where the cursor was positioned after the last redraw
         # Fall back to old behavior (@last_line_count - 1) if @last_cursor_line is not set
-        lines_to_move_up = if @last_cursor_line&.positive?
+        # Note: 0 is a valid cursor line (first line), so check for nil, not positive?
+        lines_to_move_up = if !@last_cursor_line.nil?
                              @last_cursor_line
                            elsif @last_line_count && @last_line_count > 1
                              @last_line_count - 1

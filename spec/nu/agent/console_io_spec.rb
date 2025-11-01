@@ -390,12 +390,29 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(output).not_to match(/\e\[2A/)
       end
 
-      it "falls back to @last_line_count when @last_cursor_line is zero" do
-        # Initial redraw scenario - @last_cursor_line not yet set (defaults to 0)
+      it "uses @last_cursor_line when cursor is on first line (line 0)" do
+        # Cursor is on first line - @last_cursor_line should be 0, which is valid
+        console.instance_variable_set(:@input_buffer, "line1\nline2\nline3")
+        console.instance_variable_set(:@cursor_pos, 3) # Middle of line1
+        console.instance_variable_set(:@last_line_count, 3)
+        console.instance_variable_set(:@last_cursor_line, 0) # Cursor on first line
+
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Should use @last_cursor_line = 0 for clearing (move up 0 lines)
+        # But after rendering all lines, still needs to move up for positioning
+        # Since buffer has 3 lines and cursor is on line 0, it moves up 2 lines for positioning
+        # The key is: no move-up BEFORE the content rendering
+        expect(output).to match(/\e\[J.*line1.*line2.*line3.*\e\[2A/m)
+      end
+
+      it "falls back to @last_line_count when @last_cursor_line is nil" do
+        # Initial redraw scenario - @last_cursor_line not yet set (nil, not initialized)
         console.instance_variable_set(:@input_buffer, "line1\nline2")
         console.instance_variable_set(:@cursor_pos, 0)
         console.instance_variable_set(:@last_line_count, 3)
-        console.instance_variable_set(:@last_cursor_line, 0) # Not set yet
+        console.instance_variable_set(:@last_cursor_line, nil) # Not set yet
 
         console.send(:redraw_input_line, "> ")
 
