@@ -5,6 +5,7 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in nu-agent.gemspec
 gemspec
 
+gem "benchmark", require: false
 gem "irb"
 gem "rake", "~> 13.0"
 
