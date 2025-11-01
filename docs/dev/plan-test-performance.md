@@ -96,25 +96,19 @@ Implement a "**schema once, truncate between**" strategy:
 - [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 3.2: Refactor application_console_integration_spec.rb
-- [ ] **GREEN:** Update to use shared database helper
-- [ ] **GREEN:** Remove redundant database creation/deletion code
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Refactor application_console_integration_spec to use shared database"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **ANALYSIS:** Spec uses mocks (`instance_double`) - no database created
+- [x] **CONCLUSION:** No refactoring needed - already optimized
+- [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 3.3: Refactor exchange_migration_runner_spec.rb
-- [ ] **GREEN:** Update to use shared database helper or isolated DB for migration tests
-- [ ] **GREEN:** Document pattern for migration-specific testing
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Refactor exchange_migration_runner_spec with appropriate isolation"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **ANALYSIS:** Spec uses mocks (`double`) - no database created
+- [x] **CONCLUSION:** No refactoring needed - already optimized
+- [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 3.4: Refactor formatter_spec.rb
-- [ ] **GREEN:** Update to use shared database helper
-- [ ] **GREEN:** Remove redundant database creation/deletion code
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Refactor formatter_spec to use shared database"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **ANALYSIS:** Spec uses mocks (`instance_double`) - no database created
+- [x] **CONCLUSION:** No refactoring needed - already optimized
+- [x] **UPDATE:** Mark this task complete in plan
 
 ### Phase 4: Add In-Memory Database Option
 
