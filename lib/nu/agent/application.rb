@@ -197,7 +197,6 @@ module Nu
         @command_registry.register("/debug", Commands::DebugCommand)
         @command_registry.register("/verbosity", Commands::VerbosityCommand)
         @command_registry.register("/redaction", Commands::RedactionCommand)
-        @command_registry.register("/spellcheck", Commands::SpellcheckCommand)
         @command_registry.register("/reset", Commands::ResetCommand)
         @command_registry.register("/model", Commands::ModelCommand)
 
