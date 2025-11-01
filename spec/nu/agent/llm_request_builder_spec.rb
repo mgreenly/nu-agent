@@ -36,4 +36,19 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
       expect(builder.history).to eq(messages)
     end
   end
+
+  describe "#with_rag_content" do
+    it "stores the RAG content and returns self for chaining" do
+      builder = described_class.new
+      rag_content = {
+        redactions: %w[secret1 secret2],
+        spell_check: { typos: [] }
+      }
+
+      result = builder.with_rag_content(rag_content)
+
+      expect(result).to be(builder)
+      expect(builder.rag_content).to eq(rag_content)
+    end
+  end
 end
