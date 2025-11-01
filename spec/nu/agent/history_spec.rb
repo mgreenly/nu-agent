@@ -4,18 +4,7 @@ require "spec_helper"
 require "fileutils"
 
 RSpec.describe Nu::Agent::History do
-  let(:test_db_path) { "db/test_history.db" }
-  let(:history) { described_class.new(db_path: test_db_path) }
-
-  before do
-    # Clean up test database before each test
-    FileUtils.rm_rf("db/test_history.db")
-  end
-
-  after do
-    history.close
-    FileUtils.rm_rf("db/test_history.db")
-  end
+  let(:history) { DatabaseHelper.get_test_history }
 
   describe "#create_conversation" do
     it "creates a new conversation and returns its id" do

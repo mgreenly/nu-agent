@@ -57,6 +57,20 @@ module DatabaseHelper
 
       # Re-enable object cache
       connection.query("SET enable_object_cache = true")
+
+      # Commit any open transactions to ensure clean state for next test
+      # DuckDB auto-starts transactions, so we need to explicitly commit
+      begin
+        connection.query("COMMIT")
+      rescue DuckDB::Error
+        # Ignore if no transaction is active
+      end
+
+      # Re-initialize critical config values that were removed by truncation
+      connection.query(<<~SQL)
+        INSERT OR REPLACE INTO appconfig (key, value, updated_at)
+        VALUES ('active_workers', '0', CURRENT_TIMESTAMP)
+      SQL
     end
 
     # Get or create a singleton History instance for testing
