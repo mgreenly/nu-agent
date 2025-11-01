@@ -250,13 +250,13 @@ end
    - COMMIT: "Update Anthropic client to use internal format" ✓
    - UPDATE: Mark task 4.1 complete in plan ✓
 
-**Task 4.2: Update OpenAI client**
-   - RED: Write test for internal format → OpenAI API translation
-   - GREEN: Update `openai.rb` to accept and translate internal format
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Update OpenAI client to use internal format"
-   - UPDATE: Mark task 4.2 complete in plan
+**Task 4.2: Update OpenAI client** ✓ COMPLETE
+   - RED: Write test for internal format → OpenAI API translation ✓
+   - GREEN: Update `openai.rb` to accept and translate internal format ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Update OpenAI client to use internal format" ✓
+   - UPDATE: Mark task 4.2 complete in plan ✓
 
 **Task 4.3: Update Google client**
    - RED: Write test for internal format → Google API translation
