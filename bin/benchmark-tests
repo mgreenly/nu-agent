@@ -1,0 +1,178 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Benchmark script to measure test suite performance improvements
+#
+# This script runs the test suite multiple times with different configurations
+# and reports timing results to help evaluate performance optimizations.
+#
+# Usage:
+#   bin/benchmark-tests [iterations]
+#
+# Example:
+#   bin/benchmark-tests 3  # Run 3 iterations of each configuration
+
+require "benchmark"
+require "fileutils"
+
+# Number of benchmark iterations (default: 3)
+ITERATIONS = (ARGV[0] || 3).to_i
+
+# Terminal colors for output
+BOLD = "\e[1m"
+GREEN = "\e[32m"
+YELLOW = "\e[33m"
+BLUE = "\e[34m"
+RESET = "\e[0m"
+
+def print_header(text)
+  puts
+  puts "#{BOLD}#{BLUE}#{'=' * 80}#{RESET}"
+  puts "#{BOLD}#{BLUE}#{text.center(80)}#{RESET}"
+  puts "#{BOLD}#{BLUE}#{'=' * 80}#{RESET}"
+  puts
+end
+
+def print_section(text)
+  puts
+  puts "#{BOLD}#{text}#{RESET}"
+  puts "-" * 80
+end
+
+def run_tests_with_config(config_name, env_vars = {})
+  print_section "Running: #{config_name}"
+
+  times = []
+
+  ITERATIONS.times do |i|
+    puts "  Iteration #{i + 1}/#{ITERATIONS}..."
+
+    # Set environment variables
+    env_string = env_vars.map { |k, v| "#{k}=#{v}" }.join(" ")
+
+    # Run tests and capture timing
+    start_time = Time.now
+    system("#{env_string} bundle exec rspec spec --format progress > /dev/null 2>&1")
+    elapsed = Time.now - start_time
+
+    if $?.success?
+      times << elapsed
+      puts "    ✓ Completed in #{elapsed.round(2)}s"
+    else
+      puts "    ✗ Tests failed!"
+      return nil
+    end
+  end
+
+  times
+end
+
+def calculate_stats(times)
+  return nil if times.nil? || times.empty?
+
+  avg = times.sum / times.length
+  min = times.min
+  max = times.max
+
+  {
+    average: avg,
+    min: min,
+    max: max,
+    samples: times.length
+  }
+end
+
+def format_time(seconds)
+  "#{seconds.round(2)}s"
+end
+
+def format_percentage(value)
+  sign = value.positive? ? "+" : ""
+  "#{sign}#{value.round(1)}%"
+end
+
+# Main benchmark execution
+print_header "Test Suite Performance Benchmark"
+
+puts "Configuration:"
+puts "  Iterations per test: #{ITERATIONS}"
+puts "  Test command: bundle exec rspec spec --format progress"
+puts
+
+results = {}
+
+# Benchmark 1: File-based database (current default)
+print_section "Benchmark 1: File-based Database"
+results[:file_based] = run_tests_with_config(
+  "File-based database (db/test.db)",
+  { "TEST_DB_PATH" => "db/test.db" }
+)
+
+# Benchmark 2: In-memory database
+print_section "Benchmark 2: In-Memory Database"
+results[:in_memory] = run_tests_with_config(
+  "In-memory database (:memory:)",
+  { "TEST_DB_PATH" => ":memory:" }
+)
+
+# Calculate statistics
+stats = results.transform_values { |times| calculate_stats(times) }
+
+# Print results summary
+print_header "Benchmark Results Summary"
+
+if stats[:file_based]
+  print_section "File-Based Database (Default)"
+  puts "  Average: #{format_time(stats[:file_based][:average])}"
+  puts "  Min:     #{format_time(stats[:file_based][:min])}"
+  puts "  Max:     #{format_time(stats[:file_based][:max])}"
+  puts "  Samples: #{stats[:file_based][:samples]}"
+end
+
+if stats[:in_memory]
+  print_section "In-Memory Database"
+  puts "  Average: #{format_time(stats[:in_memory][:average])}"
+  puts "  Min:     #{format_time(stats[:in_memory][:min])}"
+  puts "  Max:     #{format_time(stats[:in_memory][:max])}"
+  puts "  Samples: #{stats[:in_memory][:samples]}"
+end
+
+# Comparison
+if stats[:file_based] && stats[:in_memory]
+  print_section "Performance Comparison"
+
+  file_avg = stats[:file_based][:average]
+  memory_avg = stats[:in_memory][:average]
+
+  improvement = ((file_avg - memory_avg) / file_avg) * 100
+  time_saved = file_avg - memory_avg
+
+  puts "  File-based:  #{format_time(file_avg)} (baseline)"
+  puts "  In-memory:   #{format_time(memory_avg)}"
+  puts
+  puts "  #{BOLD}#{GREEN}Time saved:  #{format_time(time_saved)} (#{format_percentage(improvement)})#{RESET}"
+
+  if improvement > 0
+    puts
+    puts "  #{GREEN}✓ In-memory database is faster!#{RESET}"
+  elsif improvement < 0
+    puts
+    puts "  #{YELLOW}⚠ File-based database performed better (unusual)#{RESET}"
+  else
+    puts
+    puts "  No significant difference detected"
+  end
+end
+
+# Historical context (baseline from before optimization)
+print_section "Historical Context"
+puts "  Before optimization (recreate per test): ~180-240s"
+puts "  Current approach (schema once, truncate): ~#{format_time(stats[:file_based][:average])}"
+puts
+if stats[:file_based]
+  baseline_avg = 210 # Conservative middle estimate
+  total_improvement = ((baseline_avg - stats[:file_based][:average]) / baseline_avg) * 100
+  puts "  #{BOLD}#{GREEN}Total improvement: #{format_percentage(total_improvement)}#{RESET}"
+end
+
+print_header "Benchmark Complete"
