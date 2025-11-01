@@ -82,7 +82,7 @@ RSpec.describe Nu::Agent::ConsoleIO::State do
       end
 
       it "transitions back to IdleState after input is submitted" do
-        allow(stdin).to receive(:read_nonblock).and_return("\n")
+        allow(stdin).to receive(:read_nonblock).and_return("\r")
         allow(IO).to receive(:select).and_return([[stdin], [], []])
 
         result = nil

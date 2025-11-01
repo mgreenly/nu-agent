@@ -84,7 +84,8 @@ module Nu
 
         Thread.new(state[:conv_id], state[:cli], context, orchestrator,
                    worker_token) do |conv_id, client, ctx, orch, token|
-          Thread.current.report_on_exception = false
+          # Temporarily enable exception reporting to debug hang issue
+          Thread.current.report_on_exception = true
 
           tool_registry = ToolRegistry.new
           orch.execute(

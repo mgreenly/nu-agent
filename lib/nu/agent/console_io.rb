@@ -2,6 +2,7 @@
 
 require "io/console"
 require_relative "console_io_states"
+require_relative "subsystem_debugger"
 
 module Nu
   module Agent
@@ -12,10 +13,11 @@ module Nu
       attr_reader :state
       attr_writer :debug
 
-      def initialize(db_history: nil, debug: false)
+      def initialize(db_history: nil, debug: false, application: nil)
         @stdin = $stdin
         @stdout = $stdout
         @debug = debug
+        @application = application
 
         # Save original terminal state
         @original_stty = `stty -g`.chomp
@@ -40,7 +42,6 @@ module Nu
         @last_cursor_line = nil
         @last_physical_row_count = 1
         @last_cursor_physical_row = 0
-        @submit_requested = false
         @terminal_width = IO.console&.winsize&.[](1) || 80
 
         # Database history (optional)
@@ -76,7 +77,7 @@ module Nu
       def transition_to(new_state)
         return if @state == new_state
 
-        log_state_transition(@state, new_state) if @debug
+        log_state_transition(@state, new_state)
 
         @state.on_exit
         @previous_state = @state
@@ -331,6 +332,8 @@ module Nu
       end
 
       def log_state_transition(old_state, new_state)
+        return unless SubsystemDebugger.should_output?(@application, "console", 1)
+
         old_name = old_state.name
         new_name = new_state.name
         puts("\e[90m[ConsoleIO] State transition: #{old_name} -> #{new_name}\e[0m")
@@ -445,19 +448,18 @@ module Nu
       def parse_input(raw)
         chars = raw.chars
         i = 0
-        @submit_requested = false
 
         while i < chars.length
           char = chars[i]
 
           case char
           when "\r"
-            # Enter key - insert newline for multiline editing
-            insert_char("\n")
+            # Enter key - submit input
+            return :submit
 
           when "\n"
-            # Ctrl+J - submit input
-            return :submit
+            # Shift+Enter or Ctrl+J - insert newline for multiline editing
+            insert_char("\n")
 
           when "\x03" # Ctrl-C
             raise Interrupt
@@ -499,9 +501,6 @@ module Nu
 
           i += 1
         end
-
-        # Check if submit was requested by a CSI sequence (e.g., Ctrl+Enter)
-        return :submit if @submit_requested
 
         nil # Continue reading
       end
@@ -608,11 +607,7 @@ module Nu
         # Check if sequence ends with ~
         if i < chars.length && chars[i] == "~"
           sequence = seq_chars.join
-          # Check for Ctrl+Enter: 13;5
-          if sequence == "13;5"
-            @submit_requested = true
-            return i
-          elsif sequence == "1"
+          if sequence == "1"
             # Home key
             cursor_to_start
             return i

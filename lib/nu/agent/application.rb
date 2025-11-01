@@ -140,7 +140,7 @@ module Nu
       end
 
       def initialize_console_system
-        @console = ConsoleIO.new(db_history: @history, debug: @debug)
+        @console = ConsoleIO.new(db_history: @history, debug: @debug, application: self)
         @conversation_id = @history.create_conversation
         @event_bus = EventBus.new
         @formatter = Formatter.new(
@@ -315,6 +315,7 @@ module Nu
           "Database: #{File.expand_path(@history.db_path)}",
           "Type your prompts below. Press Ctrl-C or /exit to quit.",
           "(Ctrl-C during processing aborts operation)",
+          "Press Enter to submit input (Shift+Enter for newline)",
           "Type /help for available commands",
           "=" * 60
         )

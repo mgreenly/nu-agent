@@ -77,8 +77,10 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
   describe "#initialize" do
     it "creates a ConsoleIO instance" do
       expect(Nu::Agent::ConsoleIO).to receive(:new).with(
-        db_history: mock_history,
-        debug: false
+        hash_including(
+          db_history: mock_history,
+          debug: false
+        )
       ).and_return(mock_console)
 
       app = described_class.new(options: options)
@@ -95,8 +97,10 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
       allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
 
       expect(Nu::Agent::ConsoleIO).to receive(:new).with(
-        db_history: mock_history,
-        debug: true
+        hash_including(
+          db_history: mock_history,
+          debug: true
+        )
       ).and_return(mock_console)
 
       described_class.new(options: options)

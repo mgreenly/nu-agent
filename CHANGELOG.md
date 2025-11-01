@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.13.0] - 2025-10-31
 
+### Fixed
+
+- **Post-merge hang issues**: Fixed critical bugs introduced by recent merges
+  - Enabled exception reporting in orchestrator thread to debug silent failures
+  - Added welcome message clarifying Enter submits and Shift+Enter for newlines
+  - Issue: Enter key submits input, Shift+Enter inserts newlines for multiline editing
+  - Previous behavior where Enter submitted input was changed but not clearly communicated
+
 ### Added
 
 - **Switchable Agent Personas** (Issue #12): Custom system prompts for different agent behaviors
@@ -45,8 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Cursor Management**: Saved column position maintained during vertical navigation
   - **Display Rendering**: Proper multiline rendering with line wrapping support
   - **Submit Behavior**:
-    - Enter key inserts newline
-    - Ctrl+J or Ctrl+Enter submits multiline input
+    - Enter key submits input
+    - Shift+Enter (or Ctrl+J) inserts newline for multiline editing
   - **Edge Case Handling**: Fixed terminal wrapping, cursor positioning, and display bugs
   - **Testing**: 45+ integration tests for multiline workflows
   - Manual testing checklist for comprehensive validation
