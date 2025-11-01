@@ -44,7 +44,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
     end
 
     context "with 'help' argument" do
-      # rubocop:disable RSpec/MultipleExpectations
+      # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
       it "shows detailed help with all subsystems and levels" do
         expect(console).to receive(:puts).with("")
 
@@ -125,7 +125,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
 
         command.execute("/verbosity help")
       end
-      # rubocop:enable RSpec/MultipleExpectations
+      # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
     end
 
     context "with subsystem argument only" do
