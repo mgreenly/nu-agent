@@ -68,7 +68,7 @@ module Nu
 
       def construct_messages
         messages = @history ? @history.dup : []
-        messages << { role: "user", content: @user_query } if @user_query
+        messages << { "role" => "user", "content" => @user_query } if @user_query
         messages
       end
 

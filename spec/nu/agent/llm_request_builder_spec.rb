@@ -107,7 +107,7 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
         expect(result).to be_a(Hash)
         expect(result[:system_prompt]).to eq("You are a helpful assistant")
         expect(result[:messages]).to be_a(Array)
-        expect(result[:messages].last).to eq({ role: "user", content: "What is 2+2?" })
+        expect(result[:messages].last).to eq({ "role" => "user", "content" => "What is 2+2?" })
       end
 
       it "includes all optional fields when provided" do
@@ -144,7 +144,7 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
         expect(result[:messages]).to eq([
                                           { role: "user", content: "Hello" },
                                           { role: "assistant", content: "Hi there!" },
-                                          { role: "user", content: "How are you?" }
+                                          { "role" => "user", "content" => "How are you?" }
                                         ])
       end
 
@@ -156,7 +156,7 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
         result = builder.build
 
         expect(result[:messages]).to eq([
-                                          { role: "user", content: "What is 2+2?" }
+                                          { "role" => "user", "content" => "What is 2+2?" }
                                         ])
       end
 
