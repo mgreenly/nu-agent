@@ -386,8 +386,8 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       expect(messages).to eq(history_messages + [{ "role" => "user", "content" => markdown_doc }])
       expect(tools).to eq(formatted_tools)
 
-      # Verify display was called
-      expect(formatter).to have_received(:display_llm_request).with(messages, formatted_tools, markdown_doc)
+      # Verify display was called with internal format
+      expect(formatter).to have_received(:display_llm_request).with(internal_format)
     end
   end
 

@@ -232,8 +232,8 @@ module Nu
         @console.puts("\e[90m  content: #{preview}#{'...' if content.length > max_length}\e[0m")
       end
 
-      def display_llm_request(messages, tools = nil, markdown_document = nil)
-        @llm_request_formatter.display(messages, tools, markdown_document)
+      def display_llm_request(internal_format)
+        @llm_request_formatter.display_yaml(internal_format)
       end
 
       private

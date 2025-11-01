@@ -587,10 +587,16 @@ RSpec.describe Nu::Agent::Formatter do
   end
 
   describe "#display_llm_request" do
-    it "delegates to llm_request_formatter" do
-      messages = [{ "role" => "user", "content" => "Hello" }]
-      tools = [{ "name" => "file_read" }]
-      markdown_doc = "# Test"
+    it "delegates to llm_request_formatter with internal format" do
+      internal_format = {
+        system_prompt: "You are a helpful assistant",
+        messages: [{ "role" => "user", "content" => "Hello" }],
+        tools: [{ "name" => "file_read" }],
+        metadata: {
+          rag_content: {},
+          user_query: "# Test"
+        }
+      }
 
       llm_formatter = instance_double(Nu::Agent::Formatters::LlmRequestFormatter)
       allow(Nu::Agent::Formatters::LlmRequestFormatter).to receive(:new).and_return(llm_formatter)
@@ -605,9 +611,9 @@ RSpec.describe Nu::Agent::Formatter do
         application: nil
       )
 
-      expect(llm_formatter).to receive(:display).with(messages, tools, markdown_doc)
+      expect(llm_formatter).to receive(:display_yaml).with(internal_format)
 
-      formatter_with_llm.display_llm_request(messages, tools, markdown_doc)
+      formatter_with_llm.display_llm_request(internal_format)
     end
   end
 

@@ -117,12 +117,12 @@ module Nu
                           .with_metadata(conversation_id: conversation_id)
                           .build
 
+        # Display LLM request (verbosity based on internal format)
+        formatter.display_llm_request(internal_format)
+
         # Extract messages and tools from internal format
         messages = internal_format[:messages]
         tools = internal_format[:tools]
-
-        # Display LLM request (verbosity level 3+)
-        formatter.display_llm_request(messages, tools, markdown_document)
 
         [messages, tools]
       end
