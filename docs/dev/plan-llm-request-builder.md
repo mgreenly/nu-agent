@@ -258,13 +258,13 @@ end
    - COMMIT: "Update OpenAI client to use internal format" ✓
    - UPDATE: Mark task 4.2 complete in plan ✓
 
-**Task 4.3: Update Google client**
-   - RED: Write test for internal format → Google API translation
-   - GREEN: Update `google.rb` to accept and translate internal format
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Update Google client to use internal format"
-   - UPDATE: Mark task 4.3 complete in plan
+**Task 4.3: Update Google client** ✓ COMPLETE
+   - RED: Write test for internal format → Google API translation ✓
+   - GREEN: Update `google.rb` to accept and translate internal format ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Update Google client to use internal format" ✓
+   - UPDATE: Mark task 4.3 complete in plan ✓
 
 **Task 4.4: Update XAI client**
    - RED: Write test for internal format → XAI API translation
