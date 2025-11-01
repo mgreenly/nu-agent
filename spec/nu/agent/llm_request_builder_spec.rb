@@ -21,4 +21,19 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
       expect(builder.system_prompt).to eq(prompt)
     end
   end
+
+  describe "#with_history" do
+    it "stores the message history and returns self for chaining" do
+      builder = described_class.new
+      messages = [
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Hi there!" }
+      ]
+
+      result = builder.with_history(messages)
+
+      expect(result).to be(builder)
+      expect(builder.history).to eq(messages)
+    end
+  end
 end

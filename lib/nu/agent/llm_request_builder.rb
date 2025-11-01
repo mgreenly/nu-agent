@@ -5,14 +5,20 @@ module Nu
     # Builder for constructing LLM requests in an internal format
     # that can be translated to specific LLM provider APIs
     class LlmRequestBuilder
-      attr_reader :system_prompt
+      attr_reader :system_prompt, :history
 
       def initialize
         @system_prompt = nil
+        @history = nil
       end
 
       def with_system_prompt(prompt)
         @system_prompt = prompt
+        self
+      end
+
+      def with_history(messages)
+        @history = messages
         self
       end
     end
