@@ -906,9 +906,13 @@ RSpec.describe Nu::Agent::ConsoleIO do
         console.send(:parse_input, "\e[A")
         expect(console.instance_variable_get(:@input_buffer)).to eq("third")
 
+        # Clear buffer to continue navigating history
+        console.send(:kill_to_start)
         console.send(:parse_input, "\e[A")
         expect(console.instance_variable_get(:@input_buffer)).to eq("second")
 
+        # Clear buffer again
+        console.send(:kill_to_start)
         console.send(:parse_input, "\e[A")
         expect(console.instance_variable_get(:@input_buffer)).to eq("first")
       end
@@ -920,10 +924,12 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
         # Navigate to beginning
         console.send(:parse_input, "\e[A")
+        console.send(:kill_to_start)
         console.send(:parse_input, "\e[A")
         expect(console.instance_variable_get(:@input_buffer)).to eq("first")
 
         # Try to go further - should stay at first
+        console.send(:kill_to_start)
         console.send(:parse_input, "\e[A")
         expect(console.instance_variable_get(:@input_buffer)).to eq("first")
       end
@@ -937,10 +943,12 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
         # Go back two entries
         console.send(:parse_input, "\e[A")
+        console.send(:kill_to_start)
         console.send(:parse_input, "\e[A")
         expect(console.instance_variable_get(:@input_buffer)).to eq("second")
 
-        # Go forward one
+        # Go forward one (need to clear buffer first)
+        console.send(:kill_to_start)
         console.send(:parse_input, "\e[B")
         expect(console.instance_variable_get(:@input_buffer)).to eq("third")
       end
@@ -2387,6 +2395,9 @@ RSpec.describe Nu::Agent::ConsoleIO do
         # Navigate to most recent history (empty buffer allows history navigation)
         console.send(:cursor_up_or_history_prev)
         expect(console.instance_variable_get(:@input_buffer)).to eq("another single")
+
+        # Clear buffer to continue navigating history
+        console.send(:kill_to_start)
 
         # Navigate to multiline entry
         console.send(:cursor_up_or_history_prev)

@@ -835,8 +835,8 @@ module Nu
       end
 
       def cursor_up_or_history_prev
-        # If buffer is empty OR we're actively navigating history, continue with history
-        if @input_buffer.empty? || !@history_pos.nil?
+        # If buffer is empty, navigate history
+        if @input_buffer.empty?
           history_prev
           return
         end
@@ -861,8 +861,8 @@ module Nu
       end
 
       def cursor_down_or_history_next
-        # If buffer is empty OR we're actively navigating history, continue with history
-        if @input_buffer.empty? || !@history_pos.nil?
+        # If buffer is empty, navigate history
+        if @input_buffer.empty?
           history_next
           return
         end
