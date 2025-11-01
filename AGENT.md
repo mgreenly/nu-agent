@@ -30,6 +30,10 @@
 - ALWAYS use good design when addressing lint or spec issues.  DON'T Cheat!
 - Concise but meaningful variable names
 
+## Git Operations
+- **During rebasing**: Tests must pass but coverage and lint requirements can be temporarily ignored
+- **After rebasing**: Coverage and lint must be brought into full compliance before considering work complete
+
 ## Code Smells to Avoid
 - Using `@` sigils when `attr_accessor/reader/writer` exists
 - Using `instance_variable_get` from outside the instance
