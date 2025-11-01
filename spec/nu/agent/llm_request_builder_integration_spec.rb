@@ -709,5 +709,166 @@ RSpec.describe "LLM Request Builder Integration" do
       expect(response3["content"]).to eq("Both cities have good weather.")
     end
   end
+
+  describe "debug output verbosity" do
+    let(:console) { StringIO.new }
+    let(:mock_db) { instance_double(Nu::Agent::History) }
+    let(:application) { instance_double(Nu::Agent::Application, debug: true, history: mock_db) }
+    let(:formatter) { Nu::Agent::Formatters::LlmRequestFormatter.new(console: console, application: application) }
+
+    let(:internal_request) do
+      {
+        system_prompt: "You are a helpful assistant.",
+        messages: [
+          { "actor" => "user", "role" => "user", "content" => "First question" },
+          { "actor" => "orchestrator", "role" => "assistant", "content" => "First response" },
+          { "actor" => "user", "role" => "user", "content" => "Second question" }
+        ],
+        tools: [
+          {
+            "name" => "test_tool",
+            "description" => "A test tool",
+            "input_schema" => {
+              "type" => "object",
+              "properties" => { "arg" => { "type" => "string" } }
+            }
+          }
+        ],
+        metadata: {
+          rag_content: {
+            redactions: ["secret"],
+            spell_check: { "wrng" => "wrong" }
+          },
+          conversation_id: 1,
+          exchange_id: 2
+        }
+      }
+    end
+
+    it "displays nothing at verbosity level 0" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(0)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      expect(output).to be_empty
+    end
+
+    it "displays only final user message at verbosity level 1" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(1)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should contain final message
+      expect(output).to include("final_message")
+      expect(output).to include("Second question")
+
+      # Should NOT contain system prompt, rag content, tools, or full history
+      expect(output).not_to include("system_prompt")
+      expect(output).not_to include("rag_content")
+      expect(output).not_to include("tools")
+      expect(output).not_to include("First question")
+    end
+
+    it "displays final message and system prompt at verbosity level 2" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(2)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should contain final message and system prompt
+      expect(output).to include("final_message")
+      expect(output).to include("Second question")
+      expect(output).to include("system_prompt")
+      expect(output).to include("You are a helpful assistant")
+
+      # Should NOT contain rag content, tools, or full history
+      expect(output).not_to include("rag_content")
+      expect(output).not_to include("tools")
+      expect(output).not_to include("First question")
+    end
+
+    it "displays final message, system prompt, and rag content at verbosity level 3" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(3)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should contain final message, system prompt, and rag content
+      expect(output).to include("final_message")
+      expect(output).to include("system_prompt")
+      expect(output).to include("rag_content")
+      expect(output).to include("redactions")
+      expect(output).to include("spell_check")
+
+      # Should NOT contain tools or full history
+      expect(output).not_to include("tools")
+      expect(output).not_to include("First question")
+    end
+
+    it "displays final message, system prompt, rag content, and tools at verbosity level 4" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(4)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should contain final message, system prompt, rag content, and tools
+      expect(output).to include("final_message")
+      expect(output).to include("system_prompt")
+      expect(output).to include("rag_content")
+      expect(output).to include("tools")
+      expect(output).to include("test_tool")
+
+      # Should NOT contain full history (only final message)
+      expect(output).not_to include("First question")
+    end
+
+    it "displays full message history at verbosity level 5" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(5)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should contain everything including full message history
+      expect(output).to include("messages")
+      expect(output).to include("system_prompt")
+      expect(output).to include("rag_content")
+      expect(output).to include("tools")
+
+      # Should include ALL messages in history
+      expect(output).to include("First question")
+      expect(output).to include("First response")
+      expect(output).to include("Second question")
+
+      # Should NOT have separate final_message when showing full messages
+      expect(output).not_to include("final_message")
+    end
+
+    it "properly formats YAML output with gray color codes" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(1)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should include gray color codes (\e[90m) and reset codes (\e[0m)
+      expect(output).to include("\e[90m")
+      expect(output).to include("\e[0m")
+    end
+
+    it "handles nil rag_content gracefully" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(3)
+
+      request_without_rag = internal_request.dup
+      request_without_rag[:metadata] = { conversation_id: 1 }
+
+      formatter.display_yaml(request_without_rag)
+      output = console.string
+
+      # Should not crash and should not show rag_content if it's nil
+      expect(output).to include("final_message")
+      expect(output).not_to include("rag_content")
+    end
+  end
 end
 # rubocop:enable RSpec/DescribeClass, RSpec/ExampleLength

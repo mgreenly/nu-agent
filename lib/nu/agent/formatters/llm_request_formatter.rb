@@ -28,8 +28,11 @@ module Nu
           # Verbosity level 2: Add system_prompt
           output[:system_prompt] = internal_request[:system_prompt] if should_output?(2)
 
-          # Verbosity level 3: Add rag_content from metadata
-          output[:rag_content] = internal_request.dig(:metadata, :rag_content) if should_output?(3)
+          # Verbosity level 3: Add rag_content from metadata (only if not nil)
+          if should_output?(3)
+            rag_content = internal_request.dig(:metadata, :rag_content)
+            output[:rag_content] = rag_content if rag_content
+          end
 
           # Verbosity level 4: Add tools
           output[:tools] = internal_request[:tools] if should_output?(4)
