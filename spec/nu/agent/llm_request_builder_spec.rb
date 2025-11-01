@@ -63,4 +63,19 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
       expect(builder.user_query).to eq(query)
     end
   end
+
+  describe "#with_tools" do
+    it "stores the tools and returns self for chaining" do
+      builder = described_class.new
+      tools = [
+        { name: "get_weather", schema: { type: "object" } },
+        { name: "search", schema: { type: "object" } }
+      ]
+
+      result = builder.with_tools(tools)
+
+      expect(result).to be(builder)
+      expect(builder.tools).to eq(tools)
+    end
+  end
 end
