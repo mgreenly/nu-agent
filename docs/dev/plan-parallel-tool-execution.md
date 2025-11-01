@@ -1045,7 +1045,13 @@ Without visibility into batching and threading, it's impossible to verify that p
 4. Update `docs/parallel-execution-performance.md` with real-world results
 
 **Acceptance Criteria**:
-- [ ] All 7 test scenarios pass
+- [x] Test 1: Parallel Independent Reads ✅
+- [x] Test 2: Read-Write Dependencies ⚠️ (Partially - LLM made separate turns instead of batched tools)
+- [ ] Test 3: Barrier Synchronization
+- [ ] Test 4: Mixed Independent Operations
+- [ ] Test 5: Write-Write on Same Path
+- [ ] Test 6: Error Handling
+- [ ] Test 7: Real API Format Verification
 - [ ] No errors or crashes during manual testing
 - [ ] Parallel execution observable and correct
 - [ ] Dependency batching works as designed
@@ -1054,7 +1060,7 @@ Without visibility into batching and threading, it's impossible to verify that p
 - [ ] Error handling works correctly
 - [ ] Thread safety confirmed (no corruption or races)
 
-**Status**: 🔄 IN PROGRESS
+**Status**: 🔄 IN PROGRESS (1/7 tests completed)
 
 ---
 

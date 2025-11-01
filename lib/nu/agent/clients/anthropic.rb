@@ -61,8 +61,16 @@ module Nu
           parameters = build_request_parameters(formatted_messages, processed_prompt, tools)
 
           begin
+            start_time = Time.now
+            warn "[DEBUG] API Request starting at #{start_time.strftime('%H:%M:%S.%3N')} (#{name}/#{@model})"
+
             response = @client.messages(parameters: parameters)
+
+            duration = Time.now - start_time
+            warn "[DEBUG] API Response received after #{(duration * 1000).round}ms"
           rescue Faraday::Error => e
+            duration = Time.now - start_time
+            warn "[DEBUG] API Request failed after #{(duration * 1000).round}ms: #{e.message}"
             return format_error_response(e)
           end
 
