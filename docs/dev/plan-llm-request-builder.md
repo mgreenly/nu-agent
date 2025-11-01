@@ -208,29 +208,29 @@ end
    - COMMIT: "Add LlmRequestFormatter with verbosity level 0" ✓
    - UPDATE: Mark task 3.1 complete in plan ✓
 
-**Task 3.2: Add verbosity level 1 (final user message)**
-   - RED: Write test for verbosity level 1
-   - GREEN: Implement YAML output for final user message
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add verbosity level 1 to formatter"
-   - UPDATE: Mark task 3.2 complete in plan
+**Task 3.2: Add verbosity level 1 (final user message)** ✓ COMPLETE
+   - RED: Write test for verbosity level 1 ✓
+   - GREEN: Implement YAML output for final user message ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add verbosity level 1 to formatter" ✓
+   - UPDATE: Mark task 3.2 complete in plan ✓
 
-**Task 3.3: Add verbosity levels 2-5**
-   - RED: Write tests for levels 2 (+ system), 3 (+ rag), 4 (+ tools), 5 (+ history)
-   - GREEN: Implement remaining verbosity levels
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add verbosity levels 2-5 to formatter"
-   - UPDATE: Mark task 3.3 complete in plan
+**Task 3.3: Add verbosity levels 2-5** ✓ COMPLETE
+   - RED: Write tests for levels 2 (+ system), 3 (+ rag), 4 (+ tools), 5 (+ history) ✓
+   - GREEN: Implement remaining verbosity levels ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add verbosity levels 2-5 to formatter" ✓
+   - UPDATE: Mark task 3.3 complete in plan ✓
 
-**Task 3.4: Integrate formatter with SubsystemDebugger**
-   - RED: Write test for SubsystemDebugger integration
-   - GREEN: Wire formatter into existing debug output system
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Integrate formatter with SubsystemDebugger"
-   - UPDATE: Mark task 3.4 complete in plan
+**Task 3.4: Integrate formatter with SubsystemDebugger** ✓ COMPLETE
+   - RED: Write test for SubsystemDebugger integration ✓
+   - GREEN: Wire formatter into existing debug output system ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Integrate formatter with SubsystemDebugger" ✓
+   - UPDATE: Mark task 3.4 complete in plan ✓
 
 **Task 3.5: Remove old formatter code**
    - RED: Update tests to remove expectations for old formatter
