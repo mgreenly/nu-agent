@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# Set test environment flag to silence migration output
+ENV["NU_AGENT_TEST"] = "true"
+
 # SimpleCov must be loaded before application code
 require "simplecov"
 require "simplecov_json_formatter"
@@ -21,6 +24,22 @@ end
 
 require "nu/agent"
 require "support/database_helper"
+
+# Helper to silence migration output during tests
+def silence_migration
+  original_stdout = $stdout.dup
+  original_stderr = $stderr.dup
+
+  $stdout.reopen(File.new(File::NULL, "w"))
+  $stderr.reopen(File.new(File::NULL, "w"))
+
+  yield
+ensure
+  $stdout.reopen(original_stdout)
+  $stderr.reopen(original_stderr)
+  original_stdout.close
+  original_stderr.close
+end
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

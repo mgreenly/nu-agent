@@ -27,8 +27,8 @@ RSpec.describe "Migration 006: create_personas_table" do
 
   describe "migration execution" do
     it "creates personas table with 5 default personas" do
-      # Run the migration
-      migration[:up].call(conn)
+      # Run the migration (silence output in test mode)
+      silence_migration { silence_migration { migration[:up].call(conn) } }
 
       # Verify table exists
       result = conn.query(<<~SQL)
@@ -45,7 +45,7 @@ RSpec.describe "Migration 006: create_personas_table" do
 
     it "creates personas with {{DATE}} placeholder for runtime replacement" do
       # Run the migration
-      migration[:up].call(conn)
+      silence_migration { migration[:up].call(conn) }
 
       # Verify all personas use {{DATE}} placeholder instead of hardcoded date
       result = conn.query("SELECT name, system_prompt FROM personas")
@@ -67,7 +67,7 @@ RSpec.describe "Migration 006: create_personas_table" do
 
     it "sets default persona as active in appconfig" do
       # Run the migration
-      migration[:up].call(conn)
+      silence_migration { migration[:up].call(conn) }
 
       # Get the default persona ID
       result = conn.query("SELECT id FROM personas WHERE name = 'default'")
@@ -82,14 +82,14 @@ RSpec.describe "Migration 006: create_personas_table" do
 
     it "is idempotent (can run multiple times)" do
       # Run migration twice
-      migration[:up].call(conn)
+      silence_migration { migration[:up].call(conn) }
 
       # Running again should not fail or create duplicates
       expect do
         # Clear personas for second run
         conn.query("DELETE FROM personas")
         conn.query("DELETE FROM appconfig WHERE key = 'active_persona_id'")
-        migration[:up].call(conn)
+        silence_migration { migration[:up].call(conn) }
       end.not_to raise_error
 
       # Should still have 5 personas
@@ -103,7 +103,7 @@ RSpec.describe "Migration 006: create_personas_table" do
 
     before do
       # Run the migration
-      migration[:up].call(conn)
+      silence_migration { migration[:up].call(conn) }
     end
 
     it "can list all personas after migration" do

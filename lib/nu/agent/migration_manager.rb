@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "stringio"
+
 module Nu
   module Agent
     # Manages database schema migrations
@@ -69,7 +71,14 @@ module Nu
         ensure_schema_version_table
 
         begin
-          migration[:up].call(@connection)
+          # Silence migration output during tests unless verbose mode is enabled
+          if test_environment? && !verbose_mode?
+            silence_output do
+              migration[:up].call(@connection)
+            end
+          else
+            migration[:up].call(@connection)
+          end
           update_version(migration[:version])
         rescue StandardError => e
           # Rollback version on failure
@@ -90,6 +99,40 @@ module Nu
 
           run_migration(migration)
         end
+      end
+
+      private
+
+      # Check if running in test environment
+      def test_environment?
+        ENV["NU_AGENT_TEST"] == "true" ||
+          defined?(RSpec) ||
+          ENV["RAILS_ENV"] == "test" ||
+          ENV["RACK_ENV"] == "test"
+      end
+
+      # Check if verbose mode is enabled
+      def verbose_mode?
+        ENV["VERBOSE"] == "true" || ENV["MIGRATION_VERBOSE"] == "true"
+      end
+
+      # Silence stdout and stderr output
+      def silence_output
+        # Save original streams
+        original_stdout = $stdout.dup
+        original_stderr = $stderr.dup
+
+        # Redirect to null device
+        $stdout.reopen(File.new(File::NULL, "w"))
+        $stderr.reopen(File.new(File::NULL, "w"))
+
+        yield
+      ensure
+        # Restore original streams
+        $stdout.reopen(original_stdout)
+        $stderr.reopen(original_stderr)
+        original_stdout.close
+        original_stderr.close
       end
     end
   end

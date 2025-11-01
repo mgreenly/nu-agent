@@ -18,7 +18,7 @@ RSpec.describe "Migration 007: Create rag_retrieval_logs" do
 
   describe "up migration" do
     it "creates rag_retrieval_logs table with correct schema" do
-      migration[:up].call(connection)
+      silence_migration { migration[:up].call(connection) }
 
       tables = connection.query("SHOW TABLES").map { |row| row[0] }
       expect(tables).to include("rag_retrieval_logs")
@@ -31,7 +31,7 @@ RSpec.describe "Migration 007: Create rag_retrieval_logs" do
     end
 
     it "creates required indexes" do
-      migration[:up].call(connection)
+      silence_migration { migration[:up].call(connection) }
 
       # Check that indexes were created (DuckDB way)
       result = connection.query("SELECT index_name FROM duckdb_indexes() WHERE table_name = 'rag_retrieval_logs'")
@@ -43,8 +43,8 @@ RSpec.describe "Migration 007: Create rag_retrieval_logs" do
     end
 
     it "is idempotent (can run twice without error)" do
-      migration[:up].call(connection)
-      expect { migration[:up].call(connection) }.not_to raise_error
+      silence_migration { migration[:up].call(connection) }
+      expect { silence_migration { migration[:up].call(connection) } }.not_to raise_error
     end
   end
 end
