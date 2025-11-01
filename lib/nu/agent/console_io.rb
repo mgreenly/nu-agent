@@ -339,7 +339,13 @@ module Nu
         line = @input_buffer.dup
 
         @mutex.synchronize do
-          @stdout.write("\e[2K\r")
+          # Move up to start of multiline input and clear
+          lines_to_move_up = @last_cursor_line || 0
+          @stdout.write("\e[#{lines_to_move_up}A") if lines_to_move_up.positive?
+          @stdout.write("\e[J") # Clear to end of screen
+          @stdout.write("\r")   # Move to start of line
+
+          # Write the submitted content
           @stdout.write(prompt)
           @stdout.write("#{line}\r\n") # In raw mode, need explicit \r\n
         end
