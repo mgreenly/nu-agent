@@ -292,13 +292,13 @@ end
    - COMMIT: "Add integration test for tool calling" ✓
    - UPDATE: Mark task 5.2 complete in plan ✓
 
-**Task 5.3: Create integration test for debug output verbosity**
-   - RED: Write integration test for all verbosity levels
-   - GREEN: Ensure debug output filters correctly at each level
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add integration test for debug verbosity"
-   - UPDATE: Mark task 5.3 complete in plan
+**Task 5.3: Create integration test for debug output verbosity** ✓ COMPLETE
+   - RED: Write integration test for all verbosity levels ✓
+   - GREEN: Ensure debug output filters correctly at each level ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add integration test for debug verbosity" ✓
+   - UPDATE: Mark task 5.3 complete in plan ✓
 
 **Task 5.4: Performance validation**
    - RED: Write performance benchmark test
