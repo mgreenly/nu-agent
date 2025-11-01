@@ -322,4 +322,99 @@ RSpec.describe Nu::Agent::Clients::Google do
       expect { described_class.new }.to raise_error(Nu::Agent::Error, /Error loading API key: Permission denied/)
     end
   end
+
+  describe "#send_request" do
+    let(:internal_request) do
+      {
+        system_prompt: "You are a helpful assistant.",
+        messages: [
+          { "role" => "user", "content" => "Hello" },
+          { "role" => "assistant", "content" => "Hi there!" },
+          { "role" => "user", "content" => "How are you?" }
+        ],
+        tools: [{ "name" => "file_read", "parameters" => {} }],
+        metadata: {
+          rag_content: { redactions: ["secret"] },
+          user_query: "How are you?"
+        }
+      }
+    end
+
+    let(:gemini_response) do
+      {
+        "candidates" => [{
+          "content" => {
+            "parts" => [{ "text" => "I'm doing well!" }]
+          },
+          "finishReason" => "STOP"
+        }],
+        "usageMetadata" => {
+          "promptTokenCount" => 20,
+          "candidatesTokenCount" => 8
+        }
+      }
+    end
+
+    before do
+      allow(mock_gemini_client).to receive(:generate_content).and_return(gemini_response)
+    end
+
+    it "extracts and passes internal format to send_message" do
+      expect(mock_gemini_client).to receive(:generate_content).with(
+        hash_including(
+          contents: array_including(
+            hash_including(role: "user", parts: array_including(hash_including(text: "You are a helpful assistant."))),
+            hash_including(role: "user", parts: array_including(hash_including(text: "Hello")))
+          ),
+          tools: [{ "functionDeclarations" => [{ "name" => "file_read", "parameters" => {} }] }]
+        )
+      )
+      client.send_request(internal_request)
+    end
+
+    it "returns normalized response" do
+      response = client.send_request(internal_request)
+
+      expect(response).to include(
+        "content" => "I'm doing well!",
+        "model" => "gemini-2.5-flash",
+        "tokens" => {
+          "input" => 20,
+          "output" => 8
+        },
+        "finish_reason" => "STOP"
+      )
+    end
+
+    it "works without tools" do
+      request_without_tools = internal_request.dup
+      request_without_tools.delete(:tools)
+
+      expect(mock_gemini_client).to receive(:generate_content).with(
+        hash_not_including(:tools)
+      )
+      client.send_request(request_without_tools)
+    end
+
+    it "works without metadata" do
+      request_without_metadata = internal_request.dup
+      request_without_metadata.delete(:metadata)
+
+      response = client.send_request(request_without_metadata)
+      expect(response).to include("content" => "I'm doing well!")
+    end
+
+    it "handles nil system_prompt" do
+      request_without_system = internal_request.dup
+      request_without_system[:system_prompt] = nil
+
+      expect(mock_gemini_client).to receive(:generate_content) do |args|
+        # Should not include system prompt in contents
+        contents = args[:contents]
+        expect(contents).to all(satisfy { |msg| !msg[:parts][0][:text].nil? })
+      end.and_return(gemini_response)
+
+      client.send_request(request_without_system)
+    end
+  end
 end
