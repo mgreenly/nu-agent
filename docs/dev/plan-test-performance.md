@@ -124,12 +124,12 @@ Implement a "**schema once, truncate between**" strategy:
 **Goal:** Enable fast in-memory database for tests that don't need persistence.
 
 #### Task 4.1: Add in-memory database configuration
-- [ ] **RED:** Write spec for in-memory database option (`:memory:`)
-- [ ] **GREEN:** Implement configuration option in DatabaseHelper
-- [ ] **GREEN:** Handle connection reuse for in-memory databases
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Add in-memory database configuration option"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **RED:** Write spec for in-memory database option (`:memory:`)
+- [x] **GREEN:** Implement configuration option in DatabaseHelper
+- [x] **GREEN:** Handle connection reuse for in-memory databases
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Add in-memory database configuration option"
+- [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 4.2: Document and benchmark in-memory option
 - [ ] **GREEN:** Document trade-offs (speed vs debuggability) in comments
