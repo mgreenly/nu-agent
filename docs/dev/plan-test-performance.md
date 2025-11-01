@@ -143,11 +143,11 @@ Implement a "**schema once, truncate between**" strategy:
 **Goal:** Handle special cases and optimize further.
 
 #### Task 5.1: Handle migration test isolation
-- [ ] **GREEN:** Identify tests that require migration testing
-- [ ] **GREEN:** Create separate helper pattern for migration tests with isolated DBs
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Add isolated database pattern for migration tests"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **GREEN:** Identify tests that require migration testing
+- [x] **GREEN:** Create separate helper pattern for migration tests with isolated DBs
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Add isolated database pattern for migration tests"
+- [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 5.2: Add parallel test execution support (optional)
 - [ ] **RED:** Write spec for parallel test execution with separate DB files
