@@ -294,7 +294,7 @@ RSpec.describe Nu::Agent::PausableTask do
   describe "#do_work" do
     it "raises NotImplementedError when called on base class" do
       # Create a minimal subclass that doesn't implement do_work
-      minimal_task_class = Class.new(Nu::Agent::PausableTask)
+      minimal_task_class = Class.new(described_class)
 
       minimal_task = minimal_task_class.new(
         status_info: { status: status_hash, mutex: status_mutex },

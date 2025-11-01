@@ -1243,14 +1243,14 @@ RSpec.describe Nu::Agent::History do
       conversation_id = history.create_conversation
       exchange_id = history.create_exchange(conversation_id: conversation_id, user_message: "test message")
 
-      expect {
+      expect do
         history.update_exchange_summary(
           exchange_id: exchange_id,
           summary: "Test summary",
           model: "test-model",
           cost: 0.001
         )
-      }.not_to raise_error
+      end.not_to raise_error
     end
   end
 
@@ -1275,7 +1275,9 @@ RSpec.describe Nu::Agent::History do
         text: "test"
       }]
 
-      expect { history.store_embeddings(kind: :conversation, records: records) }.to raise_error(NotImplementedError, /deprecated/)
+      expect do
+        history.store_embeddings(kind: :conversation, records: records)
+      end.to raise_error(NotImplementedError, /deprecated/)
     end
   end
 
