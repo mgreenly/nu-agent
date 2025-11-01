@@ -78,4 +78,20 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
       expect(builder.tools).to eq(tools)
     end
   end
+
+  describe "#with_metadata" do
+    it "stores the metadata and returns self for chaining" do
+      builder = described_class.new
+      metadata = {
+        conversation_id: 123,
+        exchange_id: 456,
+        request_type: "tool_call"
+      }
+
+      result = builder.with_metadata(metadata)
+
+      expect(result).to be(builder)
+      expect(builder.metadata).to eq(metadata)
+    end
+  end
 end

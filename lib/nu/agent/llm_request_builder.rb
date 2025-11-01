@@ -5,7 +5,7 @@ module Nu
     # Builder for constructing LLM requests in an internal format
     # that can be translated to specific LLM provider APIs
     class LlmRequestBuilder
-      attr_reader :system_prompt, :history, :rag_content, :user_query, :tools
+      attr_reader :system_prompt, :history, :rag_content, :user_query, :tools, :metadata
 
       def initialize
         @system_prompt = nil
@@ -13,6 +13,7 @@ module Nu
         @rag_content = nil
         @user_query = nil
         @tools = nil
+        @metadata = nil
       end
 
       def with_system_prompt(prompt)
@@ -37,6 +38,11 @@ module Nu
 
       def with_tools(tools)
         @tools = tools
+        self
+      end
+
+      def with_metadata(metadata)
+        @metadata = metadata
         self
       end
     end
