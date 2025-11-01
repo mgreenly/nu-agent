@@ -190,13 +190,13 @@ end
    - COMMIT: "Remove duplicate Available Tools section from messages" ✓
    - UPDATE: Mark task 2.2 complete in plan ✓
 
-**Task 2.3: Update orchestrator to pass internal format to clients**
-   - RED: Update tests to verify internal format passed to clients
-   - GREEN: Modify client calls to pass internal format
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Update orchestrator to pass internal format to clients"
-   - UPDATE: Mark task 2.3 complete in plan
+**Task 2.3: Update orchestrator to pass internal format to clients** ✓ COMPLETE
+   - RED: Update tests to verify internal format passed to clients ✓
+   - GREEN: Modify client calls to pass internal format ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Update orchestrator to pass internal format to clients" ✓
+   - UPDATE: Mark task 2.3 complete in plan ✓
 
 ### Phase 3: Update Debug Display [2-3 hours]
 

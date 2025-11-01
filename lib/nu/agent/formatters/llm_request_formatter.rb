@@ -11,6 +11,12 @@ module Nu
           @application = application
         end
 
+        def display_yaml(_internal_request)
+          # Only show LLM request at verbosity level 1+
+          # Verbosity level 0 displays nothing (early return)
+          # TODO: Implement verbosity levels 1-5 in subsequent tasks
+        end
+
         def display(messages, tools = nil, markdown_document = nil)
           # Only show LLM request at verbosity level 3+
           return unless should_output?(3)
