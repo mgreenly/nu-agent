@@ -123,8 +123,23 @@ module Nu
         batches.each_with_index do |batch, batch_index|
           batch_number = batch_index + 1
           display_batch_tool_calls(batch, batch_number, all_tool_calls) if debug_enabled?
-          results = @parallel_executor.execute_batch(batch, batch_number: batch_number)
-          process_batch_results(results, messages)
+
+          # Execute batch with streaming callback for immediate output
+          results = @parallel_executor.execute_batch(batch, batch_number: batch_number) do |result_data|
+            # This block is called immediately when each tool thread completes
+            # Save and display the result right away for streaming output
+            tool_call = result_data[:tool_call]
+            result = result_data[:result]
+            tool_result_data = build_tool_result_data(tool_call, result)
+
+            save_tool_result_message(tool_call, tool_result_data)
+            display_result_with_context(result_data, tool_result_data)
+          end
+
+          # Still process results for messages array (but skip save/display since already done)
+          results.each do |result_data|
+            add_tool_result_to_messages(messages, result_data[:tool_call], result_data[:result])
+          end
         end
       end
 

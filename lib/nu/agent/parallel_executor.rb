@@ -64,23 +64,28 @@ module Nu
       # This method spawns a separate thread for each tool call, executes them concurrently,
       # waits for all to complete, and returns results in the original order.
       #
+      # If a block is provided, it's called immediately when each thread completes (for streaming output).
+      # Otherwise, all results are collected and returned at the end (for backward compatibility).
+      #
       # Algorithm:
       # 1. Create a thread for each tool call, tracking its original index
       # 2. Each thread executes the tool with error handling
-      # 3. Wait for all threads to complete using Thread#value
-      # 4. Sort results by original index to maintain input order
-      # 5. Return results without the index tracking
+      # 3. When thread completes, call block (if provided) for immediate processing
+      # 4. Wait for all threads to complete using Thread#value
+      # 5. Sort results by original index to maintain input order
+      # 6. Return results without the index tracking
       #
       # @param tool_calls [Array<Hash>] Array of tool call hashes with "name" and "arguments" keys
       # @param batch_number [Integer, nil] Optional batch number for visibility/debugging
+      # @yield [result_data] Called immediately when each tool completes (optional)
       # @return [Array<Hash>] Array of results with format: { tool_call: ..., result: ..., batch: ..., thread: ... }
       #   Results are in the same order as input tool_calls, regardless of completion order
       #   If batch_number provided, includes :batch and :thread keys for observability
-      def execute_batch(tool_calls, batch_number: nil)
+      def execute_batch(tool_calls, batch_number: nil, &block)
         output_batch_start(tool_calls, batch_number) if batch_number
 
         batch_start_time = Time.now
-        threads = create_execution_threads(tool_calls, batch_number, batch_start_time)
+        threads = create_execution_threads(tool_calls, batch_number, batch_start_time, &block)
         results_with_index = threads.map(&:value)
 
         elapsed = Time.now - batch_start_time
@@ -95,17 +100,21 @@ module Nu
       #
       # Creates one thread per tool call. Each thread executes its tool and
       # returns a result hash with index, tool_call, result, and timing info.
+      # If a block is provided, it's called immediately when each thread completes.
       #
       # @param tool_calls [Array<Hash>] Array of tool calls to execute
       # @param batch_number [Integer, nil] Optional batch number for visibility
       # @param batch_start_time [Time] Time when batch execution started
+      # @yield [result_data] Called immediately when each tool completes (optional)
       # @return [Array<Thread>] Array of threads executing tool calls
-      def create_execution_threads(tool_calls, batch_number, batch_start_time)
+      def create_execution_threads(tool_calls, batch_number, batch_start_time, &block)
         threads = []
         tool_calls.each_with_index do |tool_call, index|
           thread_number = index + 1
           thread = Thread.new do
-            execute_tool_in_thread(tool_call, index, batch_number, thread_number, batch_start_time)
+            result_data = execute_tool_in_thread(tool_call, index, batch_number, thread_number, batch_start_time)
+            block&.call(result_data) # Call block immediately when thread completes
+            result_data # Still return for collection
           end
           threads << thread
         end
