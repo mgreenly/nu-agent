@@ -150,11 +150,8 @@ Implement a "**schema once, truncate between**" strategy:
 - [x] **UPDATE:** Mark this task complete in plan
 
 #### Task 5.2: Add parallel test execution support (optional)
-- [ ] **RED:** Write spec for parallel test execution with separate DB files
-- [ ] **GREEN:** Implement support using pattern `db/test_#{Process.pid}.db`
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Add parallel test execution support"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **DEFERRED:** This task has been deferred to GitHub issue #38
+- [x] **UPDATE:** Task deferred to separate future work
 
 #### Task 5.3: Optimize truncation and add benchmarking
 - [ ] **GREEN:** Optimize truncation order (handle any foreign key constraints)
