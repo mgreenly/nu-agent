@@ -154,11 +154,11 @@ Implement a "**schema once, truncate between**" strategy:
 - [x] **UPDATE:** Task deferred to separate future work
 
 #### Task 5.3: Optimize truncation and add benchmarking
-- [ ] **GREEN:** Optimize truncation order (handle any foreign key constraints)
-- [ ] **GREEN:** Add comprehensive benchmarking to track suite speed improvements
-- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
-- [ ] **COMMIT:** "Optimize truncation order and enhance benchmarking"
-- [ ] **UPDATE:** Mark this task complete in plan
+- [x] **GREEN:** Optimize truncation order (handle any foreign key constraints) - Already optimized in Phase 5 Task 5.1
+- [x] **GREEN:** Add comprehensive benchmarking to track suite speed improvements
+- [x] **VERIFY:** `rake test && rake lint && rake coverage` - All pass
+- [x] **COMMIT:** "Add comprehensive benchmarking for test performance"
+- [x] **UPDATE:** Mark this task complete in plan
 
 ### Phase 6: Documentation and Manual Validation
 
