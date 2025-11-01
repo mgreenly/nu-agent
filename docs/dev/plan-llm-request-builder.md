@@ -284,13 +284,13 @@ end
    - COMMIT: "Add integration test for multi-turn conversations" ✓
    - UPDATE: Mark task 5.1 complete in plan ✓
 
-**Task 5.2: Create integration test for tool calling loops**
-   - RED: Write integration test for tool calling flow
-   - GREEN: Ensure tools parameter properly passed through all layers
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add integration test for tool calling"
-   - UPDATE: Mark task 5.2 complete in plan
+**Task 5.2: Create integration test for tool calling loops** ✓ COMPLETE
+   - RED: Write integration test for tool calling flow ✓
+   - GREEN: Ensure tools parameter properly passed through all layers ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add integration test for tool calling" ✓
+   - UPDATE: Mark task 5.2 complete in plan ✓
 
 **Task 5.3: Create integration test for debug output verbosity**
    - RED: Write integration test for all verbosity levels
