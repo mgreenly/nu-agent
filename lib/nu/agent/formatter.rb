@@ -172,14 +172,9 @@ module Nu
         # Only show in debug mode
         return unless @debug
 
-        # Stop spinner to avoid output on same line
-        @console.hide_spinner
-
+        # Use thread-safe puts - spinner loop will handle clearing/redrawing
         @console.puts("")
         @console.puts("\e[90m[Thread] #{thread_name} #{status}\e[0m")
-
-        # Restart spinner with preserved start time
-        @console.show_spinner("Thinking...") unless @history.workers_idle?
       end
 
       def display_message_created(actor:, role:, **details)
@@ -188,7 +183,7 @@ module Nu
         verbosity = @application ? @application.verbosity : 0
         return if verbosity < 2
 
-        @console.hide_spinner
+        # Use thread-safe puts - spinner loop will handle clearing/redrawing
 
         direction = case role
                     when "user", "tool", "system" then "Out"
@@ -201,8 +196,6 @@ module Nu
         return if verbosity == 2
 
         display_detailed_message_info(actor, role, details, verbosity) if verbosity >= 3
-
-        @console.show_spinner("Thinking...") unless @history.workers_idle?
       end
 
       def display_basic_message_info(direction, msg_type, _verbosity)

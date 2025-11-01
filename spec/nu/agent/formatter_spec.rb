@@ -1368,7 +1368,7 @@ RSpec.describe Nu::Agent::Formatter do
       expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
       expect(mock_console).to receive(:puts).with("\e[90m  role: user\e[0m")
       expect(mock_console).to receive(:puts).with("\e[90m  actor: test\e[0m")
-      expect(mock_console).to receive(:show_spinner).with("Thinking...")
+      # No longer manually restart spinner - thread-safe puts handles output with spinner
 
       formatter_with_app.display_message_created(actor: "test", role: "user")
     end
@@ -1455,10 +1455,9 @@ RSpec.describe Nu::Agent::Formatter do
       # Workers are idle, so no spinner restart
       allow(history).to receive(:workers_idle?).and_return(true)
 
-      expect(mock_console).to receive(:hide_spinner)
+      # No longer manually hide/show spinner - thread-safe puts handles output
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Thread] Test started\e[0m")
-      expect(mock_console).not_to receive(:show_spinner)
 
       formatter.display_thread_event("Test", "started")
     end
