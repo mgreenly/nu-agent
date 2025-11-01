@@ -242,13 +242,13 @@ end
 
 ### Phase 4: Update Clients [3-4 hours]
 
-**Task 4.1: Update Anthropic client**
-   - RED: Write test for internal format → Anthropic API translation
-   - GREEN: Update `anthropic.rb` to accept and translate internal format
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Update Anthropic client to use internal format"
-   - UPDATE: Mark task 4.1 complete in plan
+**Task 4.1: Update Anthropic client** ✓ COMPLETE
+   - RED: Write test for internal format → Anthropic API translation ✓
+   - GREEN: Update `anthropic.rb` to accept and translate internal format ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Update Anthropic client to use internal format" ✓
+   - UPDATE: Mark task 4.1 complete in plan ✓
 
 **Task 4.2: Update OpenAI client**
    - RED: Write test for internal format → OpenAI API translation
