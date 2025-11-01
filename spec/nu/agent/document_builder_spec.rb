@@ -92,22 +92,22 @@ RSpec.describe Nu::Agent::DocumentBuilder do
   end
 
   describe "complete document structure" do
-    it "builds a document with RAG, tools, and user query sections" do
+    it "builds a document with RAG and user query sections" do
       builder = described_class.new
 
       builder.add_section("Context", "Previous conversation summary")
-      builder.add_section("Available Tools", "file_read, file_write, execute_bash")
-      builder.add_section("User Request", "Please help me with this task")
+      builder.add_section("User Query", "Please help me with this task")
 
       result = builder.build
 
       # Check structure
       expect(result).to include("# Context")
       expect(result).to include("Previous conversation summary")
-      expect(result).to include("# Available Tools")
-      expect(result).to include("file_read, file_write, execute_bash")
-      expect(result).to include("# User Request")
+      expect(result).to include("# User Query")
       expect(result).to include("Please help me with this task")
+
+      # Tools should NOT be in the context document (they're passed separately)
+      expect(result).not_to include("# Available Tools")
     end
 
     it "produces valid markdown" do

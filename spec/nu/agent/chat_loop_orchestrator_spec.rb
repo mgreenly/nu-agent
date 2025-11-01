@@ -217,6 +217,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         allow(orchestrator).to receive(:tool_calling_loop).and_return(successful_result)
 
         # The build_context_document should be called with redacted message ranges
+        # Note: tool_registry parameter was removed since tools are passed separately
         expect(orchestrator).to receive(:build_context_document).with(
           hash_including(redacted_message_ranges: "5-6")
         ).and_call_original
@@ -334,9 +335,9 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
 
     it "uses LlmRequestBuilder to construct request" do
       # Mock build_context_document and build_rag_content
+      # Note: tool_registry parameter removed - tools are passed separately
       expect(orchestrator).to receive(:build_context_document).with(
         user_query: user_input,
-        tool_registry: tool_registry,
         redacted_message_ranges: redacted_ranges,
         conversation_id: conversation_id
       ).and_return(markdown_doc)

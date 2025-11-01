@@ -97,10 +97,9 @@ module Nu
         # Build RAG content separately for metadata
         rag_content = build_rag_content(user_query, redacted_ranges, conversation_id)
 
-        # Build context document (markdown) with RAG, tools, and user query
+        # Build context document (markdown) with RAG and user query
         markdown_document = build_context_document(
           user_query: user_query,
-          tool_registry: tool_registry,
           redacted_message_ranges: redacted_ranges,
           conversation_id: conversation_id
         )
@@ -216,17 +215,12 @@ module Nu
         orchestrator.execute(messages: messages, tools: tools, system_prompt: system_prompt)
       end
 
-      def build_context_document(user_query:, tool_registry:, redacted_message_ranges: nil, conversation_id: nil)
+      def build_context_document(user_query:, redacted_message_ranges: nil, conversation_id: nil)
         builder = DocumentBuilder.new
 
         # Context section (RAG - Retrieval Augmented Generation)
         rag_content = build_rag_content(user_query, redacted_message_ranges, conversation_id)
         builder.add_section("Context", rag_content.join("\n\n"))
-
-        # Available Tools section
-        tool_names = tool_registry.available.map(&:name)
-        tools_list = tool_names.join(", ")
-        builder.add_section("Available Tools", tools_list)
 
         # User Query section (final section - ends the document)
         builder.add_section("User Query", user_query)
