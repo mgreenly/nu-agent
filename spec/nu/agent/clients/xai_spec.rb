@@ -169,4 +169,109 @@ RSpec.describe Nu::Agent::Clients::XAI do
       )
     end
   end
+
+  describe "#send_request" do
+    let(:internal_request) do
+      {
+        system_prompt: "You are a helpful assistant.",
+        messages: [
+          { "actor" => "user", "role" => "user", "content" => "What is 2+2?" }
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "calculate",
+              description: "Perform a calculation",
+              parameters: {
+                type: "object",
+                properties: {
+                  expression: { type: "string" }
+                },
+                required: ["expression"]
+              }
+            }
+          }
+        ],
+        model: "grok-3",
+        max_tokens: 4096,
+        metadata: {
+          conversation_id: 1,
+          exchange_id: 1
+        }
+      }
+    end
+
+    let(:xai_response) do
+      {
+        "choices" => [{
+          "message" => {
+            "content" => "4"
+          },
+          "finish_reason" => "stop"
+        }],
+        "usage" => {
+          "prompt_tokens" => 25,
+          "completion_tokens" => 5
+        }
+      }
+    end
+
+    before do
+      allow(mock_openai_client).to receive(:chat).and_return(xai_response)
+    end
+
+    it "accepts internal request format" do
+      response = client.send_request(internal_request)
+
+      expect(response).to include(
+        "content" => "4",
+        "model" => "grok-3",
+        "tokens" => {
+          "input" => 25,
+          "output" => 5
+        }
+      )
+    end
+
+    it "translates internal format to X.AI API format" do
+      expect(mock_openai_client).to receive(:chat).with(
+        parameters: hash_including(
+          model: "grok-3",
+          messages: array_including(
+            { role: "system", content: "You are a helpful assistant." },
+            { role: "user", content: "What is 2+2?" }
+          ),
+          tools: array_including(
+            hash_including(
+              type: "function",
+              function: hash_including(
+                name: "calculate",
+                description: "Perform a calculation"
+              )
+            )
+          )
+        )
+      )
+
+      client.send_request(internal_request)
+    end
+
+    it "handles requests without tools" do
+      request_without_tools = internal_request.dup
+      request_without_tools[:tools] = nil
+
+      expect(mock_openai_client).to receive(:chat).with(
+        parameters: hash_including(
+          model: "grok-3",
+          messages: array_including(
+            { role: "system", content: "You are a helpful assistant." },
+            { role: "user", content: "What is 2+2?" }
+          )
+        )
+      )
+
+      client.send_request(request_without_tools)
+    end
+  end
 end
