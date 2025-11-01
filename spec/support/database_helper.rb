@@ -56,6 +56,35 @@ module DatabaseHelper
     # Default test database path
     DEFAULT_TEST_DB_PATH = "db/test.db"
 
+    # Get the test database path, accounting for parallel test execution
+    #
+    # When running tests in parallel (via parallel_tests gem), each process gets its
+    # own database file to avoid conflicts. The TEST_ENV_NUMBER environment variable
+    # is set by parallel_tests to identify each process.
+    #
+    # @return [String] Database path for this process
+    # @example Serial execution
+    #   test_db_path # => "db/test.db" or ":memory:" if TEST_DB_PATH is set
+    # @example Parallel execution (Process 1)
+    #   test_db_path # => "db/test.db"
+    # @example Parallel execution (Process 2)
+    #   test_db_path # => "db/test2.db"
+    def test_db_path
+      base_path = ENV.fetch("TEST_DB_PATH", DEFAULT_TEST_DB_PATH)
+
+      # If in-memory, return as-is (each process gets its own isolated :memory: database)
+      return base_path if in_memory?(base_path)
+
+      # For file-based databases in parallel mode, append process number
+      if ENV["TEST_ENV_NUMBER"] && !ENV["TEST_ENV_NUMBER"].empty?
+        # TEST_ENV_NUMBER is "" for process 1, "2" for process 2, "3" for process 3, etc.
+        # So we get: db/test.db, db/test2.db, db/test3.db, etc.
+        base_path.sub(/\.db$/, "#{ENV['TEST_ENV_NUMBER']}.db")
+      else
+        base_path
+      end
+    end
+
     # Set up the test database with schema and migrations (call once at suite start)
     #
     # This method creates the database and runs all migrations. For file-based databases,
@@ -71,7 +100,8 @@ module DatabaseHelper
     #   DatabaseHelper.setup_test_database(db_path: "db/test.db")
     # @example Using in-memory database for speed
     #   DatabaseHelper.setup_test_database(db_path: ":memory:")
-    def setup_test_database(db_path: DEFAULT_TEST_DB_PATH)
+    def setup_test_database(db_path: nil)
+      db_path ||= test_db_path
       # Handle in-memory databases differently
       if in_memory?(db_path)
         # For in-memory databases, create and keep the connection alive

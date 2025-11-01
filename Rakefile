@@ -144,6 +144,39 @@ namespace :benchmark do
 end
 # rubocop:enable Metrics/BlockLength
 
+# Parallel test execution tasks
+namespace :parallel do
+  desc "Run tests in parallel (usage: rake parallel:spec CORES=4)"
+  task :spec do
+    cores = ENV.fetch("CORES", "4").to_i
+    puts "🚀 Running tests in parallel with #{cores} processes..."
+    sh "bundle exec parallel_rspec spec/ -n #{cores}"
+  end
+
+  desc "Run tests in parallel (shorthand alias)"
+  task :test do
+    Rake::Task["parallel:spec"].invoke
+  end
+
+  desc "Prepare parallel test databases"
+  task :prepare do
+    cores = ENV.fetch("CORES", "4").to_i
+    puts "🗄️  Preparing #{cores} test databases..."
+    sh "bundle exec parallel_test -n #{cores} --type rspec -e 'bundle exec rake parallel:setup_db[{{}}]'"
+  end
+
+  desc "Setup a single parallel test database (internal use)"
+  task :setup_db, [:process_number] do |_t, args|
+    # This task is called by parallel_test for each process
+    # The database setup is handled by DatabaseHelper in spec_helper.rb
+    process_num = args[:process_number]
+    puts "Setting up database for process #{process_num}..."
+  end
+end
+
+desc "Run tests in parallel with default settings (alias for parallel:spec)"
+task parallel: "parallel:spec"
+
 # Migration tasks
 namespace :migration do
   desc "Generate a new migration file (usage: rake migration:generate NAME=migration_name)"

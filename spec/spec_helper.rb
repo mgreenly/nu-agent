@@ -93,8 +93,16 @@ RSpec.configure do |config|
   end
 
   # Clean up the test database after all tests complete
+  # In parallel mode, each process cleans up its own database file
   config.after(:suite) do
-    db_path = "db/test.db"
-    FileUtils.rm_rf(db_path)
+    db_path = DatabaseHelper.test_db_path
+
+    # Skip cleanup for in-memory databases (they disappear automatically)
+    next if db_path == ":memory:"
+
+    # Clean up the database file and any DuckDB auxiliary files
+    FileUtils.rm_rf(db_path) if File.exist?(db_path)
+    FileUtils.rm_f("#{db_path}.wal") if File.exist?("#{db_path}.wal")
+    FileUtils.rm_f("#{db_path}-shm") if File.exist?("#{db_path}-shm")
   end
 end

@@ -10,6 +10,7 @@ gem "irb"
 gem "rake", "~> 13.0"
 
 gem "duckdb"
+gem "parallel_tests", group: :test
 gem "rspec", "~> 3.0"
 gem "rubocop", "~> 1.0"
 gem "rubocop-rspec", "~> 3.0"

@@ -121,7 +121,8 @@ RSpec.describe DatabaseHelper do
       history = described_class.get_test_history
 
       expect(history).to be_a(Nu::Agent::History)
-      expect(history.db_path).to match(/test/)
+      # Accept either file-based (contains "test") or in-memory (":memory:")
+      expect(history.db_path).to match(/test|:memory:/)
     end
 
     it "returns the same instance on multiple calls (singleton)" do
