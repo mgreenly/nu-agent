@@ -30,6 +30,7 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
       Nu::Agent::History,
       get_config: nil,
       set_config: nil,
+      get_int: 0,
       create_conversation: 1,
       close: nil,
       connection: mock_connection
@@ -234,11 +235,14 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
     end
 
     describe "/verbosity command" do
-      it "shows deprecation message" do
+      it "shows all subsystems with their current levels" do
         expect(mock_console).to receive(:puts).with("").ordered
-        expect(mock_console).to receive(:puts).with("\e[90mThe /verbosity command is deprecated.\e[0m").ordered
-        expect(mock_console).to receive(:puts)
-          .with("\e[90mPlease use subsystem-specific commands instead:\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity llm (0-4) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity messages (0-3) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity search (0-2) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity spellcheck (0-1) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity stats (0-2) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity tools (0-3) = 0\e[0m").ordered
 
         result = app.send(:handle_command, "/verbosity")
         expect(result).to eq(:continue)
