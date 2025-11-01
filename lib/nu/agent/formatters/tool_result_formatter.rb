@@ -21,7 +21,7 @@ module Nu
           return unless should_output?(1)
 
           # Level 1+: Show results with varying detail
-          verbosity = get_verbosity_level
+          verbosity = verbosity_level
           display_result(result, verbosity)
         end
 
@@ -33,7 +33,7 @@ module Nu
           SubsystemDebugger.should_output?(@application, "tools", level)
         end
 
-        def get_verbosity_level
+        def verbosity_level
           return 0 unless @application
 
           @application.history.get_int("tools_verbosity", default: 0)

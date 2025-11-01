@@ -445,29 +445,6 @@ RSpec.describe Nu::Agent::Formatter do
       end
     end
 
-    describe "level 2: truncated params (same as level 2)" do
-      before do
-        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
-      end
-
-      it "displays tool call arguments truncated to 30 chars" do
-        expect(mock_console).to receive(:puts).with("").ordered
-        expect(mock_console).to receive(:puts).with("\e[90m[Tool Call Request] file_read\e[0m")
-        expect(mock_console).to receive(:puts).with("\e[90m  path: /very/long/path/to/some/file/t...\e[0m")
-        expect(mock_console).to receive(:puts).with("\e[90m  encoding: utf-8\e[0m")
-
-        formatter_with_app.display_message(tool_call_message)
-      end
-
-      it "displays tool result fields truncated to 30 chars" do
-        expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
-        expect(mock_console).to receive(:puts).with("\e[90m  content: This is a very long file conte...\e[0m")
-        expect(mock_console).to receive(:puts).with("\e[90m  size: 1024\e[0m")
-
-        formatter_with_app.display_message(tool_result_message)
-      end
-    end
-
     describe "level 4 and 5: documented in application specs" do
       # Levels 3 and 4 involve showing the request/context sent to the LLM
       # These are tested in application_spec.rb since they require chat_loop context

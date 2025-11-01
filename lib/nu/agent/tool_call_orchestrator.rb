@@ -307,17 +307,17 @@ module Nu
       # Output debug message with verbosity check
       def output_debug(message, verbosity: 1)
         return unless @application.respond_to?(:debug) && @application.debug
-        return unless @application.respond_to?(:verbosity) && @application.verbosity >= verbosity
+        return unless @history.get_int("tools_verbosity", default: 0) >= verbosity
 
         @application.output_line(message, type: :debug)
       end
 
       # Output batch planning summary
       def output_batch_summary(batches, tool_call_count)
-        return unless debug_enabled? && @application.respond_to?(:verbosity) && @application.verbosity >= 1
+        return unless debug_enabled? && @history.get_int("tools_verbosity", default: 0) >= 1
 
         output_batch_count_summary(batches.length, tool_call_count)
-        output_detailed_batch_info(batches) if @application.verbosity >= 2
+        output_detailed_batch_info(batches) if @history.get_int("tools_verbosity", default: 0) >= 2
       end
 
       # Output high-level batch count summary

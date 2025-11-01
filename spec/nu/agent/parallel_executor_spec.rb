@@ -402,7 +402,7 @@ RSpec.describe Nu::Agent::ParallelExecutor do
 
     context "debug output" do
       let(:test_client) { instance_double("Client", model: "test-model") }
-      let(:application) { instance_double(Nu::Agent::Application, debug: true, verbosity: 2) }
+      let(:application) { instance_double(Nu::Agent::Application, debug: true) }
       let(:test_tool_calls) do
         [
           { "id" => "call_1", "name" => "test_tool", "arguments" => { "arg" => "value1" } },
@@ -422,6 +422,7 @@ RSpec.describe Nu::Agent::ParallelExecutor do
 
       before do
         allow(application).to receive(:output_line)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
       end
 
       it "outputs batch start and complete messages when debug enabled" do
@@ -494,7 +495,7 @@ RSpec.describe Nu::Agent::ParallelExecutor do
       end
 
       it "does not output when debug disabled" do
-        no_debug_app = instance_double(Nu::Agent::Application, debug: false, verbosity: 2)
+        no_debug_app = instance_double(Nu::Agent::Application, debug: false)
         no_debug_executor = described_class.new(
           tool_registry: tool_registry,
           history: history,
@@ -504,6 +505,7 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         )
 
         allow(no_debug_app).to receive(:output_line)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
         allow(tool_registry).to receive(:execute).and_return("result")
 
         no_debug_executor.execute_batch(test_tool_calls, batch_number: 1)
@@ -512,7 +514,7 @@ RSpec.describe Nu::Agent::ParallelExecutor do
       end
 
       it "does not output when verbosity too low" do
-        low_verbosity_app = instance_double(Nu::Agent::Application, debug: true, verbosity: 1)
+        low_verbosity_app = instance_double(Nu::Agent::Application, debug: true)
         low_verbosity_executor = described_class.new(
           tool_registry: tool_registry,
           history: history,
@@ -522,6 +524,7 @@ RSpec.describe Nu::Agent::ParallelExecutor do
         )
 
         allow(low_verbosity_app).to receive(:output_line)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
         allow(tool_registry).to receive(:execute).and_return("result")
 
         low_verbosity_executor.execute_batch(test_tool_calls, batch_number: 1)

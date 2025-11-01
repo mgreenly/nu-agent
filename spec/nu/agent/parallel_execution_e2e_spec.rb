@@ -200,7 +200,7 @@ RSpec.describe "Parallel Tool Execution End-to-End" do
   let(:console) { instance_double(Nu::Agent::ConsoleIO) }
   let(:tool_registry) { Nu::Agent::ToolRegistry.new }
   let(:application) do
-    instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: false, verbosity: 0)
+    instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: false)
   end
   let(:execution_tracker) { ExecutionTracker.new }
 

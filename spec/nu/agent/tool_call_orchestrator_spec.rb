@@ -17,7 +17,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
     end
   end
   let(:application) do
-    instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: false, verbosity: 0)
+    instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: false)
   end
 
   let(:orchestrator) do
@@ -409,7 +409,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
 
     context "debug and verbosity features" do
       let(:application) do
-        instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: true, verbosity: 2)
+        instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: true)
       end
       let(:tool_call_formatter) { instance_double("ToolCallFormatter") }
       let(:tool_result_formatter) { instance_double("ToolResultFormatter") }
@@ -421,6 +421,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         allow(tool_call_formatter).to receive(:display)
         allow(tool_result_formatter).to receive(:display)
         allow(application).to receive(:output_line)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
       end
 
       it "displays debug output with batch and thread context when debug is enabled" do
