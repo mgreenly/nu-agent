@@ -60,8 +60,6 @@ module Nu
       private
 
       def validate_required_fields
-        raise ArgumentError, "system_prompt is required" if @system_prompt.nil?
-
         return unless @user_query.nil? && @history.nil?
 
         raise ArgumentError,

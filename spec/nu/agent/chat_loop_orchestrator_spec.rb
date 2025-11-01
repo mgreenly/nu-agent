@@ -332,14 +332,40 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       allow(formatter).to receive(:display_llm_request)
     end
 
-    it "builds context document, prepares messages, gets tools, and displays request" do
-      # Mock build_context_document to return a specific value
+    it "uses LlmRequestBuilder to construct request" do
+      # Mock build_context_document and build_rag_content
       expect(orchestrator).to receive(:build_context_document).with(
         user_query: user_input,
         tool_registry: tool_registry,
         redacted_message_ranges: redacted_ranges,
         conversation_id: conversation_id
       ).and_return(markdown_doc)
+
+      rag_content = ["Redacted messages: #{redacted_ranges}"]
+      expect(orchestrator).to receive(:build_rag_content).with(
+        user_input,
+        redacted_ranges,
+        conversation_id
+      ).and_return(rag_content)
+
+      # Expect builder to be created and used
+      builder = instance_double(Nu::Agent::LlmRequestBuilder)
+      expect(Nu::Agent::LlmRequestBuilder).to receive(:new).and_return(builder)
+
+      expect(builder).to receive(:with_history).with(history_messages).and_return(builder)
+      expect(builder).to receive(:with_rag_content).with(rag_content).and_return(builder)
+      expect(builder).to receive(:with_user_query).with(markdown_doc).and_return(builder)
+      expect(builder).to receive(:with_tools).with(formatted_tools).and_return(builder)
+      expect(builder).to receive(:with_metadata)
+        .with(hash_including(conversation_id: conversation_id))
+        .and_return(builder)
+
+      # Mock build to return internal format
+      internal_format = {
+        messages: history_messages + [{ "role" => "user", "content" => markdown_doc }],
+        tools: formatted_tools
+      }
+      expect(builder).to receive(:build).and_return(internal_format)
 
       request_context = {
         user_query: user_input,
@@ -355,12 +381,9 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         client
       )
 
-      # Verify messages include history + markdown doc
+      # Verify messages and tools are extracted from builder's output
       expect(messages).to eq(history_messages + [{ "role" => "user", "content" => markdown_doc }])
-
-      # Verify tools are formatted
       expect(tools).to eq(formatted_tools)
-      expect(client).to have_received(:format_tools).with(tool_registry)
 
       # Verify display was called
       expect(formatter).to have_received(:display_llm_request).with(messages, formatted_tools, markdown_doc)

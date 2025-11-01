@@ -94,6 +94,9 @@ module Nu
         history_messages = request_context[:history_messages]
         redacted_ranges = request_context[:redacted_ranges]
 
+        # Build RAG content separately for metadata
+        rag_content = build_rag_content(user_query, redacted_ranges, conversation_id)
+
         # Build context document (markdown) with RAG, tools, and user query
         markdown_document = build_context_document(
           user_query: user_query,
@@ -102,15 +105,22 @@ module Nu
           conversation_id: conversation_id
         )
 
-        # Build initial messages array: history + markdown document
-        messages = history_messages.dup
-        messages << {
-          "role" => "user",
-          "content" => markdown_document
-        }
-
         # Get tools formatted for this client
         tools = client.format_tools(tool_registry)
+
+        # Use builder to construct internal format
+        builder = LlmRequestBuilder.new
+        internal_format = builder
+                          .with_history(history_messages)
+                          .with_rag_content(rag_content)
+                          .with_user_query(markdown_document)
+                          .with_tools(tools)
+                          .with_metadata(conversation_id: conversation_id)
+                          .build
+
+        # Extract messages and tools from internal format
+        messages = internal_format[:messages]
+        tools = internal_format[:tools]
 
         # Display LLM request (verbosity level 3+)
         formatter.display_llm_request(messages, tools, markdown_document)

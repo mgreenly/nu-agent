@@ -178,12 +178,6 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
     end
 
     context "when required fields are missing" do
-      it "raises an error when system_prompt is missing" do
-        builder = described_class.new.with_user_query("What is 2+2?")
-
-        expect { builder.build }.to raise_error(ArgumentError, /system_prompt is required/)
-      end
-
       it "raises an error when both user_query and history are missing" do
         builder = described_class.new.with_system_prompt("You are a helpful assistant")
 
