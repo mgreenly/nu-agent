@@ -9,4 +9,16 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
       expect(builder).to be_a(described_class)
     end
   end
+
+  describe "#with_system_prompt" do
+    it "stores the system prompt and returns self for chaining" do
+      builder = described_class.new
+      prompt = "You are a helpful assistant"
+
+      result = builder.with_system_prompt(prompt)
+
+      expect(result).to be(builder)
+      expect(builder.system_prompt).to eq(prompt)
+    end
+  end
 end
