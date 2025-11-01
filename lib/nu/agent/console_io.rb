@@ -38,7 +38,10 @@ module Nu
         @saved_column = nil
         @last_line_count = 1
         @last_cursor_line = nil
+        @last_physical_row_count = 1
+        @last_cursor_physical_row = 0
         @submit_requested = false
+        @terminal_width = get_terminal_width
 
         # Database history (optional)
         @db_history = db_history
@@ -269,6 +272,45 @@ module Nu
         [line_list.length - 1, line_list.last.length]
       end
 
+      # Get terminal width, with fallback
+      def get_terminal_width
+        IO.console&.winsize&.[](1) || 80
+      end
+
+      # Calculate how many physical terminal rows a line occupies
+      # Takes into account prompt on first line
+      def physical_rows_for_line(line, prompt_length: 0)
+        display_length = line.length + prompt_length
+        return 1 if display_length.zero?
+
+        # Calculate rows: ceiling of (display_length / terminal_width)
+        # Each full terminal width is one row
+        ((display_length - 1) / @terminal_width) + 1
+      end
+
+      # Calculate total physical rows from start up to (and including) the specified line
+      # and column position within that line
+      def physical_rows_to_position(buffer_lines, line_index, column, prompt_length)
+        total_rows = 0
+
+        # Add physical rows for all lines before cursor line
+        buffer_lines[0...line_index].each_with_index do |line, idx|
+          pl = idx.zero? ? prompt_length : 0
+          total_rows += physical_rows_for_line(line, prompt_length: pl)
+        end
+
+        # Add rows within the cursor line itself
+        if line_index < buffer_lines.length
+          pl = line_index.zero? ? prompt_length : 0
+          cursor_display_pos = column + pl
+          # Which row within this line? (0-indexed)
+          row_within_line = cursor_display_pos / @terminal_width
+          total_rows += row_within_line
+        end
+
+        total_rows
+      end
+
       # Convert [line_index, column_offset] to byte position
       # Clamps line to last line and column to line length
       # Returns position as integer
@@ -342,12 +384,17 @@ module Nu
           # Move up to start of multiline input and clear
           lines_to_move_up = @last_cursor_line || 0
           @stdout.write("\e[#{lines_to_move_up}A") if lines_to_move_up.positive?
-          @stdout.write("\e[J") # Clear to end of screen
-          @stdout.write("\r")   # Move to start of line
+          @stdout.write("\r")   # Move to start of line first
+          @stdout.write("\e[J") # Then clear to end of screen
 
           # Write the submitted content
           @stdout.write(prompt)
-          @stdout.write("#{line}\r\n") # In raw mode, need explicit \r\n
+          # In raw mode, need to convert \n to \r\n for proper display
+          @stdout.write("#{line.gsub("\n", "\r\n")}\r\n")
+
+          # Reset cursor tracking since we're done with this input
+          @last_cursor_line = 0
+          @last_line_count = 1
         end
 
         add_to_history(line)
@@ -659,20 +706,12 @@ module Nu
         buffer_lines = lines
         cursor_line, cursor_col = get_line_and_column(@cursor_pos)
 
-        # Move up to start of previous multiline display and clear
-        # Use @last_cursor_line to know where the cursor was positioned after the last redraw
-        # Fall back to old behavior (@last_line_count - 1) if @last_cursor_line is not set
-        # Note: 0 is a valid cursor line (first line), so check for nil, not positive?
-        lines_to_move_up = if !@last_cursor_line.nil?
-                             @last_cursor_line
-                           elsif @last_line_count && @last_line_count > 1
-                             @last_line_count - 1
-                           else
-                             0
-                           end
-        @stdout.write("\e[#{lines_to_move_up}A") if lines_to_move_up.positive?
-        @stdout.write("\e[J") # Clear to end of screen
-        @stdout.write("\r")   # Move to start of line
+        # Move up to start of previous display and clear
+        # Use @last_cursor_physical_row to know where the cursor was positioned
+        rows_to_move_up = @last_cursor_physical_row
+        @stdout.write("\e[#{rows_to_move_up}A") if rows_to_move_up.positive?
+        @stdout.write("\r")   # Move to start of line first
+        @stdout.write("\e[J") # Then clear to end of screen
 
         # Render all lines
         buffer_lines.each_with_index do |line, index|
@@ -686,24 +725,33 @@ module Nu
           @stdout.write(line)
         end
 
-        # Update line count
-        @last_line_count = buffer_lines.length
-
-        # Position cursor at correct line and column
-        # After rendering all lines, cursor is at the end of the last line
-        # Calculate how many lines to move up from the last line
-        lines_from_bottom = buffer_lines.length - 1 - cursor_line
-        @stdout.write("\e[#{lines_from_bottom}A") if lines_from_bottom.positive?
-
-        # Set column position (first line includes prompt length)
-        if cursor_line.zero?
-          @stdout.write("\e[#{prompt.length + cursor_col + 1}G")
-        else
-          @stdout.write("\e[#{cursor_col + 1}G")
+        # Calculate total physical rows rendered
+        total_physical_rows = buffer_lines.each_with_index.sum do |line, idx|
+          pl = idx.zero? ? prompt.length : 0
+          physical_rows_for_line(line, prompt_length: pl)
         end
 
-        # Remember where we positioned the cursor for next redraw
+        # Calculate cursor physical row position from top
+        cursor_physical_row = physical_rows_to_position(buffer_lines, cursor_line, cursor_col, prompt.length)
+
+        # Update tracking variables
+        @last_line_count = buffer_lines.length
         @last_cursor_line = cursor_line
+        @last_physical_row_count = total_physical_rows
+        @last_cursor_physical_row = cursor_physical_row
+
+        # Position cursor at correct physical row and column
+        # After rendering all lines, cursor is at the end of the last line (last physical row)
+        # Calculate how many physical rows to move up from the last physical row
+        rows_from_bottom = total_physical_rows - 1 - cursor_physical_row
+        @stdout.write("\e[#{rows_from_bottom}A") if rows_from_bottom.positive?
+
+        # Set column position within the current physical row
+        # Calculate column position within the wrapped line
+        pl = cursor_line.zero? ? prompt.length : 0
+        cursor_display_pos = cursor_col + pl
+        column_in_physical_row = (cursor_display_pos % @terminal_width) + 1
+        @stdout.write("\e[#{column_in_physical_row}G")
 
         @stdout.flush
       end
@@ -730,24 +778,33 @@ module Nu
             @stdout.write(line)
           end
 
-          # Update line count
-          @last_line_count = buffer_lines.length
-
-          # Position cursor at correct line and column
-          # After rendering all lines, cursor is at the end of the last line
-          # Calculate how many lines to move up from the last line
-          lines_from_bottom = buffer_lines.length - 1 - cursor_line
-          @stdout.write("\e[#{lines_from_bottom}A") if lines_from_bottom.positive?
-
-          # Set column position (first line includes prompt length)
-          if cursor_line.zero?
-            @stdout.write("\e[#{prompt.length + cursor_col + 1}G")
-          else
-            @stdout.write("\e[#{cursor_col + 1}G")
+          # Calculate total physical rows rendered
+          total_physical_rows = buffer_lines.each_with_index.sum do |line, idx|
+            pl = idx.zero? ? prompt.length : 0
+            physical_rows_for_line(line, prompt_length: pl)
           end
 
-          # Remember where we positioned the cursor for next redraw
+          # Calculate cursor physical row position from top
+          cursor_physical_row = physical_rows_to_position(buffer_lines, cursor_line, cursor_col, prompt.length)
+
+          # Update tracking variables
+          @last_line_count = buffer_lines.length
           @last_cursor_line = cursor_line
+          @last_physical_row_count = total_physical_rows
+          @last_cursor_physical_row = cursor_physical_row
+
+          # Position cursor at correct physical row and column
+          # After rendering all lines, cursor is at the end of the last line (last physical row)
+          # Calculate how many physical rows to move up from the last physical row
+          rows_from_bottom = total_physical_rows - 1 - cursor_physical_row
+          @stdout.write("\e[#{rows_from_bottom}A") if rows_from_bottom.positive?
+
+          # Set column position within the current physical row
+          # Calculate column position within the wrapped line
+          pl = cursor_line.zero? ? prompt.length : 0
+          cursor_display_pos = cursor_col + pl
+          column_in_physical_row = (cursor_display_pos % @terminal_width) + 1
+          @stdout.write("\e[#{column_in_physical_row}G")
 
           @stdout.flush
         end
@@ -759,10 +816,10 @@ module Nu
 
         @mutex.synchronize do
           # Clear multiline input area
-          # Move up to first line if we have multiple lines
-          @stdout.write("\e[A" * (@last_line_count - 1)) if @last_line_count > 1
-          # Clear from cursor to end of screen
-          @stdout.write("\e[J")
+          # Move up to first line using physical row count
+          @stdout.write("\e[A" * @last_cursor_physical_row) if @last_cursor_physical_row.positive?
+          # Move to start of line, then clear from cursor to end of screen
+          @stdout.write("\r\e[J")
 
           # Write all output (in raw mode, need explicit \r\n for all newlines)
           lines.each do |line|
@@ -851,8 +908,12 @@ module Nu
         # Otherwise, move cursor up one line
         current_line, current_col = get_line_and_column(@cursor_pos)
 
-        # Already on first line - can't move up
-        return if current_line.zero?
+        # Already on first line
+        if current_line.zero?
+          # If we're in history mode, navigate backward in history
+          history_prev if @history_pos
+          return
+        end
 
         # Save column on first vertical movement
         @saved_column = current_col if @saved_column.nil?
@@ -878,8 +939,12 @@ module Nu
         current_line, current_col = get_line_and_column(@cursor_pos)
         total_lines = lines.length
 
-        # Already on last line - can't move down
-        return if current_line >= total_lines - 1
+        # Already on last line
+        if current_line >= total_lines - 1
+          # If we're in history mode, navigate forward in history
+          history_next if @history_pos
+          return
+        end
 
         # Save column on first vertical movement
         @saved_column = current_col if @saved_column.nil?

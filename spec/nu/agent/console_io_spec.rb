@@ -364,6 +364,19 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(output).to include("\e[J")
       end
 
+      it "moves to start of line before clearing (\\r before \\e[J])" do
+        console.instance_variable_set(:@input_buffer, "test")
+        console.instance_variable_set(:@cursor_pos, 4)
+        console.instance_variable_set(:@last_line_count, 1)
+        console.instance_variable_set(:@last_cursor_line, 0)
+
+        console.send(:redraw_input_line, "> ")
+
+        output = stdout.string
+        # Should have \r before \e[J] to ensure full line is cleared
+        expect(output).to match(/\r.*\e\[J/)
+      end
+
       it "handles trailing newline" do
         console.instance_variable_set(:@input_buffer, "line1\n")
         console.instance_variable_set(:@cursor_pos, 6)
@@ -1316,6 +1329,43 @@ RSpec.describe Nu::Agent::ConsoleIO do
       history = console.instance_variable_get(:@history)
       expect(history).to include("test command")
     end
+
+    it "converts \\n to \\r\\n in multiline output to prevent staircase display" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+      console.instance_variable_set(:@last_cursor_line, 2)
+
+      result = console.send(:submit_input, "> ")
+      expect(result).to eq("line1\nline2\nline3")
+
+      output = stdout.string
+      # Should convert all \n to \r\n for proper display in raw mode
+      expect(output).to include("line1\r\nline2\r\nline3\r\n")
+      # Should not have bare \n without \r (which causes staircase)
+      expect(output).not_to match(/[^\r]\n/)
+    end
+
+    it "moves to start of line before clearing (\\r before \\e[J])" do
+      console.instance_variable_set(:@input_buffer, String.new("test"))
+      console.instance_variable_set(:@last_cursor_line, 0)
+
+      console.send(:submit_input, "> ")
+
+      output = stdout.string
+      # Should have \r before \e[J] to ensure full line is cleared
+      expect(output).to match(/\r.*\e\[J/)
+    end
+
+    it "resets cursor tracking variables after submit" do
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
+      console.instance_variable_set(:@last_cursor_line, 1)
+      console.instance_variable_set(:@last_line_count, 2)
+
+      console.send(:submit_input, "> ")
+
+      # Should reset tracking to prepare for next prompt
+      expect(console.instance_variable_get(:@last_cursor_line)).to eq(0)
+      expect(console.instance_variable_get(:@last_line_count)).to eq(1)
+    end
   end
 
   describe "#handle_eof" do
@@ -1693,14 +1743,28 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(console.instance_variable_get(:@cursor_pos)).to eq(8)
       end
 
-      it "does not move cursor when already on line 0" do
+      it "does not move cursor when already on line 0 and not in history mode" do
         console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
         console.instance_variable_set(:@cursor_pos, 3) # on line 0
+        console.instance_variable_set(:@history_pos, nil) # Not in history mode
 
         console.send(:cursor_up_or_history_prev)
 
         # Should stay at same position
         expect(console.instance_variable_get(:@cursor_pos)).to eq(3)
+      end
+
+      it "navigates backward in history when on first line and in history mode" do
+        console.instance_variable_set(:@history, ["first", "second\nthird", "fourth"])
+        console.instance_variable_set(:@input_buffer, String.new("second\nthird"))
+        console.instance_variable_set(:@cursor_pos, 3) # on line 0 (first line)
+        console.instance_variable_set(:@history_pos, 1) # In history mode, on entry 1
+
+        console.send(:cursor_up_or_history_prev)
+
+        # Should navigate backward in history to entry 0
+        expect(console.instance_variable_get(:@input_buffer)).to eq("first")
+        expect(console.instance_variable_get(:@history_pos)).to eq(0)
       end
 
       it "clamps column when target line is shorter" do
@@ -1812,14 +1876,28 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(console.instance_variable_get(:@cursor_pos)).to eq(15)
       end
 
-      it "does not move cursor when already on last line" do
+      it "does not move cursor when already on last line and not in history mode" do
         console.instance_variable_set(:@input_buffer, String.new("line1\nline2"))
         console.instance_variable_set(:@cursor_pos, 8) # on line 1 (last line)
+        console.instance_variable_set(:@history_pos, nil) # Not in history mode
 
         console.send(:cursor_down_or_history_next)
 
         # Should stay at same position
         expect(console.instance_variable_get(:@cursor_pos)).to eq(8)
+      end
+
+      it "navigates forward in history when on last line and in history mode" do
+        console.instance_variable_set(:@history, ["first", "second\nthird", "fourth"])
+        console.instance_variable_set(:@input_buffer, String.new("second\nthird"))
+        console.instance_variable_set(:@cursor_pos, 12) # on line 1 (last line), end of "third"
+        console.instance_variable_set(:@history_pos, 1) # In history mode, on entry 1
+
+        console.send(:cursor_down_or_history_next)
+
+        # Should navigate forward in history to entry 2
+        expect(console.instance_variable_get(:@input_buffer)).to eq("fourth")
+        expect(console.instance_variable_get(:@history_pos)).to eq(2)
       end
 
       it "clamps column when target line is shorter" do
