@@ -24,7 +24,6 @@ RSpec.describe Nu::Agent::HelpTextBuilder do
       expect(help_text).to include("/models")
       expect(help_text).to include("/redaction <on|off>")
       expect(help_text).to include("/reset")
-      expect(help_text).to include("/spellcheck <on|off>")
       expect(help_text).to include("/summarizer <on|off>")
       expect(help_text).to include("/tools")
     end
@@ -35,7 +34,6 @@ RSpec.describe Nu::Agent::HelpTextBuilder do
       expect(help_text).to include("/messages")
       expect(help_text).to include("/search")
       expect(help_text).to include("/stats")
-      expect(help_text).to include("/spellcheck")
     end
 
     it "returns text split into multiple lines" do
