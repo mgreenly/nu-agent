@@ -355,10 +355,11 @@ RSpec.describe Nu::Agent::ConsoleIO do
         console.instance_variable_set(:@input_buffer, "line1\nline2")
         console.instance_variable_set(:@cursor_pos, 0)
         console.instance_variable_set(:@last_line_count, 3)
+        console.instance_variable_set(:@last_cursor_physical_row, 2) # Cursor was on physical row 2
         console.send(:redraw_input_line, "> ")
 
         output = stdout.string
-        # Should move up 2 lines (3 - 1) to clear old display
+        # Should move up 2 physical rows to clear old display
         expect(output).to match(/\e\[2A/)
         # Should clear to end of screen
         expect(output).to include("\e[J")
@@ -420,17 +421,18 @@ RSpec.describe Nu::Agent::ConsoleIO do
         expect(output).to match(/\e\[J.*line1.*line2.*line3.*\e\[2A/m)
       end
 
-      it "falls back to @last_line_count when @last_cursor_line is nil" do
-        # Initial redraw scenario - @last_cursor_line not yet set (nil, not initialized)
+      it "uses @last_cursor_physical_row to determine how far to move up" do
+        # Redraw scenario with cursor previously on physical row 2
         console.instance_variable_set(:@input_buffer, "line1\nline2")
         console.instance_variable_set(:@cursor_pos, 0)
         console.instance_variable_set(:@last_line_count, 3)
-        console.instance_variable_set(:@last_cursor_line, nil) # Not set yet
+        console.instance_variable_set(:@last_cursor_line, 2)
+        console.instance_variable_set(:@last_cursor_physical_row, 2) # Cursor was on physical row 2
 
         console.send(:redraw_input_line, "> ")
 
         output = stdout.string
-        # Should fall back to @last_line_count - 1 = 2
+        # Should move up 2 physical rows based on @last_cursor_physical_row
         expect(output).to match(/\e\[2A/)
       end
     end
@@ -530,11 +532,12 @@ RSpec.describe Nu::Agent::ConsoleIO do
       console.instance_variable_set(:@input_buffer, "line1\nline2")
       console.instance_variable_set(:@cursor_pos, 11)
       console.instance_variable_set(:@last_line_count, 2)
+      console.instance_variable_set(:@last_cursor_physical_row, 1) # Cursor was on physical row 1
 
       console.send(:handle_output_for_input_mode, "> ")
 
       output = stdout.string
-      # Should move up one line (from line 2 to line 1) before clearing
+      # Should move up one physical row before clearing
       expect(output).to include("\e[A")
       # Should clear from cursor to end of screen
       expect(output).to include("\e[J")
@@ -1755,7 +1758,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
 
       it "navigates backward in history when on first line and in history mode" do
-        console.instance_variable_set(:@history, ["first", "second\nthird", "fourth"])
+        console.instance_variable_set(:@history, %W[first second\nthird fourth])
         console.instance_variable_set(:@input_buffer, String.new("second\nthird"))
         console.instance_variable_set(:@cursor_pos, 3) # on line 0 (first line)
         console.instance_variable_set(:@history_pos, 1) # In history mode, on entry 1
@@ -1888,7 +1891,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
 
       it "navigates forward in history when on last line and in history mode" do
-        console.instance_variable_set(:@history, ["first", "second\nthird", "fourth"])
+        console.instance_variable_set(:@history, %W[first second\nthird fourth])
         console.instance_variable_set(:@input_buffer, String.new("second\nthird"))
         console.instance_variable_set(:@cursor_pos, 12) # on line 1 (last line), end of "third"
         console.instance_variable_set(:@history_pos, 1) # In history mode, on entry 1
@@ -2573,6 +2576,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
         console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
         console.instance_variable_set(:@cursor_pos, 8)
         console.instance_variable_set(:@last_line_count, 3)
+        console.instance_variable_set(:@last_cursor_physical_row, 1) # Cursor on physical row 1
 
         console.send(:handle_output_for_input_mode, "> ")
 

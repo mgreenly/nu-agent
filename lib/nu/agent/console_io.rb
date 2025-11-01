@@ -41,7 +41,7 @@ module Nu
         @last_physical_row_count = 1
         @last_cursor_physical_row = 0
         @submit_requested = false
-        @terminal_width = get_terminal_width
+        @terminal_width = IO.console&.winsize&.[](1) || 80
 
         # Database history (optional)
         @db_history = db_history
@@ -272,26 +272,23 @@ module Nu
         [line_list.length - 1, line_list.last.length]
       end
 
-      # Get terminal width, with fallback
-      def get_terminal_width
-        IO.console&.winsize&.[](1) || 80
-      end
-
       # Calculate how many physical terminal rows a line occupies
       # Takes into account prompt on first line
       def physical_rows_for_line(line, prompt_length: 0)
         display_length = line.length + prompt_length
         return 1 if display_length.zero?
 
+        terminal_width = @terminal_width || 80
         # Calculate rows: ceiling of (display_length / terminal_width)
         # Each full terminal width is one row
-        ((display_length - 1) / @terminal_width) + 1
+        ((display_length - 1) / terminal_width) + 1
       end
 
       # Calculate total physical rows from start up to (and including) the specified line
       # and column position within that line
       def physical_rows_to_position(buffer_lines, line_index, column, prompt_length)
         total_rows = 0
+        terminal_width = @terminal_width || 80
 
         # Add physical rows for all lines before cursor line
         buffer_lines[0...line_index].each_with_index do |line, idx|
@@ -304,7 +301,7 @@ module Nu
           pl = line_index.zero? ? prompt_length : 0
           cursor_display_pos = column + pl
           # Which row within this line? (0-indexed)
-          row_within_line = cursor_display_pos / @terminal_width
+          row_within_line = cursor_display_pos / terminal_width
           total_rows += row_within_line
         end
 
@@ -708,7 +705,7 @@ module Nu
 
         # Move up to start of previous display and clear
         # Use @last_cursor_physical_row to know where the cursor was positioned
-        rows_to_move_up = @last_cursor_physical_row
+        rows_to_move_up = @last_cursor_physical_row || 0
         @stdout.write("\e[#{rows_to_move_up}A") if rows_to_move_up.positive?
         @stdout.write("\r")   # Move to start of line first
         @stdout.write("\e[J") # Then clear to end of screen
@@ -750,7 +747,8 @@ module Nu
         # Calculate column position within the wrapped line
         pl = cursor_line.zero? ? prompt.length : 0
         cursor_display_pos = cursor_col + pl
-        column_in_physical_row = (cursor_display_pos % @terminal_width) + 1
+        terminal_width = @terminal_width || 80
+        column_in_physical_row = (cursor_display_pos % terminal_width) + 1
         @stdout.write("\e[#{column_in_physical_row}G")
 
         @stdout.flush
@@ -759,56 +757,62 @@ module Nu
 
       def clear_screen(prompt)
         @mutex.synchronize do
-          # Clear screen and move cursor to home
-          @stdout.write("\e[2J\e[H")
-
-          # Get lines and calculate cursor position
-          buffer_lines = lines
-          cursor_line, cursor_col = get_line_and_column(@cursor_pos)
-
-          # Render all lines
-          buffer_lines.each_with_index do |line, index|
-            if index.zero?
-              # First line: render with prompt
-              @stdout.write(prompt)
-            else
-              # Subsequent lines: newline, then line content
-              @stdout.write("\r\n")
-            end
-            @stdout.write(line)
-          end
-
-          # Calculate total physical rows rendered
-          total_physical_rows = buffer_lines.each_with_index.sum do |line, idx|
-            pl = idx.zero? ? prompt.length : 0
-            physical_rows_for_line(line, prompt_length: pl)
-          end
-
-          # Calculate cursor physical row position from top
-          cursor_physical_row = physical_rows_to_position(buffer_lines, cursor_line, cursor_col, prompt.length)
-
-          # Update tracking variables
-          @last_line_count = buffer_lines.length
-          @last_cursor_line = cursor_line
-          @last_physical_row_count = total_physical_rows
-          @last_cursor_physical_row = cursor_physical_row
-
-          # Position cursor at correct physical row and column
-          # After rendering all lines, cursor is at the end of the last line (last physical row)
-          # Calculate how many physical rows to move up from the last physical row
-          rows_from_bottom = total_physical_rows - 1 - cursor_physical_row
-          @stdout.write("\e[#{rows_from_bottom}A") if rows_from_bottom.positive?
-
-          # Set column position within the current physical row
-          # Calculate column position within the wrapped line
-          pl = cursor_line.zero? ? prompt.length : 0
-          cursor_display_pos = cursor_col + pl
-          column_in_physical_row = (cursor_display_pos % @terminal_width) + 1
-          @stdout.write("\e[#{column_in_physical_row}G")
-
-          @stdout.flush
+          do_clear_screen(prompt)
         end
       end
+
+      def do_clear_screen(prompt)
+        # Clear screen and move cursor to home
+        @stdout.write("\e[2J\e[H")
+
+        # Get lines and calculate cursor position
+        buffer_lines = lines
+        cursor_line, cursor_col = get_line_and_column(@cursor_pos)
+
+        # Render all lines
+        buffer_lines.each_with_index do |line, index|
+          if index.zero?
+            # First line: render with prompt
+            @stdout.write(prompt)
+          else
+            # Subsequent lines: newline, then line content
+            @stdout.write("\r\n")
+          end
+          @stdout.write(line)
+        end
+
+        # Calculate total physical rows rendered
+        total_physical_rows = buffer_lines.each_with_index.sum do |line, idx|
+          pl = idx.zero? ? prompt.length : 0
+          physical_rows_for_line(line, prompt_length: pl)
+        end
+
+        # Calculate cursor physical row position from top
+        cursor_physical_row = physical_rows_to_position(buffer_lines, cursor_line, cursor_col, prompt.length)
+
+        # Update tracking variables
+        @last_line_count = buffer_lines.length
+        @last_cursor_line = cursor_line
+        @last_physical_row_count = total_physical_rows
+        @last_cursor_physical_row = cursor_physical_row
+
+        # Position cursor at correct physical row and column
+        # After rendering all lines, cursor is at the end of the last line (last physical row)
+        # Calculate how many physical rows to move up from the last physical row
+        rows_from_bottom = total_physical_rows - 1 - cursor_physical_row
+        @stdout.write("\e[#{rows_from_bottom}A") if rows_from_bottom.positive?
+
+        # Set column position within the current physical row
+        # Calculate column position within the wrapped line
+        pl = cursor_line.zero? ? prompt.length : 0
+        cursor_display_pos = cursor_col + pl
+        terminal_width = @terminal_width || 80
+        column_in_physical_row = (cursor_display_pos % terminal_width) + 1
+        @stdout.write("\e[#{column_in_physical_row}G")
+
+        @stdout.flush
+      end
+      private :do_clear_screen
 
       def handle_output_for_input_mode(prompt)
         lines = drain_output_queue
@@ -817,7 +821,8 @@ module Nu
         @mutex.synchronize do
           # Clear multiline input area
           # Move up to first line using physical row count
-          @stdout.write("\e[A" * @last_cursor_physical_row) if @last_cursor_physical_row.positive?
+          rows_to_move = @last_cursor_physical_row || 0
+          @stdout.write("\e[A" * rows_to_move) if rows_to_move.positive?
           # Move to start of line, then clear from cursor to end of screen
           @stdout.write("\r\e[J")
 
