@@ -53,7 +53,7 @@ bin/coverage-report
 
 The coverage report shows:
 - Overall line and branch coverage percentages
-- Gap from required thresholds (98.15% line, 90.00% branch)
+- Gap from required thresholds (99.61% line, 91.59% branch)
 - Files with lowest coverage, sorted by percentage
 - Specific gap for each file
 

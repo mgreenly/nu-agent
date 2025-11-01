@@ -47,8 +47,8 @@ overall_line = (total_lines_covered.to_f / total_lines * 100).round(2)
 overall_branch = total_branches > 0 ? (total_branches_covered.to_f / total_branches * 100).round(2) : 100.0
 
 # Thresholds
-line_threshold = 98.15
-branch_threshold = 90.00
+line_threshold = 99.61
+branch_threshold = 91.59
 
 # Find files below threshold
 low_line = files.select { |f| f[:line] < 100.0 }.sort_by { |f| f[:line] }
