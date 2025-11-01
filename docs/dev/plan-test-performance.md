@@ -19,87 +19,169 @@ Implement a "**schema once, truncate between**" strategy:
 - Reuse the same database connection/file
 - Maintain test isolation through proper cleanup
 
+## Development Process
+
+**Follow TDD Red → Green → Refactor cycle for each task:**
+1. **RED:** Write failing test first
+2. **GREEN:** Write minimal code to pass
+3. **VERIFY:** Run `rake test && rake lint && rake coverage`
+4. **COMMIT:** Commit the completed task
+5. **UPDATE:** Update this plan's progress after each task
+
+**Never write implementation before tests.**
+
 ## Implementation Phases
 
 ### Phase 1: Create Test Database Helper
 
 **Goal:** Centralize test database setup and provide truncation utilities.
 
-- [ ] Create `spec/support/database_helper.rb` module
-  - Provides `setup_test_database` method (creates schema once)
-  - Provides `truncate_all_tables` method (fast cleanup between tests)
-  - Provides `get_test_history` method (returns configured History instance)
-  - Handles in-memory vs file-based database configuration
-- [ ] Add configuration for test database mode (in-memory vs file-based)
-- [ ] Implement table truncation using DuckDB's `DELETE FROM` statements
-- [ ] Add logic to preserve `schema_version` table during truncation
+#### Task 1.1: Create DatabaseHelper module with setup_test_database
+- [x] **RED:** Write spec for `DatabaseHelper.setup_test_database`
+- [x] **GREEN:** Implement `setup_test_database` method (creates schema once)
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Add DatabaseHelper.setup_test_database"
+- [x] **UPDATE:** Mark this task complete in plan
+
+#### Task 1.2: Add truncate_all_tables method
+- [x] **RED:** Write spec for `DatabaseHelper.truncate_all_tables`
+- [x] **GREEN:** Implement table truncation using DuckDB's `DELETE FROM`
+- [x] **GREEN:** Add logic to preserve `schema_version` table
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Add DatabaseHelper.truncate_all_tables"
+- [x] **UPDATE:** Mark this task complete in plan (completed as part of Task 1.1)
+
+#### Task 1.3: Add get_test_history method
+- [x] **RED:** Write spec for `DatabaseHelper.get_test_history`
+- [x] **GREEN:** Implement method to return configured History instance
+- [x] **GREEN:** Handle in-memory vs file-based database configuration
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Add DatabaseHelper.get_test_history with config support"
+- [x] **UPDATE:** Mark this task complete in plan (completed as part of Task 1.1)
 
 ### Phase 2: Update spec_helper.rb
 
 **Goal:** Configure RSpec to use the new database strategy.
 
-- [ ] Add `require 'support/database_helper'` to spec_helper.rb
-- [ ] Configure `before(:suite)` hook to:
-  - Create test database once
-  - Run schema setup and migrations once
-- [ ] Configure `before(:each)` hook to truncate tables (except schema_version)
-- [ ] Configure `after(:suite)` hook to clean up test database
-- [ ] Document the new test database lifecycle
+#### Task 2.1: Add before(:suite) hook for one-time database setup
+- [x] **GREEN:** Add `require 'support/database_helper'` to spec_helper.rb
+- [x] **GREEN:** Configure `before(:suite)` hook to create test database once
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Configure RSpec hooks for shared test database"
+- [x] **UPDATE:** Mark this task complete in plan
+
+#### Task 2.2: Add before(:each) hook for table truncation
+- [x] **GREEN:** Configure `before(:each)` hook to truncate tables (except schema_version)
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Configure RSpec hooks for shared test database" (combined with 2.1 and 2.3)
+- [x] **UPDATE:** Mark this task complete in plan
+
+#### Task 2.3: Add after(:suite) hook for cleanup
+- [x] **GREEN:** Configure `after(:suite)` hook to clean up test database
+- [x] **GREEN:** Document the new test database lifecycle in comments
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **COMMIT:** "Configure RSpec hooks for shared test database" (combined with 2.1 and 2.2)
+- [x] **UPDATE:** Mark this task complete in plan
 
 ### Phase 3: Refactor Existing Specs
 
 **Goal:** Update specs to use the shared database helper.
 
-- [ ] Update `spec/nu/agent/history_spec.rb`:
-  - Remove `before`/`after` blocks that delete database
-  - Use shared database helper
-  - Verify test isolation works correctly
-- [ ] Update other specs that create History instances:
-  - `spec/nu/agent/application_console_integration_spec.rb`
-  - `spec/nu/agent/exchange_migration_runner_spec.rb`
-  - `spec/nu/agent/formatter_spec.rb`
-- [ ] Create pattern for specs that need a clean database:
-  - Most specs use truncation (fast)
-  - Specific migration tests can recreate database if needed
+#### Task 3.1: Refactor history_spec.rb
+- [x] **GREEN:** Remove `before`/`after` blocks that delete database in history_spec.rb
+- [x] **GREEN:** Use shared database helper from DatabaseHelper module
+- [x] **VERIFY:** `rake test && rake lint && rake coverage`
+- [x] **VERIFY:** Confirm test isolation works correctly
+- [x] **COMMIT:** "Refactor history_spec to use shared database"
+- [x] **UPDATE:** Mark this task complete in plan
+
+#### Task 3.2: Refactor application_console_integration_spec.rb
+- [ ] **GREEN:** Update to use shared database helper
+- [ ] **GREEN:** Remove redundant database creation/deletion code
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Refactor application_console_integration_spec to use shared database"
+- [ ] **UPDATE:** Mark this task complete in plan
+
+#### Task 3.3: Refactor exchange_migration_runner_spec.rb
+- [ ] **GREEN:** Update to use shared database helper or isolated DB for migration tests
+- [ ] **GREEN:** Document pattern for migration-specific testing
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Refactor exchange_migration_runner_spec with appropriate isolation"
+- [ ] **UPDATE:** Mark this task complete in plan
+
+#### Task 3.4: Refactor formatter_spec.rb
+- [ ] **GREEN:** Update to use shared database helper
+- [ ] **GREEN:** Remove redundant database creation/deletion code
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Refactor formatter_spec to use shared database"
+- [ ] **UPDATE:** Mark this task complete in plan
 
 ### Phase 4: Add In-Memory Database Option
 
 **Goal:** Enable fast in-memory database for tests that don't need persistence.
 
-- [ ] Add configuration option for in-memory database (`:memory:`)
-- [ ] Handle connection reuse for in-memory databases
-- [ ] Document trade-offs (speed vs debuggability)
-- [ ] Benchmark performance improvement
+#### Task 4.1: Add in-memory database configuration
+- [ ] **RED:** Write spec for in-memory database option (`:memory:`)
+- [ ] **GREEN:** Implement configuration option in DatabaseHelper
+- [ ] **GREEN:** Handle connection reuse for in-memory databases
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Add in-memory database configuration option"
+- [ ] **UPDATE:** Mark this task complete in plan
+
+#### Task 4.2: Document and benchmark in-memory option
+- [ ] **GREEN:** Document trade-offs (speed vs debuggability) in comments
+- [ ] **GREEN:** Add benchmark code to measure performance improvement
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Document in-memory option and add benchmarking"
+- [ ] **UPDATE:** Mark this task complete in plan
 
 ### Phase 5: Optimization and Edge Cases
 
 **Goal:** Handle special cases and optimize further.
 
-- [ ] Identify tests that require migration testing
-  - These may need isolated database instances
-  - Create separate helper for migration tests
-- [ ] Add support for parallel test execution (if needed)
-  - Use separate database files per process
-  - Pattern: `db/test_#{Process.pid}.db`
-- [ ] Optimize truncation order (handle any foreign key constraints)
-- [ ] Add benchmarking to track test suite speed improvements
+#### Task 5.1: Handle migration test isolation
+- [ ] **GREEN:** Identify tests that require migration testing
+- [ ] **GREEN:** Create separate helper pattern for migration tests with isolated DBs
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Add isolated database pattern for migration tests"
+- [ ] **UPDATE:** Mark this task complete in plan
+
+#### Task 5.2: Add parallel test execution support (optional)
+- [ ] **RED:** Write spec for parallel test execution with separate DB files
+- [ ] **GREEN:** Implement support using pattern `db/test_#{Process.pid}.db`
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Add parallel test execution support"
+- [ ] **UPDATE:** Mark this task complete in plan
+
+#### Task 5.3: Optimize truncation and add benchmarking
+- [ ] **GREEN:** Optimize truncation order (handle any foreign key constraints)
+- [ ] **GREEN:** Add comprehensive benchmarking to track suite speed improvements
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Optimize truncation order and enhance benchmarking"
+- [ ] **UPDATE:** Mark this task complete in plan
 
 ### Phase 6: Documentation and Manual Validation
 
 **Goal:** Document new patterns and validate everything works.
 
-- [ ] Update documentation on test database setup
-- [ ] Add examples of common test patterns:
-  - Tests that need database
-  - Tests that need clean slate
-  - Migration-specific tests
-- [ ] Create troubleshooting guide for test isolation issues
-- [ ] **Manual validation:**
-  - Run full test suite multiple times to ensure consistency
-  - Verify no test pollution between specs
-  - Confirm migrations still work correctly
-  - Measure and document performance improvements (target: <30 seconds)
-  - Test with both in-memory and file-based configurations
+#### Task 6.1: Update test database documentation
+- [ ] **GREEN:** Update documentation on test database setup
+- [ ] **GREEN:** Add examples of common test patterns (database, clean slate, migrations)
+- [ ] **GREEN:** Create troubleshooting guide for test isolation issues
+- [ ] **VERIFY:** `rake test && rake lint && rake coverage`
+- [ ] **COMMIT:** "Add comprehensive test database documentation"
+- [ ] **UPDATE:** Mark this task complete in plan
+
+#### Task 6.2: Manual Validation (HUMAN VERIFICATION REQUIRED)
+- [ ] **MANUAL:** Run full test suite multiple times to ensure consistency
+- [ ] **MANUAL:** Verify no test pollution between specs
+- [ ] **MANUAL:** Confirm migrations still work correctly
+- [ ] **MANUAL:** Measure and document actual performance improvements
+  - Target: <30 seconds (vs baseline ~75-90 seconds)
+  - Document actual results in this plan
+- [ ] **MANUAL:** Test with both in-memory and file-based configurations
+- [ ] **MANUAL:** Verify `rake test && rake lint && rake coverage` all pass consistently
+- [ ] **UPDATE:** Document validation results and mark plan complete
 
 ## Expected Outcomes
 
