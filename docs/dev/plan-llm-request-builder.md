@@ -116,13 +116,13 @@ end
    - COMMIT: "Add LlmRequestBuilder skeleton" ✓
    - UPDATE: Mark task 1.1 complete in plan ✓
 
-**Task 1.2: Implement `with_system_prompt` method**
-   - RED: Write test for system prompt setting
-   - GREEN: Implement method
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add with_system_prompt to LlmRequestBuilder"
-   - UPDATE: Mark task 1.2 complete in plan
+**Task 1.2: Implement `with_system_prompt` method** ✓ COMPLETE
+   - RED: Write test for system prompt setting ✓
+   - GREEN: Implement method ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add with_system_prompt to LlmRequestBuilder" ✓
+   - UPDATE: Mark task 1.2 complete in plan ✓
 
 **Task 1.3: Implement `with_history` method**
    - RED: Write test for history setting
