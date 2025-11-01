@@ -232,13 +232,13 @@ end
    - COMMIT: "Integrate formatter with SubsystemDebugger" ✓
    - UPDATE: Mark task 3.4 complete in plan ✓
 
-**Task 3.5: Remove old formatter code**
-   - RED: Update tests to remove expectations for old formatter
-   - GREEN: Delete old display methods
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Remove old formatter code"
-   - UPDATE: Mark task 3.5 complete in plan
+**Task 3.5: Remove old formatter code** ✓ COMPLETE
+   - RED: Update tests to remove expectations for old formatter ✓
+   - GREEN: Delete old display methods ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Remove old formatter code" ✓
+   - UPDATE: Mark task 3.5 complete in plan ✓
 
 ### Phase 4: Update Clients [3-4 hours]
 
