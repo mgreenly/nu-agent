@@ -266,13 +266,13 @@ end
    - COMMIT: "Update Google client to use internal format" ✓
    - UPDATE: Mark task 4.3 complete in plan ✓
 
-**Task 4.4: Update XAI client**
-   - RED: Write test for internal format → XAI API translation
-   - GREEN: Update `xai.rb` to accept and translate internal format
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Update XAI client to use internal format"
-   - UPDATE: Mark task 4.4 complete in plan
+**Task 4.4: Update XAI client** ✓ COMPLETE
+   - RED: Write test for internal format → XAI API translation ✓
+   - GREEN: Update `xai.rb` to accept and translate internal format ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Update XAI client to use internal format" ✓
+   - UPDATE: Mark task 4.4 complete in plan ✓
 
 ### Phase 5: Integration Testing [2 hours]
 
