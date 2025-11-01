@@ -130,14 +130,14 @@ RSpec.describe Nu::Agent::PersonaManager do
     end
 
     context "with generic database error" do
-      it "raises an error with the original message" do
+      it "raises an error with the database message" do
         allow(connection).to receive(:query).and_raise(
-          DuckDB::Error.new("Some other database error")
+          DuckDB::Error.new("Connection lost to database")
         )
 
         expect do
-          manager.create(name: "test-persona", system_prompt: "Prompt")
-        end.to raise_error(Nu::Agent::Error, /Failed to create persona/)
+          manager.create(name: "test-persona", system_prompt: "Test prompt")
+        end.to raise_error(Nu::Agent::Error, /Failed to create persona: Connection lost/)
       end
     end
 

@@ -2,11 +2,15 @@
 
 # SimpleCov must be loaded before application code
 require "simplecov"
+require "simplecov_json_formatter"
 
 SimpleCov.start do
   enable_coverage :branch
   add_filter "/spec/"
   add_filter "/vendor/"
+
+  # Use JSON formatter for structured output
+  formatter SimpleCov::Formatter::JSONFormatter if ENV["COVERAGE_JSON"] == "true"
 
   # Only enforce minimum coverage when COVERAGE_ENFORCE is set
   if ENV["COVERAGE_ENFORCE"] == "true"

@@ -32,6 +32,15 @@ RSpec.describe Nu::Agent::MigrationManager do
       migration_manager.update_version(5)
       expect(migration_manager.current_version).to eq(5)
     end
+
+    it "returns 0 when query fails with StandardError" do
+      # Create a migration manager with a mock connection that raises an error
+      mock_connection = instance_double("DuckDB::Connection")
+      allow(mock_connection).to receive(:query).and_raise(StandardError, "Database error")
+      error_manager = described_class.new(mock_connection, migrations_dir: migrations_dir)
+
+      expect(error_manager.current_version).to eq(0)
+    end
   end
 
   describe "#ensure_schema_version_table" do

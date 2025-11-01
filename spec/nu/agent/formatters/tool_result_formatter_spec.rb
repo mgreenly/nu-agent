@@ -207,5 +207,63 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
         )
       end
     end
+
+    context "with timing information" do
+      before { allow(console).to receive(:puts) }
+
+      context "with duration only" do
+        it "displays duration less than 1ms" do
+          formatter.display(message, duration: 0.0005)
+
+          expect(console).to have_received(:puts).with(
+            /\[Tool Use Response\] file_read \[Duration: <1ms\]/
+          )
+        end
+
+        it "displays duration in milliseconds when less than 1 second" do
+          formatter.display(message, duration: 0.250)
+
+          expect(console).to have_received(:puts).with(
+            /\[Tool Use Response\] file_read \[Duration: 250ms\]/
+          )
+        end
+
+        it "displays duration in seconds when 1 second or more" do
+          formatter.display(message, duration: 2.5)
+
+          expect(console).to have_received(:puts).with(
+            /\[Tool Use Response\] file_read \[Duration: 2\.50s\]/
+          )
+        end
+      end
+
+      context "with full timing (start_time, duration, batch_start_time)" do
+        it "displays start time, end time, and duration" do
+          start_time = Time.new(2025, 10, 31, 14, 30, 15, 123)
+          batch_start_time = Time.new(2025, 10, 31, 14, 30, 10, 0)
+          duration = 0.250
+
+          formatter.display(message, start_time: start_time, duration: duration, batch_start_time: batch_start_time)
+
+          # Check that timing information is included with formatted times
+          expect(console).to have_received(:puts).with(
+            /\[Start: \d{2}:\d{2}:\d{2}\.\d{3}, End: \d{2}:\d{2}:\d{2}\.\d{3}, Duration: 250ms\]/
+          )
+        end
+
+        it "calculates end time correctly from start time and duration" do
+          start_time = Time.new(2025, 10, 31, 10, 0, 0, 0)
+          batch_start_time = Time.new(2025, 10, 31, 9, 59, 0, 0)
+          duration = 1.5
+
+          formatter.display(message, start_time: start_time, duration: duration, batch_start_time: batch_start_time)
+
+          # Should show start at 10:00:00, end at 10:00:01.500
+          expect(console).to have_received(:puts).with(
+            /\[Start: 10:00:00\.000, End: 10:00:01\.500, Duration: 1500ms\]/
+          )
+        end
+      end
+    end
   end
 end

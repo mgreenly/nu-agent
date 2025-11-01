@@ -447,5 +447,24 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         expect(batches[1].map { |tc| tc["id"] }).to eq(["call_4"])
       end
     end
+
+    context "with invalid JSON arguments" do
+      it "handles malformed JSON gracefully by using empty hash" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "name" => "file_read",
+            "arguments" => "not valid json{{"
+          }
+        ]
+
+        # Should not raise error, should batch the tool call anyway
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(1)
+        expect(batches[0][0]["id"]).to eq("call_1")
+      end
+    end
   end
 end

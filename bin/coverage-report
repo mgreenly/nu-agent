@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "json"
+
+# Parse coverage JSON
+data = JSON.parse(File.read("coverage/coverage.json"))
+
+# Extract and calculate coverage for each file
+files = []
+total_lines_covered = 0
+total_lines = 0
+total_branches_covered = 0
+total_branches = 0
+
+data["coverage"].each do |filepath, coverage_data|
+  next unless filepath.include?("/lib/nu/agent/")
+
+  # Calculate line coverage
+  lines = coverage_data["lines"]
+  covered_lines = lines.count { |l| l.nil? || l > 0 }
+  line_percent = lines.size > 0 ? (covered_lines.to_f / lines.size * 100) : 100.0
+
+  # Calculate branch coverage
+  branches = coverage_data["branches"]
+  branch_percent = 100.0
+  if branches && !branches.empty?
+    branch_count = branches.size
+    covered_branch_count = branches.count { |b| b["coverage"] && b["coverage"] > 0 }
+    branch_percent = branch_count > 0 ? (covered_branch_count.to_f / branch_count * 100) : 100.0
+    total_branches += branch_count
+    total_branches_covered += covered_branch_count
+  end
+
+  total_lines += lines.size
+  total_lines_covered += covered_lines
+
+  files << {
+    path: filepath.split("/").last(4).join("/"),
+    line: line_percent.round(2),
+    branch: branch_percent.round(2)
+  }
+end
+
+# Calculate overall coverage
+overall_line = (total_lines_covered.to_f / total_lines * 100).round(2)
+overall_branch = total_branches > 0 ? (total_branches_covered.to_f / total_branches * 100).round(2) : 100.0
+
+# Thresholds
+line_threshold = 98.15
+branch_threshold = 90.00
+
+# Find files below threshold
+low_line = files.select { |f| f[:line] < 100.0 }.sort_by { |f| f[:line] }
+low_branch = files.select { |f| f[:branch] < 100.0 }.sort_by { |f| f[:branch] }
+
+puts "=== Coverage Analysis ==="
+puts "Overall: Line #{overall_line}% / Branch #{overall_branch}%"
+puts "Required: Line #{line_threshold}% / Branch #{branch_threshold}%"
+puts "Gap: Line #{(line_threshold - overall_line).round(2)}% / Branch #{(branch_threshold - overall_branch).round(2)}%"
+puts ""
+
+if low_line.any?
+  puts "Files with incomplete LINE coverage (showing lowest #{[low_line.size, 20].min}):"
+  low_line.first(20).each do |f|
+    gap = 100.0 - f[:line]
+    puts "  #{f[:line].to_s.rjust(6)}% (#{("-%0.2f" % gap).rjust(7)}) - #{f[:path]}"
+  end
+  puts ""
+end
+
+if low_branch.any?
+  puts "Files with incomplete BRANCH coverage (showing lowest #{[low_branch.size, 20].min}):"
+  low_branch.first(20).each do |f|
+    gap = 100.0 - f[:branch]
+    puts "  #{f[:branch].to_s.rjust(6)}% (#{("-%0.2f" % gap).rjust(7)}) - #{f[:path]}"
+  end
+end

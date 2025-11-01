@@ -406,5 +406,324 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         expect(execution_order).to eq(%w[file_write file_read])
       end
     end
+
+    context "debug and verbosity features" do
+      let(:application) do
+        instance_double(Nu::Agent::Application, formatter: formatter, console: console, debug: true, verbosity: 2)
+      end
+      let(:tool_call_formatter) { instance_double("ToolCallFormatter") }
+      let(:tool_result_formatter) { instance_double("ToolResultFormatter") }
+
+      before do
+        allow(formatter).to receive(:instance_variable_get).with(:@tool_call_formatter).and_return(tool_call_formatter)
+        allow(formatter).to receive(:instance_variable_get)
+          .with(:@tool_result_formatter).and_return(tool_result_formatter)
+        allow(tool_call_formatter).to receive(:display)
+        allow(tool_result_formatter).to receive(:display)
+        allow(application).to receive(:output_line)
+      end
+
+      it "displays debug output with batch and thread context when debug is enabled" do
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/path/to/file1" } },
+            { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "/path/to/file2" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should display batch planning debug output
+        expect(application).to have_received(:output_line).with(
+          /Analyzing.*tool calls for dependencies/,
+          type: :debug
+        )
+        expect(application).to have_received(:output_line).with(
+          /Created.*batch/,
+          type: :debug
+        )
+
+        # Should call tool_call_formatter with batch/thread context
+        expect(tool_call_formatter).to have_received(:display).with(
+          hash_including("id" => "call_1"),
+          hash_including(batch: 1, thread: 1)
+        )
+
+        # Should call tool_result_formatter with batch/thread context (once for each tool)
+        expect(tool_result_formatter).to have_received(:display).with(
+          hash_including("tool_result"),
+          hash_including(:batch, :thread, :start_time, :duration)
+        ).at_least(:once)
+      end
+
+      it "displays singular text for single batch and tool" do
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/path/to/file" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should use singular form
+        expect(application).to have_received(:output_line).with(
+          /Created 1 batch from 1 tool call/,
+          type: :debug
+        )
+        expect(application).to have_received(:output_line).with(
+          /Batch 1: 1 tool.*parallel execution/,
+          type: :debug
+        )
+      end
+
+      it "displays plural text for multiple batches and tools" do
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/file1" } },
+            { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "/file2" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should use plural form
+        expect(application).to have_received(:output_line).with(
+          /Created 1 batch from 2 tool calls/,
+          type: :debug
+        )
+        expect(application).to have_received(:output_line).with(
+          /Batch 1: 2 tools/,
+          type: :debug
+        )
+      end
+
+      it "displays barrier tool batch type" do
+        # Configure tool_registry to return barrier metadata for execute_bash
+        allow(tool_registry).to receive(:metadata_for).with("execute_bash").and_return({
+                                                                                         operation_type: :write,
+                                                                                         scope: :unconfined
+                                                                                       })
+
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "execute_bash", "arguments" => { "command" => "ls" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("output")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should display BARRIER type
+        expect(application).to have_received(:output_line).with(
+          /BARRIER.*runs alone/,
+          type: :debug
+        )
+      end
+
+      it "displays parallel execution when tool has no metadata" do
+        # Configure tool_registry to return nil metadata
+        allow(tool_registry).to receive(:metadata_for).with("unknown_tool").and_return(nil)
+
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "unknown_tool", "arguments" => {} }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("output")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should display parallel execution type (not barrier)
+        expect(application).to have_received(:output_line).with(
+          /parallel execution/,
+          type: :debug
+        )
+      end
+    end
+
+    context "content display" do
+      before do
+        allow(console).to receive(:hide_spinner)
+        allow(console).to receive(:show_spinner)
+      end
+
+      it "displays content when non-empty" do
+        tool_call_response = {
+          "content" => "Let me check that for you",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/path/to/file" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should hide and show spinner when content is present
+        expect(console).to have_received(:hide_spinner).at_least(:once)
+        expect(console).to have_received(:show_spinner).with("Thinking...").at_least(:once)
+      end
+
+      it "does not display when content is whitespace only" do
+        tool_call_response = {
+          "content" => "   \n  ",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/path/to/file" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        # Should not hide/show spinner for whitespace-only content
+        expect(console).not_to have_received(:hide_spinner)
+        expect(console).not_to have_received(:show_spinner)
+      end
+    end
+
+    context "system prompt handling" do
+      it "includes system prompt when provided" do
+        allow(client).to receive(:send_message) do |params|
+          expect(params[:system_prompt]).to eq("You are a helpful assistant")
+          {
+            "content" => "Hello",
+            "model" => "claude-sonnet-4-5",
+            "tokens" => { "input" => 10, "output" => 5 },
+            "spend" => 0.001
+          }
+        end
+
+        orchestrator.execute(
+          messages: messages,
+          tools: tools,
+          system_prompt: "You are a helpful assistant"
+        )
+
+        expect(client).to have_received(:send_message).with(
+          hash_including(system_prompt: "You are a helpful assistant")
+        )
+      end
+
+      it "does not include system prompt when not provided" do
+        allow(client).to receive(:send_message) do |params|
+          expect(params).not_to have_key(:system_prompt)
+          {
+            "content" => "Hello",
+            "model" => "claude-sonnet-4-5",
+            "tokens" => { "input" => 10, "output" => 5 },
+            "spend" => 0.001
+          }
+        end
+
+        orchestrator.execute(messages: messages, tools: tools)
+
+        expect(client).to have_received(:send_message)
+      end
+    end
   end
 end

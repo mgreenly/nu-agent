@@ -34,6 +34,29 @@
 - **During rebasing**: Tests must pass but coverage and lint requirements can be temporarily ignored
 - **After rebasing**: Coverage and lint must be brought into full compliance before considering work complete
 
+## Development Tools
+
+### Test Output Configuration
+- RSpec is configured with `--format progress` in `.rspec` for concise output
+- Only failures show detailed information
+- Passing tests show as dots (`.`), failures as `F`, pending as `*`
+
+### Coverage Analysis
+To get a detailed coverage report showing files that need more coverage:
+```bash
+# Run tests with JSON coverage output
+COVERAGE_JSON=true bundle exec rspec
+
+# Analyze coverage and show files below 100%
+bin/coverage-report
+```
+
+The coverage report shows:
+- Overall line and branch coverage percentages
+- Gap from required thresholds (98.15% line, 90.00% branch)
+- Files with lowest coverage, sorted by percentage
+- Specific gap for each file
+
 ## Code Smells to Avoid
 - Using `@` sigils when `attr_accessor/reader/writer` exists
 - Using `instance_variable_get` from outside the instance
