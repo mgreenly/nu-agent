@@ -164,13 +164,13 @@ end
    - COMMIT: "Add with_metadata to LlmRequestBuilder" ✓
    - UPDATE: Mark task 1.7 complete in plan ✓
 
-**Task 1.8: Implement `build` method with validation**
-   - RED: Write tests for build process and validation errors
-   - GREEN: Implement build method with required field validation
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add build method with validation to LlmRequestBuilder"
-   - UPDATE: Mark task 1.8 complete in plan
+**Task 1.8: Implement `build` method with validation** ✓ COMPLETE
+   - RED: Write tests for build process and validation errors ✓
+   - GREEN: Implement build method with required field validation ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add build method with validation to LlmRequestBuilder" ✓
+   - UPDATE: Mark task 1.8 complete in plan ✓
 
 ### Phase 2: Update Orchestrator [2-3 hours]
 
