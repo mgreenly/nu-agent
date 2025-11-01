@@ -82,14 +82,22 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 2.2 Remove spell checker from Application
 **TDD Approach:** Update tests first, then remove code
 
-- [ ] Remove `:spellchecker` and `:spell_check_enabled` from `attr_accessor` in `lib/nu/agent/application.rb` (lines 6-7)
-- [ ] Search for `@spellchecker` and `@spell_check_enabled` in Application and remove all references
-- [ ] Search for `spell_check_enabled` in `application_spec.rb` and update/remove related tests
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/application_spec.rb` - may fail
-- [ ] Fix any failing tests
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/application_spec.rb` - should pass
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
-- [ ] **Gateway:** Run `bundle exec rubocop` - should pass
+- [x] Remove `:spellchecker` and `:spell_check_enabled` from `attr_accessor` in `lib/nu/agent/application.rb` (lines 6-7)
+  - Already removed in previous commit
+- [x] Search for `@spellchecker` and `@spell_check_enabled` in Application and remove all references
+  - Already removed in previous commit
+- [x] Search for `spell_check_enabled` in `application_spec.rb` and update/remove related tests
+  - No references found in application_spec.rb
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/application_spec.rb` - may fail
+- [x] Fix any failing tests
+  - Fixed chat_loop_orchestrator_spec.rb (removed spell_check_enabled and spellchecker from application double)
+  - Fixed model_command_spec.rb (removed all spellchecker test references)
+  - Fixed configuration_loader_spec.rb (removed spell_check_enabled and model_spellchecker stub references)
+  - Removed spellchecker functionality from model_command.rb (Phase 3.1 partial work done early)
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/application_spec.rb` - should pass
+- [x] **Gateway:** Run `bundle exec rspec` - all tests should pass (2499 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rubocop` - should pass (272 files, no offenses)
+  - Note: Also completed partial Phase 3 work on ModelCommand to fix test dependencies
 
 **✅ Phase 2 Complete - Update this plan document and commit progress before proceeding!**
 
@@ -100,13 +108,29 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 3.1 Remove from ConfigurationLoader
 **TDD Approach:** Update tests, then remove config loading
 
-- [ ] Remove `:spellchecker` from ModelConfig struct in `lib/nu/agent/configuration_loader.rb` (line 10)
-- [ ] Remove all spellchecker model loading logic (lines 35, 42, 48, 53, 62, 73)
-- [ ] Remove spellchecker from ApplicationContext (line 95)
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/configuration_loader_spec.rb` - may fail
-- [ ] Update `configuration_loader_spec.rb` to remove spellchecker expectations
-- [ ] **Green:** Run `bundle exec rspec spec/nu/agent/configuration_loader_spec.rb` - should pass
-- [ ] **Gateway:** Run `bundle exec rspec` - all tests should pass
+- [x] Remove `:spellchecker` from ModelConfig struct in `lib/nu/agent/configuration_loader.rb` (line 10)
+  - Already removed in previous commit
+- [x] Remove all spellchecker model loading logic (lines 35, 42, 48, 53, 62, 73)
+  - Already removed in previous commit
+- [x] Remove spellchecker from ApplicationContext (line 95)
+  - Already removed in previous commit
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/configuration_loader_spec.rb` - may fail
+- [x] Update `configuration_loader_spec.rb` to remove spellchecker expectations
+  - Removed all spell_check_enabled and model_spellchecker stub references
+- [x] **Green:** Run `bundle exec rspec spec/nu/agent/configuration_loader_spec.rb` - should pass
+- [x] **Gateway:** Run `bundle exec rspec` - all tests should pass
+  - Note: Completed during Phase 2.2 due to test dependencies
+
+### 3.1b Remove from ModelCommand
+**Note:** This was completed early during Phase 2.2 due to test dependencies
+
+- [x] Remove spellchecker functionality from `lib/nu/agent/commands/model_command.rb`
+  - Removed switch_spellchecker method
+  - Removed spellchecker from show_current_models
+  - Removed spellchecker from show_usage
+  - Updated show_unknown_subcommand to list only "orchestrator, summarizer"
+- [x] Update `model_command_spec.rb` to remove spellchecker tests
+  - Removed all spellchecker test contexts and expectations
 
 ### 3.2 Remove from SessionInfo
 **TDD Approach:** Update tests, then remove display logic

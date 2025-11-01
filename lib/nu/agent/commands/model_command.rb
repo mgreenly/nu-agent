@@ -5,7 +5,7 @@ require_relative "base_command"
 module Nu
   module Agent
     module Commands
-      # Command to switch models for orchestrator, spellchecker, or summarizer
+      # Command to switch models for orchestrator or summarizer
       class ModelCommand < BaseCommand
         def execute(input)
           parts = input.split
@@ -28,8 +28,6 @@ module Nu
           case subcommand
           when "orchestrator"
             switch_orchestrator(new_model_name)
-          when "spellchecker"
-            switch_spellchecker(new_model_name)
           when "summarizer"
             switch_summarizer(new_model_name)
           else
@@ -45,7 +43,6 @@ module Nu
           app.console.puts("")
           app.output_line("Current Models:", type: :command)
           app.output_line("  Orchestrator:  #{app.orchestrator.model}", type: :command)
-          app.output_line("  Spellchecker:  #{app.spellchecker.model}", type: :command)
           app.output_line("  Summarizer:    #{app.summarizer.model}", type: :command)
         end
 
@@ -54,7 +51,6 @@ module Nu
           app.output_line("Usage:", type: :command)
           app.output_line("  /model                        Show current models", type: :command)
           app.output_line("  /model orchestrator <name>    Set orchestrator model", type: :command)
-          app.output_line("  /model spellchecker <name>    Set spellchecker model", type: :command)
           app.output_line("  /model summarizer <name>      Set summarizer model", type: :command)
           app.output_line("Example: /model orchestrator gpt-5", type: :command)
           app.output_line("Run /models to see available models", type: :command)
@@ -98,18 +94,6 @@ module Nu
                           type: :command)
         end
 
-        def switch_spellchecker(new_model_name)
-          # Create new client
-          new_client = ClientFactory.create(new_model_name)
-          app.spellchecker = new_client
-          app.history.set_config("model_spellchecker", new_model_name)
-          app.console.puts("")
-          app.output_line("Switched spellchecker to: #{new_model_name}", type: :command)
-        rescue Error => e
-          app.console.puts("")
-          app.output_line("Error: #{e.message}", type: :error)
-        end
-
         def switch_summarizer(new_model_name)
           # Create new client
           new_client = ClientFactory.create(new_model_name)
@@ -126,7 +110,7 @@ module Nu
         def show_unknown_subcommand(subcommand)
           app.console.puts("")
           app.output_line("Unknown subcommand: #{subcommand}", type: :command)
-          app.output_line("Valid subcommands: orchestrator, spellchecker, summarizer", type: :command)
+          app.output_line("Valid subcommands: orchestrator, summarizer", type: :command)
         end
       end
     end

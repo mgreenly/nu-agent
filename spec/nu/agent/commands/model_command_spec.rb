@@ -9,7 +9,6 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
   let(:history) { instance_double("Nu::Agent::History") }
   let(:formatter) { instance_double("Nu::Agent::Formatter") }
   let(:orchestrator) { instance_double("Nu::Agent::Clients::Base", model: "gpt-4", name: "OpenAI") }
-  let(:spellchecker) { instance_double("Nu::Agent::Clients::Base", model: "gpt-4-mini") }
   let(:summarizer) { instance_double("Nu::Agent::Clients::Base", model: "claude-3-5-haiku") }
   let(:operation_mutex) { Mutex.new }
   let(:command) { described_class.new(application) }
@@ -20,14 +19,11 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
     allow(application).to receive(:output_line)
     allow(console).to receive(:puts)
 
-    # Allow orchestrator, spellchecker, summarizer to be read and written
+    # Allow orchestrator, summarizer to be read and written
     @current_orchestrator = orchestrator
-    @current_spellchecker = spellchecker
     @current_summarizer = summarizer
     allow(application).to receive(:orchestrator) { @current_orchestrator }
     allow(application).to receive(:orchestrator=) { |val| @current_orchestrator = val }
-    allow(application).to receive(:spellchecker) { @current_spellchecker }
-    allow(application).to receive(:spellchecker=) { |val| @current_spellchecker = val }
     allow(application).to receive(:summarizer) { @current_summarizer }
     allow(application).to receive(:summarizer=) { |val| @current_summarizer = val }
   end
@@ -38,7 +34,6 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Current Models:", type: :command)
         expect(application).to receive(:output_line).with("  Orchestrator:  gpt-4", type: :command)
-        expect(application).to receive(:output_line).with("  Spellchecker:  gpt-4-mini", type: :command)
         expect(application).to receive(:output_line).with("  Summarizer:    claude-3-5-haiku", type: :command)
 
         result = command.execute("/model")
@@ -53,8 +48,6 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         expect(application).to receive(:output_line).with("  /model                        Show current models",
                                                           type: :command)
         expect(application).to receive(:output_line).with("  /model orchestrator <name>    Set orchestrator model",
-                                                          type: :command)
-        expect(application).to receive(:output_line).with("  /model spellchecker <name>    Set spellchecker model",
                                                           type: :command)
         expect(application).to receive(:output_line).with("  /model summarizer <name>      Set summarizer model",
                                                           type: :command)
@@ -117,41 +110,6 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
       end
     end
 
-    context "when switching spellchecker model" do
-      let(:new_client) { instance_double("Nu::Agent::Clients::Base") }
-
-      before do
-        stub_const("Nu::Agent::ClientFactory", Class.new)
-        allow(Nu::Agent::ClientFactory).to receive(:create).with("gpt-5").and_return(new_client)
-        allow(history).to receive(:set_config)
-      end
-
-      it "switches spellchecker model" do
-        expect(Nu::Agent::ClientFactory).to receive(:create).with("gpt-5")
-        expect(application).to receive(:spellchecker=).with(new_client)
-        expect(history).to receive(:set_config).with("model_spellchecker", "gpt-5")
-        expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("Switched spellchecker to: gpt-5", type: :command)
-
-        result = command.execute("/model spellchecker gpt-5")
-        expect(result).to eq(:continue)
-      end
-
-      context "when ClientFactory raises an error" do
-        before do
-          error = Nu::Agent::Error.new("Model not found")
-          allow(Nu::Agent::ClientFactory).to receive(:create).and_raise(error)
-        end
-
-        it "outputs error message and continues" do
-          expect(console).to receive(:puts).with("")
-          expect(application).to receive(:output_line).with("Error: Model not found", type: :error)
-          result = command.execute("/model spellchecker invalid")
-          expect(result).to eq(:continue)
-        end
-      end
-    end
-
     context "when switching summarizer model" do
       let(:new_client) { instance_double("Nu::Agent::Clients::Base") }
 
@@ -194,7 +152,7 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Unknown subcommand: unknown", type: :command)
         expect(application).to receive(:output_line)
-          .with("Valid subcommands: orchestrator, spellchecker, summarizer", type: :command)
+          .with("Valid subcommands: orchestrator, summarizer", type: :command)
 
         result = command.execute("/model unknown some-model")
         expect(result).to eq(:continue)

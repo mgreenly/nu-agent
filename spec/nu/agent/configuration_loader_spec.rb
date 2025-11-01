@@ -59,7 +59,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
       end
 
@@ -67,10 +66,8 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         config = described_class.load(history: history, options: options)
 
         expect(history).to have_received(:set_config).with("model_orchestrator", "gpt-5")
-        expect(history).to have_received(:set_config).with("model_spellchecker", "gpt-5")
         expect(history).to have_received(:set_config).with("model_summarizer", "gpt-5")
         expect(config.orchestrator).to eq(gpt_client)
-        expect(config.spellchecker).to eq(gpt_client)
         expect(config.summarizer).to eq(gpt_client)
       end
     end
@@ -79,7 +76,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
       before do
         # Models not configured
         allow(history).to receive(:get_config).with("model_orchestrator").and_return(nil)
-        allow(history).to receive(:get_config).with("model_spellchecker").and_return(nil)
         allow(history).to receive(:get_config).with("model_summarizer").and_return(nil)
         allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
@@ -87,7 +83,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
       end
 
@@ -113,13 +108,11 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("true")
         # Re-stub required calls
         allow(history).to receive(:get_config).with("model_orchestrator").and_return("claude-sonnet-4-5")
-        allow(history).to receive(:get_config).with("model_spellchecker").and_return("claude-haiku-4-5")
         allow(history).to receive(:get_config).with("model_summarizer").and_return("claude-haiku-4-5")
         allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
       end
 
@@ -135,13 +128,11 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         allow(history).to receive(:get_config).with("redaction", default: "true").and_return("false")
         # Re-stub required calls
         allow(history).to receive(:get_config).with("model_orchestrator").and_return("claude-sonnet-4-5")
-        allow(history).to receive(:get_config).with("model_spellchecker").and_return("claude-haiku-4-5")
         allow(history).to receive(:get_config).with("model_summarizer").and_return("claude-haiku-4-5")
         allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return(nil)
         allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
         allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
-        allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
         allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
       end
 
@@ -197,7 +188,6 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
         described_class.load(history: history, options: options)
 
         expect(history).to have_received(:set_config).with("model_orchestrator", "gpt-5")
-        expect(history).to have_received(:set_config).with("model_spellchecker", "gpt-5")
         expect(history).to have_received(:set_config).with("model_summarizer", "gpt-5")
         expect(history).to have_received(:set_config).with("conversation_summarizer_model", "gpt-5")
         expect(history).to have_received(:set_config).with("exchange_summarizer_model", "gpt-5")
