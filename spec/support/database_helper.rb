@@ -11,10 +11,18 @@ module DatabaseHelper
 
     # Set up the test database with schema and migrations (call once at suite start)
     #
-    # @param db_path [String] Path to the test database file
+    # @param db_path [String] Path to the test database file or ":memory:" for in-memory database
     # @return [void]
     def setup_test_database(db_path: DEFAULT_TEST_DB_PATH)
-      # Clean up any existing test database
+      # Handle in-memory databases differently
+      if in_memory?(db_path)
+        # For in-memory databases, create and keep the connection alive
+        @in_memory_history = Nu::Agent::History.new(db_path: db_path)
+        @db_path = db_path
+        return
+      end
+
+      # Clean up any existing test database (file-based only)
       FileUtils.rm_rf(db_path)
 
       # Ensure database directory exists
@@ -75,9 +83,19 @@ module DatabaseHelper
 
     # Get or create a singleton History instance for testing
     #
-    # @param db_path [String, nil] Optional custom database path
+    # @param db_path [String, nil] Optional custom database path or ":memory:" for in-memory database
     # @return [Nu::Agent::History] History instance
     def get_test_history(db_path: nil)
+      # Handle in-memory database requests
+      if db_path && in_memory?(db_path)
+        # Return the in-memory singleton, creating it if needed
+        @in_memory_history ||= begin
+          setup_test_database(db_path: db_path)
+          @in_memory_history
+        end
+        return @in_memory_history
+      end
+
       # If a custom db_path is provided, create a new instance
       if db_path
         setup_test_database(db_path: db_path) unless File.exist?(db_path)
@@ -120,6 +138,14 @@ module DatabaseHelper
     end
 
     private
+
+    # Check if the database path is for an in-memory database
+    #
+    # @param db_path [String] Database path
+    # @return [Boolean] true if in-memory database
+    def in_memory?(db_path)
+      db_path == ":memory:"
+    end
 
     # Order tables by dependencies (child tables before parent tables)
     # This ensures we can delete without foreign key violations

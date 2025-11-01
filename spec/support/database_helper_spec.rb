@@ -114,6 +114,7 @@ RSpec.describe DatabaseHelper do
   describe ".get_test_history" do
     after do
       described_class.instance_variable_set(:@test_history, nil)
+      described_class.instance_variable_set(:@in_memory_history, nil)
     end
 
     it "returns a History instance configured for testing" do
@@ -140,6 +141,101 @@ RSpec.describe DatabaseHelper do
 
       history.close
       FileUtils.rm_rf(custom_path)
+    end
+  end
+
+  describe "in-memory database support" do
+    after do
+      described_class.instance_variable_set(:@in_memory_history, nil)
+    end
+
+    describe ".setup_test_database with :memory:" do
+      it "creates an in-memory database with schema and migrations" do
+        described_class.setup_test_database(db_path: ":memory:")
+
+        # Verify we can get a history instance and query tables
+        history = described_class.get_test_history(db_path: ":memory:")
+        conn = history.connection
+
+        # Verify some core tables exist
+        result = conn.query("SHOW TABLES")
+        table_names = result.map { |row| row[0] }
+
+        expect(table_names).to include("conversations")
+        expect(table_names).to include("messages")
+        expect(table_names).to include("schema_version")
+      end
+
+      it "keeps the connection alive for in-memory databases" do
+        described_class.setup_test_database(db_path: ":memory:")
+
+        # Get history instance twice
+        history1 = described_class.get_test_history(db_path: ":memory:")
+        history2 = described_class.get_test_history(db_path: ":memory:")
+
+        # Should be the same instance (singleton)
+        expect(history1.object_id).to eq(history2.object_id)
+      end
+    end
+
+    describe ".get_test_history with :memory:" do
+      it "returns an in-memory History instance" do
+        history = described_class.get_test_history(db_path: ":memory:")
+
+        expect(history).to be_a(Nu::Agent::History)
+        expect(history.db_path).to eq(":memory:")
+      end
+
+      it "persists data across calls (same connection)" do
+        history = described_class.get_test_history(db_path: ":memory:")
+
+        # Add some data
+        conversation_id = history.create_conversation
+        history.add_message(
+          conversation_id: conversation_id,
+          actor: "user",
+          role: "user",
+          content: "test message"
+        )
+
+        # Get history again (should be same instance)
+        history2 = described_class.get_test_history(db_path: ":memory:")
+
+        # Data should still be there
+        messages = history2.messages(conversation_id: conversation_id)
+        expect(messages.length).to eq(1)
+        expect(messages[0]["content"]).to eq("test message")
+      end
+    end
+
+    describe ".truncate_all_tables with in-memory database" do
+      it "works with in-memory databases" do
+        history = described_class.get_test_history(db_path: ":memory:")
+
+        # Add test data
+        conversation_id = history.create_conversation
+        history.add_message(
+          conversation_id: conversation_id,
+          actor: "user",
+          role: "user",
+          content: "test message"
+        )
+
+        # Verify data exists
+        messages = history.messages(conversation_id: conversation_id)
+        expect(messages.length).to eq(1)
+
+        # Truncate tables
+        described_class.truncate_all_tables(history.connection)
+
+        # Verify data is gone
+        messages_after = history.messages(conversation_id: conversation_id)
+        expect(messages_after.length).to eq(0)
+
+        # Verify schema_version is preserved
+        versions = history.connection.query("SELECT version FROM schema_version").to_a
+        expect(versions).not_to be_empty
+      end
     end
   end
 end
