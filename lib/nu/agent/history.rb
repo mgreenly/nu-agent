@@ -160,7 +160,6 @@ module Nu
       #     # 1. Tool calls (assistant messages with tool_calls)
       #     # 2. Tool responses (role='tool')
       #     # 3. Error messages (error IS NOT NULL)
-      #     # 4. Spell checker messages (actor='spell_checker')
       #     connection.query(<<~SQL)
       #       UPDATE messages
       #       SET redacted = TRUE
@@ -171,7 +170,6 @@ module Nu
       #           role = 'tool'
       #           OR (role = 'assistant' AND tool_calls IS NOT NULL)
       #           OR error IS NOT NULL
-      #           OR actor = 'spell_checker'
       #         )
       #     SQL
       #   end
