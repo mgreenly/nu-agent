@@ -18,11 +18,30 @@ module Nu
           # Display YAML formatted request based on verbosity level
           @console.puts("\e[90m--- LLM Request ---\e[0m")
 
+          # Build the output hash based on verbosity level
+          output = {}
+
           # Verbosity level 1: Show only final user message
           final_message = internal_request[:messages]&.last
-          display_yaml_content({ final_message: final_message }) if final_message
+          output[:final_message] = final_message if final_message
 
-          # TODO: Implement verbosity levels 2-5 in Task 3.3
+          # Verbosity level 2: Add system_prompt
+          output[:system_prompt] = internal_request[:system_prompt] if should_output?(2)
+
+          # Verbosity level 3: Add rag_content from metadata
+          output[:rag_content] = internal_request.dig(:metadata, :rag_content) if should_output?(3)
+
+          # Verbosity level 4: Add tools
+          output[:tools] = internal_request[:tools] if should_output?(4)
+
+          # Verbosity level 5: Add full message history
+          if should_output?(5)
+            output[:messages] = internal_request[:messages]
+            # Remove final_message since we're showing all messages
+            output.delete(:final_message)
+          end
+
+          display_yaml_content(output)
         end
 
         def display(messages, tools = nil, markdown_document = nil)

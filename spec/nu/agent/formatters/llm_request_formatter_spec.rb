@@ -77,6 +77,141 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         )
       end
     end
+
+    context "with verbosity level 2" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(2)
+      end
+
+      it "displays final message and system_prompt" do
+        formatter.display_yaml(internal_request)
+
+        # Should see final message
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/final_message:/)
+        )
+
+        # Should see system_prompt
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/system_prompt:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/You are a helpful assistant/)
+        )
+
+        # Should NOT see tools or rag_content yet
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/tools:/)
+        )
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/rag_content:/)
+        )
+      end
+    end
+
+    context "with verbosity level 3" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(3)
+      end
+
+      it "displays final message, system_prompt, and rag_content" do
+        formatter.display_yaml(internal_request)
+
+        # Should see final message and system_prompt
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/final_message:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/system_prompt:/)
+        )
+
+        # Should see rag_content
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/rag_content:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/redactions:/)
+        )
+
+        # Should NOT see tools or full messages yet
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/tools:/)
+        )
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/messages:/)
+        )
+      end
+    end
+
+    context "with verbosity level 4" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(4)
+      end
+
+      it "displays final message, system_prompt, rag_content, and tools" do
+        formatter.display_yaml(internal_request)
+
+        # Should see final message, system_prompt, and rag_content
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/final_message:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/system_prompt:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/rag_content:/)
+        )
+
+        # Should see tools
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/tools:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/file_read/)
+        )
+
+        # Should NOT see full messages yet
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/messages:/)
+        )
+      end
+    end
+
+    context "with verbosity level 5" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(5)
+      end
+
+      it "displays everything including full message history" do
+        formatter.display_yaml(internal_request)
+
+        # Should see everything including full messages
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/messages:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/system_prompt:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/rag_content:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/tools:/)
+        )
+
+        # Should see all messages in history
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/Hello/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/Hi there!/)
+        )
+      end
+    end
   end
 
   # Old tests will be removed in Task 3.5
