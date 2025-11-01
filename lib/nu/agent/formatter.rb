@@ -163,8 +163,8 @@ module Nu
       end
 
       def display_thread_event(thread_name, status)
-        # Only show in debug mode
-        return unless @debug
+        # Only show when thread verbosity is 1 or higher
+        return unless thread_verbosity >= 1
 
         # Use thread-safe puts - spinner loop will handle clearing/redrawing
         @console.puts("")
@@ -248,6 +248,12 @@ module Nu
         return 0 unless @application
 
         @application.history.get_int("messages_verbosity", default: 0)
+      end
+
+      def thread_verbosity
+        return 0 unless @application
+
+        @application.history.get_int("thread_verbosity", default: 0)
       end
 
       def display_assistant_message(message)

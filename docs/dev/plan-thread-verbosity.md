@@ -28,14 +28,19 @@ Add new "thread" subsystem with levels:
 - Lint: 0 violations
 - Also added 'console' subsystem for console state transition debug output
 
-### Phase 2: Update display_thread_event to use thread verbosity
-- [ ] Write failing test for display_thread_event checking thread verbosity at level 0
-- [ ] Write failing test for display_thread_event checking thread verbosity at level 1
-- [ ] Add thread_verbosity helper method to Formatter (similar to messages_verbosity)
-- [ ] Update display_thread_event to check thread verbosity instead of @debug
-- [ ] Verify tests pass
-- [ ] Run `rake test`, `rake lint`, `rake coverage`
-- [ ] Commit
+### Phase 2: Update display_thread_event to use thread verbosity ✅ COMPLETE
+- [x] Write failing test for display_thread_event checking thread verbosity at level 0
+- [x] Write failing test for display_thread_event checking thread verbosity at level 1
+- [x] Add thread_verbosity helper method to Formatter (similar to messages_verbosity)
+- [x] Update display_thread_event to check thread verbosity instead of @debug
+- [x] Verify tests pass
+- [x] Run `rake test`, `rake lint`, `rake coverage`
+- [x] Commit
+
+**Results**:
+- Tests: 2509 examples, 0 failures
+- Coverage: 99.46% line / 91.28% branch (passes enforcement)
+- Lint: 0 violations
 
 ### Phase 3: Update existing tests
 - [ ] Review all formatter_spec tests that stub display_thread_event

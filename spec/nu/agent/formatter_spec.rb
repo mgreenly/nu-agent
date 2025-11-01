@@ -482,6 +482,8 @@ RSpec.describe Nu::Agent::Formatter do
       end
 
       it "adds blank line before thread event output" do
+        allow(history).to receive(:get_int).with("thread_verbosity", default: 0).and_return(1)
+
         expect(mock_console).to receive(:puts).with("").ordered
         expect(mock_console).to receive(:puts).with("\e[90m[Thread] Orchestrator Starting\e[0m").ordered
 
@@ -1478,12 +1480,50 @@ RSpec.describe Nu::Agent::Formatter do
 
       # Workers are idle, so no spinner restart
       allow(history).to receive(:workers_idle?).and_return(true)
+      allow(history).to receive(:get_int).with("thread_verbosity", default: 0).and_return(1)
 
       # No longer manually hide/show spinner - thread-safe puts handles output
       expect(mock_console).to receive(:puts).with("")
       expect(mock_console).to receive(:puts).with("\e[90m[Thread] Test started\e[0m")
 
       formatter.display_thread_event("Test", "started")
+    end
+
+    it "does not display thread event when thread_verbosity is 0 even in debug mode" do
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:get_int).with("thread_verbosity", default: 0).and_return(0)
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter_with_app.display_thread_event("Test", "started")
+    end
+
+    it "displays thread event when thread_verbosity is 1" do
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:get_int).with("thread_verbosity", default: 0).and_return(1)
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Thread] Test started\e[0m")
+
+      formatter_with_app.display_thread_event("Test", "started")
     end
 
     it "handles display_message_created at verbosity 2 (does not display detailed info)" do
