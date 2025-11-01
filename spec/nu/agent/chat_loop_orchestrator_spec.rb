@@ -574,28 +574,6 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       end
     end
 
-    context "when spell check is enabled" do
-      let(:spellchecker) { instance_double(Nu::Agent::Clients::Anthropic) }
-      let(:spell_checker) { instance_double(Nu::Agent::SpellChecker) }
-
-      before do
-        allow(application).to receive_messages(spell_check_enabled: true, spellchecker: spellchecker)
-        allow(Nu::Agent::SpellChecker).to receive(:new).and_return(spell_checker)
-        allow(spell_checker).to receive(:check_spelling).with("teh test").and_return("the test")
-      end
-
-      it "includes spell correction in RAG content" do
-        rag_content = orchestrator.send(
-          :build_rag_content,
-          "teh test",
-          nil,
-          conversation_id
-        )
-
-        expect(rag_content).to include("The user said 'teh test' but means 'the test'")
-      end
-    end
-
     context "when no RAG content is generated" do
       it "returns default message" do
         rag_content = orchestrator.send(

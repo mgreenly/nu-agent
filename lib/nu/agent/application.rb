@@ -3,8 +3,8 @@
 module Nu
   module Agent
     class Application
-      attr_accessor :orchestrator, :spellchecker, :summarizer, :debug, :redact,
-                    :summarizer_enabled, :spell_check_enabled, :embedding_enabled, :conversation_id, :session_start_time
+      attr_accessor :orchestrator, :summarizer, :debug, :redact,
+                    :summarizer_enabled, :embedding_enabled, :conversation_id, :session_start_time
       attr_reader :history, :formatter, :status_mutex, :console, :operation_mutex, :worker_manager, :embedding_client,
                   :active_persona_system_prompt, :event_bus
 
@@ -128,12 +128,10 @@ module Nu
       def load_and_apply_configuration
         config = ConfigurationLoader.load(history: @history, options: @options)
         @orchestrator = config.orchestrator
-        @spellchecker = config.spellchecker
         @summarizer = config.summarizer
         @debug = config.debug
         @redact = config.redact
         @summarizer_enabled = config.summarizer_enabled
-        @spell_check_enabled = config.spell_check_enabled
         @embedding_enabled = config.embedding_enabled
         @embedding_client = config.embedding_client
         load_active_persona

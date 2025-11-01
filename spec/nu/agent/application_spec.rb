@@ -73,13 +73,11 @@ RSpec.describe Nu::Agent::Application do
 
     # Setup default config responses
     allow(mock_history).to receive(:get_config).with("model_orchestrator").and_return("test-model")
-    allow(mock_history).to receive(:get_config).with("model_spellchecker").and_return("test-model")
     allow(mock_history).to receive(:get_config).with("model_summarizer").and_return("test-model")
     allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("false")
     allow(mock_history).to receive(:get_config).with("verbosity", default: "0").and_return("0")
     allow(mock_history).to receive(:get_config).with("redaction", default: "true").and_return("true")
     allow(mock_history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("false")
-    allow(mock_history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
 
     # Mock stdout.sync
     allow($stdout).to receive(:sync=)

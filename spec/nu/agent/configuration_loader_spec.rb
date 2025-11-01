@@ -7,14 +7,12 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
   let(:history) { double("history") }
   let(:options) { double("options", reset_model: nil, debug: false) }
   let(:orchestrator) { double("orchestrator", model: "claude-sonnet-4-5") }
-  let(:spellchecker) { double("spellchecker", model: "claude-haiku-4-5") }
   let(:summarizer) { double("summarizer", model: "claude-haiku-4-5") }
   let(:embedding_client) { double("embedding_client") }
 
   before do
     # Mock history.get_config calls for model configurations
     allow(history).to receive(:get_config).with("model_orchestrator").and_return("claude-sonnet-4-5")
-    allow(history).to receive(:get_config).with("model_spellchecker").and_return("claude-haiku-4-5")
     allow(history).to receive(:get_config).with("model_summarizer").and_return("claude-haiku-4-5")
     # Worker-specific models default to nil (will fall back to general summarizer)
     allow(history).to receive(:get_config).with("conversation_summarizer_model").and_return(nil)
@@ -24,14 +22,13 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
     allow(history).to receive(:get_config).with("debug", default: "false").and_return("false")
     allow(history).to receive(:get_config).with("redaction", default: "true").and_return("true")
     allow(history).to receive(:get_config).with("summarizer_enabled", default: "true").and_return("true")
-    allow(history).to receive(:get_config).with("spell_check_enabled", default: "true").and_return("true")
     allow(history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
 
     # Mock ClientFactory - return different instances for each call
     allow(Nu::Agent::ClientFactory).to receive(:create)
       .with("claude-sonnet-4-5").and_return(orchestrator)
     allow(Nu::Agent::ClientFactory).to receive(:create)
-      .with("claude-haiku-4-5").and_return(spellchecker, summarizer)
+      .with("claude-haiku-4-5").and_return(summarizer)
 
     # Mock OpenAI embeddings client
     allow(Nu::Agent::Clients::OpenAIEmbeddings).to receive(:new).and_return(embedding_client)
@@ -43,12 +40,10 @@ RSpec.describe Nu::Agent::ConfigurationLoader do
 
       expect(config).to be_a(Nu::Agent::ConfigurationLoader::Configuration)
       expect(config.orchestrator).to eq(orchestrator)
-      expect(config.spellchecker).to eq(spellchecker)
       expect(config.summarizer).to eq(summarizer)
       expect(config.debug).to be(false)
       expect(config.redact).to be(true)
       expect(config.summarizer_enabled).to be(true)
-      expect(config.spell_check_enabled).to be(true)
       expect(config.embedding_enabled).to be(true)
       expect(config.embedding_client).to eq(embedding_client)
     end

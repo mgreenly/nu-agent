@@ -66,16 +66,18 @@ Do NOT proceed to the next phase until the current phase is complete and documen
 ### 2.1 Remove SpellChecker class
 **TDD Approach:** Tests should fail, then remove usage, then remove class
 
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/spell_checker_spec.rb` - should pass
-- [ ] Remove spell checker invocation in `lib/nu/agent/chat_loop_orchestrator.rb` (lines 236-246)
-  - Remove the entire `if application.spell_check_enabled && application.spellchecker` block
-- [ ] **Red:** Run tests - spell_checker_spec should still pass but integration may have issues
-- [ ] Remove `lib/nu/agent/spell_checker.rb`
-- [ ] Remove require in `lib/nu/agent.rb` (line 33)
-- [ ] **Red:** Run `bundle exec rspec spec/nu/agent/spell_checker_spec.rb` - should fail (file missing)
-- [ ] Remove `spec/nu/agent/spell_checker_spec.rb`
-- [ ] **Green:** Run `bundle exec rspec` - all tests should pass
-- [ ] **Gateway:** Run `bundle exec rubocop` - should pass
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/spell_checker_spec.rb` - should pass (9 examples, 0 failures)
+- [x] Remove spell checker invocation in `lib/nu/agent/chat_loop_orchestrator.rb` (lines 236-246)
+  - Removed the entire `if application.spell_check_enabled && application.spellchecker` block
+- [x] **Red:** Run tests - spell_checker_spec should still pass
+- [x] Remove `lib/nu/agent/spell_checker.rb`
+- [x] Remove require in `lib/nu/agent.rb` (line 33)
+- [x] **Red:** Run `bundle exec rspec spec/nu/agent/spell_checker_spec.rb` - should fail (uninitialized constant)
+- [x] Remove `spec/nu/agent/spell_checker_spec.rb`
+- [x] Remove spell check test from `chat_loop_orchestrator_spec.rb` (lines 577-597)
+- [x] Fix unused method arguments in `build_rag_content` (prefix with _)
+- [x] **Green:** Run `bundle exec rspec` - all tests should pass (2489 examples, 0 failures)
+- [x] **Gateway:** Run `bundle exec rubocop` - should pass (272 files, no offenses)
 
 ### 2.2 Remove spell checker from Application
 **TDD Approach:** Update tests first, then remove code
