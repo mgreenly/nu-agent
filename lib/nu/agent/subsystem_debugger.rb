@@ -13,10 +13,7 @@ module Nu
       def self.should_output?(application, subsystem, level)
         return false unless application&.debug
 
-        # Don't access database from non-main threads (DuckDB thread-safety)
-        # Workers have their own config_store, formatters should not access DB from threads
-        return false unless Thread.current == Thread.main
-
+        # History provides per-thread database connections, so reading is thread-safe
         config_key = "#{subsystem}_verbosity"
         verbosity = application.history.get_int(config_key, default: 0)
         verbosity >= level
