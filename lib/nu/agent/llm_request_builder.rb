@@ -163,18 +163,34 @@ module Nu
         # Merge RAG content with user query using DocumentBuilder
         builder = DocumentBuilder.new
 
-        # Handle both Array (current format) and Hash (future Task 9.3 format)
+        # Handle both Array (legacy format) and Hash (Task 9.3 structured format)
         context_content = if @rag_content.is_a?(Array)
                             @rag_content.join("\n\n")
                           else
-                            # For hash format, convert to YAML or similar
-                            require "yaml"
-                            YAML.dump(@rag_content).sub(/\A---\n/, "")
+                            # For hash format, convert to readable text
+                            format_rag_hash(@rag_content)
                           end
 
         builder.add_section("Context", context_content)
         builder.add_section("User Query", @user_query)
         builder.build
+      end
+
+      # Formats a RAG content hash into a readable string.
+      #
+      # @param rag_hash [Hash] The RAG content hash
+      # @return [String] Formatted RAG content
+      def format_rag_hash(rag_hash)
+        parts = []
+
+        parts << "Redacted messages: #{rag_hash[:redactions]}" if rag_hash[:redactions]
+
+        if rag_hash[:spell_check]
+          spell = rag_hash[:spell_check]
+          parts << "The user said '#{spell[:original]}' but means '#{spell[:corrected]}'"
+        end
+
+        parts.empty? ? "No Augmented Information Generated" : parts.join("\n\n")
       end
 
       # Constructs the metadata hash by combining RAG content and custom metadata.

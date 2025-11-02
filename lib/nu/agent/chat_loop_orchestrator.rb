@@ -209,17 +209,26 @@ module Nu
         orchestrator.execute(messages: messages, tools: tools, system_prompt: system_prompt)
       end
 
-      def build_rag_content(_user_query, redacted_message_ranges, _conversation_id)
+      def build_rag_content(user_query, redacted_message_ranges, conversation_id)
         # Multiple RAG sub-processes will be added here in the future
-        rag_content = []
+        rag_content = {}
 
         # RAG sub-process 1: Redacted message ranges
-        if redacted_message_ranges && !redacted_message_ranges.empty?
-          rag_content << "Redacted messages: #{redacted_message_ranges}"
-        end
+        rag_content[:redactions] = redacted_message_ranges if redacted_message_ranges && !redacted_message_ranges.empty?
 
-        # If no RAG content was generated, indicate that
-        rag_content << "No Augmented Information Generated" if rag_content.empty?
+        # RAG sub-process 2: Spell checking (if enabled)
+        if application.spell_check_enabled && application.spellchecker
+          spell_checker = SpellChecker.new(
+            history: history,
+            conversation_id: conversation_id,
+            client: application.spellchecker
+          )
+          corrected_query = spell_checker.check_spelling(user_query)
+
+          if corrected_query != user_query
+            rag_content[:spell_check] = { original: user_query, corrected: corrected_query }
+          end
+        end
 
         rag_content
       end

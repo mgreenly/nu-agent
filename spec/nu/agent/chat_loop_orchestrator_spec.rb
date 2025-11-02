@@ -11,7 +11,9 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
   let(:application) do
     instance_double(
       Nu::Agent::Application,
-      redact: false
+      redact: false,
+      spell_check_enabled: false,
+      spellchecker: nil
     )
   end
   let(:user_actor) { "testuser" }
@@ -331,7 +333,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
 
     it "uses LlmRequestBuilder to construct request" do
       # Mock build_rag_content - note that builder now merges RAG with user_query internally
-      rag_content = ["Redacted messages: #{redacted_ranges}"]
+      rag_content = { redactions: redacted_ranges }
       expect(orchestrator).to receive(:build_rag_content).with(
         user_input,
         redacted_ranges,
@@ -574,7 +576,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
 
   describe "#build_rag_content" do
     context "when redaction is enabled" do
-      it "includes redacted message ranges in RAG content" do
+      it "includes redacted message ranges in structured RAG content" do
         rag_content = orchestrator.send(
           :build_rag_content,
           user_input,
@@ -582,12 +584,36 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
           conversation_id
         )
 
-        expect(rag_content).to include("Redacted messages: 5-6")
+        expect(rag_content).to be_a(Hash)
+        expect(rag_content[:redactions]).to eq("5-6")
+      end
+    end
+
+    context "when spell check is enabled" do
+      let(:spellchecker) { instance_double(Nu::Agent::Clients::Anthropic) }
+      let(:spell_checker) { instance_double(Nu::Agent::SpellChecker) }
+
+      before do
+        allow(application).to receive_messages(spell_check_enabled: true, spellchecker: spellchecker)
+        allow(Nu::Agent::SpellChecker).to receive(:new).and_return(spell_checker)
+        allow(spell_checker).to receive(:check_spelling).with("teh test").and_return("the test")
+      end
+
+      it "includes spell correction in structured RAG content" do
+        rag_content = orchestrator.send(
+          :build_rag_content,
+          "teh test",
+          nil,
+          conversation_id
+        )
+
+        expect(rag_content).to be_a(Hash)
+        expect(rag_content[:spell_check]).to eq({ original: "teh test", corrected: "the test" })
       end
     end
 
     context "when no RAG content is generated" do
-      it "returns default message" do
+      it "returns empty hash" do
         rag_content = orchestrator.send(
           :build_rag_content,
           user_input,
@@ -595,7 +621,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
           conversation_id
         )
 
-        expect(rag_content).to eq(["No Augmented Information Generated"])
+        expect(rag_content).to eq({})
       end
     end
   end
