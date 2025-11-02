@@ -396,20 +396,16 @@ end
    - COMMIT: "Update VerbosityCommand LLM levels to match implementation" ✓
    - UPDATE: Mark task 10.2 complete in plan ✓
 
-**Task 10.3: Fix `/llm help` command (currently broken)**
-   - Issue: Typing `/llm help` produces error: "Unknown subcommand: /llm" with "Use: /llm help" (circular)
-   - Current: `/llm` command does not exist or is not registered
-   - Desired: Either:
-     - Option A: Register `/llm` as an alias/shortcut to `/verbosity llm`
-     - Option B: Make `/llm help` show the same help as `/verbosity help` for LLM subsystem
-     - Option C: Remove references to `/llm help` from error messages if command shouldn't exist
-   - Need to investigate: Where is `/llm help` referenced? Is it supposed to be a real command?
-   - RED: Write test for `/llm help` command behavior
-   - GREEN: Implement the chosen solution
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Fix /llm help command"
-   - UPDATE: Mark task 10.3 complete in plan
+**Task 10.3: Fix `/llm help` command (currently broken)** ✓ COMPLETE
+   - Issue: Typing `/llm help` produces error: "Unknown subcommand: /llm" with "Use: /llm help" (circular) ✓
+   - Root cause: SubsystemCommand was not stripping command prefix from input ✓
+   - Solution: Modified SubsystemCommand#execute to detect and strip command prefix ✓
+   - RED: Write test for `/llm help` command behavior ✓
+   - GREEN: Fix SubsystemCommand to handle both input formats (with and without prefix) ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Fix /llm help command by stripping command prefix in SubsystemCommand" ✓
+   - UPDATE: Mark task 10.3 complete in plan ✓
 
 ### Phase 7: Manual Validation [Human verification required]
 
