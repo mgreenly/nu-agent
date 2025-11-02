@@ -19,19 +19,17 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
   end
 
   describe "#display" do
-    context "with verbosity 0 (tool name only)" do
+    context "with verbosity 0 (no output)" do
       before do
         allow(console).to receive(:puts)
         allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(0)
       end
 
-      it "displays tool name without result" do
+      it "displays nothing at all" do
         formatter.display(message)
 
-        expect(console).to have_received(:puts).with("")
-        expect(console).to have_received(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
-        # Should not display result at verbosity 0
-        expect(console).not_to have_received(:puts).with(a_string_matching(/file contents/))
+        # Should not display anything at verbosity 0
+        expect(console).not_to have_received(:puts)
       end
     end
 
@@ -158,11 +156,11 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
 
       before { allow(console).to receive(:puts) }
 
-      it "defaults to verbosity 0" do
+      it "defaults to verbosity 0 and displays nothing" do
         formatter.display(message)
 
-        expect(console).to have_received(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
-        expect(console).not_to have_received(:puts).with(a_string_matching(/file contents/))
+        # Should not display anything when application is nil (defaults to verbosity 0)
+        expect(console).not_to have_received(:puts)
       end
     end
 

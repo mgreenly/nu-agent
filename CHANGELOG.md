@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2025-11-02
+
+### Added
+
+- **LLM Request Builder** (Issue #37): Complete refactor of LLM request preparation using builder pattern
+  - **New `LLMRequestBuilder` Class**: Centralized builder with LLM-agnostic internal message format
+    - Builder pattern for constructing requests with clean API
+    - Internal format with metadata for debugging and observability
+    - Separation between orchestration and API-specific formatting
+    - Support for conversation history, system prompt, user query, and tool calling
+  - **Unified Debug Output**: Consistent YAML debug output across all LLM clients
+    - Verbosity levels 0-5 for fine-grained control
+    - Level 0: No debug output
+    - Level 1: Request metadata only (timestamp, model, temperature, token counts)
+    - Level 2: Add conversation history (messages without content)
+    - Level 3: Full conversation history with message content
+    - Level 4: Add tool schemas and definitions
+    - Level 5: Complete request dump including raw API format
+  - **Client Refactoring**: All 4 LLM clients updated to use builder
+    - Anthropic, OpenAI, Google, and XAI clients refactored
+    - Consistent `build_request` method across all clients
+    - Eliminated duplication in message content formatting
+    - Proper handling of system prompts and tool calls
+  - **RAG Content Structure**: Improved separation of RAG content from user queries
+    - RAG content (redactions, spell check) stored in metadata hash
+    - Clean separation in internal format between user query and augmentation
+    - Proper token counting for all content types
+  - **Performance Benchmarks**: Comprehensive benchmarking suite
+    - Benchmark tests for builder performance across different scenarios
+    - No performance regression verified
+    - Optimized for both small and large conversation histories
+  - **Test Coverage**: Extensive test additions
+    - 892 lines of integration tests for LLMRequestBuilder
+    - 241 lines of unit tests for the builder
+    - Client-specific tests for all 4 LLM implementations
+    - Orphaned code detection spec to ensure code quality
+    - Total of 79 commits for this feature
+
+### Changed
+
+- **Verbosity System**: Expanded from 3 to 6 levels (0-5)
+  - Enhanced `/verbosity` command with new levels
+  - `/llm verbosity` now supports levels 0-5
+  - Updated help text to document all verbosity levels
+  - Consistent verbosity handling across all subsystems
+
+- **LLM Request Formatting**: Major architectural improvements
+  - Moved request building logic from orchestrators to dedicated builder
+  - Simplified `ChatLoopOrchestrator` and `ToolCallOrchestrator`
+  - Reduced code duplication across the codebase
+  - Better separation of concerns
+
+- **Documentation**: Added comprehensive development documentation
+  - `docs/dev/plan-llm-request-builder.md` (693 lines) - Complete implementation plan
+  - `docs/dev/testing-checklist-request-builder.md` (370 lines) - Testing checklist
+  - Updated inline documentation for new components
+
+### Fixed
+
+- **Subsystem Command Parsing** (Issue #42 - Bug 1): Fixed command input parsing
+  - `/llm help`, `/messages help`, and other subsystem commands now work correctly
+  - `SubsystemCommand#execute` now properly strips command prefix before parsing
+  - Fixes circular error: "Unknown subcommand: /llm" when typing "/llm help"
+  - Commands work with both formats: with prefix ("/llm help") and without ("help")
+
+- **Empty Tools Display**: Fixed verbosity level 4 showing empty tools
+  - Tools section now properly hidden when no tools are available
+  - Preserves tool structure display when tools exist
+
+- **System Prompt Display**: Fixed system prompt not showing in debug output
+  - System prompt now included in internal format
+  - Properly displayed at appropriate verbosity levels
+
+- **Tool Debug Messages at Verbosity 0**: Fixed tool use debug messages appearing when verbosity set to 0
+  - Tool result formatter now properly checks verbosity before displaying any output
+  - When tools verbosity is 0, no "[Tool Use Response]" messages are shown
+  - Updated tests to reflect correct behavior
+
 ### Removed
 
 - **Spell checker functionality**: Removed spell checker feature and all related code (Issue #29)
@@ -17,6 +95,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed spell checker subsystem from `VerbosityCommand`
   - Removed all spell checker tests and documentation
   - Note: Old database config values (`model_spellchecker`, `spell_check_enabled`) will remain but are unused
+
+- **Backup file**: Removed accidentally committed `application.rb.bak` file (1,646 lines)
+
+### Technical Details
+
+- **Files Changed**: 37 files modified across the implementation
+- **Code Impact**:
+  - 4,083 insertions (+)
+  - 1,989 deletions (-)
+  - Net gain: 2,094 lines of code
+- **Test Coverage**: Maintained high standards
+  - Line coverage: 99.43% (increased from previous threshold)
+  - Branch coverage: 91.18% (increased from previous threshold)
+- **Quality Metrics**:
+  - Zero RuboCop violations maintained
+  - TDD methodology followed throughout
+  - Comprehensive test coverage for all new features
+- **Performance**:
+  - No performance regression in request building
+  - Optimized YAML formatting for large conversations
+  - Efficient handling of tool schemas at verbosity level 4
+- **Code Organization**:
+  - New `lib/nu/agent/llm_request_builder.rb` (210 lines)
+  - Enhanced `lib/nu/agent/formatters/llm_request_formatter.rb` (233 lines changed)
+  - Updated all client implementations in `lib/nu/agent/clients/`
+
+### References
+
+- Closes Issue #37: Refactor LLM request preparation with builder pattern and unified debug output
+- Partially addresses Issue #42: Multiple bugs in subsystem commands (Bug 1 fixed)
+- Closes Issue #29: Remove spell checker (completed)
 
 ## [0.13.0] - 2025-10-31
 
@@ -513,6 +622,7 @@ _(Earlier changelog entries to be added)_
 
 ---
 
+[0.14.0]: https://github.com/mgreenly/nu-agent/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/mgreenly/nu-agent/compare/v0.11.0...v0.13.0
 [0.12.0]: https://github.com/mgreenly/nu-agent/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/mgreenly/nu-agent/compare/v0.10.0...v0.11.0

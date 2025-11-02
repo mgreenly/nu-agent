@@ -12,13 +12,13 @@ module Nu
         end
 
         def display(message, **options)
+          # Level 0: No tool debug output - don't show anything at all
+          return unless should_output?(1)
+
           result = message["tool_result"]["result"]
           name = message["tool_result"]["name"]
 
           display_header(name, **options)
-
-          # Level 0: No tool debug output - don't show results
-          return unless should_output?(1)
 
           # Level 1+: Show results with varying detail
           verbosity = verbosity_level

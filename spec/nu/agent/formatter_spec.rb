@@ -1231,8 +1231,9 @@ RSpec.describe Nu::Agent::Formatter do
         }
       }
 
-      expect(mock_console).to receive(:puts).with("")
-      expect(mock_console).to receive(:puts).with("\e[90m[Tool Use Response] file_read\e[0m")
+      # Tool results should not be displayed when tools_verbosity is 0 (the default)
+      # Even in debug mode, the tool verbosity setting should be respected
+      expect(mock_console).not_to receive(:puts)
 
       formatter.display_message(message)
     end
