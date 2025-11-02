@@ -338,16 +338,16 @@ end
    - COMMIT: "Fix debug output formatting" ✓
    - UPDATE: Mark task 9.1 complete in plan ✓
 
-**Task 9.2: Refactor RAG content to be separate in internal format**
-   - Current: RAG content merged into user_query before builder
-   - Desired: Keep RAG separate, merge in builder's build() method
-   - RED: Write test for separate RAG content in metadata
-   - GREEN: Update orchestrator to pass raw user_query (not markdown_document)
-   - GREEN: Update builder.build() to merge RAG + user_query using DocumentBuilder
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Separate RAG content from user query in internal format"
-   - UPDATE: Mark task 9.2 complete in plan
+**Task 9.2: Refactor RAG content to be separate in internal format** ✓ COMPLETE
+   - Current: RAG content merged into user_query before builder ✓
+   - Desired: Keep RAG separate, merge in builder's build() method ✓
+   - RED: Write test for separate RAG content in metadata ✓
+   - GREEN: Update orchestrator to pass raw user_query (not markdown_document) ✓
+   - GREEN: Update builder.build() to merge RAG + user_query using DocumentBuilder ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Separate RAG content from user query in internal format" ✓
+   - UPDATE: Mark task 9.2 complete in plan ✓
 
 **Task 9.3: Improve RAG content structure in metadata**
    - Current: rag_content is array of strings
