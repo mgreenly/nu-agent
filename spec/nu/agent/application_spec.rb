@@ -455,9 +455,9 @@ RSpec.describe Nu::Agent::Application do
         expect(app).to receive(:print).with("\033[2J\033[H")
         expect(mock_console).to receive(:puts).with("═" * 60)
         expect(mock_console).to receive(:puts).with("")
-        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent REPL v#{Nu::Agent::VERSION}")
-        expect(mock_console).to receive(:puts).with(" │●││●│  Your AI-powered assistant")
-        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  ")
+        expect(mock_console).to receive(:puts).with(" │●││●│  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  Your AI-powered assistant")
         expect(mock_console).to receive(:puts).with("  ╰──╯   ")
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("─" * 60)
@@ -483,9 +483,9 @@ RSpec.describe Nu::Agent::Application do
 
       it "prints minimal banner with ASCII art and version" do
         expect(app).to receive(:print).with("\033[2J\033[H")
-        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent v#{Nu::Agent::VERSION}")
-        expect(mock_console).to receive(:puts).with(" │●││●│  /help for commands")
-        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  ")
+        expect(mock_console).to receive(:puts).with(" │●││●│  Nu Agent v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  /help for commands")
         expect(mock_console).to receive(:puts).with("  ╰──╯   ")
         expect(mock_console).to receive(:puts).with("")
 
@@ -515,9 +515,9 @@ RSpec.describe Nu::Agent::Application do
         expect(app).to receive(:print).with("\033[2J\033[H")
         expect(mock_console).to receive(:puts).with("═" * 60)
         expect(mock_console).to receive(:puts).with("")
-        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent REPL v#{Nu::Agent::VERSION}")
-        expect(mock_console).to receive(:puts).with(" │●││●│  Your AI-powered assistant")
-        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  ")
+        expect(mock_console).to receive(:puts).with(" │●││●│  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  Your AI-powered assistant")
         expect(mock_console).to receive(:puts).with("  ╰──╯   ")
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("─" * 60)
@@ -553,9 +553,9 @@ RSpec.describe Nu::Agent::Application do
 
     it "prints minimal banner directly with ASCII art" do
       expect(app).to receive(:print).with("\033[2J\033[H")
-      expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent v#{Nu::Agent::VERSION}")
-      expect(mock_console).to receive(:puts).with(" │●││●│  /help for commands")
-      expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+      expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  ")
+      expect(mock_console).to receive(:puts).with(" │●││●│  Nu Agent v#{Nu::Agent::VERSION}")
+      expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  /help for commands")
       expect(mock_console).to receive(:puts).with("  ╰──╯   ")
       expect(mock_console).to receive(:puts).with("")
 
