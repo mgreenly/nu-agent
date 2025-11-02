@@ -12,7 +12,6 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
     instance_double(
       Nu::Agent::Application,
       redact: false,
-      spell_check_enabled: false,
       spellchecker: nil
     )
   end

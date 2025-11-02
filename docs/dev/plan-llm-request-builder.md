@@ -349,16 +349,16 @@ end
    - COMMIT: "Separate RAG content from user query in internal format" ✓
    - UPDATE: Mark task 9.2 complete in plan ✓
 
-**Task 9.3: Improve RAG content structure in metadata**
-   - Current: rag_content is array of strings
-   - Desired: rag_content is structured hash showing components
-   - RED: Write test for structured RAG content format
-   - GREEN: Update build_rag_content to return hash with keys (redactions, spell_check, etc.)
-   - GREEN: Update formatter to display structured RAG content
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Structure RAG content as hash in metadata"
-   - UPDATE: Mark task 9.3 complete in plan
+**Task 9.3: Improve RAG content structure in metadata** ✓ COMPLETE
+   - Current: rag_content is array of strings ✓
+   - Desired: rag_content is structured hash showing components ✓
+   - RED: Write test for structured RAG content format ✓
+   - GREEN: Update build_rag_content to return hash with keys (redactions, spell_check, etc.) ✓
+   - GREEN: Update formatter to display structured RAG content ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Structure RAG content as hash in metadata" ✓
+   - UPDATE: Mark task 9.3 complete in plan ✓
 
 ### Phase 7: Manual Validation [Human verification required]
 
