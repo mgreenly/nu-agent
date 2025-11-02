@@ -409,17 +409,17 @@ end
 
 ### Phase 11: Fix System Prompt Display [30 minutes]
 
-**Task 11.1: Add system prompt to LLM request builder**
-   - Issue: System prompt not appearing in debug output at verbosity level 2
-   - Current: `prepare_llm_request` doesn't call `.with_system_prompt()` on builder
-   - System prompt comes from `application.active_persona_system_prompt`
-   - RED: Write test expecting system prompt in internal_format
-   - GREEN: Update `prepare_llm_request` to get system prompt from application
-   - GREEN: Add `.with_system_prompt(system_prompt)` to builder chain
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add system prompt to LLM request builder"
-   - UPDATE: Mark task 11.1 complete in plan
+**Task 11.1: Add system prompt to LLM request builder** ✓ COMPLETE
+   - Issue: System prompt not appearing in debug output at verbosity level 2 ✓
+   - Current: `prepare_llm_request` doesn't call `.with_system_prompt()` on builder ✓
+   - System prompt comes from `application.active_persona_system_prompt` ✓
+   - RED: Write test expecting system prompt in internal_format ✓
+   - GREEN: Update `prepare_llm_request` to get system prompt from application ✓
+   - GREEN: Add `.with_system_prompt(system_prompt)` to builder chain ✓
+   - REFACTOR: Fixed RuboCop line length violation ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add system prompt to LLM request builder" ✓
+   - UPDATE: Mark task 11.1 complete in plan ✓
 
 ### Phase 7: Manual Validation [Human verification required]
 
