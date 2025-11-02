@@ -144,15 +144,38 @@ module Nu
 
         # Creates a condensed version of the tools array showing only names and first sentences.
         #
+        # Handles both flat format (Anthropic/Google) and nested format (OpenAI):
+        # - Flat: { name: "tool", description: "..." }
+        # - Nested: { type: "function", function: { name: "tool", description: "..." } }
+        #
         # @param tools [Array<Hash>] The full tool definitions
         # @return [Hash] A hash mapping tool names to their first sentence descriptions
         def condense_tools(tools)
           tools.each_with_object({}) do |tool, condensed|
-            name = tool[:name] || tool["name"]
-            description = tool[:description] || tool["description"]
+            name, description = extract_tool_name_and_description(tool)
             first_sentence = extract_first_sentence(description)
             condensed[name] = first_sentence if name
           end
+        end
+
+        # Extracts name and description from a tool definition.
+        #
+        # Handles both flat and nested formats.
+        #
+        # @param tool [Hash] The tool definition
+        # @return [Array<String, String>] [name, description]
+        def extract_tool_name_and_description(tool)
+          # Handle OpenAI nested format: check for function.name first
+          if tool[:function] || tool["function"]
+            func = tool[:function] || tool["function"]
+            name = func[:name] || func["name"]
+            description = func[:description] || func["description"]
+          else
+            # Handle flat format (Anthropic/Google)
+            name = tool[:name] || tool["name"]
+            description = tool[:description] || tool["description"]
+          end
+          [name, description]
         end
 
         # Extracts the first sentence from a description string.

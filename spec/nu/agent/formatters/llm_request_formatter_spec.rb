@@ -203,6 +203,73 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
       end
     end
 
+    context "with verbosity level 4 and OpenAI nested tool format" do
+      let(:internal_request_openai) do
+        {
+          system_prompt: "You are a helpful assistant.",
+          messages: [
+            { role: "user", content: "Hello" },
+            { role: "assistant", content: "Hi there!" },
+            { role: "user", content: "How are you?" }
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "file_read",
+                description: "Read a file from disk. This tool requires proper permissions.",
+                parameters: { type: "object", properties: {} }
+              }
+            },
+            {
+              type: "function",
+              function: {
+                name: "file_write",
+                description: "Write content to a file. The file will be created if it doesn't exist.",
+                parameters: { type: "object", properties: {} }
+              }
+            }
+          ],
+          metadata: {
+            rag_content: { redactions: ["secret"], spell_check: [] },
+            user_query: "How are you?",
+            conversation_id: 123,
+            exchange_id: 456
+          }
+        }
+      end
+
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(4)
+      end
+
+      it "displays condensed tool list from nested OpenAI format" do
+        formatter.display_yaml(internal_request_openai)
+
+        # Should see condensed tools (name: first sentence only)
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/tools:/)
+        )
+        # Should see first sentence of file_read description
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/file_read: Read a file from disk\./)
+        )
+        # Should see first sentence of file_write description
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/file_write: Write content to a file\./)
+        )
+
+        # Should NOT see the second sentences (indicating condensed format)
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/This tool requires proper permissions/)
+        )
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/The file will be created/)
+        )
+      end
+    end
+
     context "with verbosity level 5" do
       before do
         allow(console).to receive(:puts)
