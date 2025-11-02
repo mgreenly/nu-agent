@@ -446,23 +446,57 @@ RSpec.describe Nu::Agent::Application do
   describe "#print_welcome" do
     let(:app) { described_class.new(options: options) }
 
-    it "prints welcome message with improved visual design" do
-      expect(app).to receive(:print).with("\033[2J\033[H")
-      expect(mock_console).to receive(:puts).with("═" * 60)
-      expect(mock_console).to receive(:puts).with("  Nu Agent REPL v#{Nu::Agent::VERSION}")
-      expect(mock_console).to receive(:puts).with("─" * 60)
-      expect(mock_console).to receive(:puts).with("")
-      expect(mock_console).to receive(:puts).with("  Database: /tmp/test.db")
-      expect(mock_console).to receive(:puts).with("")
-      expect(mock_console).to receive(:puts).with("  Type your prompts below. Press Ctrl-C or /exit to quit.")
-      expect(mock_console).to receive(:puts).with("  (Ctrl-C during processing aborts operation)")
-      expect(mock_console).to receive(:puts).with("")
-      expect(mock_console).to receive(:puts).with("  Press Enter to submit input (Shift+Enter for newline)")
-      expect(mock_console).to receive(:puts).with("  Type /help for available commands")
-      expect(mock_console).to receive(:puts).with("")
-      expect(mock_console).to receive(:puts).with("═" * 60)
+    context "with default banner mode (:full)" do
+      before do
+        allow(options).to receive(:banner_mode).and_return(:full)
+      end
 
-      app.send(:print_welcome)
+      it "prints full welcome message with improved visual design" do
+        expect(app).to receive(:print).with("\033[2J\033[H")
+        expect(mock_console).to receive(:puts).with("═" * 60)
+        expect(mock_console).to receive(:puts).with("  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with("─" * 60)
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("  Database: /tmp/test.db")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("  Type your prompts below. Press Ctrl-C or /exit to quit.")
+        expect(mock_console).to receive(:puts).with("  (Ctrl-C during processing aborts operation)")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("  Press Enter to submit input (Shift+Enter for newline)")
+        expect(mock_console).to receive(:puts).with("  Type /help for available commands")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("═" * 60)
+
+        app.send(:print_welcome)
+      end
+    end
+
+    context "with minimal banner mode" do
+      before do
+        allow(options).to receive(:banner_mode).and_return(:minimal)
+      end
+
+      it "prints minimal banner with version only" do
+        expect(app).to receive(:print).with("\033[2J\033[H")
+        expect(mock_console).to receive(:puts).with("Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with("Type /help for available commands")
+        expect(mock_console).to receive(:puts).with("")
+
+        app.send(:print_welcome)
+      end
+    end
+
+    context "with no banner mode" do
+      before do
+        allow(options).to receive(:banner_mode).and_return(:none)
+      end
+
+      it "prints nothing when banner is disabled" do
+        expect(app).not_to receive(:print)
+        expect(mock_console).not_to receive(:puts)
+
+        app.send(:print_welcome)
+      end
     end
   end
 
