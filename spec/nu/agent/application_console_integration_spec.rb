@@ -239,10 +239,12 @@ RSpec.describe Nu::Agent::Application, "ConsoleIO Integration" do
     describe "/verbosity command" do
       it "shows all subsystems with their current levels" do
         expect(mock_console).to receive(:puts).with("").ordered
-        expect(mock_console).to receive(:puts).with("\e[90m/verbosity llm (0-4) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity console (0-1) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity llm (0-5) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity messages (0-3) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity search (0-2) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity stats (0-2) = 0\e[0m").ordered
+        expect(mock_console).to receive(:puts).with("\e[90m/verbosity thread (0-1) = 0\e[0m").ordered
         expect(mock_console).to receive(:puts).with("\e[90m/verbosity tools (0-3) = 0\e[0m").ordered
 
         result = app.send(:handle_command, "/verbosity")

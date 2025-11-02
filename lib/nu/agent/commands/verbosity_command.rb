@@ -11,10 +11,11 @@ module Nu
           "llm" => {
             levels: {
               0 => "No LLM debug output",
-              1 => "Show warnings (empty responses, API errors)",
-              2 => "Show message count and token estimates",
-              3 => "Show full request messages",
-              4 => "Add tool definitions to request display"
+              1 => "Show final user message only",
+              2 => "Show final user message + system prompt",
+              3 => "Show final user message + system prompt + RAG content (redactions, spell check)",
+              4 => "Show final user message + system prompt + RAG content + tool definitions",
+              5 => "Show final user message + system prompt + RAG content + tool definitions + complete message history"
             }
           },
           "tools" => {

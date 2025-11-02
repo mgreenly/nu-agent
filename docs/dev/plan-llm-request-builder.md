@@ -378,6 +378,39 @@ end
    - COMMIT: "Update LLM verbosity help text to match implementation" ✓
    - UPDATE: Mark task 10.1 complete in plan ✓
 
+**Task 10.2: Update VerbosityCommand SUBSYSTEMS hash to match implementation**
+   - Issue: `/verbosity help` shows outdated LLM level descriptions (lines 11-18)
+   - Current: Shows old text "Show warnings", "Show message count", etc.
+   - Desired: Match actual YAML formatter behavior
+   - Location: `lib/nu/agent/commands/verbosity_command.rb:11-18`
+   - RED: Write test for updated VerbosityCommand help text
+   - GREEN: Update SUBSYSTEMS["llm"][:levels] hash to reflect actual behavior:
+     - 0: No LLM debug output
+     - 1: Show final user message only
+     - 2: Show final user message + system prompt
+     - 3: Show final user message + system prompt + RAG content (redactions, spell check)
+     - 4: Show final user message + system prompt + RAG content + tool definitions
+     - 5: Show final user message + system prompt + RAG content + tool definitions + complete message history
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Update VerbosityCommand LLM levels to match implementation"
+   - UPDATE: Mark task 10.2 complete in plan
+
+**Task 10.3: Fix `/llm help` command (currently broken)**
+   - Issue: Typing `/llm help` produces error: "Unknown subcommand: /llm" with "Use: /llm help" (circular)
+   - Current: `/llm` command does not exist or is not registered
+   - Desired: Either:
+     - Option A: Register `/llm` as an alias/shortcut to `/verbosity llm`
+     - Option B: Make `/llm help` show the same help as `/verbosity help` for LLM subsystem
+     - Option C: Remove references to `/llm help` from error messages if command shouldn't exist
+   - Need to investigate: Where is `/llm help` referenced? Is it supposed to be a real command?
+   - RED: Write test for `/llm help` command behavior
+   - GREEN: Implement the chosen solution
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Fix /llm help command"
+   - UPDATE: Mark task 10.3 complete in plan
+
 ### Phase 7: Manual Validation [Human verification required]
 
 **IMPORTANT: These steps require HUMAN execution and verification**
