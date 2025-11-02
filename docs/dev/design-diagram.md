@@ -971,51 +971,51 @@ No (prompt)                                  Execute /command
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Thread-Safe Connection Pool:                                   │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ @connections = {}  # Hash of Thread → DuckDB::Database    │ │
-│  │ @mutex = Mutex.new                                        │ │
-│  │                                                            │ │
-│  │ connection                                                 │ │
-│  │   ├─ Check @connections[Thread.current]                   │ │
-│  │   ├─ Create new if missing (synchronized)                 │ │
-│  │   └─ Return per-thread connection                         │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ @connections = {}  # Hash of Thread → DuckDB::Database    │  │
+│  │ @mutex = Mutex.new                                        │  │
+│  │                                                           │  │
+│  │ connection                                                │  │
+│  │   ├─ Check @connections[Thread.current]                   │  │
+│  │   ├─ Create new if missing (synchronized)                 │  │
+│  │   └─ Return per-thread connection                         │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Transaction Support:                                           │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ transaction do |txn|                                      │ │
-│  │   # Work here                                             │ │
-│  │   txn.commit   # Explicit commit                          │ │
-│  │   # or                                                     │ │
-│  │   txn.rollback # Explicit rollback                        │ │
-│  │ end                                                        │ │
-│  │                                                            │ │
-│  │ Automatic rollback on exceptions                          │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ transaction do |txn|                                      │  │
+│  │   # Work here                                             │  │
+│  │   txn.commit   # Explicit commit                          │  │
+│  │   # or                                                    │  │
+│  │   txn.rollback # Explicit rollback                        │  │
+│  │ end                                                       │  │
+│  │                                                           │  │
+│  │ Automatic rollback on exceptions                          │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Repository Delegation:                                         │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ conversations → ConversationRepository                    │ │
-│  │ exchanges     → ExchangeRepository                        │ │
-│  │ messages      → MessageRepository                         │ │
-│  │ embeddings    → EmbeddingStore                            │ │
-│  │ config        → ConfigStore                               │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ conversations → ConversationRepository                    │  │
+│  │ exchanges     → ExchangeRepository                        │  │
+│  │ messages      → MessageRepository                         │  │
+│  │ embeddings    → EmbeddingStore                            │  │
+│  │ config        → ConfigStore                               │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Lifecycle:                                                     │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ initialize(db_path, options)                              │ │
-│  │   ├─ Create database file                                 │ │
-│  │   ├─ Initialize schema (SchemaManager)                    │ │
-│  │   ├─ Run migrations (MigrationManager)                    │ │
-│  │   ├─ Load VSS extension if available                      │ │
-│  │   └─ Create repositories                                  │ │
-│  │                                                            │ │
-│  │ close                                                      │ │
-│  │   ├─ Critical section (acquire mutex)                     │ │
-│  │   ├─ Close all thread connections                         │ │
-│  │   └─ Release mutex                                        │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ initialize(db_path, options)                              │  │
+│  │   ├─ Create database file                                 │  │
+│  │   ├─ Initialize schema (SchemaManager)                    │  │
+│  │   ├─ Run migrations (MigrationManager)                    │  │
+│  │   ├─ Load VSS extension if available                      │  │
+│  │   └─ Create repositories                                  │  │
+│  │                                                           │  │
+│  │ close                                                     │  │
+│  │   ├─ Critical section (acquire mutex)                     │  │
+│  │   ├─ Close all thread connections                         │  │
+│  │   └─ Release mutex                                        │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -1023,67 +1023,67 @@ No (prompt)                                  Execute /command
 │                  Repository Pattern Architecture                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ ConversationRepository (conversation_repository.rb)       │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ • create(model_name) → conversation_id                    │ │
-│  │ • find(id) → conversation hash                            │ │
-│  │ • update_summary(id, summary)                             │ │
-│  │ • all → array of conversations                            │ │
-│  │ • current → most recent conversation                      │ │
-│  │ • count → total conversations                             │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ ConversationRepository (conversation_repository.rb)       │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ • create(model_name) → conversation_id                    │  │
+│  │ • find(id) → conversation hash                            │  │
+│  │ • update_summary(id, summary)                             │  │
+│  │ • all → array of conversations                            │  │
+│  │ • current → most recent conversation                      │  │
+│  │ • count → total conversations                             │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ ExchangeRepository (exchange_repository.rb)               │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ • create(conversation_id) → exchange_id                   │ │
-│  │ • find(id) → exchange hash                                │ │
-│  │ • update_summary(id, summary)                             │ │
-│  │ • update_metrics(id, metrics_hash)                        │ │
-│  │ • by_conversation(conv_id) → exchanges array              │ │
-│  │ • unsummarized → exchanges without summaries              │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ ExchangeRepository (exchange_repository.rb)               │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ • create(conversation_id) → exchange_id                   │  │
+│  │ • find(id) → exchange hash                                │  │
+│  │ • update_summary(id, summary)                             │  │
+│  │ • update_metrics(id, metrics_hash)                        │  │
+│  │ • by_conversation(conv_id) → exchanges array              │  │
+│  │ • unsummarized → exchanges without summaries              │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ MessageRepository (message_repository.rb)                 │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ • create(exchange_id, role, content, **options)           │ │
-│  │ • find(id) → message hash                                 │ │
-│  │ • by_exchange(exchange_id) → messages array               │ │
-│  │ • by_conversation(conv_id, limit) → messages array        │ │
-│  │ • update_redacted(id, content_redacted)                   │ │
-│  │ • delete(id)                                              │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ MessageRepository (message_repository.rb)                 │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ • create(exchange_id, role, content, **options)           │  │
+│  │ • find(id) → message hash                                 │  │
+│  │ • by_exchange(exchange_id) → messages array               │  │
+│  │ • by_conversation(conv_id, limit) → messages array        │  │
+│  │ • update_redacted(id, content_redacted)                   │  │
+│  │ • delete(id)                                              │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ EmbeddingStore (embedding_store.rb)                       │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ • upsert(id, embedding, text, type)                       │ │
-│  │ • find(id) → embedding hash                               │ │
-│  │ • search(query_embedding, options) → results array        │ │
-│  │ • search_by_type(type, query_embedding, options)          │ │
-│  │ • delete(id)                                              │ │
-│  │ • vss_available? → boolean                                │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ EmbeddingStore (embedding_store.rb)                       │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ • upsert(id, embedding, text, type)                       │  │
+│  │ • find(id) → embedding hash                               │  │
+│  │ • search(query_embedding, options) → results array        │  │
+│  │ • search_by_type(type, query_embedding, options)          │  │
+│  │ • delete(id)                                              │  │
+│  │ • vss_available? → boolean                                │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ ConfigStore (config_store.rb)                             │ │
-│  ├───────────────────────────────────────────────────────────┤ │
-│  │ • get(key, default = nil) → value                         │ │
-│  │ • set(key, value)                                         │ │
-│  │ • delete(key)                                             │ │
-│  │ • all → hash of all config                                │ │
-│  │                                                            │ │
-│  │ Stored Configuration:                                      │ │
-│  │  • current_model                                          │ │
-│  │  • rag.exchanges_per_conversation                         │ │
-│  │  • rag.exchange_capacity                                  │ │
-│  │  • rag.similarity_threshold                               │ │
-│  │  • worker.conversation_summarizer.enabled                 │ │
-│  │  • worker.exchange_summarizer.enabled                     │ │
-│  │  • worker.embedding_generator.enabled                     │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ ConfigStore (config_store.rb)                             │  │
+│  ├───────────────────────────────────────────────────────────┤  │
+│  │ • get(key, default = nil) → value                         │  │
+│  │ • set(key, value)                                         │  │
+│  │ • delete(key)                                             │  │
+│  │ • all → hash of all config                                │  │
+│  │                                                           │  │
+│  │ Stored Configuration:                                     │  │
+│  │  • current_model                                          │  │
+│  │  • rag.exchanges_per_conversation                         │  │
+│  │  • rag.exchange_capacity                                  │  │
+│  │  • rag.similarity_threshold                               │  │
+│  │  • worker.conversation_summarizer.enabled                 │  │
+│  │  • worker.exchange_summarizer.enabled                     │  │
+│  │  • worker.embedding_generator.enabled                     │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -1092,75 +1092,75 @@ No (prompt)                                  Execute /command
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  conversations                                                  │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ id              VARCHAR   PRIMARY KEY                      │ │
-│  │ created_at      TIMESTAMP NOT NULL                         │ │
-│  │ updated_at      TIMESTAMP NOT NULL                         │ │
-│  │ summary         TEXT                                       │ │
-│  │ model_name      VARCHAR   NOT NULL                         │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ id              VARCHAR   PRIMARY KEY                     │  │
+│  │ created_at      TIMESTAMP NOT NULL                        │  │
+│  │ updated_at      TIMESTAMP NOT NULL                        │  │
+│  │ summary         TEXT                                      │  │
+│  │ model_name      VARCHAR   NOT NULL                        │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  exchanges                                                      │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ id                   VARCHAR   PRIMARY KEY                 │ │
-│  │ conversation_id      VARCHAR   NOT NULL (FK)               │ │
-│  │ created_at           TIMESTAMP NOT NULL                    │ │
-│  │ updated_at           TIMESTAMP NOT NULL                    │ │
-│  │ summary              TEXT                                  │ │
-│  │ total_input_tokens   INTEGER                               │ │
-│  │ total_output_tokens  INTEGER                               │ │
-│  │ total_cost           REAL                                  │ │
-│  │ tool_call_count      INTEGER                               │ │
-│  │ request_count        INTEGER                               │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ id                   VARCHAR   PRIMARY KEY                │  │
+│  │ conversation_id      VARCHAR   NOT NULL (FK)              │  │
+│  │ created_at           TIMESTAMP NOT NULL                   │  │
+│  │ updated_at           TIMESTAMP NOT NULL                   │  │
+│  │ summary              TEXT                                 │  │
+│  │ total_input_tokens   INTEGER                              │  │
+│  │ total_output_tokens  INTEGER                              │  │
+│  │ total_cost           REAL                                 │  │
+│  │ tool_call_count      INTEGER                              │  │
+│  │ request_count        INTEGER                              │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  messages                                                       │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ id               VARCHAR   PRIMARY KEY                     │ │
-│  │ exchange_id      VARCHAR   NOT NULL (FK)                   │ │
-│  │ role             VARCHAR   NOT NULL                        │ │
-│  │ content          TEXT      NOT NULL                        │ │
-│  │ content_redacted TEXT                                      │ │
-│  │ timestamp        TIMESTAMP NOT NULL                        │ │
-│  │ tool_call_id     VARCHAR                                   │ │
-│  │ tool_name        VARCHAR                                   │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ id               VARCHAR   PRIMARY KEY                    │  │
+│  │ exchange_id      VARCHAR   NOT NULL (FK)                  │  │
+│  │ role             VARCHAR   NOT NULL                       │  │
+│  │ content          TEXT      NOT NULL                       │  │
+│  │ content_redacted TEXT                                     │  │
+│  │ timestamp        TIMESTAMP NOT NULL                       │  │
+│  │ tool_call_id     VARCHAR                                  │  │
+│  │ tool_name        VARCHAR                                  │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  text_embedding_3_small                                         │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ id        VARCHAR    PRIMARY KEY                           │ │
-│  │ embedding FLOAT[1536] NOT NULL                             │ │
-│  │ text      TEXT       NOT NULL                              │ │
-│  │ type      VARCHAR    NOT NULL                              │ │
-│  │                                                             │ │
-│  │ INDEX: HNSW on embedding (if VSS available)                │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ id        VARCHAR    PRIMARY KEY                          │  │
+│  │ embedding FLOAT[1536] NOT NULL                            │  │
+│  │ text      TEXT       NOT NULL                             │  │
+│  │ type      VARCHAR    NOT NULL                             │  │
+│  │                                                           │  │
+│  │ INDEX: HNSW on embedding (if VSS available)               │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  appconfig                                                      │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ key   VARCHAR PRIMARY KEY                                  │ │
-│  │ value TEXT    NOT NULL                                     │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ key   VARCHAR PRIMARY KEY                                 │  │
+│  │ value TEXT    NOT NULL                                    │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  command_history                                                │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ id        INTEGER  PRIMARY KEY                             │ │
-│  │ command   TEXT     NOT NULL                                │ │
-│  │ timestamp TIMESTAMP NOT NULL                               │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ id        INTEGER  PRIMARY KEY                            │  │
+│  │ command   TEXT     NOT NULL                               │  │
+│  │ timestamp TIMESTAMP NOT NULL                              │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  migrations                                                     │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ version   INTEGER  PRIMARY KEY                             │ │
-│  │ applied_at TIMESTAMP NOT NULL                              │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ version   INTEGER  PRIMARY KEY                            │  │
+│  │ applied_at TIMESTAMP NOT NULL                             │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  DuckDB Configuration:                                          │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ • WAL mode: ON (write-ahead logging for durability)       │ │
-│  │ • VSS extension: ~/.local/lib/vss.duckdb_extension        │ │
-│  │ • Auto-recovery on startup (WAL replay)                   │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ • WAL mode: ON (write-ahead logging for durability)       │  │
+│  │ • VSS extension: ~/.local/lib/vss.duckdb_extension        │  │
+│  │ • Auto-recovery on startup (WAL replay)                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -1174,44 +1174,44 @@ No (prompt)                                  Execute /command
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Worker Lifecycle:                                              │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ initialize(history)                                       │ │
-│  │   ├─ Create 3 workers:                                    │ │
-│  │   │   • ConversationSummarizer                            │ │
-│  │   │   • ExchangeSummarizer                                │ │
-│  │   │   • EmbeddingGenerator                                │ │
-│  │   ├─ Load config from database                            │ │
-│  │   └─ Don't start yet (explicit start_all)                 │ │
-│  │                                                            │ │
-│  │ start_all                                                  │ │
-│  │   ├─ Start each worker thread                             │ │
-│  │   └─ Set @running = true                                  │ │
-│  │                                                            │ │
-│  │ stop_all                                                   │ │
-│  │   ├─ Signal shutdown to all workers                       │ │
-│  │   ├─ Wait for threads to complete                         │ │
-│  │   └─ Set @running = false                                 │ │
-│  │                                                            │ │
-│  │ pause_all                                                  │ │
-│  │   └─ Each worker.pause                                    │ │
-│  │                                                            │ │
-│  │ resume_all                                                 │ │
-│  │   └─ Each worker.resume                                   │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ initialize(history)                                       │  │
+│  │   ├─ Create 3 workers:                                    │  │
+│  │   │   • ConversationSummarizer                            │  │
+│  │   │   • ExchangeSummarizer                                │  │
+│  │   │   • EmbeddingGenerator                                │  │
+│  │   ├─ Load config from database                            │  │
+│  │   └─ Don't start yet (explicit start_all)                 │  │
+│  │                                                           │  │
+│  │ start_all                                                 │  │
+│  │   ├─ Start each worker thread                             │  │
+│  │   └─ Set @running = true                                  │  │
+│  │                                                           │  │
+│  │ stop_all                                                  │  │
+│  │   ├─ Signal shutdown to all workers                       │  │
+│  │   ├─ Wait for threads to complete                         │  │
+│  │   └─ Set @running = false                                 │  │
+│  │                                                           │  │
+│  │ pause_all                                                 │  │
+│  │   └─ Each worker.pause                                    │  │
+│  │                                                           │  │
+│  │ resume_all                                                │  │
+│  │   └─ Each worker.resume                                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  Status Tracking:                                               │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │ status → Hash                                             │ │
-│  │   {                                                        │ │
-│  │     conversation_summarizer: {                            │ │
-│  │       running: true/false,                                │ │
-│  │       paused: true/false,                                 │ │
-│  │       enabled: true/false                                 │ │
-│  │     },                                                     │ │
-│  │     exchange_summarizer: { ... },                         │ │
-│  │     embedding_generator: { ... }                          │ │
-│  │   }                                                        │ │
-│  └───────────────────────────────────────────────────────────┘ │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ status → Hash                                             │  │
+│  │   {                                                       │  │
+│  │     conversation_summarizer: {                            │  │
+│  │       running: true/false,                                │  │
+│  │       paused: true/false,                                 │  │
+│  │       enabled: true/false                                 │  │
+│  │     },                                                    │  │
+│  │     exchange_summarizer: { ... },                         │  │
+│  │     embedding_generator: { ... }                          │  │
+│  │   }                                                       │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 

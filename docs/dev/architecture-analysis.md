@@ -463,6 +463,52 @@ end
 
 ---
 
+### Issue 6: Potential for Degenerate Exchanges
+**Location**: ChatLoopOrchestrator, ExchangeRepository
+
+**Issue**: Despite transaction protection, degenerate exchanges can occur
+- Process crashes (SIGKILL, OOM, segfault) can leave transactions uncommitted
+- Database connection loss may not properly rollback
+- No cleanup mechanism for stale "in_progress" exchanges
+- Foreign key structure: `messages.exchange_id → exchanges.id`
+
+**Potential degenerate states**:
+1. Exchange without any messages (crash after `create_exchange`)
+2. Exchange with only user message (crash before LLM response)
+3. Perpetual "in_progress" status (never marked completed/failed)
+
+**Current mitigation**: Transaction wrapping in `ChatLoopOrchestrator.execute`
+```ruby
+history.transaction do
+  execute_exchange(conversation_id, user_input, ...)
+end
+```
+
+**Recommendation**: Add recovery mechanisms
+```ruby
+# 1. Startup recovery for stale exchanges
+class ExchangeRecovery
+  def mark_stale_as_failed
+    # Mark exchanges "in_progress" > 1 hour old as failed
+  end
+end
+
+# 2. Admin command for cleanup
+class AdminCommand
+  def cleanup_degenerate_exchanges
+    # Find exchanges without messages
+    # Find incomplete exchanges > N days old
+  end
+end
+
+# 3. Background job for periodic cleanup
+class ExchangeCleanupWorker
+  # Run daily to identify and clean degenerate exchanges
+end
+```
+
+---
+
 ## Summary Recommendations
 
 ### Recently Completed ✓
@@ -523,7 +569,7 @@ end
 ## Strengths to Preserve
 
 1. **Clear layering** - Presentation, Orchestration, Service, Integration, Data
-2. **Transaction boundaries** - All-or-nothing exchange persistence with foreign key constraints
+2. **Transaction boundaries** - All-or-nothing exchange persistence with foreign key constraints (though see Issue 6 for edge cases with process crashes)
 3. **Provider abstraction** - Easy to add new LLM providers (Anthropic, Google, OpenAI, X.AI)
 4. **Tool extensibility** - 23 tools with common interface, easy to add more
 5. **Thread safety** - WorkerToken pattern, careful mutex use, per-thread connections

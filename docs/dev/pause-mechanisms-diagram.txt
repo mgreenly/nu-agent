@@ -1,0 +1,368 @@
+================================================================================
+PAUSE MECHANISM ARCHITECTURE DIAGRAM
+================================================================================
+
+APPLICATION LIFECYCLE
+┌─────────────────────────────────────────────────────────────────┐
+│                         Nu::Agent::Application                   │
+│                                                                   │
+│  @operation_mutex ─────────────► Protects critical sections      │
+│  @status_mutex ───────────────► Shared with background workers   │
+│  @history ────────────────────► Database & config store         │
+│  @worker_manager ──────────────► BackgroundWorkerManager         │
+│  @active_threads ──────────────► [Orchestrator threads]         │
+│  @shutdown ────────────────────► Signals all threads            │
+└─────────────────────────────────────────────────────────────────┘
+          ▲                    ▲                      ▲
+          │                    │                      │
+          │                    │                      │
+    ┌─────┴────────┐  ┌────────┴──────────┐  ┌───────┴──────────┐
+    │              │  │                   │  │                  │
+    
+================================================================================
+WORKER TRACKING: WorkerToken & WorkerCounter
+================================================================================
+
+USER INPUT
+    │
+    ├─► InputProcessor.process(input)
+    │       │
+    │       ├─► worker_token = WorkerToken.new(application.history)
+    │       │       │
+    │       │       ├─► token.activate()
+    │       │       │       │
+    │       │       │       └─► History.increment_workers()
+    │       │       │               │
+    │       │       │               └─► WorkerCounter.increment_workers()
+    │       │       │                   │
+    │       │       │                   └─► ConfigStore.set_config("active_workers", count)
+    │       │       │                       [PERSISTED TO DATABASE]
+    │       │       │
+    │       │       ├─► Orchestrator Thread
+    │       │       │       │
+    │       │       │       └─► Process exchange, call LLM, etc.
+    │       │       │
+    │       │       └─► token.release()  [in ensure block]
+    │       │               │
+    │       │               └─► History.decrement_workers()
+    │       │
+    │       └─► Thread.join() [Wait for orchestrator completion]
+    │
+    └─► CONTINUE MAIN LOOP
+
+WORKER TOKEN STATE MACHINE:
+    ┌───────────┐
+    │ Inactive  │
+    └─────┬─────┘
+          │ activate()
+          ▼
+    ┌───────────┐
+    │  Active   │
+    └─────┬─────┘
+          │ release()
+          ▼
+    ┌───────────┐
+    │ Inactive  │
+    └───────────┘
+
+PROPERTIES:
+  • Idempotent: Multiple activate() calls = one increment
+  • Idempotent: Multiple release() calls = one decrement
+  • Counts orchestrator threads for future editor feature
+  • No pause capability
+  • Per-exchange lifecycle
+
+
+================================================================================
+BACKGROUND WORKER CONTROL: PausableTask
+================================================================================
+
+APPLICATION STARTUP
+    │
+    ├─► BackgroundWorkerManager
+    │       │
+    │       ├─► start_summarization_worker()
+    │       │       │
+    │       │       ├─► ConversationSummarizer.new()
+    │       │       │       │
+    │       │       │       └─► PausableTask.initialize(status_info, shutdown_flag)
+    │       │       │           @pause_mutex = Mutex.new
+    │       │       │           @pause_cv = ConditionVariable.new
+    │       │       │           @paused = false
+    │       │       │           @status = {..., running: false, paused: false, ...}
+    │       │       │
+    │       │       ├─► ConversationSummarizer.start_worker()
+    │       │       │       │
+    │       │       │       └─► Thread.new { run_worker_loop() }
+    │       │       │
+    │       │       └─► thread added to @workers array
+    │       │
+    │       ├─► start_embedding_worker()
+    │       │       [Similar structure]
+    │       │
+    │       └─► ExchangeSummarizer
+    │               [Similar structure]
+    │
+    └─► @workers = [ConversationSummarizer, ExchangeSummarizer, EmbeddingGenerator]
+                              ▲                    ▲                      ▲
+                              │                    │                      │
+                              │                    │                      │
+                        All inherit from PausableTask
+
+
+PAUSABLE TASK WORKER LOOP:
+┌───────────────────────────────────────────────────────────────┐
+│                       run_worker_loop()                        │
+├───────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  loop do                                                        │
+│    break if shutdown_requested?                                │
+│                                                                 │
+│    check_pause()  ◄──────┐                                      │
+│    # Wait if paused      │                                      │
+│                          │                                      │
+│    break if shutdown_requested?                                │
+│                                                                 │
+│    mark_as_running = true                                      │
+│    do_work()             # Specific to subclass                │
+│                          │                                      │
+│    sleep_with_checkpoints(3s)  ◄──┘                           │
+│    # Check shutdown & pause every 200ms                        │
+│  end                                                            │
+│                                                                 │
+│  ensure                                                         │
+│    mark_as_running = false                                     │
+│    mark_as_paused = false                                      │
+└───────────────────────────────────────────────────────────────┘
+
+
+PAUSE STATE MACHINE:
+    ┌──────────────┐
+    │   Running    │
+    └──────┬───────┘
+           │ pause()
+           ▼
+    ┌──────────────┐      @paused = true
+    │   Paused     │◄─────@status["paused"] = true
+    │   (blocked)  │      @pause_cv.broadcast()
+    └──────┬───────┘
+           │ resume()
+           ▼
+    ┌──────────────┐
+    │   Running    │
+    └──────────────┘
+
+SYNCHRONIZATION IN PAUSABLE TASK:
+
+1. PAUSE OPERATION:
+   ┌─────────────────────────────────────────┐
+   │ @pause_mutex.synchronize do             │
+   │   @paused = true                        │
+   │   @status_mutex.synchronize do          │
+   │     @status["paused"] = true            │
+   │   end                                   │
+   │ end                                     │
+   └─────────────────────────────────────────┘
+
+2. RESUME OPERATION:
+   ┌─────────────────────────────────────────┐
+   │ @pause_mutex.synchronize do             │
+   │   @paused = false                       │
+   │   @status_mutex.synchronize do          │
+   │     @status["paused"] = false           │
+   │   end                                   │
+   │   @pause_cv.broadcast()                 │
+   │ end                                     │
+   └─────────────────────────────────────────┘
+
+3. CHECK PAUSE (in worker loop):
+   ┌────────────────────────────────────────────┐
+   │ @pause_mutex.synchronize do                │
+   │   while @paused && !shutdown_requested?   │
+   │     @pause_cv.wait(@pause_mutex, 0.1)     │
+   │   end                                      │
+   │ end                                        │
+   └────────────────────────────────────────────┘
+
+WAIT FOR PAUSE (BackupCommand):
+   ┌──────────────────────────────────────────────┐
+   │ @workers.all? do |worker|                    │
+   │   worker.wait_until_paused(timeout: 5)       │
+   │ end                                          │
+   │                                              │
+   │ Returns: true if ALL paused, false otherwise │
+   └──────────────────────────────────────────────┘
+
+WORKER SUBCLASSES:
+  • ConversationSummarizer < PausableTask
+  • ExchangeSummarizer < PausableTask
+  • EmbeddingGenerator < PausableTask
+  
+  Each implements:
+    - do_work() : main work loop
+    - shutdown_requested?() : check @application.shutdown
+
+
+================================================================================
+BACKUP COMMAND: PAUSE IN ACTION
+================================================================================
+
+BackupCommand.execute(input)
+    │
+    ├─► Validate backup (file permissions, disk space, etc.)
+    │
+    ├─► pause_workers_and_close_database()
+    │       │
+    │       ├─► @app.worker_manager.pause_all()
+    │       │       │
+    │       │       └─► @workers.each(&:pause)
+    │       │           • ConversationSummarizer.pause()
+    │       │           • ExchangeSummarizer.pause()
+    │       │           • EmbeddingGenerator.pause()
+    │       │
+    │       ├─► @app.worker_manager.wait_until_all_paused(timeout: 5.0)
+    │       │       │
+    │       │       └─► @workers.all? { |w| w.wait_until_paused(timeout: 5) }
+    │       │           • Wait for ConversationSummarizer to pause
+    │       │           • Wait for ExchangeSummarizer to pause
+    │       │           • Wait for EmbeddingGenerator to pause
+    │       │
+    │       └─► @app.history.close()
+    │           [Close database connections]
+    │
+    ├─► CRITICAL SECTION: Backup file
+    │       │
+    │       ├─► Copy database file
+    │       ├─► Verify backup
+    │       └─► Report success/failure
+    │
+    └─► reopen_database_and_resume_workers()  [in ensure block]
+            │
+            ├─► @app.reopen_database()
+            │   [Reopen connections]
+            │
+            └─► @app.worker_manager.resume_all()
+                    │
+                    └─► @workers.each(&:resume)
+                        • ConversationSummarizer.resume()
+                        • ExchangeSummarizer.resume()
+                        • EmbeddingGenerator.resume()
+
+
+================================================================================
+CONSOLE IO STATE MACHINE: SEPARATE PAUSE SYSTEM
+================================================================================
+
+ConsoleIO States:
+    ┌─────────────┐
+    │   Idle      │ ◄──────────────────────┐
+    └──────┬──────┘                        │
+           │ readline()                    │
+           ▼                               │
+    ┌──────────────────┐                  │
+    │ ReadingUserInput │ ──resume()────────┘
+    └──────┬───────────┘
+           │ on_input_completed()
+           ├──► show_spinner()
+           │    ▼
+           │ ┌──────────────────┐
+           │ │StreamingAssistant│
+           │ └──────┬───────────┘
+           │        │ hide_spinner()
+           └────►   │  ┌─────────────┐
+                    └─►│   Idle      │
+                       └─────────────┘
+
+   From any state:
+    │
+    ├─► pause()
+    │    │
+    │    └─► transition_to(PausedState.new(context, previous_state))
+    │         │
+    │         └─► @state = PausedState
+    │
+    └─► Only from PausedState:
+         │
+         └─► resume()
+              │
+              └─► transition_to(previous_state)
+
+
+================================================================================
+COMPARISON TABLE
+================================================================================
+
+                     WorkerToken    WorkerCounter   PausableTask    ConsoleIO
+─────────────────────────────────────────────────────────────────────────────
+Purpose              Count orches.  Persist count   Control workers UI state
+Scope                Per exchange   App-wide        App-wide        App-wide
+Lifetime             Per input      Session         Session         Session
+Pause capability     NO             NO              YES             YES
+Resume capability    NO             NO              YES             YES
+Wait for pause       NO             NO              YES             NO
+Status tracking      active? only   Single int      Full metrics    State only
+Synchronization      Mutex          Database        Dual mutex      State pattern
+Use case             Editor feature Tracking        Backup safety   Input mgmt.
+
+
+================================================================================
+SYNCHRONIZATION PRIMITIVES SUMMARY
+================================================================================
+
+Thread-Safe Counting:
+  WorkerToken
+    ├─ @mutex
+    └─ @active (Boolean)
+  
+  WorkerCounter
+    └─ @config_store (database-backed)
+
+Pause/Resume Coordination:
+  PausableTask
+    ├─ @pause_mutex
+    ├─ @pause_cv (ConditionVariable)
+    ├─ @paused (Boolean)
+    ├─ @status_mutex (shared with application)
+    └─ @status (Hash with running/paused flags)
+
+State Transitions:
+  ConsoleIO
+    ├─ State classes (IdleState, ReadingUserInputState, etc.)
+    ├─ PausedState saves previous state
+    └─ No mutex (single-threaded state management)
+
+
+================================================================================
+ANSWERS TO KEY QUESTIONS
+================================================================================
+
+Q: Can background workers use WorkerTokens instead of PausableTask?
+A: NO - WorkerToken only counts, doesn't pause. PausableTask provides
+   pause/resume/wait_until_paused which are essential for backup safety.
+
+Q: Could we unify these mechanisms?
+A: NOT RECOMMENDED - They solve different problems:
+   • WorkerToken: "How many threads?" (counting)
+   • PausableTask: "Pause all work" (control)
+   • ConsoleIO: "What's the UI state?" (state mgmt)
+
+Q: What makes background workers different from orchestrators?
+A: 
+   • Duration: Workers long-lived (session), orchestrators short-lived (input)
+   • Pausing: Workers need to pause, orchestrators don't
+   • Tracking: Both tracked but for different reasons
+   • Control: Workers actively managed, orchestrators fire-and-forget
+
+Q: What potential issues exist in current design?
+A:
+   • Dual mutex in PausableTask (but safe - only PausableTask uses pause_mutex)
+   • Status mutex coupling (tight integration with application)
+   • No observer pattern (polling in wait_until_paused)
+
+Q: Recommended improvements?
+A:
+   • Keep WorkerToken as-is (simple, effective)
+   • Keep PausableTask (robust, well-designed)
+   • Consider observer pattern for wait_until_paused (optional)
+   • Keep ConsoleIO separate (different concern)
+
