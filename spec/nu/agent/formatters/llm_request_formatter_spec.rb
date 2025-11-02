@@ -175,17 +175,23 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
           a_string_matching(/rag_content:/)
         )
 
-        # Should see condensed tools (name: first sentence only)
+        # Should see condensed tools as structured array
         expect(console).to have_received(:puts).with(
           a_string_matching(/tools:/)
         )
-        # Should see first sentence of file_read description
+        # Should see tool names in structured format
         expect(console).to have_received(:puts).with(
-          a_string_matching(/file_read: Read a file from disk\./)
+          a_string_matching(/:name: file_read/)
         )
-        # Should see first sentence of file_write description
         expect(console).to have_received(:puts).with(
-          a_string_matching(/file_write: Write content to a file\./)
+          a_string_matching(/:name: file_write/)
+        )
+        # Should see first sentence of descriptions only
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/:description: Read a file from disk\./)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/:description: Write content to a file\./)
         )
 
         # Should NOT see the second sentences (indicating condensed format)
@@ -247,17 +253,30 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
       it "displays condensed tool list from nested OpenAI format" do
         formatter.display_yaml(internal_request_openai)
 
-        # Should see condensed tools (name: first sentence only)
+        # Should see condensed tools preserving nested structure
         expect(console).to have_received(:puts).with(
           a_string_matching(/tools:/)
         )
-        # Should see first sentence of file_read description
+        # Should see type and function keys preserved (at least once for multiple tools)
         expect(console).to have_received(:puts).with(
-          a_string_matching(/file_read: Read a file from disk\./)
+          a_string_matching(/:type: function/)
+        ).at_least(:once)
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/:function:/)
+        ).at_least(:once)
+        # Should see tool names in nested format
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/:name: file_read/)
         )
-        # Should see first sentence of file_write description
         expect(console).to have_received(:puts).with(
-          a_string_matching(/file_write: Write content to a file\./)
+          a_string_matching(/:name: file_write/)
+        )
+        # Should see first sentence of descriptions only
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/:description: Read a file from disk\./)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/:description: Write content to a file\./)
         )
 
         # Should NOT see the second sentences (indicating condensed format)
@@ -266,6 +285,10 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         )
         expect(console).not_to have_received(:puts).with(
           a_string_matching(/The file will be created/)
+        )
+        # Should NOT see parameters field
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/:parameters:/)
         )
       end
     end

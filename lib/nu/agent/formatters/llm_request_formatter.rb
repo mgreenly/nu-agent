@@ -110,7 +110,7 @@ module Nu
           output[:rag_content] = rag_content if rag_content
         end
 
-        # Adds tools to the output hash (condensed at level 4, full at level 5).
+        # Adds tools to the output hash (filtered at level 4, full at level 5).
         #
         # @param output [Hash] The output hash being built
         # @param internal_request [Hash] The internal request format
@@ -118,7 +118,7 @@ module Nu
         def add_tools(output, internal_request)
           return unless internal_request[:tools]
 
-          output[:tools] = condense_tools(internal_request[:tools]) if should_output?(4)
+          output[:tools] = filter_tools(internal_request[:tools]) if should_output?(4)
           output[:tools] = internal_request[:tools] if should_output?(5)
         end
 
@@ -142,40 +142,53 @@ module Nu
           SubsystemDebugger.should_output?(@application, "llm", level)
         end
 
-        # Creates a condensed version of the tools array showing only names and first sentences.
+        # Creates a filtered version of the tools array preserving structure but condensing content.
         #
         # Handles both flat format (Anthropic/Google) and nested format (OpenAI):
-        # - Flat: { name: "tool", description: "..." }
-        # - Nested: { type: "function", function: { name: "tool", description: "..." } }
+        # - Flat: { name: "tool", description: "first sentence" }
+        # - Nested: { type: "function", function: { name: "tool", description: "first sentence" } }
+        #
+        # Removes schema fields like :parameters or :input_schema and truncates descriptions
+        # to their first sentence while preserving the original array structure.
         #
         # @param tools [Array<Hash>] The full tool definitions
-        # @return [Hash] A hash mapping tool names to their first sentence descriptions
-        def condense_tools(tools)
-          tools.each_with_object({}) do |tool, condensed|
-            name, description = extract_tool_name_and_description(tool)
-            first_sentence = extract_first_sentence(description)
-            condensed[name] = first_sentence if name
+        # @return [Array<Hash>] An array of filtered tool hashes
+        def filter_tools(tools)
+          tools.map do |tool|
+            filter_single_tool(tool)
           end
         end
 
-        # Extracts name and description from a tool definition.
-        #
-        # Handles both flat and nested formats.
+        # Filters a single tool definition.
         #
         # @param tool [Hash] The tool definition
-        # @return [Array<String, String>] [name, description]
-        def extract_tool_name_and_description(tool)
-          # Handle OpenAI nested format: check for function.name first
+        # @return [Hash] The filtered tool definition
+        def filter_single_tool(tool)
+          # Handle OpenAI nested format: { type: "function", function: { name, description, parameters } }
           if tool[:function] || tool["function"]
             func = tool[:function] || tool["function"]
             name = func[:name] || func["name"]
             description = func[:description] || func["description"]
+            first_sentence = extract_first_sentence(description)
+
+            {
+              type: tool[:type] || tool["type"],
+              function: {
+                name: name,
+                description: first_sentence
+              }
+            }
           else
-            # Handle flat format (Anthropic/Google)
+            # Handle flat format (Anthropic/Google): { name, description, input_schema }
             name = tool[:name] || tool["name"]
             description = tool[:description] || tool["description"]
+            first_sentence = extract_first_sentence(description)
+
+            {
+              name: name,
+              description: first_sentence
+            }
           end
-          [name, description]
         end
 
         # Extracts the first sentence from a description string.

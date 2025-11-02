@@ -473,16 +473,23 @@ end
    - COMMIT: "Update verbosity help text for expanded levels" ✓
    - UPDATE: Mark task 12.4 complete in plan ✓
 
-**Task 12.5: Fix empty tools display at verbosity level 4** ✓ COMPLETE
-   - Issue: At verbosity level 4, tools were showing as `:tools: {}` instead of condensed tool list ✓
-   - Root cause: `condense_tools()` only handled flat format (Anthropic/Google), not OpenAI's nested format ✓
-   - Solution: Updated `condense_tools()` to handle both flat and nested formats ✓
-   - RED: Wrote test for OpenAI nested tool format at verbosity level 4 ✓
-   - GREEN: Added `extract_tool_name_and_description()` helper method to handle both formats ✓
-   - REFACTOR: Extracted helper to reduce complexity and satisfy RuboCop metrics ✓
-   - RUN: `rake test && rake lint && rake coverage` - all pass ✓
-   - COMMIT: "Fix empty tools display at verbosity level 4" ✓
-   - UPDATE: Marked task 12.5 complete in plan ✓
+**Task 12.5: Preserve tool structure at verbosity level 4**
+   - Goal: Level 4 should show same YAML structure as level 5, but condensed
+   - Desired output: Keep array structure, remove parameters, truncate descriptions to first sentence
+   - Example for OpenAI at level 4:
+     ```yaml
+     :tools:
+     - :type: function
+       :function:
+         :name: file_read
+         :description: Read a file from disk.
+     ```
+   - RED: Update tests to expect structured array preserving original format
+   - GREEN: Replace `condense_tools()` with `filter_tools()` that preserves structure
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Preserve tool structure at verbosity level 4"
+   - UPDATE: Mark task 12.5 complete in plan
 
 ### Phase 8: Bug Fixes [Post-Implementation]
 
