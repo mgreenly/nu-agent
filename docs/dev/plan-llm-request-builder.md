@@ -473,71 +473,6 @@ end
    - COMMIT: "Update verbosity help text for expanded levels"
    - UPDATE: Mark task 12.4 complete in plan
 
-### Phase 7: Manual Validation [Human verification required]
-
-**IMPORTANT: These steps require HUMAN execution and verification**
-
-**Testing Checklist Document Created**: `docs/dev/testing-checklist-request-builder.md` provides comprehensive manual testing procedures.
-
-**Task 7.1: Manual test with Anthropic client**
-   - Start agent with Anthropic client
-   - Test simple query with no tools
-   - Test query requiring tool use
-   - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
-   - Verify level 4 shows condensed tool list (names + first sentence)
-   - Verify level 5 shows full tool definitions
-   - Verify level 6 shows complete history
-   - Verify no duplication of tool names in message content
-   - UPDATE: Mark task 7.1 complete in plan
-
-**Task 7.2: Manual test with OpenAI client**
-   - Start agent with OpenAI client
-   - Test simple query with no tools
-   - Test query requiring tool use
-   - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
-   - Verify level 4 shows condensed tool list (names + first sentence)
-   - Verify level 5 shows full tool definitions
-   - Verify level 6 shows complete history
-   - Verify no duplication of tool names in message content
-   - UPDATE: Mark task 7.2 complete in plan
-
-**Task 7.3: Manual test with Google client**
-   - Start agent with Google client
-   - Test simple query with no tools
-   - Test query requiring tool use
-   - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
-   - Verify level 4 shows condensed tool list (names + first sentence)
-   - Verify level 5 shows full tool definitions
-   - Verify level 6 shows complete history
-   - Verify no duplication of tool names in message content
-   - UPDATE: Mark task 7.3 complete in plan
-
-**Task 7.4: Manual test with XAI client**
-   - Start agent with XAI client
-   - Test simple query with no tools
-   - Test query requiring tool use
-   - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
-   - Verify level 4 shows condensed tool list (names + first sentence)
-   - Verify level 5 shows full tool definitions
-   - Verify level 6 shows complete history
-   - Verify no duplication of tool names in message content
-   - UPDATE: Mark task 7.4 complete in plan
-
-**Task 7.5: Verify redaction still works**
-   - Test with sensitive data in messages
-   - Verify redaction properly applied in debug output
-   - UPDATE: Mark task 7.5 complete in plan
-
-**Task 7.6: Verify history storage unaffected**
-   - Check conversation history in database
-   - Verify proper storage of messages
-   - Verify proper retrieval on conversation reload
-   - UPDATE: Mark task 7.6 complete in plan
-
 ### Phase 8: Bug Fixes [Post-Implementation]
 
 **Task 8.1: Fix tool_call_orchestrator method call** ✓ COMPLETE
@@ -581,6 +516,65 @@ end
    - COMMIT: "Fix worker startup to display banner before worker output" ✓
    - UPDATE: Mark task 8.4 complete in plan ✓
 
+### Final Phase: Manual Validation [Human verification required]
+
+**IMPORTANT: These steps require HUMAN execution and verification**
+
+**Testing Checklist Document Created**: `docs/dev/testing-checklist-request-builder.md` provides comprehensive manual testing procedures.
+
+**Manual test with Anthropic client**
+   - Start agent with Anthropic client
+   - Test simple query with no tools
+   - Test query requiring tool use
+   - Test multi-turn conversation
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
+   - Verify no duplication of tool names in message content
+
+**Manual test with OpenAI client**
+   - Start agent with OpenAI client
+   - Test simple query with no tools
+   - Test query requiring tool use
+   - Test multi-turn conversation
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
+   - Verify no duplication of tool names in message content
+
+**Manual test with Google client**
+   - Start agent with Google client
+   - Test simple query with no tools
+   - Test query requiring tool use
+   - Test multi-turn conversation
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
+   - Verify no duplication of tool names in message content
+
+**Manual test with XAI client**
+   - Start agent with XAI client
+   - Test simple query with no tools
+   - Test query requiring tool use
+   - Test multi-turn conversation
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
+   - Verify no duplication of tool names in message content
+
+**Verify redaction still works**
+   - Test with sensitive data in messages
+   - Verify redaction properly applied in debug output
+
+**Verify history storage unaffected**
+   - Check conversation history in database
+   - Verify proper storage of messages
+   - Verify proper retrieval on conversation reload
+
 ## Files to Modify
 
 ### New Files
@@ -618,14 +612,14 @@ end
 
 ## Success Criteria
 
-- [ ] No duplication in message content (verified in Phase 7 manual testing)
-- [ ] Consistent debug output format across all clients (verified in Phase 7)
-- [ ] YAML debug output with verbosity filtering (verified in Phase 7)
+- [ ] No duplication in message content (verified in Final Phase manual testing)
+- [ ] Consistent debug output format across all clients (verified in Final Phase)
+- [ ] YAML debug output with verbosity filtering (verified in Final Phase)
 - [ ] All tests passing (`rake test && rake lint && rake coverage` after each commit)
 - [ ] No performance regression (verified in Phase 5.4)
-- [ ] Tool calling loops still work (verified in Phases 5.2 and 7.x)
-- [ ] Redaction still works (verified in Phase 7.5)
-- [ ] History storage unaffected (verified in Phase 7.6)
+- [ ] Tool calling loops still work (verified in Phase 5.2 and Final Phase)
+- [ ] Redaction still works (verified in Final Phase)
+- [ ] History storage unaffected (verified in Final Phase)
 - [ ] All tasks committed individually after passing tests
 - [ ] Plan document updated after each task completion
 
@@ -653,8 +647,13 @@ end
 - Phase 4 (Clients): 3-4 hours
 - Phase 5 (Integration): 2 hours
 - Phase 6 (Cleanup): 1 hour
-- Phase 7 (Manual Testing): 2-3 hours (human verification)
-- **Total: 14-19 hours**
+- Phase 8 (Bug Fixes): Completed post-implementation
+- Phase 9 (RAG Content): 2-3 hours
+- Phase 10 (Verbosity Help): 30 minutes
+- Phase 11 (System Prompt): 30 minutes
+- Phase 12 (Expanded Verbosity): 2-3 hours
+- Final Phase (Manual Testing): 2-3 hours (human verification)
+- **Total: 17-24 hours**
 - Can be done in phases
 - Each phase independently testable
 - No blocking dependencies between Phase 4 client updates
