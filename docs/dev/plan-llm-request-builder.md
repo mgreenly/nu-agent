@@ -473,10 +473,10 @@ end
    - COMMIT: "Update verbosity help text for expanded levels" ✓
    - UPDATE: Mark task 12.4 complete in plan ✓
 
-**Task 12.5: Preserve tool structure at verbosity level 4**
-   - Goal: Level 4 should show same YAML structure as level 5, but condensed
-   - Desired output: Keep array structure, remove parameters, truncate descriptions to first sentence
-   - Example for OpenAI at level 4:
+**Task 12.5: Preserve tool structure at verbosity level 4** ✓ COMPLETE
+   - Goal: Level 4 should show same YAML structure as level 5, but condensed ✓
+   - Desired output: Keep array structure, remove parameters, truncate descriptions to first sentence ✓
+   - Example for OpenAI at level 4: ✓
      ```yaml
      :tools:
      - :type: function
@@ -484,12 +484,12 @@ end
          :name: file_read
          :description: Read a file from disk.
      ```
-   - RED: Update tests to expect structured array preserving original format
-   - GREEN: Replace `condense_tools()` with `filter_tools()` that preserves structure
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Preserve tool structure at verbosity level 4"
-   - UPDATE: Mark task 12.5 complete in plan
+   - RED: Update tests to expect structured array preserving original format ✓
+   - GREEN: Replace `condense_tools()` with `filter_tools()` that preserves structure ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Preserve tool structure at verbosity level 4" ✓
+   - UPDATE: Mark task 12.5 complete in plan ✓
 
 ### Phase 8: Bug Fixes [Post-Implementation]
 
