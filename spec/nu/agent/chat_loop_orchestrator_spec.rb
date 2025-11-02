@@ -216,12 +216,8 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         allow(history).to receive(:complete_exchange)
         allow(orchestrator).to receive(:tool_calling_loop).and_return(successful_result)
 
-        # The build_context_document should be called with redacted message ranges
-        # Note: tool_registry parameter was removed since tools are passed separately
-        expect(orchestrator).to receive(:build_context_document).with(
-          hash_including(redacted_message_ranges: "5-6")
-        ).and_call_original
-
+        # NOTE: RAG content with redacted ranges is now built separately
+        # and merged by LlmRequestBuilder
         orchestrator.execute(
           conversation_id: conversation_id,
           client: client,
@@ -334,14 +330,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
     end
 
     it "uses LlmRequestBuilder to construct request" do
-      # Mock build_context_document and build_rag_content
-      # Note: tool_registry parameter removed - tools are passed separately
-      expect(orchestrator).to receive(:build_context_document).with(
-        user_query: user_input,
-        redacted_message_ranges: redacted_ranges,
-        conversation_id: conversation_id
-      ).and_return(markdown_doc)
-
+      # Mock build_rag_content - note that builder now merges RAG with user_query internally
       rag_content = ["Redacted messages: #{redacted_ranges}"]
       expect(orchestrator).to receive(:build_rag_content).with(
         user_input,
@@ -355,7 +344,8 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
 
       expect(builder).to receive(:with_history).with(history_messages).and_return(builder)
       expect(builder).to receive(:with_rag_content).with(rag_content).and_return(builder)
-      expect(builder).to receive(:with_user_query).with(markdown_doc).and_return(builder)
+      # Now passes raw user_input instead of merged markdown_doc
+      expect(builder).to receive(:with_user_query).with(user_input).and_return(builder)
       expect(builder).to receive(:with_tools).with(formatted_tools).and_return(builder)
       expect(builder).to receive(:with_metadata)
         .with(hash_including(conversation_id: conversation_id))

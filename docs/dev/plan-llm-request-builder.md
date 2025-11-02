@@ -328,15 +328,15 @@ end
 
 ### Phase 9: Debug Output & RAG Content Improvements [2-3 hours]
 
-**Task 9.1: Fix debug output formatting issues**
-   - Issue 1: Missing blank line before "--- LLM Request ---"
-   - Issue 2: YAML document marker "---" appearing at start of YAML output
-   - RED: Write tests for expected formatting
-   - GREEN: Add blank line before header, remove YAML document marker
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Fix debug output formatting"
-   - UPDATE: Mark task 9.1 complete in plan
+**Task 9.1: Fix debug output formatting issues** ✓ COMPLETE
+   - Issue 1: Missing blank line before "--- LLM Request ---" ✓
+   - Issue 2: YAML document marker "---" appearing at start of YAML output ✓
+   - RED: Write tests for expected formatting ✓
+   - GREEN: Add blank line before header, remove YAML document marker ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Fix debug output formatting" ✓
+   - UPDATE: Mark task 9.1 complete in plan ✓
 
 **Task 9.2: Refactor RAG content to be separate in internal format**
    - Current: RAG content merged into user_query before builder

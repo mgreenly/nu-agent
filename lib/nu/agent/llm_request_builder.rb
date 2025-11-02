@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "document_builder"
+
 module Nu
   module Agent
     # Builder for constructing LLM requests in a standardized internal format.
@@ -138,11 +140,41 @@ module Nu
 
       # Constructs the messages array by combining history and user query.
       #
+      # If RAG content is present, it merges RAG content with user query using
+      # DocumentBuilder to create a structured markdown document.
+      #
       # @return [Array<Hash>] The complete messages array
       def construct_messages
         messages = @history ? @history.dup : []
-        messages << { "role" => "user", "content" => @user_query } if @user_query
+        if @user_query
+          final_content = build_final_user_message
+          messages << { "role" => "user", "content" => final_content }
+        end
         messages
+      end
+
+      # Builds the final user message content, merging RAG content if present.
+      #
+      # @return [String] The final message content (merged document or raw query)
+      def build_final_user_message
+        # If no RAG content, return raw user query
+        return @user_query unless @rag_content && !@rag_content.empty?
+
+        # Merge RAG content with user query using DocumentBuilder
+        builder = DocumentBuilder.new
+
+        # Handle both Array (current format) and Hash (future Task 9.3 format)
+        context_content = if @rag_content.is_a?(Array)
+                            @rag_content.join("\n\n")
+                          else
+                            # For hash format, convert to YAML or similar
+                            require "yaml"
+                            YAML.dump(@rag_content).sub(/\A---\n/, "")
+                          end
+
+        builder.add_section("Context", context_content)
+        builder.add_section("User Query", @user_query)
+        builder.build
       end
 
       # Constructs the metadata hash by combining RAG content and custom metadata.

@@ -160,6 +160,33 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
                                         ])
       end
 
+      it "merges RAG content with user_query using DocumentBuilder" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content(["Redacted messages: [1, 2, 3]"])
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        # Expect the final user message content to be a merged document
+        expected_content = "# Context\nRedacted messages: [1, 2, 3]\n\n# User Query\nWhat is 2+2?"
+        expect(result[:messages].last["content"]).to eq(expected_content)
+
+        # Raw user query should still be in metadata
+        expect(result[:metadata][:user_query]).to eq("What is 2+2?")
+      end
+
+      it "handles user_query without RAG content" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        # Without RAG content, just use raw user query
+        expect(result[:messages].last["content"]).to eq("What is 2+2?")
+      end
+
       it "handles history without user_query" do
         builder = described_class.new
                                  .with_system_prompt("You are a helpful assistant")

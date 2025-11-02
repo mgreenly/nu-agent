@@ -97,22 +97,16 @@ module Nu
         # Build RAG content separately for metadata
         rag_content = build_rag_content(user_query, redacted_ranges, conversation_id)
 
-        # Build context document (markdown) with RAG and user query
-        markdown_document = build_context_document(
-          user_query: user_query,
-          redacted_message_ranges: redacted_ranges,
-          conversation_id: conversation_id
-        )
-
         # Get tools formatted for this client
         tools = client.format_tools(tool_registry)
 
         # Use builder to construct internal format
+        # Builder will merge RAG content with user_query internally
         builder = LlmRequestBuilder.new
         internal_format = builder
                           .with_history(history_messages)
                           .with_rag_content(rag_content)
-                          .with_user_query(markdown_document)
+                          .with_user_query(user_query)
                           .with_tools(tools)
                           .with_metadata(conversation_id: conversation_id)
                           .build
@@ -213,19 +207,6 @@ module Nu
                           application.active_persona_system_prompt
                         end
         orchestrator.execute(messages: messages, tools: tools, system_prompt: system_prompt)
-      end
-
-      def build_context_document(user_query:, redacted_message_ranges: nil, conversation_id: nil)
-        builder = DocumentBuilder.new
-
-        # Context section (RAG - Retrieval Augmented Generation)
-        rag_content = build_rag_content(user_query, redacted_message_ranges, conversation_id)
-        builder.add_section("Context", rag_content.join("\n\n"))
-
-        # User Query section (final section - ends the document)
-        builder.add_section("User Query", user_query)
-
-        builder.build
       end
 
       def build_rag_content(_user_query, redacted_message_ranges, _conversation_id)
