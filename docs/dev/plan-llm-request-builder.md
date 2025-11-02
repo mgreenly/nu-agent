@@ -310,13 +310,13 @@ end
 
 ### Phase 6: Cleanup [1 hour]
 
-**Task 6.1: Remove orphaned code**
-   - RED: Write test to ensure removed code is not referenced
-   - GREEN: Remove old debug display logic and unused code
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Remove orphaned code"
-   - UPDATE: Mark task 6.1 complete in plan
+**Task 6.1: Remove orphaned code** ✓ COMPLETE
+   - RED: Write test to ensure removed code is not referenced ✓
+   - GREEN: Remove old debug display logic and unused code ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Remove orphaned code" ✓
+   - UPDATE: Mark task 6.1 complete in plan ✓
 
 **Task 6.2: Add inline documentation**
    - RED: Write documentation linter test if applicable
