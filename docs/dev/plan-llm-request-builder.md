@@ -330,6 +330,8 @@ end
 
 **IMPORTANT: These steps require HUMAN execution and verification**
 
+**Testing Checklist Document Created**: `docs/dev/testing-checklist-request-builder.md` provides comprehensive manual testing procedures.
+
 **Task 7.1: Manual test with Anthropic client**
    - Start agent with Anthropic client
    - Test simple query with no tools
@@ -376,6 +378,49 @@ end
    - Verify proper storage of messages
    - Verify proper retrieval on conversation reload
    - UPDATE: Mark task 7.6 complete in plan
+
+### Phase 8: Bug Fixes [Post-Implementation]
+
+**Task 8.1: Fix tool_call_orchestrator method call** ✓ COMPLETE
+   - Issue: `tool_call_orchestrator.rb` was calling `@client.send_message()` instead of `@client.send_request()`
+   - Error: `ArgumentError: wrong number of arguments (given 1, expected 0; required keyword: messages)`
+   - RED: Test already failing with user-reported error ✓
+   - GREEN: Changed line 44 from `send_message` to `send_request` ✓
+   - GREEN: Updated all test mocks in test files ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Fix tool_call_orchestrator to use send_request" ✓
+   - UPDATE: Mark task 8.1 complete in plan ✓
+
+**Task 8.2: Fix SubsystemDebugger thread restriction** ✓ COMPLETE
+   - Issue: No debug output appearing despite setting `/debug on` and `/verbosity llm 2`
+   - Root Cause: `SubsystemDebugger.should_output?` had `Thread.current == Thread.main` check
+   - RED: Test already failing with user-reported issue ✓
+   - GREEN: Removed thread restriction check (History provides per-thread connections) ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Fix SubsystemDebugger to allow thread-safe database reads" ✓
+   - UPDATE: Mark task 8.2 complete in plan ✓
+
+**Task 8.3: Make parallel execution timing test more resilient** ✓ COMPLETE
+   - Issue: Flaky timing test failing with `expected: < 0.12, got: 0.131555995`
+   - Location: `spec/nu/agent/parallel_executor_spec.rb:160`
+   - RED: Test failing due to strict timing threshold ✓
+   - GREEN: Increased threshold from 0.12s to 0.20s to account for system variance ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Make parallel execution timing test more resilient" ✓
+   - UPDATE: Mark task 8.3 complete in plan ✓
+
+**Task 8.4: Fix worker startup banner display order** ✓ COMPLETE
+   - Issue: Background workers starting during initialization, output intermixed with banner
+   - RED: Write test to verify workers don't start during initialization ✓
+   - RED: Write test to verify workers start after print_welcome in run() ✓
+   - GREEN: Move `start_background_workers` from `initialize()` to `run()` after `print_welcome()` ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Fix worker startup to display banner before worker output" ✓
+   - UPDATE: Mark task 8.4 complete in plan ✓
 
 ## Files to Modify
 
