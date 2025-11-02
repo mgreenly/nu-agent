@@ -36,6 +36,29 @@ echo "your-key" > ~/.secrets/XAI_API_KEY
 ./exe/nu-agent
 ```
 
+## Command-Line Options
+
+```bash
+# Display version and exit
+nu-agent --version
+nu-agent -v
+
+# Display help with available models
+nu-agent --help
+nu-agent -h
+
+# Banner display modes
+nu-agent --no-banner    # Disable welcome banner completely
+nu-agent --minimal      # Show minimal banner (version only)
+                       # Default: Full banner with all information
+
+# Debug mode
+nu-agent --debug        # Enable debug logging
+
+# Reset all model configurations
+nu-agent --reset-models MODEL_NAME
+```
+
 ## Dependencies
 
 The `bin/setup` script **automatically** handles DuckDB installation:
