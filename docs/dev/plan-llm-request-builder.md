@@ -360,6 +360,24 @@ end
    - COMMIT: "Structure RAG content as hash in metadata" ✓
    - UPDATE: Mark task 9.3 complete in plan ✓
 
+### Phase 10: Update Verbosity Help Text [30 minutes]
+
+**Task 10.1: Update LLM verbosity help text to match implementation**
+   - Issue: Help text shows outdated verbosity level descriptions
+   - Current help text doesn't match the actual YAML formatter implementation
+   - RED: Write test for updated help text with correct level descriptions
+   - GREEN: Update help_text method in LlmCommand to reflect actual behavior:
+     - 0: No LLM debug output
+     - 1: Show final user message only
+     - 2: + System prompt
+     - 3: + RAG content (redactions, spell check)
+     - 4: + Tool definitions
+     - 5: + Complete message history
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Update LLM verbosity help text to match implementation"
+   - UPDATE: Mark task 10.1 complete in plan
+
 ### Phase 7: Manual Validation [Human verification required]
 
 **IMPORTANT: These steps require HUMAN execution and verification**

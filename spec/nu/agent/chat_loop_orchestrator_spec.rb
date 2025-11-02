@@ -11,8 +11,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
   let(:application) do
     instance_double(
       Nu::Agent::Application,
-      redact: false,
-      spellchecker: nil
+      redact: false
     )
   end
   let(:user_actor) { "testuser" }
