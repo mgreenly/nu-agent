@@ -54,8 +54,9 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
       it "displays only the final user message in YAML format" do
         formatter.display_yaml(internal_request)
 
-        # Expect to see YAML header
-        expect(console).to have_received(:puts).with("\e[90m--- LLM Request ---\e[0m")
+        # Expect to see YAML header with blank line before it
+        expect(console).to have_received(:puts).with("").ordered
+        expect(console).to have_received(:puts).with("\e[90m--- LLM Request ---\e[0m").ordered
 
         # Expect to see the final message in YAML format
         expect(console).to have_received(:puts).with(
@@ -75,6 +76,15 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         expect(console).not_to have_received(:puts).with(
           a_string_matching(/metadata:/)
         )
+      end
+
+      it "does not display YAML document marker in output" do
+        formatter.display_yaml(internal_request)
+
+        # Should NOT see YAML document marker "---" in the YAML content
+        # The header contains "--- LLM Request ---" but that's different
+        # We're checking that YAML.dump's "---\n" marker is not present
+        expect(console).not_to have_received(:puts).with("\e[90m---\e[0m")
       end
     end
 

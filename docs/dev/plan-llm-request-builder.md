@@ -326,6 +326,40 @@ end
    - COMMIT: "Add inline documentation" ✓
    - UPDATE: Mark task 6.2 complete in plan ✓
 
+### Phase 9: Debug Output & RAG Content Improvements [2-3 hours]
+
+**Task 9.1: Fix debug output formatting issues**
+   - Issue 1: Missing blank line before "--- LLM Request ---"
+   - Issue 2: YAML document marker "---" appearing at start of YAML output
+   - RED: Write tests for expected formatting
+   - GREEN: Add blank line before header, remove YAML document marker
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Fix debug output formatting"
+   - UPDATE: Mark task 9.1 complete in plan
+
+**Task 9.2: Refactor RAG content to be separate in internal format**
+   - Current: RAG content merged into user_query before builder
+   - Desired: Keep RAG separate, merge in builder's build() method
+   - RED: Write test for separate RAG content in metadata
+   - GREEN: Update orchestrator to pass raw user_query (not markdown_document)
+   - GREEN: Update builder.build() to merge RAG + user_query using DocumentBuilder
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Separate RAG content from user query in internal format"
+   - UPDATE: Mark task 9.2 complete in plan
+
+**Task 9.3: Improve RAG content structure in metadata**
+   - Current: rag_content is array of strings
+   - Desired: rag_content is structured hash showing components
+   - RED: Write test for structured RAG content format
+   - GREEN: Update build_rag_content to return hash with keys (redactions, spell_check, etc.)
+   - GREEN: Update formatter to display structured RAG content
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Structure RAG content as hash in metadata"
+   - UPDATE: Mark task 9.3 complete in plan
+
 ### Phase 7: Manual Validation [Human verification required]
 
 **IMPORTANT: These steps require HUMAN execution and verification**

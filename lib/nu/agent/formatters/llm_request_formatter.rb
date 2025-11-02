@@ -55,6 +55,7 @@ module Nu
           return unless should_output?(1)
 
           # Display YAML formatted request based on verbosity level
+          @console.puts("")
           @console.puts("\e[90m--- LLM Request ---\e[0m")
 
           # Build the output hash based on verbosity level
@@ -105,6 +106,8 @@ module Nu
         def display_yaml_content(data)
           require "yaml"
           yaml_output = YAML.dump(data)
+          # Remove YAML document marker "---\n" from the start
+          yaml_output = yaml_output.sub(/\A---\n/, "")
           # Output each line in gray
           yaml_output.each_line do |line|
             @console.puts("\e[90m#{line.chomp}\e[0m")
