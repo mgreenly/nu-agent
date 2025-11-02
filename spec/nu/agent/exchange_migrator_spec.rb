@@ -161,4 +161,47 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
       expect(result).to be_nil
     end
   end
+
+  describe "#process_conversation with edge cases" do
+    it "handles conversation with no messages" do
+      conversation_repo.create_conversation
+
+      stats = migrator.migrate_exchanges
+
+      expect(stats[:conversations]).to eq(1)
+      expect(stats[:exchanges_created]).to eq(0)
+      expect(stats[:messages_updated]).to eq(0)
+    end
+
+    it "handles assistant messages without user message first" do
+      conv_id = conversation_repo.create_conversation
+
+      # Add assistant message first (orphaned)
+      message_repo.add_message(conversation_id: conv_id, actor: "assistant", role: "assistant",
+                               content: "Orphaned message")
+
+      stats = migrator.migrate_exchanges
+
+      expect(stats[:conversations]).to eq(1)
+      expect(stats[:exchanges_created]).to eq(0) # No exchanges created for orphaned messages
+      expect(stats[:messages_updated]).to eq(0)
+    end
+  end
+
+  describe "#escape_sql" do
+    it "escapes single quotes in SQL strings" do
+      result = migrator.send(:escape_sql, "It's a test")
+      expect(result).to eq("It''s a test")
+    end
+
+    it "handles strings with multiple single quotes" do
+      result = migrator.send(:escape_sql, "I'm saying 'hello'")
+      expect(result).to eq("I''m saying ''hello''")
+    end
+
+    it "handles strings without single quotes" do
+      result = migrator.send(:escape_sql, "Hello world")
+      expect(result).to eq("Hello world")
+    end
+  end
 end
