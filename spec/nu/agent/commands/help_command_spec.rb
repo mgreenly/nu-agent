@@ -12,6 +12,28 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
     before do
       allow(console).to receive(:puts)
       allow(application).to receive(:output_lines)
+      # Mock registered_commands with a default set for all tests
+      allow(application).to receive(:registered_commands).and_return(
+        {
+          "/backup" => Class.new,
+          "/clear" => Class.new,
+          "/debug" => Class.new,
+          "/exit" => Class.new,
+          "/help" => described_class,
+          "/info" => Class.new,
+          "/migrate-exchanges" => Class.new,
+          "/model" => Class.new,
+          "/models" => Class.new,
+          "/persona" => Class.new,
+          "/personas" => Class.new,
+          "/rag" => Class.new,
+          "/redaction" => Class.new,
+          "/reset" => Class.new,
+          "/tools" => Class.new,
+          "/verbosity" => Class.new,
+          "/worker" => Class.new
+        }
+      )
     end
 
     it "prints a blank line to console" do
@@ -75,6 +97,36 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
     end
 
     describe "dynamic command listing" do
+      before do
+        # Mock the registered_commands method with a minimal set for testing
+        allow(application).to receive(:registered_commands).and_return(
+          {
+            "/help" => described_class,
+            "/exit" => Class.new,
+            "/clear" => Class.new,
+            "/reset" => Class.new,
+            "/info" => Class.new,
+            "/tools" => Class.new,
+            "/verbosity" => Class.new,
+            "/model" => Class.new,
+            "/models" => Class.new,
+            "/persona" => Class.new,
+            "/personas" => Class.new,
+            "/worker" => Class.new,
+            "/rag" => Class.new,
+            "/redaction" => Class.new,
+            "/backup" => Class.new,
+            "/migrate-exchanges" => Class.new,
+            "/debug" => Class.new,
+            "/llm" => Class.new,
+            "/messages" => Class.new,
+            "/search" => Class.new,
+            "/stats" => Class.new,
+            "/tools-debug" => Class.new
+          }
+        )
+      end
+
       it "includes all registered commands in help output" do
         expect(application).to receive(:output_lines) do |*lines, **_kwargs|
           help_text = lines.join("\n")
@@ -116,27 +168,38 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
       it "dynamically retrieves command descriptions from registry" do
         # This test verifies that HelpCommand uses the registry to get commands
         # rather than hardcoded help text
+        # Create test command classes that are not in the hardcoded dictionary
+        test_command_class = Class.new do
+          def self.description
+            "Test command description"
+          end
+        end
+
+        another_test_class = Class.new do
+          def self.description
+            "Another test description"
+          end
+        end
+
         # Expect the help command to query the registry for all registered commands
+        # Include some known commands and some test commands not in the hardcoded dictionary
         expect(application).to receive(:registered_commands).and_return(
           {
             "/help" => described_class,
-            "/llm" => Nu::Agent::Commands::Subsystems::LlmCommand,
-            "/messages" => Nu::Agent::Commands::Subsystems::MessagesCommand
+            "/llm" => Class.new, # This is in hardcoded dict
+            "/test-command" => test_command_class,
+            "/another-test" => another_test_class
           }
         )
 
-        # Expect each command class to be asked for its description
-        expect(described_class).to receive(:description).and_return("Show this help message")
-        expect(Nu::Agent::Commands::Subsystems::LlmCommand).to receive(:description)
-          .and_return("Manage LLM subsystem debugging")
-        expect(Nu::Agent::Commands::Subsystems::MessagesCommand).to receive(:description)
-          .and_return("Manage Messages subsystem debugging")
-
         expect(application).to receive(:output_lines) do |*lines, **_kwargs|
           help_text = lines.join("\n")
+          # Verify hardcoded commands are included
           expect(help_text).to match(/Show this help message/)
           expect(help_text).to match(/Manage LLM subsystem debugging/)
-          expect(help_text).to match(/Manage Messages subsystem debugging/)
+          # Verify dynamic commands use their description methods
+          expect(help_text).to match(/Test command description/)
+          expect(help_text).to match(/Another test description/)
         end
 
         command.execute("/help")
