@@ -473,6 +473,18 @@ end
    - COMMIT: "Update verbosity help text for expanded levels" ✓
    - UPDATE: Mark task 12.4 complete in plan ✓
 
+**Task 12.5: Fix empty tools display at verbosity level 4**
+   - Issue: At verbosity level 4, tools are showing as `:tools: {}` instead of condensed tool list
+   - Expected: Should show `tool_name: First sentence of description.` for each tool
+   - Actual: Shows empty hash `{}`
+   - Root cause: Need to investigate why `condense_tools()` is returning empty or tools not being passed
+   - RED: Write test to verify tools appear at verbosity level 4 in actual LLM request output
+   - GREEN: Fix the bug so condensed tools display correctly
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Fix empty tools display at verbosity level 4"
+   - UPDATE: Mark task 12.5 complete in plan
+
 ### Phase 8: Bug Fixes [Post-Implementation]
 
 **Task 8.1: Fix tool_call_orchestrator method call** ✓ COMPLETE
