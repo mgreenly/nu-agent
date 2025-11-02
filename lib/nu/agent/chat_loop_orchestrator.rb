@@ -100,10 +100,16 @@ module Nu
         # Get tools formatted for this client
         tools = client.format_tools(tool_registry)
 
+        # Get system prompt from active persona
+        system_prompt = if application.respond_to?(:active_persona_system_prompt)
+                          application.active_persona_system_prompt
+                        end
+
         # Use builder to construct internal format
         # Builder will merge RAG content with user_query internally
         builder = LlmRequestBuilder.new
         internal_format = builder
+                          .with_system_prompt(system_prompt)
                           .with_history(history_messages)
                           .with_rag_content(rag_content)
                           .with_user_query(user_query)

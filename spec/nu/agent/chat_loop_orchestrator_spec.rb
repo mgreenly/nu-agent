@@ -11,7 +11,8 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
   let(:application) do
     instance_double(
       Nu::Agent::Application,
-      redact: false
+      redact: false,
+      active_persona_system_prompt: "You are a helpful assistant."
     )
   end
   let(:user_actor) { "testuser" }
@@ -80,6 +81,23 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
             tool_call_count: 0
           }
         }
+      end
+
+      it "includes system prompt in LLM request" do
+        allow(history).to receive(:complete_exchange)
+        allow(orchestrator).to receive(:tool_calling_loop).and_return(successful_result)
+
+        # Capture the internal_format passed to display_llm_request
+        expect(formatter).to receive(:display_llm_request) do |internal_format|
+          expect(internal_format[:system_prompt]).to eq("You are a helpful assistant.")
+        end
+
+        orchestrator.execute(
+          conversation_id: conversation_id,
+          client: client,
+          tool_registry: tool_registry,
+          **context
+        )
       end
 
       it "creates exchange, executes chat loop, and completes successfully" do
@@ -342,6 +360,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       builder = instance_double(Nu::Agent::LlmRequestBuilder)
       expect(Nu::Agent::LlmRequestBuilder).to receive(:new).and_return(builder)
 
+      expect(builder).to receive(:with_system_prompt).with("You are a helpful assistant.").and_return(builder)
       expect(builder).to receive(:with_history).with(history_messages).and_return(builder)
       expect(builder).to receive(:with_rag_content).with(rag_content).and_return(builder)
       # Now passes raw user_input instead of merged markdown_doc
@@ -664,7 +683,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       expect(tool_call_orchestrator).to have_received(:execute).with(
         messages: messages,
         tools: tools,
-        system_prompt: nil
+        system_prompt: "You are a helpful assistant."
       )
 
       expect(result).to eq(loop_result)
