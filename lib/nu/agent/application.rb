@@ -30,12 +30,12 @@ module Nu
         initialize_console_system
         initialize_status_tracking
         initialize_commands
-        start_background_workers
       end
 
       def run
         setup_signal_handlers
         print_welcome
+        start_background_workers
         repl
         print_goodbye
       ensure

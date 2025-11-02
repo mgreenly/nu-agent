@@ -559,9 +559,23 @@ RSpec.describe Nu::Agent::Application do
         allow(ENV).to receive(:fetch).with("CI", "false").and_return("false")
       end
 
-      it "starts workers when enabled" do
+      it "does not start workers during initialization" do
         described_class.new(options: options)
-        expect(mock_worker_manager).to have_received(:start_summarization_worker)
+        expect(mock_worker_manager).not_to have_received(:start_summarization_worker)
+      end
+
+      it "starts workers during run() after print_welcome" do
+        app = described_class.new(options: options)
+
+        # Set up expectations in order
+        expect(app).to receive(:setup_signal_handlers).ordered
+        expect(app).to receive(:print_welcome).ordered
+        expect(mock_worker_manager).to receive(:start_summarization_worker).ordered
+        expect(app).to receive(:repl).ordered
+        expect(app).to receive(:print_goodbye).ordered
+        allow(mock_history).to receive(:close)
+
+        app.run
       end
     end
 
@@ -571,7 +585,16 @@ RSpec.describe Nu::Agent::Application do
       end
 
       it "does not auto-start workers even when enabled" do
-        described_class.new(options: options)
+        app = described_class.new(options: options)
+
+        allow(app).to receive(:setup_signal_handlers)
+        allow(app).to receive(:print_welcome)
+        allow(app).to receive(:repl)
+        allow(app).to receive(:print_goodbye)
+        allow(mock_history).to receive(:close)
+
+        app.run
+
         expect(mock_worker_manager).not_to have_received(:start_summarization_worker)
       end
     end
