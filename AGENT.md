@@ -5,15 +5,21 @@
 - Include NO attribution lines in the commit messages, only the signing committer is relavent.
 - Always assume the database is $PWD/db/memory.db
 
+## Plan Creation
+- Create `docs/dev/plan-<NAME>.md` before starting implementation
+- Structure plans with clear phases and numbered tasks
+- Each task should be atomic and testable
+- Include specific success criteria for each task
+- All plan files must include a final step for manual validation
+- Manual test/validation steps in plans are for human verification only
+
 ## Plan Execution
-- Create `docs/dev/plan-<NAME>.md` with clear phases and tasks
+- Follow the plan document strictly, task by task
 - Use TDD red/green cycles for all changes
 - Every task requires passing `rake test`, `rake lint`, and `rake coverage`
 - Commit after each completed task
-- Update plan document progress after each task
-- All plan files must include a final step for manual validation
+- Update plan document progress after each task (mark tasks as DONE)
 - Always include the plan file name in work summaries
-- Manual test/validation steps in plans are for human verification only
 
 ## TDD: Red → Green → Refactor
 1. Write failing test first
