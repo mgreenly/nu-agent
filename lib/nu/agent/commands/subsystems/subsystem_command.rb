@@ -14,9 +14,15 @@ module Nu
           end
 
           def execute(input)
-            parts = input.strip.split(/\s+/, 2)
-            subcommand = parts[0] || ""
-            args = parts[1] ? parts[1].split(/\s+/) : []
+            # Strip command prefix if present (e.g., "/llm" from "/llm help")
+            # Input can be either with prefix ("/llm help") or without ("help")
+            parts = input.strip.split(/\s+/)
+
+            # If first part starts with /, it's the command prefix - skip it
+            parts.shift if parts.first&.start_with?("/")
+
+            subcommand = parts.shift || ""
+            args = parts
 
             execute_subcommand(subcommand, args)
             :continue

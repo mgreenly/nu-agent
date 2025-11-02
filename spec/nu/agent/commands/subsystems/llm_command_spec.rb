@@ -69,5 +69,33 @@ RSpec.describe Nu::Agent::Commands::Subsystems::LlmCommand do
         expect(result).to eq(:continue)
       end
     end
+
+    context "with full command prefix (realistic usage)" do
+      it "displays help when given /llm help" do
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_lines) do |*lines|
+          expect(lines.flatten).to include("LLM Subsystem")
+          expect(lines.flatten).to include("Commands:")
+        end
+        result = command.execute("/llm help")
+        expect(result).to eq(:continue)
+      end
+
+      it "sets verbosity when given /llm verbosity 2" do
+        expect(history).to receive(:set_config).with("llm_verbosity", "2")
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("llm_verbosity=2", type: :command)
+        result = command.execute("/llm verbosity 2")
+        expect(result).to eq(:continue)
+      end
+
+      it "shows current verbosity when given /llm verbosity" do
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(3)
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("llm_verbosity=3", type: :command)
+        result = command.execute("/llm verbosity")
+        expect(result).to eq(:continue)
+      end
+    end
   end
 end
