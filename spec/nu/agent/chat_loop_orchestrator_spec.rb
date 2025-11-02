@@ -592,7 +592,7 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       let(:spell_checker) { instance_double(Nu::Agent::SpellChecker) }
 
       before do
-        skip "Spell checking temporarily disabled - Application class needs spell_check_enabled and spellchecker methods"
+        skip "Spell checking temporarily disabled - Application class needs spell check methods"
         allow(application).to receive_messages(spell_check_enabled: true, spellchecker: spellchecker)
         allow(Nu::Agent::SpellChecker).to receive(:new).and_return(spell_checker)
         allow(spell_checker).to receive(:check_spelling).with("teh test").and_return("the test")

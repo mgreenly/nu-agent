@@ -209,7 +209,7 @@ module Nu
         orchestrator.execute(messages: messages, tools: tools, system_prompt: system_prompt)
       end
 
-      def build_rag_content(user_query, redacted_message_ranges, conversation_id)
+      def build_rag_content(_user_query, redacted_message_ranges, _conversation_id)
         # Multiple RAG sub-processes will be added here in the future
         rag_content = {}
 
