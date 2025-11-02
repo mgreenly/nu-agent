@@ -59,8 +59,9 @@ Replace current text preview with YAML output filtered by verbosity:
 | 1 | Final user message | Show only the current user's message |
 | 2 | + system_prompt | Add system instructions |
 | 3 | + rag_content | Add RAG context (redactions, spell check) |
-| 4 | + tools | Add tool definitions and schemas |
-| 5 | + full history | Add complete chat history |
+| 4 | + tool list | Add tool names with first sentence of descriptions |
+| 5 | + tool definitions | Add complete tool definitions and schemas |
+| 6 | + full history | Add complete chat history |
 
 **Key Point**: The internal message sent to the LLM is always complete. Verbosity only controls which keys are displayed in debug output.
 
@@ -421,6 +422,57 @@ end
    - COMMIT: "Add system prompt to LLM request builder" ✓
    - UPDATE: Mark task 11.1 complete in plan ✓
 
+### Phase 12: Expand LLM Verbosity Levels [2-3 hours]
+
+**Task 12.1: Add condensed tool display at verbosity level 4**
+   - Issue: Users want to see what tools are available without overwhelming detail
+   - Current: Level 4 shows full tool definitions with complete schemas, level 5 shows history
+   - Desired: Level 4 shows tool names + first sentence only, level 5 shows full definitions, level 6 shows history
+   - Note: The LLM always receives complete tool definitions - verbosity only affects debug output display
+   - RED: Write test for new level 4 condensed tool display format
+   - GREEN: Update LlmRequestFormatter to extract first sentence from tool descriptions
+   - GREEN: Display format at level 4: `tool_name: First sentence of description.`
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Add condensed tool list at verbosity level 4"
+   - UPDATE: Mark task 12.1 complete in plan
+
+**Task 12.2: Shift full tool definitions to verbosity level 5**
+   - RED: Update tests to expect full tool definitions at level 5 instead of level 4
+   - GREEN: Modify LlmRequestFormatter verbosity filtering logic for tools
+   - GREEN: Level 5 now shows complete tool schemas and all parameters
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Move full tool definitions to verbosity level 5"
+   - UPDATE: Mark task 12.2 complete in plan
+
+**Task 12.3: Shift complete history to verbosity level 6**
+   - RED: Update tests to expect complete message history at level 6 instead of level 5
+   - GREEN: Modify LlmRequestFormatter verbosity filtering logic for history
+   - GREEN: Level 6 now shows all previous exchanges and messages
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Move complete message history to verbosity level 6"
+   - UPDATE: Mark task 12.3 complete in plan
+
+**Task 12.4: Update help text for all verbosity commands**
+   - Location 1: `lib/nu/agent/commands/subsystems/llm_command.rb` - LlmCommand help text
+   - Location 2: `lib/nu/agent/commands/verbosity_command.rb` - VerbosityCommand SUBSYSTEMS hash
+   - RED: Write tests for updated help text reflecting new 7-level system (0-6)
+   - GREEN: Update LlmCommand help text with new level descriptions:
+     - 0: No LLM debug output
+     - 1: Show final user message only
+     - 2: + System prompt
+     - 3: + RAG content (redactions, spell check)
+     - 4: + Tool list (names with first sentence)
+     - 5: + Tool definitions (complete schemas)
+     - 6: + Complete message history
+   - GREEN: Update VerbosityCommand SUBSYSTEMS["llm"][:levels] hash to match
+   - REFACTOR: Clean up as needed
+   - RUN: `rake test && rake lint && rake coverage`
+   - COMMIT: "Update verbosity help text for expanded levels"
+   - UPDATE: Mark task 12.4 complete in plan
+
 ### Phase 7: Manual Validation [Human verification required]
 
 **IMPORTANT: These steps require HUMAN execution and verification**
@@ -432,7 +484,10 @@ end
    - Test simple query with no tools
    - Test query requiring tool use
    - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 5
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
    - Verify no duplication of tool names in message content
    - UPDATE: Mark task 7.1 complete in plan
 
@@ -441,7 +496,10 @@ end
    - Test simple query with no tools
    - Test query requiring tool use
    - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 5
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
    - Verify no duplication of tool names in message content
    - UPDATE: Mark task 7.2 complete in plan
 
@@ -450,7 +508,10 @@ end
    - Test simple query with no tools
    - Test query requiring tool use
    - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 5
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
    - Verify no duplication of tool names in message content
    - UPDATE: Mark task 7.3 complete in plan
 
@@ -459,7 +520,10 @@ end
    - Test simple query with no tools
    - Test query requiring tool use
    - Test multi-turn conversation
-   - Verify debug output at verbosity levels 0, 1, 3, 5
+   - Verify debug output at verbosity levels 0, 1, 3, 4, 5, 6
+   - Verify level 4 shows condensed tool list (names + first sentence)
+   - Verify level 5 shows full tool definitions
+   - Verify level 6 shows complete history
    - Verify no duplication of tool names in message content
    - UPDATE: Mark task 7.4 complete in plan
 
