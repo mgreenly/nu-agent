@@ -163,6 +163,26 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         command.execute("/verbosity llm 3")
       end
 
+      it "sets messages subsystem verbosity (Bug #4 verification)" do
+        expect(history).to receive(:set_config).with("messages_verbosity", "2")
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("messages_verbosity=2", type: :command)
+
+        command.execute("/verbosity messages 2")
+      end
+
+      it "sets all subsystem verbosity levels correctly" do
+        # Test each subsystem to ensure comprehensive coverage
+        subsystems = %w[console llm messages search stats thread tools]
+        subsystems.each_with_index do |subsystem, index|
+          expect(history).to receive(:set_config).with("#{subsystem}_verbosity", index.to_s)
+          expect(console).to receive(:puts).with("")
+          expect(application).to receive(:output_line).with("#{subsystem}_verbosity=#{index}", type: :command)
+
+          command.execute("/verbosity #{subsystem} #{index}")
+        end
+      end
+
       it "accepts level 0" do
         expect(history).to receive(:set_config).with("tools_verbosity", "0")
         expect(console).to receive(:puts).with("")
