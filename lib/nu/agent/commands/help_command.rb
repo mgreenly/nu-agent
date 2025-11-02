@@ -155,16 +155,11 @@ module Nu
               description: ["Manage Tools subsystem debugging"]
             },
             "/verbosity" => {
-              usage: "/verbosity <number>",
+              usage: "/verbosity [<subsystem>] [<level>]",
               description: [
-                "Set verbosity level for debug output (default: 0)",
-                "  - Level 0: Thread lifecycle events + tool names only",
-                "  - Level 1: Level 0 + truncated tool call/result params (30 chars)",
-                "  - Level 2: Level 1 + message creation notifications",
-                "  - Level 3: Level 2 + message role/actor + truncated content/params (30 chars)",
-                "  - Level 4: Level 3 + full tool params + messages sent to LLM",
-                "  - Level 5: Level 4 + tools array",
-                "  - Level 6: Level 5 + longer message content previews (100 chars)"
+                "Set verbosity levels for debugging",
+                "  - No arguments: Shows current verbosity levels for all subsystems",
+                "  - With subsystem and level: Sets verbosity for specific subsystem"
               ]
             },
             "/worker" => {
