@@ -8,6 +8,10 @@ module Nu
       module Subsystems
         # Command for controlling Messages subsystem debug verbosity
         class MessagesCommand < SubsystemCommand
+          def self.description
+            "Manage Messages subsystem debugging"
+          end
+
           def initialize(application)
             super(application, "messages", "messages_verbosity")
           end

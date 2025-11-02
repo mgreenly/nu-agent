@@ -9,6 +9,10 @@ module Nu
         # Command for controlling Tools subsystem debug verbosity
         # Note: Uses "tools-debug" command name to avoid conflict with existing /tools command
         class ToolsDebugCommand < SubsystemCommand
+          def self.description
+            "Manage Tools subsystem debugging"
+          end
+
           def initialize(application)
             super(application, "tools-debug", "tools_verbosity")
           end

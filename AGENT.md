@@ -16,7 +16,7 @@
 - Follow the plan document strictly, task by task
 - Use TDD red/green cycles for all changes
 - The TDD cycle is not complete until `rake test`, `rake lint`, and `rake coverage` pass.
-- After the TDD cycle is complete mark the task complet in the plan.
+- After the TDD cycle is complete mark the task complete in the plan.
 - Commit after each completed task
 - Always include the plan file name, current task and next task, in work summaries
 

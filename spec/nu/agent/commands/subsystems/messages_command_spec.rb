@@ -16,6 +16,12 @@ RSpec.describe Nu::Agent::Commands::Subsystems::MessagesCommand do
     allow(application).to receive(:output_lines)
   end
 
+  describe ".description" do
+    it "returns a description of the command" do
+      expect(described_class.description).to eq("Manage Messages subsystem debugging")
+    end
+  end
+
   describe "#initialize" do
     it "initializes with correct subsystem name and config key" do
       expect(command.instance_variable_get(:@subsystem_name)).to eq("messages")

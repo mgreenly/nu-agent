@@ -8,6 +8,10 @@ module Nu
       module Subsystems
         # Command for controlling Stats subsystem debug verbosity
         class StatsCommand < SubsystemCommand
+          def self.description
+            "Manage Stats subsystem debugging"
+          end
+
           def initialize(application)
             super(application, "stats", "stats_verbosity")
           end

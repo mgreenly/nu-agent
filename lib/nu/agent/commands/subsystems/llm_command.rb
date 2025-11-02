@@ -8,6 +8,10 @@ module Nu
       module Subsystems
         # Command for controlling LLM subsystem debug verbosity
         class LlmCommand < SubsystemCommand
+          def self.description
+            "Manage LLM subsystem debugging"
+          end
+
           def initialize(application)
             super(application, "llm", "llm_verbosity")
           end

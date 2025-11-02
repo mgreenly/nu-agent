@@ -8,6 +8,10 @@ module Nu
       module Subsystems
         # Command for controlling Search subsystem debug verbosity
         class SearchCommand < SubsystemCommand
+          def self.description
+            "Manage Search subsystem debugging"
+          end
+
           def initialize(application)
             super(application, "search", "search_verbosity")
           end

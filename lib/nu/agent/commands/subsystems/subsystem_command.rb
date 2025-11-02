@@ -7,6 +7,11 @@ module Nu
         # Base class for subsystem-specific commands
         # Provides common verbosity management functionality
         class SubsystemCommand
+          # Default description for subsystem commands
+          def self.description
+            "Manage subsystem debugging"
+          end
+
           def initialize(application, subsystem_name, config_key)
             @app = application
             @subsystem_name = subsystem_name
