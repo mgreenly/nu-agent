@@ -53,8 +53,9 @@ RSpec.describe Nu::Agent::Commands::Subsystems::LlmCommand do
           expect(lines.flatten.any? { |line| line.include?("1 - Show final user message only") }).to be true
           expect(lines.flatten.any? { |line| line.include?("2 - + System prompt") }).to be true
           expect(lines.flatten.any? { |line| line.include?("3 - + RAG content") }).to be true
-          expect(lines.flatten.any? { |line| line.include?("4 - + Tool definitions") }).to be true
-          expect(lines.flatten.any? { |line| line.include?("5 - + Complete message history") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("4 - + Tool list (names with first sentence)") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("5 - + Tool definitions (complete schemas)") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("6 - + Complete message history") }).to be true
         end
         result = command.execute("help")
         expect(result).to eq(:continue)

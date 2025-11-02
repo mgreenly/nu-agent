@@ -30,7 +30,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
 
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("/verbosity console (0-1) = 0", type: :command)
-        expect(application).to receive(:output_line).with("/verbosity llm (0-5) = 2", type: :command)
+        expect(application).to receive(:output_line).with("/verbosity llm (0-6) = 2", type: :command)
         expect(application).to receive(:output_line).with("/verbosity messages (0-3) = 1", type: :command)
         expect(application).to receive(:output_line).with("/verbosity search (0-2) = 0", type: :command)
         expect(application).to receive(:output_line).with("/verbosity stats (0-2) = 0", type: :command)
@@ -71,7 +71,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         expect(application).to receive(:output_line).with("", type: :command)
 
         # llm subsystem - all levels
-        expect(application).to receive(:output_line).with("llm (0-5):", type: :command)
+        expect(application).to receive(:output_line).with("llm (0-6):", type: :command)
         expect(application).to receive(:output_line).with("  0: No LLM debug output", type: :command)
         expect(application).to receive(:output_line)
           .with("  1: Show final user message only", type: :command)
@@ -81,9 +81,13 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
           .with("  3: Show final user message + system prompt + RAG content (redactions, spell check)",
                 type: :command)
         expect(application).to receive(:output_line)
-          .with("  4: Show final user message + system prompt + RAG content + tool definitions", type: :command)
+          .with("  4: Show final user message + system prompt + RAG content + tool list (names with first sentence)",
+                type: :command)
         expect(application).to receive(:output_line)
-          .with("  5: Show final user message + system prompt + RAG content + tool definitions + " \
+          .with("  5: Show final user message + system prompt + RAG content + tool definitions (complete schemas)",
+                type: :command)
+        expect(application).to receive(:output_line)
+          .with("  6: Show final user message + system prompt + RAG content + tool definitions + " \
                 "complete message history", type: :command)
         expect(application).to receive(:output_line).with("", type: :command)
 
@@ -133,7 +137,7 @@ RSpec.describe Nu::Agent::Commands::VerbosityCommand do
         allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(2)
 
         expect(console).to receive(:puts).with("")
-        expect(application).to receive(:output_line).with("/verbosity llm (0-5) = 2", type: :command)
+        expect(application).to receive(:output_line).with("/verbosity llm (0-6) = 2", type: :command)
 
         command.execute("/verbosity llm")
       end

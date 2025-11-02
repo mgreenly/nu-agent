@@ -14,8 +14,9 @@ module Nu
               1 => "Show final user message only",
               2 => "Show final user message + system prompt",
               3 => "Show final user message + system prompt + RAG content (redactions, spell check)",
-              4 => "Show final user message + system prompt + RAG content + tool definitions",
-              5 => "Show final user message + system prompt + RAG content + tool definitions + complete message history"
+              4 => "Show final user message + system prompt + RAG content + tool list (names with first sentence)",
+              5 => "Show final user message + system prompt + RAG content + tool definitions (complete schemas)",
+              6 => "Show final user message + system prompt + RAG content + tool definitions + complete message history"
             }
           },
           "tools" => {

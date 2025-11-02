@@ -35,8 +35,9 @@ module Nu
                 1 - Show final user message only
                 2 - + System prompt
                 3 - + RAG content (redactions, spell check)
-                4 - + Tool definitions
-                5 - + Complete message history
+                4 - + Tool list (names with first sentence)
+                5 - + Tool definitions (complete schemas)
+                6 - + Complete message history
             HELP
           end
         end
