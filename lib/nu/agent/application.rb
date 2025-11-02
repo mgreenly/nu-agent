@@ -313,13 +313,19 @@ module Nu
       def print_welcome
         print "\033[2J\033[H"
         output_lines(
-          "Nu Agent REPL v#{Nu::Agent::VERSION}",
-          "Database: #{File.expand_path(@history.db_path)}",
-          "Type your prompts below. Press Ctrl-C or /exit to quit.",
-          "(Ctrl-C during processing aborts operation)",
-          "Press Enter to submit input (Shift+Enter for newline)",
-          "Type /help for available commands",
-          "=" * 60
+          "═" * 60,
+          "  Nu Agent REPL v#{Nu::Agent::VERSION}",
+          "─" * 60,
+          "",
+          "  Database: #{File.expand_path(@history.db_path)}",
+          "",
+          "  Type your prompts below. Press Ctrl-C or /exit to quit.",
+          "  (Ctrl-C during processing aborts operation)",
+          "",
+          "  Press Enter to submit input (Shift+Enter for newline)",
+          "  Type /help for available commands",
+          "",
+          "═" * 60
         )
       end
 
