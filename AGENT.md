@@ -2,7 +2,7 @@
 
 ## Project Management
 - Use GitHub Issues to track enhancement plans and feature requests
-- Include NO attribution lines in the commit messages, only the signing committer is relavent.
+- Include NO attribution lines in the commit messages.
 - Always assume the database is $PWD/db/memory.db
 
 ## Plan Creation
@@ -11,6 +11,7 @@
 - Each task should be atomic and testable
 - Include specific success criteria for each task
 - All plan files must include a final step for manual human validation
+- Focus on correctness and design of requested features. Do not add speculative or invented features.
 
 ## Plan Execution
 - Follow the plan document strictly, task by task
