@@ -311,15 +311,48 @@ module Nu
       end
 
       def print_welcome
+        case @options.banner_mode
+        when :none
+          # Do nothing - no banner
+        when :minimal
+          print_minimal_banner
+        else # :full (default)
+          print_full_banner
+        end
+      end
+
+      def print_minimal_banner
         print "\033[2J\033[H"
         output_lines(
-          "Nu Agent REPL",
-          "Database: #{File.expand_path(@history.db_path)}",
-          "Type your prompts below. Press Ctrl-C or /exit to quit.",
-          "(Ctrl-C during processing aborts operation)",
-          "Press Enter to submit input (Shift+Enter for newline)",
-          "Type /help for available commands",
-          "=" * 60
+          " ╭─╮╭─╮  ",
+          " │●││●│  Nu Agent v#{Nu::Agent::VERSION}",
+          " ╰─╯╰─╯  /help for commands",
+          "  ╰──╯   ",
+          ""
+        )
+      end
+
+      def print_full_banner
+        print "\033[2J\033[H"
+        output_lines(
+          "═" * 60,
+          "",
+          " ╭─╮╭─╮  ",
+          " │●││●│  Nu Agent REPL v#{Nu::Agent::VERSION}",
+          " ╰─╯╰─╯  Your AI-powered assistant",
+          "  ╰──╯   ",
+          "",
+          "─" * 60,
+          "",
+          "  Database: #{File.expand_path(@history.db_path)}",
+          "",
+          "  Type your prompts below. Press Ctrl-C or /exit to quit.",
+          "  (Ctrl-C during processing aborts operation)",
+          "",
+          "  Press Enter to submit input (Shift+Enter for newline)",
+          "  Type /help for available commands",
+          "",
+          "═" * 60
         )
       end
 

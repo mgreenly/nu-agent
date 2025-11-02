@@ -3,11 +3,12 @@
 module Nu
   module Agent
     class Options
-      attr_reader :reset_model, :debug
+      attr_reader :reset_model, :debug, :banner_mode
 
       def initialize(args = ARGV)
         @reset_model = nil
         @debug = false
+        @banner_mode = :full
         parse(args)
       end
 
@@ -23,6 +24,14 @@ module Nu
 
           opts.on("--debug", "Enable debug logging") do
             @debug = true
+          end
+
+          opts.on("--no-banner", "Disable the welcome banner") do
+            @banner_mode = :none
+          end
+
+          opts.on("--minimal", "Show minimal banner (version only)") do
+            @banner_mode = :minimal
           end
 
           opts.on("-v", "--version", "Show version") do

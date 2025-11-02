@@ -16,6 +16,7 @@ RSpec.describe Nu::Agent::Options do
       options = described_class.new([])
       expect(options.reset_model).to be_nil
       expect(options.debug).to be false
+      expect(options.banner_mode).to eq(:full)
     end
 
     it "uses ARGV by default if no args provided" do
@@ -23,6 +24,7 @@ RSpec.describe Nu::Agent::Options do
       options = described_class.new
       expect(options.reset_model).to be_nil
       expect(options.debug).to be false
+      expect(options.banner_mode).to eq(:full)
     end
   end
 
@@ -47,6 +49,41 @@ RSpec.describe Nu::Agent::Options do
     it "keeps debug false when not provided" do
       options = described_class.new([])
       expect(options.debug).to be false
+    end
+  end
+
+  describe "banner options" do
+    describe "--no-banner flag" do
+      it "sets banner_mode to :none when provided" do
+        options = described_class.new(["--no-banner"])
+        expect(options.banner_mode).to eq(:none)
+      end
+    end
+
+    describe "--minimal flag" do
+      it "sets banner_mode to :minimal when provided" do
+        options = described_class.new(["--minimal"])
+        expect(options.banner_mode).to eq(:minimal)
+      end
+    end
+
+    describe "default behavior" do
+      it "sets banner_mode to :full when neither flag is provided" do
+        options = described_class.new([])
+        expect(options.banner_mode).to eq(:full)
+      end
+    end
+
+    describe "conflicting options" do
+      it "uses last option when both flags are provided (minimal wins)" do
+        options = described_class.new(["--no-banner", "--minimal"])
+        expect(options.banner_mode).to eq(:minimal)
+      end
+
+      it "uses last option when both flags are provided (no-banner wins)" do
+        options = described_class.new(["--minimal", "--no-banner"])
+        expect(options.banner_mode).to eq(:none)
+      end
     end
   end
 

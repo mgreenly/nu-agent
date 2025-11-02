@@ -133,4 +133,55 @@ RSpec.describe Nu::Agent::MetricsCollector do
       expect(stats[:count]).to eq(1000)
     end
   end
+
+  describe "edge cases" do
+    describe "percentile calculations" do
+      it "handles empty timer in snapshot" do
+        # Record to one timer but check snapshot includes empty timers correctly
+        collector.record_duration(:timer_a, 100)
+        snapshot = collector.snapshot
+
+        # Verify the populated timer
+        expect(snapshot[:timers][:timer_a][:count]).to eq(1)
+        expect(snapshot[:timers][:timer_a][:p50]).to eq(100)
+      end
+
+      it "handles two durations for percentile calculation" do
+        collector.record_duration(:test_timer, 50)
+        collector.record_duration(:test_timer, 150)
+
+        stats = collector.get_timer_stats(:test_timer)
+        expect(stats[:count]).to eq(2)
+        # With 2 values, percentiles should be one of the two values
+        expect(stats[:p50]).to(satisfy { |v| [50, 150].include?(v) })
+        expect(stats[:p90]).to(satisfy { |v| [50, 150].include?(v) })
+      end
+
+      it "handles reset after recording durations" do
+        collector.record_duration(:test_timer, 100)
+        collector.increment(:test_counter, 5)
+
+        collector.reset
+
+        stats = collector.get_timer_stats(:test_timer)
+        expect(stats[:count]).to eq(0)
+        expect(stats[:p50]).to eq(0)
+        expect(collector.get_counter(:test_counter)).to eq(0)
+      end
+    end
+
+    describe "counter edge cases" do
+      it "handles negative increment amounts" do
+        collector.increment(:test_counter, 10)
+        collector.increment(:test_counter, -3)
+        expect(collector.get_counter(:test_counter)).to eq(7)
+      end
+
+      it "handles zero increment" do
+        collector.increment(:test_counter, 5)
+        collector.increment(:test_counter, 0)
+        expect(collector.get_counter(:test_counter)).to eq(5)
+      end
+    end
+  end
 end

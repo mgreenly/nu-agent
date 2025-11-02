@@ -8,6 +8,12 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
   let(:application) { instance_double("Nu::Agent::Application", console: console) }
   let(:command) { described_class.new(application) }
 
+  describe ".description" do
+    it "returns the command description" do
+      expect(described_class.description).to eq("Show this help message")
+    end
+  end
+
   describe "#execute" do
     before do
       allow(console).to receive(:puts)
@@ -200,6 +206,24 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
           # Verify dynamic commands use their description methods
           expect(help_text).to match(/Test command description/)
           expect(help_text).to match(/Another test description/)
+        end
+
+        command.execute("/help")
+      end
+
+      it "shows '(No description available)' for commands without description method" do
+        command_without_description = Class.new
+
+        expect(application).to receive(:registered_commands).and_return(
+          {
+            "/help" => described_class,
+            "/no-desc" => command_without_description
+          }
+        )
+
+        expect(application).to receive(:output_lines) do |*lines, **_kwargs|
+          help_text = lines.join("\n")
+          expect(help_text).to match(%r{/no-desc.*\(No description available\)})
         end
 
         command.execute("/help")
