@@ -35,7 +35,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
     let(:tools) { [] }
 
     context "when calling client" do
-      it "passes internal format to client.send_message as single hash argument" do
+      it "passes internal format to client.send_request as single hash argument" do
         final_response = {
           "content" => "Hello there!",
           "model" => "claude-sonnet-4-5",
@@ -47,7 +47,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
 
         # Verify client receives a single hash arg, not keyword args
         # Current implementation uses **params which would fail this
-        allow(client).to receive(:send_message) do |arg|
+        allow(client).to receive(:send_request) do |arg|
           # Fail if called with keyword arguments instead of single hash
           raise "Expected hash argument, got keyword args" unless arg.is_a?(Hash)
 
@@ -69,7 +69,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "model" => "claude-sonnet-4-5"
         }
 
-        allow(client).to receive(:send_message).and_return(error_response)
+        allow(client).to receive(:send_request).and_return(error_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
 
@@ -96,7 +96,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.001
         }
 
-        allow(client).to receive(:send_message).and_return(final_response)
+        allow(client).to receive(:send_request).and_return(final_response)
 
         result = orchestrator.execute(messages: messages, tools: tools)
 
@@ -128,7 +128,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(console).to receive(:hide_spinner)
@@ -168,7 +168,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(console).to receive(:hide_spinner)
@@ -200,7 +200,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(response1, response2)
+        allow(client).to receive(:send_request).and_return(response1, response2)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(console).to receive(:hide_spinner)
@@ -224,7 +224,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => nil
         }
 
-        allow(client).to receive(:send_message).and_return(response)
+        allow(client).to receive(:send_request).and_return(response)
 
         result = orchestrator.execute(messages: messages, tools: tools)
 
@@ -253,7 +253,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -285,7 +285,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -317,7 +317,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         }
 
         saved_tool_call_ids = []
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(formatter).to receive(:display_message_created)
         allow(history).to receive(:add_message) do |params|
           saved_tool_call_ids << params[:tool_call_id] if params[:role] == "tool"
@@ -350,7 +350,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         }
 
         displayed_tool_names = []
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created) do |params|
           displayed_tool_names << params[:tool_result]["name"] if params[:role] == "tool"
@@ -382,7 +382,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -419,7 +419,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         }
 
         execution_order = []
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute) do |params|
@@ -470,7 +470,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -518,7 +518,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -555,7 +555,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -597,7 +597,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("output")
@@ -632,7 +632,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("output")
@@ -671,7 +671,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -701,7 +701,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           "spend" => 0.002
         }
 
-        allow(client).to receive(:send_message).and_return(tool_call_response, final_response)
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
         allow(history).to receive(:add_message)
         allow(formatter).to receive(:display_message_created)
         allow(tool_registry).to receive(:execute).and_return("file contents")
@@ -716,7 +716,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
 
     context "system prompt handling" do
       it "includes system prompt when provided" do
-        allow(client).to receive(:send_message) do |params|
+        allow(client).to receive(:send_request) do |params|
           expect(params[:system_prompt]).to eq("You are a helpful assistant")
           {
             "content" => "Hello",
@@ -732,13 +732,13 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
           system_prompt: "You are a helpful assistant"
         )
 
-        expect(client).to have_received(:send_message).with(
+        expect(client).to have_received(:send_request).with(
           hash_including(system_prompt: "You are a helpful assistant")
         )
       end
 
       it "does not include system prompt when not provided" do
-        allow(client).to receive(:send_message) do |params|
+        allow(client).to receive(:send_request) do |params|
           expect(params).not_to have_key(:system_prompt)
           {
             "content" => "Hello",
@@ -750,7 +750,7 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
 
         orchestrator.execute(messages: messages, tools: tools)
 
-        expect(client).to have_received(:send_message)
+        expect(client).to have_received(:send_request)
       end
     end
   end

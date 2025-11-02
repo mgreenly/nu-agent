@@ -41,7 +41,7 @@ module Nu
         loop do
           start_time = Time.now
           output_debug("API Request to #{@client.name}/#{@client.model}", verbosity: 2)
-          response = @client.send_message(build_internal_request(messages, tools, system_prompt))
+          response = @client.send_request(build_internal_request(messages, tools, system_prompt))
           duration = Time.now - start_time
           output_debug("API Response received after #{format_duration(duration)}", verbosity: 2)
 
