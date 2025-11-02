@@ -498,6 +498,66 @@ RSpec.describe Nu::Agent::Application do
         app.send(:print_welcome)
       end
     end
+
+    context "with unexpected banner mode" do
+      before do
+        allow(options).to receive(:banner_mode).and_return(:unknown)
+      end
+
+      it "defaults to full banner for unexpected values" do
+        expect(app).to receive(:print).with("\033[2J\033[H")
+        expect(mock_console).to receive(:puts).with("═" * 60)
+        expect(mock_console).to receive(:puts).with("  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with("─" * 60)
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("  Database: /tmp/test.db")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("  Type your prompts below. Press Ctrl-C or /exit to quit.")
+        expect(mock_console).to receive(:puts).with("  (Ctrl-C during processing aborts operation)")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("  Press Enter to submit input (Shift+Enter for newline)")
+        expect(mock_console).to receive(:puts).with("  Type /help for available commands")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with("═" * 60)
+
+        app.send(:print_welcome)
+      end
+    end
+
+    context "with nil banner mode" do
+      before do
+        allow(options).to receive(:banner_mode).and_return(nil)
+      end
+
+      it "defaults to full banner when banner_mode is nil" do
+        expect(app).to receive(:print_full_banner)
+        app.send(:print_welcome)
+      end
+    end
+  end
+
+  describe "#print_minimal_banner" do
+    let(:app) { described_class.new(options: options) }
+
+    it "prints minimal banner directly" do
+      expect(app).to receive(:print).with("\033[2J\033[H")
+      expect(mock_console).to receive(:puts).with("Nu Agent REPL v#{Nu::Agent::VERSION}")
+      expect(mock_console).to receive(:puts).with("Type /help for available commands")
+      expect(mock_console).to receive(:puts).with("")
+
+      app.send(:print_minimal_banner)
+    end
+  end
+
+  describe "#print_full_banner" do
+    let(:app) { described_class.new(options: options) }
+
+    it "prints full banner directly" do
+      expect(app).to receive(:print).with("\033[2J\033[H")
+      expect(mock_console).to receive(:puts).exactly(13).times
+
+      app.send(:print_full_banner)
+    end
   end
 
   describe "#print_goodbye" do
