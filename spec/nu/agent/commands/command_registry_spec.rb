@@ -83,4 +83,28 @@ RSpec.describe Nu::Agent::Commands::CommandRegistry do
       expect(registry.find("/unknown")).to be_nil
     end
   end
+
+  describe "#registered_commands" do
+    it "returns an empty hash when no commands are registered" do
+      expect(registry.registered_commands).to eq({})
+    end
+
+    it "returns all registered commands as a hash" do
+      registry.register("/test1", test_command_class)
+      registry.register("/test2", test_command_class)
+
+      commands = registry.registered_commands
+      expect(commands).to be_a(Hash)
+      expect(commands.keys).to contain_exactly("/test1", "/test2")
+      expect(commands["/test1"]).to eq(test_command_class)
+      expect(commands["/test2"]).to eq(test_command_class)
+    end
+
+    it "returns a copy of the commands hash to prevent external modifications" do
+      registry.register("/test", test_command_class)
+      commands = registry.registered_commands
+      commands["/fake"] = "fake_class"
+      expect(registry.registered_commands).not_to have_key("/fake")
+    end
+  end
 end

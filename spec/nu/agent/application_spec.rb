@@ -298,6 +298,20 @@ RSpec.describe Nu::Agent::Application do
     it "does not register deprecated /fix command" do
       expect(command_registry.registered?("/fix")).to be false
     end
+
+    describe "#registered_commands" do
+      it "returns all registered commands from the command registry" do
+        # This test verifies that Application provides public access to registered commands
+        expect { app.registered_commands }.not_to raise_error
+
+        commands = app.registered_commands
+        expect(commands).to be_a(Hash)
+        expect(commands.keys).to include("/help", "/exit", "/clear", "/reset")
+        expect(commands.keys).to include("/llm", "/messages", "/search", "/stats", "/tools-debug")
+        expect(commands["/help"]).to eq(Nu::Agent::Commands::HelpCommand)
+        expect(commands["/llm"]).to eq(Nu::Agent::Commands::Subsystems::LlmCommand)
+      end
+    end
   end
 
   describe "#run" do

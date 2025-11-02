@@ -44,6 +44,12 @@ module Nu
           command = command_class.new(application)
           command.execute(input)
         end
+
+        # Get all registered commands
+        # @return [Hash] a copy of the registered commands hash
+        def registered_commands
+          @commands.dup
+        end
       end
     end
   end

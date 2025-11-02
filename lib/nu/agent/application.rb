@@ -298,6 +298,12 @@ module Nu
         load_active_persona
       end
 
+      # Get all registered commands from the command registry
+      # @return [Hash] a hash of command names to command classes
+      def registered_commands
+        @command_registry.registered_commands
+      end
+
       private
 
       def setup_signal_handlers
