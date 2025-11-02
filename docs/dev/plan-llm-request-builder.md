@@ -424,54 +424,54 @@ end
 
 ### Phase 12: Expand LLM Verbosity Levels [2-3 hours]
 
-**Task 12.1: Add condensed tool display at verbosity level 4**
-   - Issue: Users want to see what tools are available without overwhelming detail
-   - Current: Level 4 shows full tool definitions with complete schemas, level 5 shows history
-   - Desired: Level 4 shows tool names + first sentence only, level 5 shows full definitions, level 6 shows history
-   - Note: The LLM always receives complete tool definitions - verbosity only affects debug output display
-   - RED: Write test for new level 4 condensed tool display format
-   - GREEN: Update LlmRequestFormatter to extract first sentence from tool descriptions
-   - GREEN: Display format at level 4: `tool_name: First sentence of description.`
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Add condensed tool list at verbosity level 4"
-   - UPDATE: Mark task 12.1 complete in plan
+**Task 12.1: Add condensed tool display at verbosity level 4** ✓ COMPLETE
+   - Issue: Users want to see what tools are available without overwhelming detail ✓
+   - Current: Level 4 shows full tool definitions with complete schemas, level 5 shows history ✓
+   - Desired: Level 4 shows tool names + first sentence only, level 5 shows full definitions, level 6 shows history ✓
+   - Note: The LLM always receives complete tool definitions - verbosity only affects debug output display ✓
+   - RED: Write test for new level 4 condensed tool display format (already implemented) ✓
+   - GREEN: Update LlmRequestFormatter to extract first sentence from tool descriptions (already implemented) ✓
+   - GREEN: Display format at level 4: `tool_name: First sentence of description.` (already implemented) ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Add condensed tool list at verbosity level 4" (already implemented) ✓
+   - UPDATE: Mark task 12.1 complete in plan ✓
 
-**Task 12.2: Shift full tool definitions to verbosity level 5**
-   - RED: Update tests to expect full tool definitions at level 5 instead of level 4
-   - GREEN: Modify LlmRequestFormatter verbosity filtering logic for tools
-   - GREEN: Level 5 now shows complete tool schemas and all parameters
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Move full tool definitions to verbosity level 5"
-   - UPDATE: Mark task 12.2 complete in plan
+**Task 12.2: Shift full tool definitions to verbosity level 5** ✓ COMPLETE
+   - RED: Update tests to expect full tool definitions at level 5 instead of level 4 (already implemented) ✓
+   - GREEN: Modify LlmRequestFormatter verbosity filtering logic for tools (already implemented) ✓
+   - GREEN: Level 5 now shows complete tool schemas and all parameters (already implemented) ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Move full tool definitions to verbosity level 5" (already implemented) ✓
+   - UPDATE: Mark task 12.2 complete in plan ✓
 
-**Task 12.3: Shift complete history to verbosity level 6**
-   - RED: Update tests to expect complete message history at level 6 instead of level 5
-   - GREEN: Modify LlmRequestFormatter verbosity filtering logic for history
-   - GREEN: Level 6 now shows all previous exchanges and messages
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Move complete message history to verbosity level 6"
-   - UPDATE: Mark task 12.3 complete in plan
+**Task 12.3: Shift complete history to verbosity level 6** ✓ COMPLETE
+   - RED: Update tests to expect complete message history at level 6 instead of level 5 (already implemented) ✓
+   - GREEN: Modify LlmRequestFormatter verbosity filtering logic for history (already implemented) ✓
+   - GREEN: Level 6 now shows all previous exchanges and messages (already implemented) ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Move complete message history to verbosity level 6" (already implemented) ✓
+   - UPDATE: Mark task 12.3 complete in plan ✓
 
-**Task 12.4: Update help text for all verbosity commands**
-   - Location 1: `lib/nu/agent/commands/subsystems/llm_command.rb` - LlmCommand help text
-   - Location 2: `lib/nu/agent/commands/verbosity_command.rb` - VerbosityCommand SUBSYSTEMS hash
-   - RED: Write tests for updated help text reflecting new 7-level system (0-6)
-   - GREEN: Update LlmCommand help text with new level descriptions:
-     - 0: No LLM debug output
-     - 1: Show final user message only
-     - 2: + System prompt
-     - 3: + RAG content (redactions, spell check)
-     - 4: + Tool list (names with first sentence)
-     - 5: + Tool definitions (complete schemas)
-     - 6: + Complete message history
-   - GREEN: Update VerbosityCommand SUBSYSTEMS["llm"][:levels] hash to match
-   - REFACTOR: Clean up as needed
-   - RUN: `rake test && rake lint && rake coverage`
-   - COMMIT: "Update verbosity help text for expanded levels"
-   - UPDATE: Mark task 12.4 complete in plan
+**Task 12.4: Update help text for all verbosity commands** ✓ COMPLETE
+   - Location 1: `lib/nu/agent/commands/subsystems/llm_command.rb` - LlmCommand help text ✓
+   - Location 2: `lib/nu/agent/commands/verbosity_command.rb` - VerbosityCommand SUBSYSTEMS hash ✓
+   - RED: Write tests for updated help text reflecting new 7-level system (0-6) ✓
+   - GREEN: Update LlmCommand help text with new level descriptions: ✓
+     - 0: No LLM debug output ✓
+     - 1: Show final user message only ✓
+     - 2: + System prompt ✓
+     - 3: + RAG content (redactions, spell check) ✓
+     - 4: + Tool list (names with first sentence) ✓
+     - 5: + Tool definitions (complete schemas) ✓
+     - 6: + Complete message history ✓
+   - GREEN: Update VerbosityCommand SUBSYSTEMS["llm"][:levels] hash to match ✓
+   - REFACTOR: Clean up as needed ✓
+   - RUN: `rake test && rake lint && rake coverage` ✓
+   - COMMIT: "Update verbosity help text for expanded levels" ✓
+   - UPDATE: Mark task 12.4 complete in plan ✓
 
 ### Phase 8: Bug Fixes [Post-Implementation]
 
