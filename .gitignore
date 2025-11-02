@@ -21,3 +21,6 @@
 
 # RuboCop output
 rubocop-results.json
+
+# Local plan symlink (used in worktrees to reference current plan)
+/plan.md
