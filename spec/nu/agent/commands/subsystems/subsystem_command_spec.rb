@@ -15,6 +15,12 @@ RSpec.describe Nu::Agent::Commands::Subsystems::SubsystemCommand do
     allow(application).to receive(:output_line)
   end
 
+  describe ".description" do
+    it "returns default description for subsystem commands" do
+      expect(described_class.description).to eq("Manage subsystem debugging")
+    end
+  end
+
   describe "#initialize" do
     it "stores the application instance" do
       expect(command.instance_variable_get(:@app)).to eq(application)
@@ -118,6 +124,24 @@ RSpec.describe Nu::Agent::Commands::Subsystems::SubsystemCommand do
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("test_verbosity=2", type: :command)
         result = command.execute("  verbosity   2  ")
+        expect(result).to eq(:continue)
+      end
+    end
+
+    context "with command prefix" do
+      it "strips command prefix before processing" do
+        allow(history).to receive(:get_int).with("test_verbosity", default: 0).and_return(1)
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("test_verbosity=1", type: :command)
+        result = command.execute("/test verbosity")
+        expect(result).to eq(:continue)
+      end
+
+      it "handles prefix with arguments" do
+        expect(history).to receive(:set_config).with("test_verbosity", "5")
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("test_verbosity=5", type: :command)
+        result = command.execute("/test verbosity 5")
         expect(result).to eq(:continue)
       end
     end
