@@ -824,8 +824,26 @@ RSpec.describe "LLM Request Builder Integration" do
       expect(output).not_to include("First question")
     end
 
-    it "displays full message history at verbosity level 5" do
+    it "displays full tool definitions at verbosity level 5" do
       allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(5)
+
+      formatter.display_yaml(internal_request)
+      output = console.string
+
+      # Should contain system_prompt, rag_content, and full tool definitions
+      expect(output).to include("system_prompt")
+      expect(output).to include("rag_content")
+      expect(output).to include("tools")
+      expect(output).to include("test_tool")
+      expect(output).to include("A test tool")
+
+      # Should NOT include full message history yet (that's level 6)
+      expect(output).not_to include("messages:")
+      expect(output).to include("final_message")
+    end
+
+    it "displays full message history at verbosity level 6" do
+      allow(mock_db).to receive(:get_int).with("llm_verbosity", default: 0).and_return(6)
 
       formatter.display_yaml(internal_request)
       output = console.string

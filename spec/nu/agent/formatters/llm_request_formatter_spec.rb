@@ -19,8 +19,8 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         { role: "user", content: "How are you?" }
       ],
       tools: [
-        { name: "file_read", description: "Read a file" },
-        { name: "file_write", description: "Write a file" }
+        { name: "file_read", description: "Read a file from disk. This tool requires proper permissions." },
+        { name: "file_write", description: "Write content to a file. The file will be created if it doesn't exist." }
       ],
       metadata: {
         rag_content: { redactions: ["secret"], spell_check: [] },
@@ -161,7 +161,7 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(4)
       end
 
-      it "displays final message, system_prompt, rag_content, and tools" do
+      it "displays final message, system_prompt, rag_content, and condensed tool list" do
         formatter.display_yaml(internal_request)
 
         # Should see final message, system_prompt, and rag_content
@@ -175,12 +175,25 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
           a_string_matching(/rag_content:/)
         )
 
-        # Should see tools
+        # Should see condensed tools (name: first sentence only)
         expect(console).to have_received(:puts).with(
           a_string_matching(/tools:/)
         )
+        # Should see first sentence of file_read description
         expect(console).to have_received(:puts).with(
-          a_string_matching(/file_read/)
+          a_string_matching(/file_read: Read a file from disk\./)
+        )
+        # Should see first sentence of file_write description
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/file_write: Write content to a file\./)
+        )
+
+        # Should NOT see the second sentences (indicating condensed format)
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/This tool requires proper permissions/)
+        )
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/The file will be created/)
         )
 
         # Should NOT see full messages yet
@@ -194,6 +207,45 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
       before do
         allow(console).to receive(:puts)
         allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(5)
+      end
+
+      it "displays final message, system_prompt, rag_content, and full tool definitions" do
+        formatter.display_yaml(internal_request)
+
+        # Should see final message, system_prompt, and rag_content
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/final_message:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/system_prompt:/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/rag_content:/)
+        )
+
+        # Should see full tool definitions (not condensed)
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/tools:/)
+        )
+        # Should see full descriptions with second sentences
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/This tool requires proper permissions/)
+        )
+        expect(console).to have_received(:puts).with(
+          a_string_matching(/The file will be created/)
+        )
+
+        # Should NOT see full messages yet (that's level 6)
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/^:messages:$/)
+        )
+      end
+    end
+
+    context "with verbosity level 6" do
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(6)
       end
 
       it "displays everything including full message history" do
