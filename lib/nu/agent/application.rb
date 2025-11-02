@@ -324,8 +324,10 @@ module Nu
       def print_minimal_banner
         print "\033[2J\033[H"
         output_lines(
-          "Nu Agent REPL v#{Nu::Agent::VERSION}",
-          "Type /help for available commands",
+          " ╭─╮╭─╮  Nu Agent v#{Nu::Agent::VERSION}",
+          " │●││●│  /help for commands",
+          " ╰─╯╰─╯  ",
+          "  ╰──╯   ",
           ""
         )
       end
@@ -334,7 +336,12 @@ module Nu
         print "\033[2J\033[H"
         output_lines(
           "═" * 60,
-          "  Nu Agent REPL v#{Nu::Agent::VERSION}",
+          "",
+          " ╭─╮╭─╮  Nu Agent REPL v#{Nu::Agent::VERSION}",
+          " │●││●│  Your AI-powered assistant",
+          " ╰─╯╰─╯  ",
+          "  ╰──╯   ",
+          "",
           "─" * 60,
           "",
           "  Database: #{File.expand_path(@history.db_path)}",

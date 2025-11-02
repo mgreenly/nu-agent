@@ -451,10 +451,15 @@ RSpec.describe Nu::Agent::Application do
         allow(options).to receive(:banner_mode).and_return(:full)
       end
 
-      it "prints full welcome message with improved visual design" do
+      it "prints full welcome message with ASCII art and improved visual design" do
         expect(app).to receive(:print).with("\033[2J\033[H")
         expect(mock_console).to receive(:puts).with("═" * 60)
-        expect(mock_console).to receive(:puts).with("  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with(" │●││●│  Your AI-powered assistant")
+        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+        expect(mock_console).to receive(:puts).with("  ╰──╯   ")
+        expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("─" * 60)
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("  Database: /tmp/test.db")
@@ -476,10 +481,12 @@ RSpec.describe Nu::Agent::Application do
         allow(options).to receive(:banner_mode).and_return(:minimal)
       end
 
-      it "prints minimal banner with version only" do
+      it "prints minimal banner with ASCII art and version" do
         expect(app).to receive(:print).with("\033[2J\033[H")
-        expect(mock_console).to receive(:puts).with("Nu Agent REPL v#{Nu::Agent::VERSION}")
-        expect(mock_console).to receive(:puts).with("Type /help for available commands")
+        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with(" │●││●│  /help for commands")
+        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+        expect(mock_console).to receive(:puts).with("  ╰──╯   ")
         expect(mock_console).to receive(:puts).with("")
 
         app.send(:print_welcome)
@@ -507,7 +514,12 @@ RSpec.describe Nu::Agent::Application do
       it "defaults to full banner for unexpected values" do
         expect(app).to receive(:print).with("\033[2J\033[H")
         expect(mock_console).to receive(:puts).with("═" * 60)
-        expect(mock_console).to receive(:puts).with("  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with("")
+        expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent REPL v#{Nu::Agent::VERSION}")
+        expect(mock_console).to receive(:puts).with(" │●││●│  Your AI-powered assistant")
+        expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+        expect(mock_console).to receive(:puts).with("  ╰──╯   ")
+        expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("─" * 60)
         expect(mock_console).to receive(:puts).with("")
         expect(mock_console).to receive(:puts).with("  Database: /tmp/test.db")
@@ -539,10 +551,12 @@ RSpec.describe Nu::Agent::Application do
   describe "#print_minimal_banner" do
     let(:app) { described_class.new(options: options) }
 
-    it "prints minimal banner directly" do
+    it "prints minimal banner directly with ASCII art" do
       expect(app).to receive(:print).with("\033[2J\033[H")
-      expect(mock_console).to receive(:puts).with("Nu Agent REPL v#{Nu::Agent::VERSION}")
-      expect(mock_console).to receive(:puts).with("Type /help for available commands")
+      expect(mock_console).to receive(:puts).with(" ╭─╮╭─╮  Nu Agent v#{Nu::Agent::VERSION}")
+      expect(mock_console).to receive(:puts).with(" │●││●│  /help for commands")
+      expect(mock_console).to receive(:puts).with(" ╰─╯╰─╯  ")
+      expect(mock_console).to receive(:puts).with("  ╰──╯   ")
       expect(mock_console).to receive(:puts).with("")
 
       app.send(:print_minimal_banner)
@@ -552,9 +566,9 @@ RSpec.describe Nu::Agent::Application do
   describe "#print_full_banner" do
     let(:app) { described_class.new(options: options) }
 
-    it "prints full banner directly" do
+    it "prints full banner directly with ASCII art" do
       expect(app).to receive(:print).with("\033[2J\033[H")
-      expect(mock_console).to receive(:puts).exactly(13).times
+      expect(mock_console).to receive(:puts).exactly(18).times
 
       app.send(:print_full_banner)
     end
