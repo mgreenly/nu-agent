@@ -10,16 +10,15 @@
 - Structure plans with clear phases and numbered tasks
 - Each task should be atomic and testable
 - Include specific success criteria for each task
-- All plan files must include a final step for manual validation
-- Manual test/validation steps in plans are for human verification only
+- All plan files must include a final step for manual human validation
 
 ## Plan Execution
 - Follow the plan document strictly, task by task
 - Use TDD red/green cycles for all changes
-- Every task requires passing `rake test`, `rake lint`, and `rake coverage`
+- The TDD cycle is not complete until `rake test`, `rake lint`, and `rake coverage` pass.
+- After the TDD cycle is complete mark the task complet in the plan.
 - Commit after each completed task
-- Update plan document progress after each task (mark tasks as DONE)
-- Always include the plan file name in work summaries
+- Always include the plan file name, current task and next task, in work summaries
 
 ## TDD: Red → Green → Refactor
 1. Write failing test first
