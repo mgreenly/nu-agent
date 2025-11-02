@@ -217,18 +217,19 @@ module Nu
         rag_content[:redactions] = redacted_message_ranges if redacted_message_ranges && !redacted_message_ranges.empty?
 
         # RAG sub-process 2: Spell checking (if enabled)
-        if application.spell_check_enabled && application.spellchecker
-          spell_checker = SpellChecker.new(
-            history: history,
-            conversation_id: conversation_id,
-            client: application.spellchecker
-          )
-          corrected_query = spell_checker.check_spelling(user_query)
-
-          if corrected_query != user_query
-            rag_content[:spell_check] = { original: user_query, corrected: corrected_query }
-          end
-        end
+        # TODO: Re-enable when Application class has spell_check_enabled and spellchecker methods
+        # if application.spell_check_enabled && application.spellchecker
+        #   spell_checker = SpellChecker.new(
+        #     history: history,
+        #     conversation_id: conversation_id,
+        #     client: application.spellchecker
+        #   )
+        #   corrected_query = spell_checker.check_spelling(user_query)
+        #
+        #   if corrected_query != user_query
+        #     rag_content[:spell_check] = { original: user_query, corrected: corrected_query }
+        #   end
+        # end
 
         rag_content
       end

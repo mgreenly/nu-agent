@@ -32,11 +32,11 @@ module Nu
 
               Verbosity Levels:
                 0 - No LLM debug output
-                1 - Show warnings (empty responses, API errors)
-                2 - Show message count and token estimates for requests
-                3 - Show full request messages
-                4 - Add tool definitions to request display
-                5+ - Reserved for future (raw JSON, timing details)
+                1 - Show final user message only
+                2 - + System prompt
+                3 - + RAG content (redactions, spell check)
+                4 - + Tool definitions
+                5 - + Complete message history
             HELP
           end
         end

@@ -50,8 +50,11 @@ RSpec.describe Nu::Agent::Commands::Subsystems::LlmCommand do
           expect(lines.flatten).to include("Commands:")
           expect(lines.flatten).to include("Verbosity Levels:")
           expect(lines.flatten.any? { |line| line.include?("0 - No LLM debug output") }).to be true
-          expect(lines.flatten.any? { |line| line.include?("1 - Show warnings") }).to be true
-          expect(lines.flatten.any? { |line| line.include?("2 - Show message count") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("1 - Show final user message only") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("2 - + System prompt") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("3 - + RAG content") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("4 - + Tool definitions") }).to be true
+          expect(lines.flatten.any? { |line| line.include?("5 - + Complete message history") }).to be true
         end
         result = command.execute("help")
         expect(result).to eq(:continue)
