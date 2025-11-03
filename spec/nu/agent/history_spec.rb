@@ -891,6 +891,20 @@ RSpec.describe Nu::Agent::History do
       expect(result.first).to be_a(Hash)
       expect(result.first.keys).not_to be_empty
     end
+
+    it "uses fallback column names when result does not respond to columns" do
+      conversation_id = history.create_conversation
+      history.add_message(conversation_id: conversation_id, actor: "user", role: "user", content: "Test")
+
+      # Execute a query and stub the result to not respond to :columns
+      allow_any_instance_of(DuckDB::Result).to receive(:respond_to?).with(:columns).and_return(false)
+
+      result = history.execute_query("SELECT * FROM messages")
+
+      # Should use fallback column names (column_0, column_1, etc.)
+      expect(result.first).to be_a(Hash)
+      expect(result.first.keys.any? { |k| k.start_with?("column_") }).to be true
+    end
   end
 
   describe "#find_corrupted_messages" do
@@ -944,6 +958,31 @@ RSpec.describe Nu::Agent::History do
       )
 
       corrupted = history.find_corrupted_messages
+      expect(corrupted).to eq([])
+    end
+
+    it "handles rows where tool_calls_json is unexpectedly falsy" do
+      # Create a message with tool_calls, then stub the result to return nil for tool_calls_json
+      history.add_message(
+        conversation_id: conversation_id,
+        actor: "orchestrator",
+        role: "assistant",
+        content: "",
+        tool_calls: [{ "id" => "call_1", "name" => "test", "arguments" => { "test" => "value" } }]
+      )
+
+      # Stub the query result to return a row with nil tool_calls_json
+      allow(history.connection).to receive(:query).and_call_original
+      allow(history.connection).to receive(:query).with(include("FROM messages"))
+                                                  .and_wrap_original do |original_method, *args|
+        result = original_method.call(*args)
+        # Create a mock result that yields rows with nil tool_calls_json
+        allow(result).to receive(:each).and_yield([1, conversation_id, "assistant", nil, Time.now])
+        result
+      end
+
+      corrupted = history.find_corrupted_messages
+      # Should skip the row with nil tool_calls_json
       expect(corrupted).to eq([])
     end
   end
@@ -1013,6 +1052,26 @@ RSpec.describe Nu::Agent::History do
 
         expect { h.close }.not_to raise_error
         expect(warnings.any? { |w| w.include?("Checkpoint failed") }).to be true
+      ensure
+        FileUtils.rm_rf(test_close_db)
+      end
+    end
+
+    it "handles close when no connection exists for current thread" do
+      test_close_db = "db/test_close_no_conn.db"
+
+      begin
+        # Create history instance in main thread
+        h = nil
+        main_thread = Thread.new do
+          h = described_class.new(db_path: test_close_db)
+          h.create_conversation
+        end
+        main_thread.join
+
+        # Call close from a different thread (current thread) that never created a connection
+        # The conn will be nil for this thread, so conn&.query("CHECKPOINT") should handle it gracefully
+        expect { h.close }.not_to raise_error
       ensure
         FileUtils.rm_rf(test_close_db)
       end

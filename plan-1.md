@@ -6,7 +6,6 @@ This document lists files that do not have 100% branch coverage.
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/history.rb | 88.46% | 23 | 26 | 3 |
 | lib/nu/agent/rag/rag_retrieval_logger.rb | 90.00% | 9 | 10 | 1 |
 | lib/nu/agent/embedding_store.rb | 91.67% | 33 | 36 | 3 |
 | lib/nu/agent/commands/workers/embeddings_command.rb | 92.86% | 26 | 28 | 2 |
@@ -22,3 +21,4 @@ This document lists files that do not have 100% branch coverage.
 | lib/nu/agent/application.rb | 82.61% (38/46) | 100% (46/46) | 8 |
 | lib/nu/agent/chat_loop_orchestrator.rb | 85.00% (17/20) | 100% (20/20) | 3 |
 | lib/nu/agent/tool_call_orchestrator.rb | 86.11% (31/36) | 100% (36/36) | 5 |
+| lib/nu/agent/history.rb | 88.46% (23/26) | 100% (26/26) | 3 |
