@@ -6,7 +6,6 @@ This document lists files that do not have 100% branch coverage.
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/application.rb | 82.61% | 38 | 46 | 8 |
 | lib/nu/agent/chat_loop_orchestrator.rb | 85.00% | 17 | 20 | 3 |
 | lib/nu/agent/tool_call_orchestrator.rb | 86.11% | 31 | 36 | 5 |
 | lib/nu/agent/history.rb | 88.46% | 23 | 26 | 3 |
@@ -22,3 +21,4 @@ This document lists files that do not have 100% branch coverage.
 |------|------------------|----------------|----------------|
 | lib/nu/agent/message_repository.rb | 76.92% (20/26) | 100% (26/26) | 6 |
 | lib/nu/agent/workers/exchange_summarizer.rb | 80.00% (24/30) | 100% (30/30) | 6 |
+| lib/nu/agent/application.rb | 82.61% (38/46) | 100% (46/46) | 8 |

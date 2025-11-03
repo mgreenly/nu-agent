@@ -111,6 +111,39 @@ RSpec.describe Nu::Agent::Application do
     end
   end
 
+  describe "#output_line" do
+    let(:app) { described_class.new(options: options) }
+
+    it "outputs error messages with red color" do
+      expect(mock_console).to receive(:puts).with("\e[31mError message\e[0m")
+      app.output_line("Error message", type: :error)
+    end
+
+    it "outputs command messages with gray color" do
+      expect(mock_console).to receive(:puts).with("\e[90mCommand output\e[0m")
+      app.output_line("Command output", type: :command)
+    end
+
+    it "outputs debug messages with gray color when debug is enabled" do
+      allow(options).to receive(:debug).and_return(true)
+      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
+      app_with_debug = described_class.new(options: options)
+
+      expect(mock_console).to receive(:puts).with("\e[90mDebug message\e[0m")
+      app_with_debug.output_line("Debug message", type: :debug)
+    end
+
+    it "does not output debug messages when debug is disabled" do
+      expect(mock_console).not_to receive(:puts)
+      app.output_line("Debug message", type: :debug)
+    end
+
+    it "outputs normal messages without color" do
+      expect(mock_console).to receive(:puts).with("Normal message")
+      app.output_line("Normal message", type: :normal)
+    end
+  end
+
   describe "#active_threads" do
     it "returns active threads from worker_manager" do
       app = described_class.new(options: options)
@@ -273,6 +306,18 @@ RSpec.describe Nu::Agent::Application do
 
       expect(result).to eq(:continue)
     end
+
+    it "handles empty command input gracefully" do
+      expect(mock_console).to receive(:puts).with("")
+      allow(options).to receive(:debug).and_return(true)
+      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("true")
+      app_with_debug = described_class.new(options: options)
+      expect(mock_console).to receive(:puts).with("\e[90mUnknown command: \e[0m")
+
+      result = app_with_debug.handle_command("")
+
+      expect(result).to eq(:continue)
+    end
   end
 
   describe "command registration" do
@@ -377,6 +422,19 @@ RSpec.describe Nu::Agent::Application do
 
       # Should have waited for the critical section to complete
       expect(elapsed).to be >= 0.1
+    end
+
+    it "handles nil history gracefully during shutdown" do
+      allow(app).to receive(:setup_signal_handlers)
+      allow(app).to receive(:print_welcome)
+      allow(app).to receive(:repl)
+      allow(app).to receive(:print_goodbye)
+
+      # Set history to nil
+      app.instance_variable_set(:@history, nil)
+
+      # Should not raise an error
+      expect { app.run }.not_to raise_error
     end
   end
 
@@ -674,6 +732,24 @@ RSpec.describe Nu::Agent::Application do
 
       expect(mock_worker).to have_received(:instance_variable_set).with(:@history, new_history)
     end
+
+    it "skips updating worker instances without @history instance variable" do
+      app = described_class.new(options: options)
+      allow(Nu::Agent::History).to receive(:new).and_return(new_history)
+
+      # Create a mock worker without history reference
+      mock_worker = double("Worker")
+      allow(mock_worker).to receive(:instance_variable_defined?).with(:@history).and_return(false)
+      allow(mock_worker).to receive(:instance_variable_set)
+
+      worker_instances = { "test-worker" => mock_worker }
+      allow(app.worker_manager).to receive(:instance_variable_get).with(:@worker_instances).and_return(worker_instances)
+
+      app.reopen_database
+
+      # Should not try to set the instance variable
+      expect(mock_worker).not_to have_received(:instance_variable_set)
+    end
   end
 
   describe "#start_background_workers" do
@@ -700,6 +776,26 @@ RSpec.describe Nu::Agent::Application do
         expect(app).to receive(:setup_signal_handlers).ordered
         expect(app).to receive(:print_welcome).ordered
         expect(mock_worker_manager).to receive(:start_summarization_worker).ordered
+        expect(app).to receive(:repl).ordered
+        expect(app).to receive(:print_goodbye).ordered
+        allow(mock_history).to receive(:close)
+
+        app.run
+      end
+
+      it "starts embedding worker when embedding is enabled and client is present" do
+        # Configure for embedding to be enabled
+        allow(mock_history).to receive(:get_config).with("embedding_enabled", default: "true").and_return("true")
+        mock_embedding_client = instance_double("EmbeddingClient")
+        allow(Nu::Agent::Clients::OpenAIEmbeddings).to receive(:new).and_return(mock_embedding_client)
+
+        app = described_class.new(options: options)
+
+        # Set up expectations in order
+        expect(app).to receive(:setup_signal_handlers).ordered
+        expect(app).to receive(:print_welcome).ordered
+        expect(mock_worker_manager).to receive(:start_summarization_worker).ordered
+        expect(mock_worker_manager).to receive(:start_embedding_worker).ordered
         expect(app).to receive(:repl).ordered
         expect(app).to receive(:print_goodbye).ordered
         allow(mock_history).to receive(:close)
@@ -737,6 +833,13 @@ RSpec.describe Nu::Agent::Application do
       result = app.exchange_summarizer_status
       expect(result).to eq("test_status")
     end
+
+    it "returns nil when worker_manager is nil" do
+      app = described_class.new(options: options)
+      app.instance_variable_set(:@worker_manager, nil)
+
+      expect(app.exchange_summarizer_status).to be_nil
+    end
   end
 
   describe "#embedding_status" do
@@ -746,6 +849,13 @@ RSpec.describe Nu::Agent::Application do
 
       result = app.embedding_status
       expect(result).to eq("embedding_status_value")
+    end
+
+    it "returns nil when worker_manager is nil" do
+      app = described_class.new(options: options)
+      app.instance_variable_set(:@worker_manager, nil)
+
+      expect(app.embedding_status).to be_nil
     end
   end
 
@@ -800,6 +910,44 @@ RSpec.describe Nu::Agent::Application do
       # Should not raise, persona should be nil
       expect(app.instance_variable_get(:@active_persona_system_prompt)).to be_nil
       expect(output_calls.any? { |call| call[0]&.include?("Warning: Could not load persona") }).to be true
+    end
+
+    it "handles errors when loading persona gracefully with debug disabled" do
+      error_persona_manager = instance_double(Nu::Agent::PersonaManager)
+      allow(Nu::Agent::PersonaManager).to receive(:new).and_return(error_persona_manager)
+      allow(error_persona_manager).to receive(:get_active).and_raise(StandardError.new("Persona error"))
+
+      # Debug mode disabled
+      allow(mock_history).to receive(:get_config).with("debug", default: "false").and_return("false")
+
+      app = described_class.new(options: options)
+
+      # Should not raise, persona should be nil, and no warning should be output
+      expect(app.instance_variable_get(:@active_persona_system_prompt)).to be_nil
+    end
+
+    it "handles persona without system_prompt gracefully" do
+      persona_manager = instance_double(Nu::Agent::PersonaManager)
+      allow(Nu::Agent::PersonaManager).to receive(:new).and_return(persona_manager)
+      # Persona without system_prompt key
+      allow(persona_manager).to receive(:get_active).and_return({ "name" => "test" })
+
+      app = described_class.new(options: options)
+
+      # Should not raise, persona system prompt should be nil
+      expect(app.instance_variable_get(:@active_persona_system_prompt)).to be_nil
+    end
+
+    it "handles nil persona gracefully" do
+      persona_manager = instance_double(Nu::Agent::PersonaManager)
+      allow(Nu::Agent::PersonaManager).to receive(:new).and_return(persona_manager)
+      # No active persona
+      allow(persona_manager).to receive(:get_active).and_return(nil)
+
+      app = described_class.new(options: options)
+
+      # Should not raise, persona system prompt should be nil
+      expect(app.instance_variable_get(:@active_persona_system_prompt)).to be_nil
     end
   end
 end
