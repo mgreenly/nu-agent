@@ -250,6 +250,24 @@ RSpec.describe Nu::Agent::Commands::PersonaCommand do
         )
       end
 
+      it "uses empty string as template when default persona does not exist" do
+        allow(persona_manager).to receive(:get).with("my-persona").and_return(nil)
+        allow(persona_manager).to receive(:get).with("default").and_return(nil)
+        allow(persona_editor).to receive(:edit_in_editor).with(
+          initial_content: "",
+          persona_name: "my-persona"
+        ).and_return("New content")
+        allow(persona_manager).to receive(:create).and_return({ "id" => 10, "name" => "my-persona" })
+        allow(console).to receive(:puts)
+
+        command.execute("/persona create my-persona")
+
+        expect(persona_editor).to have_received(:edit_in_editor).with(
+          initial_content: "",
+          persona_name: "my-persona"
+        )
+      end
+
       it "does not create persona when editor returns nil (cancelled)" do
         allow(persona_manager).to receive(:get).with("my-persona").and_return(nil)
         allow(persona_manager).to receive(:get).with("default").and_return({ "system_prompt" => "Default" })

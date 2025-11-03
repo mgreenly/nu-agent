@@ -2,12 +2,7 @@
 
 This document lists files that do not have 100% branch coverage.
 
-**Total files in this plan:** 9
-
-| File | Coverage | Covered | Total | Uncovered |
-|------|----------|---------|-------|----------|
-| lib/nu/agent/formatter.rb | 93.62% | 88 | 94 | 6 |
-| lib/nu/agent/commands/persona_command.rb | 97.06% | 33 | 34 | 1 |
+**Total files in this plan:** 10
 
 ## Completed Files
 
@@ -22,3 +17,5 @@ This document lists files that do not have 100% branch coverage.
 | lib/nu/agent/rag/rag_retrieval_logger.rb | 90.00% (9/10) | 100% (10/10) | 1 |
 | lib/nu/agent/embedding_store.rb | 91.67% (33/36) | 100% (36/36) | 3 |
 | lib/nu/agent/commands/workers/embeddings_command.rb | 92.86% (26/28) | 100% (28/28) | 2 |
+| lib/nu/agent/formatter.rb | 93.62% (88/94) | 100% (94/94) | 6 |
+| lib/nu/agent/commands/persona_command.rb | 97.06% (33/34) | 100% (34/34) | 1 |

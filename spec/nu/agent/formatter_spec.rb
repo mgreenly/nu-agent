@@ -1068,6 +1068,131 @@ RSpec.describe Nu::Agent::Formatter do
   end
 
   describe "edge cases and additional branches" do
+    # Branch coverage: Line 186 - else branch of msg_verbosity >= 3
+    it "handles display_message_created with non-integer verbosity between 2 and 3" do
+      application = instance_double("Application", history: history)
+      formatter_with_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: application
+      )
+
+      allow(history).to receive(:workers_idle?).and_return(true)
+      # Return a float between 2 and 3 to hit the else branch
+      allow(history).to receive(:get_int).with("messages_verbosity", default: 0).and_return(2.5)
+
+      expect(mock_console).to receive(:puts).with("")
+      expect(mock_console).to receive(:puts).with("\e[90m[Message Out] Created message\e[0m")
+
+      formatter_with_app.display_message_created(actor: "test", role: "user")
+    end
+
+    # Branch coverage: Line 242 - messages_verbosity without application
+    it "handles messages_verbosity when application is nil" do
+      formatter_no_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: nil
+      )
+
+      # Should not crash and return 0
+      expect(formatter_no_app.send(:messages_verbosity)).to eq(0)
+    end
+
+    # Branch coverage: Line 248 - thread_verbosity without application
+    it "handles thread_verbosity when application is nil" do
+      formatter_no_app = described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: true,
+        console: mock_console,
+        application: nil
+      )
+
+      # Should not crash and return 0
+      expect(formatter_no_app.send(:thread_verbosity)).to eq(0)
+    end
+
+    # Branch coverage: Line 265 - safe navigation when tokens_output is nil
+    it "handles assistant message with nil tokens_output correctly" do
+      formatter.debug = false
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "",
+        "tokens_input" => 10,
+        "tokens_output" => nil,
+        "tool_calls" => nil
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 0,
+                                                              "total" => 10,
+                                                              "spend" => 0.000100
+                                                            })
+
+      # Should not show warning when debug is false
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.display_message(message)
+    end
+
+    # Branch coverage: Line 267 - debug false with empty content and positive tokens
+    it "does not show empty response warning when debug is false" do
+      formatter.debug = false
+
+      message = {
+        "id" => 1,
+        "actor" => "orchestrator",
+        "role" => "assistant",
+        "content" => "",
+        "tokens_input" => 10,
+        "tokens_output" => 5,
+        "tool_calls" => nil
+      }
+
+      allow(history).to receive(:session_tokens).and_return({
+                                                              "input" => 10,
+                                                              "output" => 5,
+                                                              "total" => 15,
+                                                              "spend" => 0.000150
+                                                            })
+
+      # Should not show warning when debug is false
+      expect(mock_console).not_to receive(:puts).with(a_string_matching(/LLM returned empty response/))
+
+      formatter.display_message(message)
+    end
+
+    # Branch coverage: Line 285 - normalized.any? returns false
+    it "does not display system message when normalization returns empty array" do
+      message = {
+        "id" => 1,
+        "role" => "system",
+        "content" => "test"
+      }
+
+      # Stub the private normalize_message_lines method to return empty array
+      allow(formatter).to receive(:normalize_message_lines).and_return([])
+
+      expect(mock_console).not_to receive(:puts)
+
+      formatter.send(:display_system_message, message)
+    end
+
     it "handles messages with unknown role" do
       message = {
         "id" => 1,
