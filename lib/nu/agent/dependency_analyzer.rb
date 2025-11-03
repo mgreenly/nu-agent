@@ -68,8 +68,8 @@ module Nu
           end
         end
 
-        # Add the last batch if it has any tool calls
-        batches << current_batch unless current_batch.empty?
+        # Add the final batch (will always have at least one tool if we reach here)
+        batches << current_batch
 
         batches
       end
@@ -115,7 +115,7 @@ module Nu
 
       # Start a new batch and track write operations
       #
-      # Finalizes the current batch (if non-empty) and prepares for a new batch.
+      # Finalizes the current batch and prepares for a new batch.
       # Also tracks any write operations from the tool call that starts the new batch.
       #
       # @param batches [Array<Array<Hash>>] Array of completed batches
@@ -123,7 +123,7 @@ module Nu
       # @param tool_call [Hash] Tool call that starts the new batch
       # @param path_writes [Hash] Map of paths to track write operations
       def start_new_batch(batches, current_batch, tool_call, path_writes)
-        batches << current_batch unless current_batch.empty?
+        batches << current_batch
         track_write_paths(tool_call, path_writes)
       end
 

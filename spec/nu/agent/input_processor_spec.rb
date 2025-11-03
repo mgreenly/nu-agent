@@ -161,6 +161,21 @@ RSpec.describe Nu::Agent::InputProcessor do
           end
         end
       end
+
+      context "when exception occurs before thread creation" do
+        before do
+          # Simulate exception during worker_token.activate (before thread is created)
+          allow(history).to receive(:increment_workers).and_raise(StandardError, "Worker activation failed")
+        end
+
+        it "handles cleanup with nil thread in ensure block" do
+          expect { processor.process(input) }.to raise_error(StandardError, "Worker activation failed")
+
+          # Ensure cleanup_resources was called and handled nil thread gracefully
+          expect(console).to have_received(:hide_spinner)
+          expect(active_threads).not_to include(nil)
+        end
+      end
     end
   end
 end

@@ -466,5 +466,54 @@ RSpec.describe Nu::Agent::DependencyAnalyzer do
         expect(batches[0][0]["id"]).to eq("call_1")
       end
     end
+
+    context "with custom operation types" do
+      it "handles tools with non-standard operation types" do
+        # Create a custom tool registry that returns an unknown operation type
+        custom_registry = instance_double(Nu::Agent::ToolRegistry)
+        allow(custom_registry).to receive(:metadata_for).and_return(
+          { operation_type: :custom, scope: :confined }
+        )
+        custom_analyzer = described_class.new(tool_registry: custom_registry)
+
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "name" => "custom_tool",
+            "arguments" => "{}"
+          },
+          {
+            "id" => "call_2",
+            "name" => "custom_tool",
+            "arguments" => "{}"
+          }
+        ]
+
+        batches = custom_analyzer.analyze(tool_calls)
+
+        # Custom operation type (neither read nor write) should not conflict
+        # Both tools should batch together
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(2)
+      end
+    end
+
+    context "with arguments as Hash objects" do
+      it "handles arguments that are already Hash objects" do
+        tool_calls = [
+          {
+            "id" => "call_1",
+            "name" => "file_read",
+            "arguments" => { "file" => "/path/to/file.rb" }
+          }
+        ]
+
+        batches = analyzer.analyze(tool_calls)
+
+        expect(batches.size).to eq(1)
+        expect(batches[0].size).to eq(1)
+        expect(batches[0][0]["id"]).to eq("call_1")
+      end
+    end
   end
 end

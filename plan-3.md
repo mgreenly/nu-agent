@@ -3,10 +3,11 @@
 This document lists files that do not have 100% branch coverage.
 
 **Total files in this plan:** 10
+**Completed:** 7
+**Remaining:** 6
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/dependency_analyzer.rb | 87.50% | 21 | 24 | 3 |
 | lib/nu/agent/spinner.rb | 89.47% | 17 | 19 | 2 |
 | lib/nu/agent/formatters/tool_result_formatter.rb | 91.18% | 31 | 34 | 3 |
 | lib/nu/agent/commands/model_command.rb | 92.31% | 12 | 13 | 1 |
@@ -24,3 +25,4 @@ This document lists files that do not have 100% branch coverage.
 | lib/nu/agent/rag/context_formatter_processor.rb | ✅ 100% branch coverage achieved |
 | lib/nu/agent/input_processor.rb | ✅ 100% branch coverage achieved |
 | lib/nu/agent/commands/redaction_command.rb | ✅ 100% branch coverage achieved |
+| lib/nu/agent/dependency_analyzer.rb | ✅ 100% branch coverage achieved |
