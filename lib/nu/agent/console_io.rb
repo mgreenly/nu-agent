@@ -267,10 +267,6 @@ module Nu
 
           cumulative_pos += line_with_newline
         end
-
-        # Position is at the very end after all lines processed
-        # This handles the case where pos == buffer.length and buffer ends without newline
-        [line_list.length - 1, line_list.last.length]
       end
 
       # Calculate how many physical terminal rows a line occupies

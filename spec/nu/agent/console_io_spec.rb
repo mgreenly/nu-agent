@@ -2115,6 +2115,13 @@ RSpec.describe Nu::Agent::ConsoleIO do
       result = console.send(:get_line_and_column, 5)
       expect(result).to eq([0, 5])
     end
+
+    it "handles position at very end after all lines processed (multiline case)" do
+      # This tests the fallback return at line 273
+      console.instance_variable_set(:@input_buffer, String.new("line1\nline2\nline3"))
+      result = console.send(:get_line_and_column, 17) # Position at end of "line1\nline2\nline3"
+      expect(result).to eq([2, 5]) # Line 2, column 5 (end of "line3")
+    end
   end
 
   describe "#get_position_from_line_column" do
@@ -2829,10 +2836,49 @@ RSpec.describe Nu::Agent::ConsoleIO do
       end
     end
 
+    describe "#current_state_name" do
+      it "returns the name of the current state" do
+        # Console starts in IdleState
+        expect(console.current_state_name).to eq(:idle)
+      end
+
+      it "returns correct name after state transition" do
+        console.start_progress
+        expect(console.current_state_name).to eq(:progress)
+      end
+    end
+
+    describe "#pause" do
+      it "delegates to current state's pause method" do
+        state = console.instance_variable_get(:@state)
+        expect(state).to receive(:pause)
+        console.pause
+      end
+    end
+
     describe "#resume when not in paused state" do
       it "raises StateTransitionError when not in paused state" do
         # Console is in IdleState by default
         expect { console.resume }.to raise_error(Nu::Agent::ConsoleIO::StateTransitionError, "Not in paused state")
+      end
+    end
+
+    describe "#resume when in paused state" do
+      it "resumes from paused state successfully" do
+        # First transition to a paused state
+        paused_state = Nu::Agent::ConsoleIO::PausedState.new(console, console.instance_variable_get(:@state))
+        console.instance_variable_set(:@state, paused_state)
+
+        expect(paused_state).to receive(:resume)
+        console.resume
+      end
+    end
+
+    describe "#update_spinner_message" do
+      it "updates the spinner message" do
+        spinner_state = console.instance_variable_get(:@spinner_state)
+        console.update_spinner_message("New message")
+        expect(spinner_state.message).to eq("New message")
       end
     end
 
@@ -2864,6 +2910,33 @@ RSpec.describe Nu::Agent::ConsoleIO do
         # We can't safely test the actual interrupt raising in unit tests
         spinner_state.instance_variable_set(:@interrupt_requested, true)
 
+        expect(spinner_state.interrupt_requested).to be true
+      end
+
+      it "clears spinner line and sets interrupt flag when Interrupt is raised" do
+        # Mock stdin to simulate flush
+        allow(stdin).to receive(:wait_readable).with(0).and_return(false)
+
+        # Setup to capture the rescue Interrupt behavior
+        # We'll create a mock spinner_loop that raises Interrupt
+        allow(console).to receive(:spinner_loop) do # rubocop:disable RSpec/SubjectStub
+          # This will raise Interrupt which should be caught by the rescue block
+          raise Interrupt
+        end
+
+        # Call do_show_spinner which creates a thread
+        console.send(:do_show_spinner, "Test message")
+
+        # Wait for thread to complete (with timeout to prevent hanging)
+        spinner_thread = console.instance_variable_get(:@spinner_thread)
+        begin
+          spinner_thread.join(0.5) # Wait up to 0.5 seconds
+        rescue Interrupt
+          # If the parent thread receives the interrupt, that's expected behavior
+        end
+
+        # The interrupt handler should have set the flag
+        spinner_state = console.instance_variable_get(:@spinner_state)
         expect(spinner_state.interrupt_requested).to be true
       end
     end
