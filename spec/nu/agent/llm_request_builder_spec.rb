@@ -187,6 +187,90 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
         expect(result[:messages].last["content"]).to eq("What is 2+2?")
       end
 
+      it "formats RAG content hash with redactions" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content({ redactions: "message_1, message_2" })
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        expected_content = "# Context\nRedacted messages: message_1, message_2\n\n# User Query\nWhat is 2+2?"
+        expect(result[:messages].last["content"]).to eq(expected_content)
+      end
+
+      it "formats RAG content hash with spell check" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content({
+                                                     spell_check: {
+                                                       original: "teh cat",
+                                                       corrected: "the cat"
+                                                     }
+                                                   })
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        expected_content = "# Context\nThe user said 'teh cat' but means 'the cat'\n\n# User Query\nWhat is 2+2?"
+        expect(result[:messages].last["content"]).to eq(expected_content)
+      end
+
+      it "formats RAG content hash with both redactions and spell check" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content({
+                                                     redactions: "message_1",
+                                                     spell_check: {
+                                                       original: "teh",
+                                                       corrected: "the"
+                                                     }
+                                                   })
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        expected_content = "# Context\nRedacted messages: message_1\n\n" \
+                           "The user said 'teh' but means 'the'\n\n# User Query\nWhat is 2+2?"
+        expect(result[:messages].last["content"]).to eq(expected_content)
+      end
+
+      it "handles empty RAG content hash like no RAG content" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content({})
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        # Empty hash is treated as no RAG content
+        expect(result[:messages].last["content"]).to eq("What is 2+2?")
+      end
+
+      it "handles empty RAG content array like no RAG content" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content([])
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        # Empty array is treated as no RAG content
+        expect(result[:messages].last["content"]).to eq("What is 2+2?")
+      end
+
+      it "formats RAG content hash with no redactions or spell check" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_rag_content({ other_field: "ignored" })
+                                 .with_user_query("What is 2+2?")
+
+        result = builder.build
+
+        expected_content = "# Context\nNo Augmented Information Generated\n\n# User Query\nWhat is 2+2?"
+        expect(result[:messages].last["content"]).to eq(expected_content)
+      end
+
       it "handles history without user_query" do
         builder = described_class.new
                                  .with_system_prompt("You are a helpful assistant")
@@ -235,6 +319,17 @@ RSpec.describe Nu::Agent::LlmRequestBuilder do
                                           user_query: "What is 2+2?",
                                           conversation_id: 123
                                         })
+      end
+
+      it "includes metadata when only custom metadata is provided" do
+        builder = described_class.new
+                                 .with_system_prompt("You are a helpful assistant")
+                                 .with_history([{ role: "user", content: "Hello" }])
+                                 .with_metadata({ conversation_id: 456 })
+
+        result = builder.build
+
+        expect(result[:metadata]).to eq({ conversation_id: 456 })
       end
     end
   end
