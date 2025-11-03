@@ -185,6 +185,10 @@ module Nu
             log_count_stats(application, result)
           when "content"
             log_content_stats(application, result)
+          else
+            # output_mode is validated earlier, so this should not occur
+            # but handle gracefully if it somehow does
+            false
           end
         end
 
@@ -263,6 +267,10 @@ module Nu
           when "content"
             cmd_parts << "--json"
             cmd_parts << "--line-number"
+          else
+            # output_mode is validated earlier, so this should not occur
+            # Return empty to allow command to continue (ripgrep will use default behavior)
+            []
           end
         end
 

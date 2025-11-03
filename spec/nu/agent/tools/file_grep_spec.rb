@@ -237,6 +237,64 @@ RSpec.describe Nu::Agent::Tools::FileGrep do
 
         expect(result).to have_key(:files)
       end
+
+      it "shows stats for count mode when search_verbosity is 2" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        allow(application).to receive(:output_line)
+
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
+        expect(application).to receive(:output_line).with(
+          match(/\[Search\].*found \d+ matches in \d+ files/), type: :debug
+        )
+
+        tool.execute(arguments: { pattern: "execute", path: test_dir, output_mode: "count" }, application: application)
+      end
+
+      it "shows stats for content mode when search_verbosity is 2" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        allow(application).to receive(:output_line)
+
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
+        expect(application).to receive(:output_line).with(match(/\[Search\].*found \d+ matches/), type: :debug)
+
+        tool.execute(
+          arguments: { pattern: "execute", path: test_dir, output_mode: "content" },
+          application: application
+        )
+      end
+
+      it "shows truncated message for content mode when results are truncated" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        allow(application).to receive(:output_line)
+
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
+        expect(application).to receive(:output_line).with(
+          match(/\[Search\].*found \d+ matches \(truncated\)/), type: :debug
+        )
+
+        # Use a small max_results to trigger truncation
+        tool.execute(
+          arguments: { pattern: "execute", path: test_dir, output_mode: "content", max_results: 1 },
+          application: application
+        )
+      end
+
+      it "does not log stats when result has error" do
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        allow(application).to receive(:output_line)
+
+        # Mock ripgrep to fail
+        allow(Open3).to receive(:capture3).and_return(
+          ["", "ripgrep error: pattern error", double(exitstatus: 2)]
+        )
+
+        # Should receive command output but not stats output
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
+        expect(application).not_to receive(:output_line).with(match(/found/), type: :debug)
+
+        # Execute with pattern that causes ripgrep to fail
+        tool.execute(arguments: { pattern: "test", path: test_dir }, application: application)
+      end
     end
 
     context "when ripgrep fails" do
@@ -262,6 +320,39 @@ RSpec.describe Nu::Agent::Tools::FileGrep do
 
         expect(result[:error]).to include("Search failed: Command execution failed")
         expect(result[:matches]).to eq([])
+      end
+    end
+
+    context "with defensive else branches" do
+      it "handles unexpected output_mode in add_output_mode_flags" do
+        parser = instance_double("OutputParser")
+        allow(tool).to receive_messages(validate_arguments: nil, output_parser: parser)
+        allow(parser).to receive(:parse_output).and_return({ files: [], count: 0 })
+
+        # This will trigger the else branch in add_output_mode_flags
+        result = tool.execute(arguments: { pattern: "test", path: test_dir, output_mode: "invalid" })
+
+        # Should still work by using ripgrep's default behavior
+        expect(result).to have_key(:files)
+      end
+
+      it "handles unexpected output_mode in log_stats_debug" do
+        history = instance_double("History")
+        application = instance_double("Application", debug: true, history: history)
+        allow(history).to receive(:get_int).with("search_verbosity", default: 0).and_return(2)
+        allow(application).to receive(:output_line)
+
+        parser = instance_double("OutputParser")
+        allow(tool).to receive_messages(validate_arguments: nil, output_parser: parser)
+        allow(parser).to receive(:parse_output).and_return({ files: [], count: 0 })
+
+        # Should log command but not crash on invalid output_mode
+        expect(application).to receive(:output_line).with(match(/\[Search\].*command:/), type: :debug)
+
+        tool.execute(
+          arguments: { pattern: "test", path: test_dir, output_mode: "invalid" },
+          application: application
+        )
       end
     end
   end
