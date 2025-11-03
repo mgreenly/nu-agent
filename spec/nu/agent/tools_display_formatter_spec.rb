@@ -25,7 +25,13 @@ RSpec.describe Nu::Agent::ToolsDisplayFormatter do
              available?: false)
     end
 
-    let(:tool_registry) { double("tool_registry", all: [tool1, tool2, tool3]) }
+    let(:tool4) do
+      double("tool4",
+             name: "memory_store",
+             description: "Stores data in memory.")
+    end
+
+    let(:tool_registry) { double("tool_registry", all: [tool1, tool2, tool3, tool4]) }
 
     before do
       allow(Nu::Agent::ToolRegistry).to receive(:new).and_return(tool_registry)
@@ -73,6 +79,15 @@ RSpec.describe Nu::Agent::ToolsDisplayFormatter do
       lines = tools_text.lines
 
       expect(lines.size).to be >= 4
+    end
+
+    it "does not add period when description already ends with one" do
+      tools_text = described_class.build
+
+      lines = tools_text.lines
+      memory_line = lines.find { |l| l.include?("memory_store") }
+      expect(memory_line).to include("Stores data in memory.")
+      expect(memory_line).not_to include("Stores data in memory..")
     end
   end
 end
