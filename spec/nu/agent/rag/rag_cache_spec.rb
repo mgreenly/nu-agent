@@ -196,6 +196,55 @@ module Nu
             expect(key1).to eq(key2)
           end
         end
+
+        describe "evict_lru (private method edge cases)" do
+          it "handles eviction on empty cache gracefully" do
+            # Test the defensive check in evict_lru when cache is empty
+            expect { cache.send(:evict_lru) }.not_to raise_error
+            expect(cache.size).to eq(0)
+          end
+
+          it "handles updating existing keys without eviction" do
+            # Fill cache to capacity
+            cache.set("key1", { data: "value1" })
+            cache.set("key2", { data: "value2" })
+            cache.set("key3", { data: "value3" })
+
+            # Update an existing key - should not trigger eviction
+            cache.set("key2", { data: "updated_value2" })
+
+            # All keys should still be present
+            expect(cache.get("key1")).to eq({ data: "value1" })
+            expect(cache.get("key2")).to eq({ data: "updated_value2" })
+            expect(cache.get("key3")).to eq({ data: "value3" })
+            expect(cache.size).to eq(3)
+          end
+
+          it "handles edge case where min_by might return nil" do
+            # Add an entry to ensure cache is not empty
+            cache.set("key1", { data: "value1" })
+
+            # Mock min_by to return nil to test defensive code
+            internal_cache = cache.instance_variable_get(:@cache)
+            allow(internal_cache).to receive_messages(empty?: false, min_by: nil)
+
+            # Should handle nil result gracefully without error
+            expect { cache.send(:evict_lru) }.not_to raise_error
+          end
+
+          it "handles edge case where lru_key is falsy" do
+            # Add an entry to ensure cache is not empty
+            cache.set("key1", { data: "value1" })
+
+            # Mock to simulate a situation where first returns nil
+            internal_cache = cache.instance_variable_get(:@cache)
+            mock_result = [nil, double("entry", last_accessed: Time.now)]
+            allow(internal_cache).to receive_messages(empty?: false, min_by: mock_result)
+
+            # Should handle nil key gracefully
+            expect { cache.send(:evict_lru) }.not_to raise_error
+          end
+        end
       end
     end
     # rubocop:enable Metrics/ModuleLength
