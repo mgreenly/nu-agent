@@ -2,11 +2,10 @@
 
 This document lists files that do not have 100% branch coverage.
 
-**Total files in this plan:** 12
+**Total files in this plan:** 11
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/rag/exchange_search_processor.rb | 75.00% | 6 | 8 | 2 |
 | lib/nu/agent/message_repository.rb | 76.92% | 20 | 26 | 6 |
 | lib/nu/agent/workers/exchange_summarizer.rb | 80.00% | 24 | 30 | 6 |
 | lib/nu/agent/application.rb | 82.61% | 38 | 46 | 8 |
