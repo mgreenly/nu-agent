@@ -478,14 +478,6 @@ RSpec.describe "Parallel Tool Execution End-to-End" do
     end
   end
 
-  describe "tool execution timeout during parallel execution" do
-    before do
-      # Register a tool that times out
-      tool_registry.register(TestTimeoutTool.new)
-    end
-
-  end
-
   describe "all tools in single batch (all independent reads)" do
     it "executes all tools in parallel in one batch" do
       messages = [{ "role" => "user", "content" => "Read many files" }]

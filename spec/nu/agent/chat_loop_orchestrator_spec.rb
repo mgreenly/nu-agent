@@ -675,7 +675,6 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       end
     end
 
-
     context "when no RAG content is generated" do
       it "returns empty hash" do
         rag_content = orchestrator.send(
