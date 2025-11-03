@@ -101,5 +101,38 @@ RSpec.describe Nu::Agent::SessionInfo do
       expect(info_text).to include("Database:")
       expect(info_text).to include("/tmp/test.db")
     end
+
+    it "shows running status without spend when spend is zero" do
+      allow(application).to receive_messages(
+        summarizer_enabled: true,
+        summarizer_status: {
+          "running" => true, "completed" => 5, "total" => 10,
+          "failed" => 0, "spend" => 0.0
+        }
+      )
+
+      info_text = described_class.build(application)
+
+      expect(info_text).to include("running")
+      expect(info_text).to include("5/10")
+      expect(info_text).not_to include("Spend:")
+    end
+
+    it "shows completed status without spend when spend is zero" do
+      allow(application).to receive_messages(
+        summarizer_enabled: true,
+        summarizer_status: {
+          "running" => false, "completed" => 10, "total" => 10,
+          "failed" => 1, "spend" => 0.0
+        }
+      )
+
+      info_text = described_class.build(application)
+
+      expect(info_text).to include("completed")
+      expect(info_text).to include("10/10")
+      expect(info_text).to include("1 failed")
+      expect(info_text).not_to include("Spend:")
+    end
   end
 end

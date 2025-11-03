@@ -136,6 +136,21 @@ RSpec.describe Nu::Agent::ExchangeRepository do
         exchange_repo.update_exchange(exchange_id: exchange_id, updates: {})
       end.not_to raise_error
     end
+
+    it "ignores unknown keys" do
+      exchange_repo.update_exchange(
+        exchange_id: exchange_id,
+        updates: {
+          status: "completed",
+          unknown_field: "ignored"
+        }
+      )
+
+      result = connection.query("SELECT status FROM exchanges WHERE id = #{exchange_id}")
+      status = result.to_a.first[0]
+
+      expect(status).to eq("completed")
+    end
   end
 
   describe "#complete_exchange" do
@@ -170,6 +185,22 @@ RSpec.describe Nu::Agent::ExchangeRepository do
 
       expect(completed_at).not_to be_nil
     end
+
+    it "ignores unknown metric keys" do
+      exchange_repo.complete_exchange(
+        exchange_id: exchange_id,
+        metrics: {
+          tokens_input: 100,
+          unknown_metric: "ignored"
+        }
+      )
+
+      result = connection.query("SELECT status, tokens_input FROM exchanges WHERE id = #{exchange_id}")
+      row = result.to_a.first
+
+      expect(row[0]).to eq("completed")
+      expect(row[1]).to eq(100)
+    end
   end
 
   describe "#get_conversation_exchanges" do
@@ -196,6 +227,109 @@ RSpec.describe Nu::Agent::ExchangeRepository do
       expect(exchanges[0]["exchange_number"]).to eq(1)
       expect(exchanges[1]["exchange_number"]).to eq(2)
       expect(exchanges[2]["exchange_number"]).to eq(3)
+    end
+  end
+
+  describe "#get_unsummarized_exchanges" do
+    it "returns unsummarized completed exchanges excluding current conversation" do
+      # Create exchanges in different conversations
+      other_conversation_id = conversation_repo.create_conversation
+
+      ex1 = exchange_repo.create_exchange(conversation_id: other_conversation_id, user_message: "Question 1")
+      ex2 = exchange_repo.create_exchange(conversation_id: other_conversation_id, user_message: "Question 2")
+      ex3 = exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "Current")
+
+      # Complete exchanges without summaries
+      exchange_repo.complete_exchange(exchange_id: ex1)
+      exchange_repo.complete_exchange(exchange_id: ex2)
+      exchange_repo.complete_exchange(exchange_id: ex3)
+
+      # Get unsummarized exchanges excluding current conversation
+      unsummarized = exchange_repo.get_unsummarized_exchanges(exclude_conversation_id: conversation_id)
+
+      expect(unsummarized.length).to eq(2)
+      expect(unsummarized[0]["id"]).to eq(ex1)
+      expect(unsummarized[1]["id"]).to eq(ex2)
+      expect(unsummarized[0]["conversation_id"]).to eq(other_conversation_id)
+    end
+
+    it "excludes exchanges that already have summaries" do
+      other_conversation_id = conversation_repo.create_conversation
+
+      ex1 = exchange_repo.create_exchange(conversation_id: other_conversation_id, user_message: "Question 1")
+      ex2 = exchange_repo.create_exchange(conversation_id: other_conversation_id, user_message: "Question 2")
+
+      exchange_repo.complete_exchange(exchange_id: ex1, summary: "Already summarized")
+      exchange_repo.complete_exchange(exchange_id: ex2)
+
+      unsummarized = exchange_repo.get_unsummarized_exchanges(exclude_conversation_id: conversation_id)
+
+      expect(unsummarized.length).to eq(1)
+      expect(unsummarized[0]["id"]).to eq(ex2)
+    end
+
+    it "excludes exchanges that are not completed" do
+      other_conversation_id = conversation_repo.create_conversation
+
+      exchange_repo.create_exchange(conversation_id: other_conversation_id, user_message: "In progress")
+
+      unsummarized = exchange_repo.get_unsummarized_exchanges(exclude_conversation_id: conversation_id)
+
+      expect(unsummarized).to be_empty
+    end
+  end
+
+  describe "#update_exchange_summary" do
+    let(:exchange_id) do
+      ex_id = exchange_repo.create_exchange(conversation_id: conversation_id, user_message: "Question")
+      exchange_repo.complete_exchange(exchange_id: ex_id)
+      ex_id
+    end
+
+    it "updates summary and model" do
+      exchange_repo.update_exchange_summary(
+        exchange_id: exchange_id,
+        summary: "This is a summary",
+        model: "gpt-4"
+      )
+
+      result = connection.query("SELECT summary, summary_model FROM exchanges WHERE id = #{exchange_id}")
+      row = result.to_a.first
+
+      expect(row[0]).to eq("This is a summary")
+      expect(row[1]).to eq("gpt-4")
+    end
+
+    it "updates cost when provided" do
+      exchange_repo.update_exchange_summary(
+        exchange_id: exchange_id,
+        summary: "Summary with cost",
+        model: "gpt-4",
+        cost: 0.025
+      )
+
+      result = connection.query("SELECT summary, summary_model, spend FROM exchanges WHERE id = #{exchange_id}")
+      row = result.to_a.first
+
+      expect(row[0]).to eq("Summary with cost")
+      expect(row[1]).to eq("gpt-4")
+      expect(row[2]).to be_within(0.001).of(0.025)
+    end
+
+    it "does not update cost when nil" do
+      exchange_repo.update_exchange_summary(
+        exchange_id: exchange_id,
+        summary: "Summary without cost",
+        model: "gpt-4",
+        cost: nil
+      )
+
+      result = connection.query("SELECT summary, summary_model, spend FROM exchanges WHERE id = #{exchange_id}")
+      row = result.to_a.first
+
+      expect(row[0]).to eq("Summary without cost")
+      expect(row[1]).to eq("gpt-4")
+      expect(row[2]).to be_nil
     end
   end
 end
