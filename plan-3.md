@@ -6,7 +6,6 @@ This document lists files that do not have 100% branch coverage.
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/migration_generator.rb | 80.00% | 8 | 10 | 2 |
 | lib/nu/agent/rag/context_formatter_processor.rb | 81.82% | 18 | 22 | 4 |
 | lib/nu/agent/input_processor.rb | 83.33% | 5 | 6 | 1 |
 | lib/nu/agent/commands/redaction_command.rb | 85.71% | 6 | 7 | 1 |
@@ -24,3 +23,4 @@ This document lists files that do not have 100% branch coverage.
 |------|--------|
 | lib/nu/agent/workers/embedding_generator.rb | ✅ 100% branch coverage achieved |
 | lib/nu/agent/rag/rag_cache.rb | ✅ 100% branch coverage achieved |
+| lib/nu/agent/migration_generator.rb | ✅ 100% branch coverage achieved |

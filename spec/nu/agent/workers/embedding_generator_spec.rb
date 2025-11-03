@@ -447,4 +447,307 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
       api_thread.kill # Clean up the thread
     end
   end
+
+  describe "embedding_enabled flag" do
+    context "when embeddings are disabled" do
+      it "does not process embeddings" do
+        allow(application).to receive(:embedding_enabled).and_return(false)
+        allow(history).to receive(:get_conversations_needing_embeddings)
+        allow(history).to receive(:get_exchanges_needing_embeddings)
+
+        pipeline.send(:process_embeddings)
+
+        expect(history).not_to have_received(:get_conversations_needing_embeddings)
+        expect(status["running"]).to be(false)
+      end
+    end
+  end
+
+  describe "rate limiting" do
+    let(:conversations) { [{ "id" => 2, "summary" => "Test conversation" }] }
+    let(:embedding_response) do
+      {
+        "embeddings" => [Array.new(1536, 0.1)],
+        "model" => "text-embedding-3-small",
+        "tokens" => 10,
+        "spend" => 0.0002
+      }
+    end
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(embedding_client).to receive(:generate_embedding).and_return(embedding_response)
+      allow(history).to receive(:upsert_conversation_embedding)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+    end
+
+    it "applies rate limiting when configured" do
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(100)
+
+      start_time = Time.now
+      pipeline.send(:process_embeddings)
+      elapsed = Time.now - start_time
+
+      # Should have slept for ~100ms (0.1 seconds)
+      expect(elapsed).to be >= 0.1
+    end
+
+    it "skips rate limiting when set to 0" do
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+
+      start_time = Time.now
+      pipeline.send(:process_embeddings)
+      elapsed = Time.now - start_time
+
+      # Should not have added significant delay
+      expect(elapsed).to be < 0.05
+    end
+
+    it "skips rate limiting sleep when shutdown is requested" do
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(1000)
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false, false, false, true)
+
+      start_time = Time.now
+      pipeline.send(:process_embeddings)
+      elapsed = Time.now - start_time
+
+      # Should not wait the full 1000ms because shutdown was requested
+      expect(elapsed).to be < 0.5
+    end
+  end
+
+  describe "shutdown during batch processing" do
+    let(:conversations) do
+      [
+        { "id" => 2, "summary" => "Conv 1" },
+        { "id" => 3, "summary" => "Conv 2" },
+        { "id" => 4, "summary" => "Conv 3" }
+      ]
+    end
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(1)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(embedding_client).to receive(:generate_embedding)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+    end
+
+    it "stops processing batches when shutdown is requested" do
+      # Shutdown after first batch
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false, false, true)
+
+      pipeline.send(:process_embeddings)
+
+      # Should not process all 3 batches
+      expect(embedding_client).to have_received(:generate_embedding).at_most(2).times
+    end
+  end
+
+  describe "missing embedding in response" do
+    let(:conversations) { [{ "id" => 2, "summary" => "Test" }] }
+    let(:embedding_response) do
+      {
+        "embeddings" => [nil],
+        "model" => "text-embedding-3-small",
+        "tokens" => 10,
+        "spend" => 0.0002
+      }
+    end
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(embedding_client).to receive(:generate_embedding).and_return(embedding_response)
+      allow(history).to receive(:upsert_conversation_embedding)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+    end
+
+    it "skips items with nil embeddings" do
+      pipeline.send(:process_embeddings)
+
+      expect(history).not_to have_received(:upsert_conversation_embedding)
+      expect(status["completed"]).to eq(0)
+    end
+  end
+
+  describe "shutdown during item processing" do
+    let(:conversations) do
+      [
+        { "id" => 2, "summary" => "Conv 1" },
+        { "id" => 3, "summary" => "Conv 2" }
+      ]
+    end
+    let(:embedding_response) do
+      {
+        "embeddings" => [Array.new(1536, 0.1), Array.new(1536, 0.2)],
+        "model" => "text-embedding-3-small",
+        "tokens" => 20,
+        "spend" => 0.0004
+      }
+    end
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(embedding_client).to receive(:generate_embedding).and_return(embedding_response)
+      allow(history).to receive(:upsert_conversation_embedding)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+    end
+
+    it "stops processing items when shutdown is requested" do
+      # Shutdown after processing first item
+      call_count = 0
+      allow(application).to receive(:instance_variable_get).with(:@shutdown) do
+        call_count += 1
+        call_count > 3
+      end
+
+      pipeline.send(:process_embeddings)
+
+      # Should only process first item
+      expect(history).to have_received(:upsert_conversation_embedding).at_most(1).times
+    end
+  end
+
+  describe "retry logic" do
+    let(:conversations) { [{ "id" => 2, "summary" => "Test" }] }
+    let(:error_response) { { "error" => { "status" => 500, "body" => "Server error" } } }
+
+    before do
+      allow(history).to receive(:get_conversations_needing_embeddings).with(exclude_id: 1).and_return(conversations)
+      allow(history).to receive(:get_exchanges_needing_embeddings).with(exclude_conversation_id: 1).and_return([])
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(application).to receive(:debug).and_return(true)
+      allow(application).to receive(:output_line)
+    end
+
+    it "retries on error up to 3 times" do
+      success_response = {
+        "embeddings" => [Array.new(1536, 0.1)],
+        "model" => "test",
+        "tokens" => 10,
+        "spend" => 0.0
+      }
+
+      allow(embedding_client).to receive(:generate_embedding)
+        .and_return(error_response, error_response, success_response)
+      allow(history).to receive(:upsert_conversation_embedding)
+
+      pipeline.send(:process_embeddings)
+
+      expect(embedding_client).to have_received(:generate_embedding).exactly(3).times
+      expect(status["completed"]).to eq(1)
+    end
+
+    it "returns falsey from should_retry? when shutdown is requested" do
+      # Test the should_retry? method directly
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(true)
+
+      response = { "error" => { "status" => 500 } }
+      result = pipeline.send(:should_retry?, response, 1, 3)
+
+      expect(result).to be_falsey
+    end
+
+    it "returns falsey from should_retry? when at max attempts" do
+      response = { "error" => { "status" => 500 } }
+      result = pipeline.send(:should_retry?, response, 3, 3)
+
+      expect(result).to be_falsey
+    end
+
+    it "returns falsey from should_retry? when response has no error" do
+      response = { "embeddings" => [] }
+      result = pipeline.send(:should_retry?, response, 1, 3)
+
+      expect(result).to be_falsey
+    end
+
+    it "returns true from should_retry? when error and attempts remaining" do
+      response = { "error" => { "status" => 500 } }
+      result = pipeline.send(:should_retry?, response, 1, 3)
+
+      expect(result).to be_truthy
+    end
+
+    it "stops retrying after max attempts" do
+      allow(embedding_client).to receive(:generate_embedding).and_return(error_response)
+
+      pipeline.send(:process_embeddings)
+
+      expect(embedding_client).to have_received(:generate_embedding).exactly(3).times
+      expect(status["failed"]).to eq(1)
+    end
+
+    it "does not retry when response is nil" do
+      allow(embedding_client).to receive(:generate_embedding).and_return(nil)
+
+      pipeline.send(:process_embeddings)
+
+      expect(embedding_client).to have_received(:generate_embedding).once
+    end
+  end
+
+  describe "empty batch handling" do
+    before do
+      allow(config_store).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+      allow(config_store).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(0)
+      allow(embedding_client).to receive(:generate_embedding)
+    end
+
+    it "skips processing when batch is empty" do
+      # Create empty batch
+      batch = []
+
+      pipeline.send(:process_batch, batch)
+
+      expect(embedding_client).not_to have_received(:generate_embedding)
+    end
+  end
+
+  describe "api thread completion" do
+    it "returns response when thread completes immediately" do
+      response = { "embeddings" => [Array.new(1536, 0.1)], "model" => "test", "tokens" => 10, "spend" => 0.0 }
+      api_thread = Thread.new { response }
+
+      result = pipeline.send(:wait_for_api_response, api_thread)
+
+      expect(result).to eq(response)
+    end
+  end
+
+  describe "build_ids_display edge cases" do
+    it "handles empty conversation and exchange IDs" do
+      result = pipeline.send(:build_ids_display, "", "")
+
+      expect(result).to eq([])
+    end
+
+    it "handles only conversation IDs" do
+      result = pipeline.send(:build_ids_display, "1, 2", "")
+
+      expect(result).to eq(["conversations: 1, 2"])
+    end
+
+    it "handles only exchange IDs" do
+      result = pipeline.send(:build_ids_display, "", "3, 4")
+
+      expect(result).to eq(["exchanges: 3, 4"])
+    end
+  end
 end

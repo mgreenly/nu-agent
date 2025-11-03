@@ -17,6 +17,11 @@ RSpec.describe Nu::Agent::MigrationGenerator do
   end
 
   describe "#next_version" do
+    it "returns 1 when migrations directory does not exist" do
+      FileUtils.rm_rf(migrations_dir)
+      expect(generator.next_version).to eq(1)
+    end
+
     it "returns 1 when no migrations exist" do
       expect(generator.next_version).to eq(1)
     end
@@ -33,6 +38,15 @@ RSpec.describe Nu::Agent::MigrationGenerator do
       File.write(File.join(migrations_dir, "007_seventh_migration.rb"), "# migration")
 
       expect(generator.next_version).to eq(8)
+    end
+
+    it "ignores files that do not match migration naming pattern" do
+      File.write(File.join(migrations_dir, "001_first_migration.rb"), "# migration")
+      File.write(File.join(migrations_dir, "002_second_migration.rb"), "# migration")
+      File.write(File.join(migrations_dir, "README.md"), "# readme")
+      File.write(File.join(migrations_dir, "helper.rb"), "# helper")
+
+      expect(generator.next_version).to eq(3)
     end
   end
 
