@@ -161,7 +161,12 @@ RSpec.describe Nu::Agent::Formatter do
 
     it "uses event-driven approach when event_bus is available" do
       event_bus = instance_double("EventBus")
-      allow(event_bus).to receive(:subscribe) # Accept any subscribe call
+      exchange_completed_callback = nil
+
+      # Capture the callback for :exchange_completed
+      allow(event_bus).to receive(:subscribe) do |event, &block|
+        exchange_completed_callback = block if event == :exchange_completed
+      end
 
       formatter_with_event_bus = described_class.new(
         history: history,
@@ -176,18 +181,43 @@ RSpec.describe Nu::Agent::Formatter do
 
       allow(history).to receive(:messages_since).and_return([])
 
-      # Simulate exchange completion after a short delay
+      # Simulate exchange completion by calling the actual callback
       Thread.new do
         sleep 0.1
-        formatter_with_event_bus.instance_variable_get(:@exchange_mutex).synchronize do
-          formatter_with_event_bus.instance_variable_set(:@exchange_completed, true)
-        end
+        exchange_completed_callback.call({})
       end
 
       expect(mock_console).to receive(:show_spinner).with("Thinking...")
       expect(mock_console).to receive(:hide_spinner)
 
       formatter_with_event_bus.wait_for_completion(conversation_id: conversation_id)
+    end
+
+    it "subscribes to user_input_received event when event_bus is available" do
+      event_bus = instance_double("EventBus")
+      user_input_callback = nil
+
+      # Capture the callback for :user_input_received
+      allow(event_bus).to receive(:subscribe) do |event, &block|
+        user_input_callback = block if event == :user_input_received
+      end
+
+      described_class.new(
+        history: history,
+        session_start_time: session_start_time,
+        conversation_id: conversation_id,
+        orchestrator: orchestrator,
+        debug: false,
+        console: mock_console,
+        application: nil,
+        event_bus: event_bus
+      )
+
+      # Verify the callback was registered
+      expect(user_input_callback).not_to be_nil
+
+      # Execute the callback to cover the code path
+      expect { user_input_callback.call({}) }.not_to raise_error
     end
   end
 
