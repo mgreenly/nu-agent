@@ -109,6 +109,21 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
 
           expect(console).to have_received(:puts).with("\e[90m  output: line1...\e[0m")
         end
+
+        it "truncates long first line of multiline hash values" do
+          long_first_line_message = {
+            "tool_result" => {
+              "name" => "test",
+              "result" => {
+                "output" => "#{'a' * 50}\nline2\nline3"
+              }
+            }
+          }
+
+          formatter.display(long_first_line_message)
+
+          expect(console).to have_received(:puts).with("\e[90m  output: #{'a' * 30}...\e[0m")
+        end
       end
     end
 
@@ -148,6 +163,27 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
           expect(console).to have_received(:puts).with("\e[90m    line2\e[0m")
           expect(console).to have_received(:puts).with("\e[90m    line3\e[0m")
         end
+
+        it "skips empty lines in multiline values" do
+          message_with_empty_lines = {
+            "tool_result" => {
+              "name" => "test",
+              "result" => {
+                "output" => "line1\n\nline2\n\nline3"
+              }
+            }
+          }
+
+          formatter.display(message_with_empty_lines)
+
+          expect(console).to have_received(:puts).with("\e[90m  output:\e[0m")
+          expect(console).to have_received(:puts).with("\e[90m    line1\e[0m")
+          expect(console).to have_received(:puts).with("\e[90m    line2\e[0m")
+          expect(console).to have_received(:puts).with("\e[90m    line3\e[0m")
+          # Should have received puts exactly 5 times (header, blank line, output:, line1, line2, line3)
+          # Empty lines should not be displayed
+          expect(console).to have_received(:puts).exactly(6).times
+        end
       end
     end
 
@@ -161,6 +197,11 @@ RSpec.describe Nu::Agent::Formatters::ToolResultFormatter do
 
         # Should not display anything when application is nil (defaults to verbosity 0)
         expect(console).not_to have_received(:puts)
+      end
+
+      it "verbosity_level returns 0 when application is nil" do
+        # Test private method directly to ensure defensive behavior
+        expect(formatter.send(:verbosity_level)).to eq(0)
       end
     end
 
