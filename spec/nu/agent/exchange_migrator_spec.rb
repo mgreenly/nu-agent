@@ -204,4 +204,128 @@ RSpec.describe Nu::Agent::ExchangeMigrator do
       expect(result).to eq("Hello world")
     end
   end
+
+  describe "#finalize_current_exchange" do
+    it "returns early when messages array is empty" do
+      stats = { messages_updated: 0 }
+
+      # Should not raise error and should not update stats
+      migrator.send(:finalize_current_exchange, 1, [], stats)
+
+      expect(stats[:messages_updated]).to eq(0)
+    end
+  end
+
+  describe "#fetch_conversation_messages" do
+    it "handles nil tool_calls, tool_result, and error fields" do
+      conv_id = conversation_repo.create_conversation
+
+      # Insert a message with NULL values for JSON fields
+      connection.query(<<~SQL)
+        INSERT INTO messages (conversation_id, actor, role, content, tool_calls, tool_result, error)
+        VALUES (#{conv_id}, 'user', 'user', 'Test message', NULL, NULL, NULL)
+      SQL
+
+      messages = migrator.send(:fetch_conversation_messages, conv_id)
+
+      expect(messages.length).to eq(1)
+      expect(messages[0]["tool_calls"]).to be_nil
+      expect(messages[0]["tool_result"]).to be_nil
+      expect(messages[0]["error"]).to be_nil
+    end
+
+    it "parses JSON fields when present" do
+      conv_id = conversation_repo.create_conversation
+
+      # Insert a message with JSON values
+      connection.query(<<~SQL)
+        INSERT INTO messages (conversation_id, actor, role, content, tool_calls, tool_result, error)
+        VALUES (#{conv_id}, 'assistant', 'assistant', 'Test',
+                '[{"id": "call_1", "name": "test"}]',
+                '{"output": "result"}',
+                '{"message": "error occurred"}')
+      SQL
+
+      messages = migrator.send(:fetch_conversation_messages, conv_id)
+
+      expect(messages.length).to eq(1)
+      expect(messages[0]["tool_calls"]).to eq([{ "id" => "call_1", "name" => "test" }])
+      expect(messages[0]["tool_result"]).to eq({ "output" => "result" })
+      expect(messages[0]["error"]).to eq({ "message" => "error occurred" })
+    end
+  end
+
+  describe "#finalize_exchange with string timestamps" do
+    it "converts string timestamps to Time objects" do
+      conv_id = conversation_repo.create_conversation
+      exchange_id = exchange_repo.create_exchange(conversation_id: conv_id, user_message: "Test")
+
+      # Create messages with string timestamps
+      time_str = "2024-01-15 10:30:45"
+      messages = [
+        {
+          "id" => 1,
+          "actor" => "user",
+          "role" => "user",
+          "content" => "Question",
+          "model" => nil,
+          "tokens_input" => 100,
+          "tokens_output" => 0,
+          "tool_calls" => nil,
+          "tool_call_id" => nil,
+          "tool_result" => nil,
+          "error" => nil,
+          "created_at" => time_str,  # String timestamp
+          "redacted" => false,
+          "spend" => 0.01
+        },
+        {
+          "id" => 2,
+          "actor" => "assistant",
+          "role" => "assistant",
+          "content" => "Answer",
+          "model" => "test-model",
+          "tokens_input" => 100,
+          "tokens_output" => 50,
+          "tool_calls" => nil,
+          "tool_call_id" => nil,
+          "tool_result" => nil,
+          "error" => nil,
+          "created_at" => time_str,  # String timestamp
+          "redacted" => false,
+          "spend" => 0.02
+        }
+      ]
+
+      # Stub message_repo to avoid issues with message IDs
+      allow(message_repo).to receive(:update_message_exchange_id)
+
+      # Finalize the exchange (should handle string timestamps)
+      migrator.send(:finalize_exchange, exchange_id, messages)
+
+      # Verify the exchange was updated
+      exchanges = exchange_repo.get_conversation_exchanges(conversation_id: conv_id)
+      expect(exchanges.length).to eq(1)
+      expect(exchanges[0]["status"]).to eq("completed")
+    end
+  end
+
+  describe "#build_exchange_updates without assistant message" do
+    it "does not include assistant_message when no qualifying message exists" do
+      metrics = { tokens_input: 100, tokens_output: 50, spend: 0.01, tool_call_count: 0 }
+      started_at = Time.now - 60
+      completed_at = Time.now
+
+      # No assistant message
+      set_clauses = migrator.send(:build_exchange_updates, metrics, nil, started_at, completed_at, 2)
+
+      # Should not include assistant_message clause
+      assistant_clause = set_clauses.find { |c| c.include?("assistant_message") }
+      expect(assistant_clause).to be_nil
+
+      # Should still include other clauses
+      expect(set_clauses).to include("status = 'completed'")
+      expect(set_clauses.any? { |c| c.include?("tokens_input") }).to be true
+    end
+  end
 end
