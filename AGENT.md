@@ -31,8 +31,7 @@
 ## Style & Code Quality
 - There are NO acceptable RuboCop violations.
 - `rake coverage:enforce` must pass before additions or changes are considered complete.
-- Maintain 0.01% positive margin above required coverage threshold.
-- **Any modified file MUST maintain 100% line and branch coverage.**
+- **All modified files MUST have 100% line and branch coverage before being committed.**
   - When modifying existing code, ensure all new branches and lines are fully tested.
   - Use `bin/coverage-report` to verify file-level coverage after changes.
 - ALWAYS run `rake test` and `rake lint` and `rake coverage` before commits.
