@@ -1014,5 +1014,74 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         expect(client).to have_received(:send_request)
       end
     end
+
+    context "legacy methods (for 100% line coverage)" do
+      # These methods (process_batch_results, process_single_result) are no longer used in
+      # the main execution flow, which now uses streaming callbacks. However, they exist in
+      # the code and need to be tested for 100% coverage.
+
+      before do
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+      end
+
+      it "processes batch results through legacy method" do
+        results = [
+          {
+            tool_call: { "id" => "call_1", "name" => "test_tool" },
+            result: "result 1",
+            batch: 1,
+            thread: 1,
+            start_time: Time.now,
+            duration: 0.5,
+            batch_start_time: Time.now
+          },
+          {
+            tool_call: { "id" => "call_2", "name" => "test_tool" },
+            result: "result 2",
+            batch: 1,
+            thread: 2,
+            start_time: Time.now,
+            duration: 0.3,
+            batch_start_time: Time.now
+          }
+        ]
+
+        messages = []
+
+        orchestrator.send(:process_batch_results, results, messages)
+
+        # Should have added 2 tool result messages
+        expect(history).to have_received(:add_message).twice
+        expect(formatter).to have_received(:display_message_created).twice
+        expect(messages.length).to eq(2)
+      end
+
+      it "processes single result through legacy method" do
+        result_data = {
+          tool_call: { "id" => "call_1", "name" => "test_tool" },
+          result: "test result"
+        }
+
+        messages = []
+
+        orchestrator.send(:process_single_result, result_data, messages)
+
+        # Should have saved, displayed, and added to messages
+        expect(history).to have_received(:add_message).with(
+          hash_including(
+            role: "tool",
+            tool_call_id: "call_1"
+          )
+        )
+        expect(formatter).to have_received(:display_message_created).with(
+          hash_including(
+            role: "tool"
+          )
+        )
+        expect(messages.length).to eq(1)
+        expect(messages.first["role"]).to eq("tool")
+      end
+    end
   end
 end
