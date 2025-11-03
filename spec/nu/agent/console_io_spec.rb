@@ -1178,17 +1178,22 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "#initialize (full test)" do
     it "initializes all instance variables and sets up terminal" do
       mock_db = instance_double(Nu::Agent::History)
+      mock_console = instance_double(IO, "console")
 
-      # Mock stty command
+      # Mock stty command to return a valid state - need to mock on any instance
       allow_any_instance_of(described_class).to receive(:`).with("stty -g").and_return("saved_state\n")
 
-      # Mock stdin.raw! to avoid terminal issues in tests
-      allow_any_instance_of(described_class).to receive(:setup_terminal)
+      # Mock $stdin.raw! to avoid terminal issues in tests
+      allow($stdin).to receive(:raw!)
+
+      # Mock IO.console for terminal width detection
+      allow(IO).to receive(:console).and_return(mock_console)
+      allow(mock_console).to receive(:winsize).and_return([24, 80])
 
       # Mock at_exit registration
       expect(mock_db).to receive(:get_command_history).with(limit: 1000).and_return([])
 
-      # Create console with actual initialize
+      # Create console with actual initialize - this will now execute the stty and raw! calls
       console_instance = described_class.new(db_history: mock_db, debug: false)
 
       expect(console_instance.instance_variable_get(:@debug)).to be false
@@ -1197,6 +1202,11 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(console_instance.instance_variable_get(:@input_buffer)).not_to be_frozen
       expect(console_instance.instance_variable_get(:@kill_ring)).not_to be_frozen
       expect(console_instance.instance_variable_get(:@saved_input)).not_to be_frozen
+      expect(console_instance.instance_variable_get(:@original_stty)).to eq("saved_state")
+      expect(console_instance.instance_variable_get(:@terminal_width)).to eq(80)
+
+      # Verify the mocked calls were made
+      expect($stdin).to have_received(:raw!)
 
       # Clean up
       console_instance.instance_variable_set(:@original_stty, nil)
