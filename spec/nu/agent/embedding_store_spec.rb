@@ -312,6 +312,19 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       expect(results.first).to have_key(:created_at)
     end
 
+    it "searches without min_similarity filter when nil" do
+      results = embedding_store.search_conversations(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: nil
+      )
+
+      expect(results).to be_an(Array)
+      expect(results.length).to eq(3)
+      expect(results.first).to have_key(:conversation_id)
+      expect(results.first).to have_key(:similarity)
+    end
+
     it "excludes specified conversation" do
       results = embedding_store.search_conversations(
         query_embedding: query_embedding,
@@ -545,6 +558,20 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       expect(results.first).to have_key(:content)
       expect(results.first).to have_key(:similarity)
       expect(results.first).to have_key(:started_at)
+    end
+
+    it "searches without min_similarity filter when nil" do
+      results = embedding_store.search_exchanges(
+        query_embedding: query_embedding,
+        limit: 5,
+        min_similarity: nil,
+        conversation_ids: nil
+      )
+
+      expect(results).to be_an(Array)
+      expect(results.length).to eq(4)
+      expect(results.first).to have_key(:exchange_id)
+      expect(results.first).to have_key(:similarity)
     end
 
     it "filters by conversation_ids when provided" do
@@ -855,6 +882,18 @@ RSpec.describe Nu::Agent::EmbeddingStore do
       expect(results).to be_an(Array)
       expect(results.length).to be > 0
     end
+
+    it "uses exchange_id column in linear scan for exchange kind" do
+      results = embedding_store_no_vss.search_similar(
+        kind: "exchange_summary",
+        query_embedding: query_embedding,
+        limit: 3
+      )
+
+      expect(results).to be_an(Array)
+      expect(results).to all(have_key(:source_id))
+      expect(results).to all(have_key(:similarity))
+    end
   end
 
   describe "recency weighting edge cases" do
@@ -938,6 +977,31 @@ RSpec.describe Nu::Agent::EmbeddingStore do
         # Should handle timestamp parsing and order by recency
         expect(results.length).to eq(2)
         expect(results).to all(have_key(:blended_score))
+      end
+
+      it "handles timestamp parsing when timestamp is a string" do
+        # Get results without recency weighting first
+        results = embedding_store.search_conversations(
+          query_embedding: query_embedding,
+          limit: 10,
+          min_similarity: 0.0
+        )
+
+        # Manually create results with string timestamps to test parsing
+        results_with_string_timestamps = results.map do |r|
+          r.merge(created_at: r[:created_at].to_s)
+        end
+
+        # Apply recency weighting via the private method (testing the string parsing path)
+        weighted_results = embedding_store.send(
+          :apply_recency_weighting,
+          results_with_string_timestamps,
+          0.5,
+          :created_at
+        )
+
+        expect(weighted_results).to be_an(Array)
+        expect(weighted_results).to all(have_key(:blended_score))
       end
     end
   end
