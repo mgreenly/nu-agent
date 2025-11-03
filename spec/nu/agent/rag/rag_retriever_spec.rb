@@ -386,5 +386,27 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         expect(context.exchanges).to eq(exchange_results)
       end
     end
+
+    context "with nil or empty query" do
+      it "returns context without embedding when query is nil" do
+        context = retriever.retrieve(query: nil)
+
+        expect(context.query).to be_nil
+        expect(context.query_embedding).to be_nil
+        expect(context.conversations).to be_empty
+        expect(context.exchanges).to be_empty
+        expect(embedding_client).not_to have_received(:generate_embedding)
+      end
+
+      it "returns context without embedding when query is empty" do
+        context = retriever.retrieve(query: "")
+
+        expect(context.query).to eq("")
+        expect(context.query_embedding).to be_nil
+        expect(context.conversations).to be_empty
+        expect(context.exchanges).to be_empty
+        expect(embedding_client).not_to have_received(:generate_embedding)
+      end
+    end
   end
 end

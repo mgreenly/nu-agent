@@ -2,11 +2,10 @@
 
 This document lists files that do not have 100% branch coverage.
 
-**Total files in this plan:** 12
+**Total files in this plan:** 11
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/rag/query_embedding_processor.rb | 75.00% | 3 | 4 | 1 |
 | lib/nu/agent/workers/conversation_summarizer.rb | 76.92% | 20 | 26 | 6 |
 | lib/nu/agent/tools/file_grep.rb | 80.56% | 29 | 36 | 7 |
 | lib/nu/agent/commands/help_command.rb | 83.33% | 5 | 6 | 1 |
@@ -24,3 +23,4 @@ This document lists files that do not have 100% branch coverage.
 | File | Coverage | Date |
 |------|----------|------|
 | lib/nu/agent/exchange_migrator.rb | 100% | 2025-11-02 |
+| lib/nu/agent/rag/query_embedding_processor.rb | 100% | 2025-11-02 |
