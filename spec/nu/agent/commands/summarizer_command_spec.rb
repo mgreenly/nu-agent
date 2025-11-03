@@ -19,11 +19,19 @@ RSpec.describe Nu::Agent::Commands::SummarizerCommand do
 
   describe "#execute" do
     context "when no argument provided" do
-      it "displays usage message" do
+      it "displays usage message with summarizer off" do
         allow(application).to receive(:summarizer_enabled).and_return(false)
         expect(console).to receive(:puts).with("")
         expect(application).to receive(:output_line).with("Usage: /summarizer <on|off>", type: :command)
         expect(application).to receive(:output_line).with("Current: summarizer=off", type: :command)
+        command.execute("/summarizer")
+      end
+
+      it "displays usage message with summarizer on" do
+        allow(application).to receive(:summarizer_enabled).and_return(true)
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("Usage: /summarizer <on|off>", type: :command)
+        expect(application).to receive(:output_line).with("Current: summarizer=on", type: :command)
         command.execute("/summarizer")
       end
 
