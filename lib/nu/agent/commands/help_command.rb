@@ -59,7 +59,7 @@ module Nu
           lines << first_line
 
           # Add additional description lines with proper indentation
-          desc_lines[1..]&.each do |desc_line|
+          desc_lines[1..].each do |desc_line|
             lines << format("  %<pad>-30s   %<desc>s", pad: "", desc: desc_line)
           end
         end

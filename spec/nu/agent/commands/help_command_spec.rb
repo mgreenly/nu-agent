@@ -228,6 +228,24 @@ RSpec.describe Nu::Agent::Commands::HelpCommand do
 
         command.execute("/help")
       end
+
+      it "handles commands with single-line descriptions correctly" do
+        expect(application).to receive(:registered_commands).and_return(
+          {
+            "/clear" => Class.new
+          }
+        )
+
+        expect(application).to receive(:output_lines) do |*lines, **_kwargs|
+          help_text = lines.join("\n")
+          # Verify single-line description is formatted correctly
+          expect(help_text).to match(%r{/clear\s+-\s+Clear the screen})
+          # Ensure no additional indented lines for single-line descriptions
+          expect(help_text.lines.count { |line| line.strip.empty? || line.match?(/^\s{33}/) }).to eq(0)
+        end
+
+        command.execute("/help")
+      end
     end
   end
 end
