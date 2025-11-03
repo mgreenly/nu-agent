@@ -202,5 +202,60 @@ RSpec.describe Nu::Agent::Tools::DirList do
         expect(result[:error]).to include("Failed to list directory")
       end
     end
+
+    context "with path containing .." do
+      it "raises error for path traversal attempt" do
+        # Mock resolve_path to return a path with .. to test the validation
+        allow(tool).to receive(:resolve_path).and_return("#{Dir.pwd}/tmp/../etc")
+
+        expect do
+          tool.execute(arguments: { path: "some_path" })
+        end.to raise_error(ArgumentError, /Path cannot contain/)
+      end
+    end
+
+    context "with sorting when file does not exist" do
+      before do
+        # Create files with known names
+        File.write(File.join(test_dir, "file1.txt"), "content")
+        File.write(File.join(test_dir, "file2.txt"), "content")
+      end
+
+      it "handles missing file during mtime sort" do
+        # Mock File.exist? to return false for one specific file during sorting
+        # This simulates a file being deleted between listing and sorting
+        file1_path = File.join(test_dir, "file1.txt")
+        allow(File).to receive(:exist?).and_wrap_original do |original, path|
+          # Return false only for file1.txt to trigger the else branch
+          if path == file1_path
+            false
+          else
+            original.call(path)
+          end
+        end
+
+        result = tool.execute(arguments: { path: test_dir, sort_by: "mtime" })
+        expect(result[:status]).to eq("success")
+        expect(result[:entries]).to be_an(Array)
+      end
+
+      it "handles missing file during size sort" do
+        # Mock File.exist? to return false for one specific file during sorting
+        # This simulates a file being deleted between listing and sorting
+        file1_path = File.join(test_dir, "file1.txt")
+        allow(File).to receive(:exist?).and_wrap_original do |original, path|
+          # Return false only for file1.txt to trigger the else branch
+          if path == file1_path
+            false
+          else
+            original.call(path)
+          end
+        end
+
+        result = tool.execute(arguments: { path: test_dir, sort_by: "size" })
+        expect(result[:status]).to eq("success")
+        expect(result[:entries]).to be_an(Array)
+      end
+    end
   end
 end
