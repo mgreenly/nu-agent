@@ -328,6 +328,22 @@ RSpec.describe Nu::Agent::Clients::Anthropic do
       expect(response["error"]["headers"]).to eq({ "content-type" => "application/json" })
       expect(response["error"]["body"]).to include("Invalid API key")
     end
+
+    it "handles error response without body key using bracket accessor" do
+      # No :body key in response - dig will fail but [] accessor will be tried
+      error_response = {
+        status: 429,
+        headers: { "retry-after" => "60" }
+      }
+      error = Faraday::TooManyRequestsError.new("Rate limited")
+      allow(error).to receive_messages(response: error_response, response_body: nil)
+      allow(mock_anthropic_client).to receive(:messages).and_raise(error)
+
+      response = client.send_message(messages: [])
+
+      expect(response["error"]["status"]).to eq(429)
+      expect(response["content"]).to include("API Error: 429")
+    end
   end
 
   describe "#initialize with custom model" do
