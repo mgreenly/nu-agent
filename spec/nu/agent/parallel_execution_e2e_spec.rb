@@ -484,35 +484,6 @@ RSpec.describe "Parallel Tool Execution End-to-End" do
       tool_registry.register(TestTimeoutTool.new)
     end
 
-    it "handles timeout gracefully without blocking other tools" do
-      tool_call_response = {
-        "content" => "",
-        "model" => "claude-sonnet-4-5",
-        "tokens" => { "input" => 10, "output" => 5 },
-        "spend" => 0.001,
-        "tool_calls" => [
-          { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/a" } },
-          { "id" => "call_2", "name" => "timeout_tool", "arguments" => {} },
-          { "id" => "call_3", "name" => "file_read", "arguments" => { "file" => "/b" } }
-        ]
-      }
-
-      final_response = {
-        "content" => "Completed with timeout",
-        "model" => "claude-sonnet-4-5",
-        "tokens" => { "input" => 15, "output" => 8 },
-        "spend" => 0.002
-      }
-
-      allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
-      allow(history).to receive(:add_message)
-      allow(formatter).to receive(:display_message_created)
-
-      # This test verifies that even with a slow tool, the test completes
-      # In a real implementation, we might add timeout logic to the ParallelExecutor
-      # For now, we'll skip this test or mark it pending
-      skip "Timeout handling not yet implemented"
-    end
   end
 
   describe "all tools in single batch (all independent reads)" do
