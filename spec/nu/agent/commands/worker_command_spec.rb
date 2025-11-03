@@ -187,6 +187,11 @@ RSpec.describe Nu::Agent::Commands::WorkerCommand do
       handler = command.send(:create_worker_handler, "embeddings")
       expect(handler).to be_a(Nu::Agent::Commands::Workers::EmbeddingsCommand)
     end
+
+    it "returns nil for unknown worker name" do
+      handler = command.send(:create_worker_handler, "unknown-worker")
+      expect(handler).to be_nil
+    end
   end
 
   describe "#load_worker_verbosity" do

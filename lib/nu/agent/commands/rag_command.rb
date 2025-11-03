@@ -225,6 +225,9 @@ module Nu
             app.output_line("#{display} must be >= #{min}", type: :error)
           elsif max && value > max
             app.output_line("#{display} must be <= #{max}", type: :error)
+          else
+            # This shouldn't happen with correct usage, but handle it gracefully
+            app.output_line("Invalid value for #{display}", type: :error)
           end
         end
 

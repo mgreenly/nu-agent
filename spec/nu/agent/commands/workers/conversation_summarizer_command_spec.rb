@@ -133,6 +133,28 @@ RSpec.describe Nu::Agent::Commands::Workers::ConversationSummarizerCommand do
         command.execute_subcommand("status", [])
       end
 
+      it "shows idle when worker is not running" do
+        status["running"] = false
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_lines) do |*lines, type:|
+          expect(type).to eq(:command)
+          status_text = lines.join("\n")
+          expect(status_text).to include("State: idle")
+        end
+        command.execute_subcommand("status", [])
+      end
+
+      it "shows disabled when worker is not enabled" do
+        allow(worker_manager).to receive(:worker_enabled?).with("conversation-summarizer").and_return(false)
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_lines) do |*lines, type:|
+          expect(type).to eq(:command)
+          status_text = lines.join("\n")
+          expect(status_text).to include("Enabled: no")
+        end
+        command.execute_subcommand("status", [])
+      end
+
       it "returns :continue" do
         expect(command.execute_subcommand("status", [])).to eq(:continue)
       end

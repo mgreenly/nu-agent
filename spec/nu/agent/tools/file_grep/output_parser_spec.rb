@@ -6,6 +6,14 @@ RSpec.describe Nu::Agent::Tools::FileGrep::OutputParser do
   let(:parser) { described_class.new }
 
   describe "#parse_output" do
+    context "with invalid output mode" do
+      it "returns nil for unknown mode" do
+        result = parser.parse_output("some output", "invalid_mode", 100)
+
+        expect(result).to be_nil
+      end
+    end
+
     context "with files_with_matches mode" do
       it "parses file paths from output" do
         stdout = "file1.rb\nfile2.rb\nfile3.rb\n"

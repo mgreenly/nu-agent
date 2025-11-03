@@ -551,4 +551,13 @@ RSpec.describe Nu::Agent::BackgroundWorkerManager do
       expect(result).to be false
     end
   end
+
+  describe "#create_worker" do
+    context "with invalid worker type" do
+      it "returns nil worker and thread for unknown worker type" do
+        result = worker_manager.send(:create_worker, "unknown-worker")
+        expect(result).to eq([nil, nil])
+      end
+    end
+  end
 end

@@ -138,6 +138,52 @@ RSpec.describe Nu::Agent::Commands::Workers::ExchangeSummarizerCommand do
         expect(command.execute_subcommand("status", [])).to eq(:continue)
       end
 
+      context "when worker is disabled" do
+        before do
+          allow(worker_manager).to receive(:worker_enabled?).with("exchange-summarizer").and_return(false)
+        end
+
+        it "displays 'no' for enabled status" do
+          expect(console).to receive(:puts).with("")
+          expect(application).to receive(:output_lines) do |*lines, type:|
+            expect(type).to eq(:command)
+            status_text = lines.join("\n")
+            expect(status_text).to include("Enabled: no")
+          end
+          command.execute_subcommand("status", [])
+        end
+      end
+
+      context "when worker is idle" do
+        let(:status) do
+          {
+            "running" => false,
+            "total" => 42,
+            "completed" => 40,
+            "failed" => 2,
+            "spend" => 0.15
+          }
+        end
+
+        before do
+          allow(worker_manager).to receive(:worker_status).with("exchange-summarizer").and_return(status)
+          allow(worker_manager).to receive(:worker_enabled?).with("exchange-summarizer").and_return(true)
+          allow(worker_manager).to receive(:worker_metrics).with("exchange-summarizer").and_return(nil)
+          allow(history).to receive(:get_config).with("exchange_summarizer_model").and_return("claude-sonnet-4-5")
+          allow(history).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(1)
+        end
+
+        it "displays 'idle' for state" do
+          expect(console).to receive(:puts).with("")
+          expect(application).to receive(:output_lines) do |*lines, type:|
+            expect(type).to eq(:command)
+            status_text = lines.join("\n")
+            expect(status_text).to include("State: idle")
+          end
+          command.execute_subcommand("status", [])
+        end
+      end
+
       context "with metrics" do
         let(:metrics_collector) { instance_double(Nu::Agent::MetricsCollector) }
 

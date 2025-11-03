@@ -239,6 +239,16 @@ RSpec.describe Nu::Agent::Commands::RagCommand do
       end
     end
 
+    context "defensive error handling" do
+      it "handles unexpected validation state" do
+        # This tests the defensive else clause in show_validation_error
+        # We directly invoke the private method with edge case values
+        command.send(:show_validation_error, "Test param", nil, nil, 50)
+
+        expect(app).to have_received(:output_line).with(/Invalid value for Test param/, type: :error)
+      end
+    end
+
     context "with invalid subcommand" do
       it "shows usage" do
         command.execute("/rag invalid")
