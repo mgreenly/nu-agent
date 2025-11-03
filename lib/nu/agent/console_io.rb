@@ -405,6 +405,7 @@ module Nu
         nil
       end
 
+      # :nocov:
       def fetch_terminal_state
         # Get current terminal state for later restoration
         # This is extracted into a method to make it mockable in tests
@@ -421,6 +422,7 @@ module Nu
         # This is extracted into a method to make it mockable in tests
         system("stty #{state}")
       end
+      # :nocov:
 
       def restore_terminal
         return unless @original_stty

@@ -29,6 +29,7 @@
 **Never write the implementation before tests.**
 
 ## Style & Code Quality
+- You are not allowed to use rubocop:disable.
 - There are NO acceptable RuboCop violations.
 - `rake coverage:enforce` must pass before additions or changes are considered complete.
 - **All modified files MUST have 100% line and branch coverage before being committed.**

@@ -52,6 +52,111 @@ RSpec.describe Nu::Agent::ConsoleIO do
       last_line_count = console.instance_variable_get(:@last_line_count)
       expect(last_line_count).to eq(1)
     end
+
+    context "with mocked TTY methods (full initialization test)" do
+      let(:test_console_without_db) do
+        # Mock the TTY system calls (these are wrapped in :nocov: blocks)
+        allow_any_instance_of(described_class).to receive(:fetch_terminal_state).and_return("saved_terminal_state")
+        allow_any_instance_of(described_class).to receive(:setup_terminal)
+        allow_any_instance_of(described_class).to receive(:apply_terminal_state)
+        allow(IO).to receive(:console).and_return(nil)
+
+        described_class.new(db_history: nil, debug: true)
+      end
+
+      after do
+        if defined?(test_console_without_db)
+          test_console_without_db.instance_variable_get(:@output_pipe_read)&.close
+          test_console_without_db.instance_variable_get(:@output_pipe_write)&.close
+        end
+        if defined?(test_console_with_db)
+          test_console_with_db.instance_variable_get(:@output_pipe_read)&.close
+          test_console_with_db.instance_variable_get(:@output_pipe_write)&.close
+        end
+      end
+
+      it "initializes basic instance variables correctly" do
+        expect(test_console_without_db.instance_variable_get(:@stdin)).to eq($stdin)
+        expect(test_console_without_db.instance_variable_get(:@stdout)).to eq($stdout)
+        expect(test_console_without_db.instance_variable_get(:@debug)).to be true
+        expect(test_console_without_db.instance_variable_get(:@application)).to be_nil
+        expect(test_console_without_db.instance_variable_get(:@original_stty)).to eq("saved_terminal_state")
+      end
+
+      it "initializes output queue and signaling correctly" do
+        expect(test_console_without_db.instance_variable_get(:@output_queue)).to be_a(Queue)
+        expect(test_console_without_db.instance_variable_get(:@output_pipe_read)).to be_a(IO)
+        expect(test_console_without_db.instance_variable_get(:@output_pipe_write)).to be_a(IO)
+        expect(test_console_without_db.instance_variable_get(:@mutex)).to be_a(Mutex)
+      end
+
+      it "initializes input state with mutable strings" do
+        expect(test_console_without_db.instance_variable_get(:@input_buffer)).to eq("")
+        expect(test_console_without_db.instance_variable_get(:@input_buffer).frozen?).to be false
+        expect(test_console_without_db.instance_variable_get(:@cursor_pos)).to eq(0)
+        expect(test_console_without_db.instance_variable_get(:@kill_ring)).to eq("")
+        expect(test_console_without_db.instance_variable_get(:@kill_ring).frozen?).to be false
+        expect(test_console_without_db.instance_variable_get(:@history)).to eq([])
+        expect(test_console_without_db.instance_variable_get(:@history_pos)).to be_nil
+        expect(test_console_without_db.instance_variable_get(:@saved_input)).to eq("")
+        expect(test_console_without_db.instance_variable_get(:@saved_input).frozen?).to be false
+        expect(test_console_without_db.instance_variable_get(:@saved_column)).to be_nil
+      end
+
+      it "initializes display tracking variables correctly" do
+        expect(test_console_without_db.instance_variable_get(:@last_line_count)).to eq(1)
+        expect(test_console_without_db.instance_variable_get(:@last_cursor_line)).to be_nil
+        expect(test_console_without_db.instance_variable_get(:@last_physical_row_count)).to eq(1)
+        expect(test_console_without_db.instance_variable_get(:@last_cursor_physical_row)).to eq(0)
+        expect(test_console_without_db.instance_variable_get(:@terminal_width)).to eq(80)
+      end
+
+      it "initializes spinner state correctly" do
+        expected_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        expect(test_console_without_db.instance_variable_get(:@spinner_state)).to be_a(Nu::Agent::SpinnerState)
+        expect(test_console_without_db.instance_variable_get(:@spinner_thread)).to be_nil
+        expect(test_console_without_db.instance_variable_get(:@spinner_frames)).to eq(expected_frames)
+      end
+
+      it "initializes state pattern correctly" do
+        expect(test_console_without_db.current_state).to be_a(Nu::Agent::ConsoleIO::IdleState)
+        expect(test_console_without_db.instance_variable_get(:@previous_state)).to be_nil
+      end
+
+      it "does not load history when db_history is nil" do
+        expect(test_console_without_db.instance_variable_get(:@db_history)).to be_nil
+      end
+
+      it "initializes with db_history and loads history from database" do
+        # Mock the TTY system calls
+        allow_any_instance_of(described_class).to receive(:fetch_terminal_state).and_return("saved_terminal_state")
+        allow_any_instance_of(described_class).to receive(:setup_terminal)
+        allow_any_instance_of(described_class).to receive(:apply_terminal_state)
+
+        # Mock IO.console with a valid winsize
+        mock_console = instance_double(IO)
+        allow(IO).to receive(:console).and_return(mock_console)
+        allow(mock_console).to receive(:winsize).and_return([24, 120]) # height, width
+
+        # Mock database history (returns hashes with "command" key)
+        mock_db = instance_double(Nu::Agent::History)
+        expect(mock_db).to receive(:get_command_history).with(limit: 1000).and_return(
+          [{ "command" => "first_cmd" }, { "command" => "second_cmd" }]
+        )
+
+        # Create console with db_history
+        test_console = described_class.new(db_history: mock_db, debug: false, application: :test_app)
+
+        expect(test_console.instance_variable_get(:@db_history)).to eq(mock_db)
+        expect(test_console.instance_variable_get(:@application)).to eq(:test_app)
+        expect(test_console.instance_variable_get(:@history)).to eq(%w[first_cmd second_cmd])
+        expect(test_console.instance_variable_get(:@terminal_width)).to eq(120)
+
+        # Cleanup
+        test_console.instance_variable_get(:@output_pipe_read).close
+        test_console.instance_variable_get(:@output_pipe_write).close
+      end
+    end
   end
 
   describe "#readline" do
@@ -1237,6 +1342,23 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(stdout).not_to receive(:flush)
 
       console.close
+    end
+
+    it "calls restore_terminal when original_stty is set (mocked TTY)" do
+      # Create a new instance with mocked TTY to test close functionality
+      allow_any_instance_of(described_class).to receive(:fetch_terminal_state).and_return("test_state")
+      allow_any_instance_of(described_class).to receive(:setup_terminal)
+      allow_any_instance_of(described_class).to receive(:apply_terminal_state).with("test_state")
+
+      test_stdout = StringIO.new
+      test_console = described_class.allocate
+      test_console.instance_variable_set(:@stdout, test_stdout)
+      test_console.instance_variable_set(:@original_stty, "test_state")
+
+      test_console.close
+
+      # Verify cursor was shown
+      expect(test_stdout.string).to include("\e[?25h")
     end
   end
 
