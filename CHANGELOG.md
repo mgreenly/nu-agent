@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Test Coverage Improvements**: Significantly improved branch coverage across core modules
+  - Brought 11 files to or near 100% branch coverage through targeted test additions
+  - Enhanced test coverage for critical components:
+    - `BackgroundWorkerManager`: 97.83% → 100%
+    - `RAGRetriever`: 80.00% → 100%
+    - `LLMRequestBuilder`: 83.33% → 95.83%
+    - `LLMRequestFormatter`: 82.14% → 100%
+    - `ExchangeRepository`: 87.50% → 100%
+    - `ToolsDisplayFormatter`: 75.00% → 100%
+    - Worker commands and RAG command: all to 100%
+  - Added comprehensive test cases covering edge cases and error conditions
+  - Overall project branch coverage maintained above quality thresholds
+
 ## [0.14.0] - 2025-11-02
 
 ### Added
