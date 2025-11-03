@@ -52,6 +52,13 @@ ensure
 end
 
 RSpec.configure do |config|
+  # Disable parallel execution in CI or when RSPEC_PARALLEL=false
+  # Locally, parallel execution is allowed for faster test runs
+  if ENV["RSPEC_PARALLEL"] == "false"
+    config.files_to_run = config.files_to_run.to_a
+    config.order = :defined
+  end
+
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = ".rspec_status"
 

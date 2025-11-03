@@ -54,7 +54,9 @@ require "fileutils"
 module DatabaseHelper
   class << self
     # Default test database path
-    DEFAULT_TEST_DB_PATH = "db/test.db"
+    # Local development: Use in-memory for speed (:memory:)
+    # CI: Use file-based for reliability (set via TEST_DB_PATH env var)
+    DEFAULT_TEST_DB_PATH = ":memory:"
 
     # Get the test database path, accounting for parallel test execution
     #
