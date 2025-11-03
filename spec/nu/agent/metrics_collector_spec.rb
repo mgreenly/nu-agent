@@ -146,6 +146,16 @@ RSpec.describe Nu::Agent::MetricsCollector do
         expect(snapshot[:timers][:timer_a][:p50]).to eq(100)
       end
 
+      it "handles snapshot with timer that has been accessed but has no durations" do
+        # Access a timer without recording any duration to it
+        collector.get_timer_stats(:empty_timer)
+
+        # Now snapshot should include this timer with empty durations
+        snapshot = collector.snapshot
+
+        expect(snapshot[:timers][:empty_timer]).to eq({ count: 0, p50: 0, p90: 0, p99: 0 })
+      end
+
       it "handles two durations for percentile calculation" do
         collector.record_duration(:test_timer, 50)
         collector.record_duration(:test_timer, 150)
@@ -167,6 +177,12 @@ RSpec.describe Nu::Agent::MetricsCollector do
         expect(stats[:count]).to eq(0)
         expect(stats[:p50]).to eq(0)
         expect(collector.get_counter(:test_counter)).to eq(0)
+      end
+
+      it "handles percentile calculation with empty array" do
+        # Test the defensive check in the private percentile method
+        result = collector.send(:percentile, [], 50)
+        expect(result).to eq(0)
       end
     end
 

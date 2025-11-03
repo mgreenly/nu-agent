@@ -2,11 +2,10 @@
 
 This document lists files that do not have 100% branch coverage.
 
-**Total files in this plan:** 13
+**Total files in this plan:** 12
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/metrics_collector.rb | 75.00% | 6 | 8 | 2 |
 | lib/nu/agent/tools_display_formatter.rb | 75.00% | 3 | 4 | 1 |
 | lib/nu/agent/rag/rag_retriever.rb | 80.00% | 16 | 20 | 4 |
 | lib/nu/agent/formatters/llm_request_formatter.rb | 82.14% | 23 | 28 | 5 |
