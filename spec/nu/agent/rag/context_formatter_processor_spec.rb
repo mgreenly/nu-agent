@@ -106,5 +106,67 @@ RSpec.describe Nu::Agent::RAG::ContextFormatterProcessor do
         expect(context.formatted_context).not_to include("## Related Exchanges")
       end
     end
+
+    context "with nil timestamps" do
+      before do
+        context.conversations = [
+          { conversation_id: 1, content: "Conversation with nil created_at", created_at: nil, similarity: 0.9 },
+          { conversation_id: 2, content: "Conversation with timestamp", created_at: Time.now, similarity: 0.9 }
+        ]
+        context.exchanges = [
+          { exchange_id: 1, content: "Exchange with nil started_at", started_at: nil, similarity: 0.8 },
+          { exchange_id: 2, content: "Exchange with timestamp", started_at: Time.now, similarity: 0.8 }
+        ]
+      end
+
+      it "handles nil timestamps gracefully" do
+        processor.process(context)
+
+        expect(context.formatted_context).to include("[Conversation #1]")
+        expect(context.formatted_context).to include("[Conversation #2]")
+        expect(context.formatted_context).to include("[Exchange #1]")
+        expect(context.formatted_context).to include("[Exchange #2]")
+      end
+    end
+
+    context "when exchange budget allows only header" do
+      before do
+        # Set budget where exchanges get very few tokens
+        allow(config_store).to receive(:get_int).with("rag_token_budget", default: 2000).and_return(10)
+
+        context.conversations = []
+        context.exchanges = [
+          { exchange_id: 1, content: "Very long exchange content that won't fit" * 10, started_at: Time.now,
+            similarity: 0.9 }
+        ]
+      end
+
+      it "returns empty string when only header would fit" do
+        processor.process(context)
+
+        expect(context.formatted_context).to eq("")
+      end
+    end
+
+    context "when exchange breaks on budget limit" do
+      before do
+        # Set budget that allows some but not all exchanges
+        allow(config_store).to receive(:get_int).with("rag_token_budget", default: 2000).and_return(100)
+
+        context.conversations = []
+        context.exchanges = [
+          { exchange_id: 1, content: "Short", started_at: Time.now, similarity: 0.9 },
+          { exchange_id: 2, content: "Very long exchange that will exceed budget " * 20, started_at: Time.now - 100,
+            similarity: 0.8 }
+        ]
+      end
+
+      it "includes entries until budget exceeded" do
+        processor.process(context)
+
+        expect(context.formatted_context).to include("[Exchange #1]")
+        expect(context.formatted_context).not_to include("[Exchange #2]")
+      end
+    end
   end
 end
