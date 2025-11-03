@@ -385,6 +385,308 @@ RSpec.describe Nu::Agent::Workers::ExchangeSummarizer do
     end
   end
 
+  describe "redaction filter" do
+    let(:redaction_filter) { instance_double(Nu::Agent::RedactionFilter) }
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store,
+        redaction_filter: redaction_filter
+      )
+    end
+
+    before do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      allow(application).to receive(:debug).and_return(false)
+    end
+
+    it "applies redaction filter to summaries when present" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      messages = [
+        { "role" => "user", "content" => "My password is secret123", "redacted" => false, "exchange_id" => 100 }
+      ]
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return(messages)
+      allow(summarizer).to receive_messages(model: "claude-sonnet-4-5", send_message: {
+                                              "content" => "User shared password: secret123",
+                                              "spend" => 0.001
+                                            })
+      allow(redaction_filter).to receive(:redact)
+        .with("User shared password: secret123")
+        .and_return("User shared password: [REDACTED]")
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+
+      expect(history).to receive(:update_exchange_summary).with(
+        exchange_id: 100,
+        summary: "User shared password: [REDACTED]",
+        model: "claude-sonnet-4-5",
+        cost: 0.001
+      )
+
+      summarizer_worker.summarize_exchanges
+    end
+  end
+
+  describe "tool message handling" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    before do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      allow(application).to receive(:debug).and_return(false)
+    end
+
+    it "converts tool role to assistant in summary prompt" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      messages = [
+        { "role" => "user", "content" => "What time is it?", "redacted" => false, "exchange_id" => 100 },
+        { "role" => "tool", "content" => "2024-01-01 12:00:00", "redacted" => false, "exchange_id" => 100 }
+      ]
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return(messages)
+      allow(summarizer).to receive(:model).and_return("claude-sonnet-4-5")
+
+      # Capture the actual prompt sent to verify tool messages are converted to assistant
+      captured_prompt = nil
+      allow(summarizer).to receive(:send_message) do |args|
+        captured_prompt = args[:messages].first["content"]
+        { "content" => "Summary", "spend" => 0.001 }
+      end
+
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_exchange_summary)
+
+      summarizer_worker.summarize_exchanges
+
+      # Verify tool message was converted to assistant in prompt
+      expect(captured_prompt).to include("user: What time is it?")
+      expect(captured_prompt).to include("assistant: 2024-01-01 12:00:00")
+      expect(captured_prompt).not_to include("tool:")
+    end
+  end
+
+  describe "nil response handling" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    before do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      allow(application).to receive(:debug).and_return(false)
+    end
+
+    it "handles nil response from LLM" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false, "exchange_id" => 100 }]
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return(messages)
+      allow(summarizer).to receive(:send_message).and_return(nil)
+
+      summarizer_worker.summarize_exchanges
+
+      # No summary should be saved and status should show running=false but no completion
+      expect(exchange_summarizer_status["completed"]).to eq(0)
+      expect(exchange_summarizer_status["failed"]).to eq(0)
+      expect(exchange_summarizer_status["running"]).to be false
+    end
+  end
+
+  describe "nil summary handling" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    before do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      allow(application).to receive(:debug).and_return(false)
+    end
+
+    it "handles nil content in response" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false, "exchange_id" => 100 }]
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return(messages)
+      allow(summarizer).to receive(:send_message).and_return({ "content" => nil, "spend" => 0.001 })
+
+      summarizer_worker.summarize_exchanges
+
+      expect(exchange_summarizer_status["failed"]).to eq(1)
+      expect(exchange_summarizer_status["completed"]).to eq(0)
+    end
+  end
+
+  describe "shutdown during exchange loop" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    it "stops processing exchanges when shutdown is requested" do
+      exchanges = [
+        { "id" => 100, "conversation_id" => 2 },
+        { "id" => 101, "conversation_id" => 2 },
+        { "id" => 102, "conversation_id" => 2 }
+      ]
+
+      # Allow first exchange to complete, then trigger shutdown
+      # shutdown is checked at line 55 before each exchange
+      call_count = 0
+      allow(application).to receive(:instance_variable_get).with(:@shutdown) do
+        call_count += 1
+        # After first exchange completes, return true
+        # Each exchange has ~2-3 shutdown checks, so trigger after 3 checks
+        call_count > 3
+      end
+
+      allow(application).to receive(:debug).and_return(false)
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return(exchanges)
+
+      # Mock that only first exchange is processed
+      messages = [{ "role" => "user", "content" => "Test", "redacted" => false, "exchange_id" => 100 }]
+      allow(history).to receive(:messages).and_return(messages)
+      allow(summarizer).to receive_messages(model: "claude-sonnet-4-5", send_message: {
+                                              "content" => "Summary",
+                                              "spend" => 0.001
+                                            })
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_exchange_summary)
+
+      summarizer_worker.summarize_exchanges
+
+      # Should have processed only 1 exchange before shutdown
+      expect(exchange_summarizer_status["completed"]).to eq(1)
+      expect(exchange_summarizer_status["running"]).to be false
+    end
+  end
+
+  describe "shutdown after building prompt" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    it "returns early when shutdown is requested after building prompt" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false, "exchange_id" => 100 }]
+
+      # Return false initially, then true at line 102 check (after prompt building)
+      # The check at line 102 calls shutdown_requested? which calls instance_variable_get
+      call_count = 0
+      allow(application).to receive(:instance_variable_get).with(:@shutdown) do
+        call_count += 1
+        call_count == 2 # First check is at line 55, second check is at line 102
+      end
+
+      allow(application).to receive(:debug).and_return(false)
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).with(
+        conversation_id: 2,
+        include_in_context_only: false
+      ).and_return(messages)
+
+      # send_message should not be called since we shutdown after building prompt
+      expect(summarizer).not_to receive(:send_message)
+
+      summarizer_worker.summarize_exchanges
+
+      # No exchanges should be completed due to shutdown
+      expect(exchange_summarizer_status["completed"]).to eq(0)
+      expect(exchange_summarizer_status["failed"]).to eq(0)
+    end
+  end
+
+  describe "record_failure error handling" do
+    let(:summarizer_worker) do
+      allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(0)
+      described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: exchange_summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store
+      )
+    end
+
+    before do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+      allow(application).to receive(:debug).and_return(false)
+    end
+
+    it "handles errors during failure recording gracefully" do
+      exchange = { "id" => 100, "conversation_id" => 2 }
+      allow(history).to receive(:get_unsummarized_exchanges).with(exclude_conversation_id: 1).and_return([exchange])
+      allow(history).to receive(:messages).and_raise(StandardError.new("Database error"))
+
+      # Make create_failed_job also fail to test the rescue block within record_failure
+      allow(history).to receive(:create_failed_job).and_raise(StandardError.new("Failed to record failure"))
+
+      # Should not raise error even if failure recording fails
+      expect { summarizer_worker.summarize_exchanges }.not_to raise_error
+
+      expect(exchange_summarizer_status["failed"]).to eq(1)
+    end
+  end
+
   describe "#debug_output" do
     let(:summarizer_worker) do
       allow(config_store).to receive(:get_int).with("exchange_summarizer_verbosity", default: 0).and_return(verbosity)
