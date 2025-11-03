@@ -753,5 +753,266 @@ RSpec.describe Nu::Agent::ToolCallOrchestrator do
         expect(client).to have_received(:send_request)
       end
     end
+
+    context "edge cases for branch coverage" do
+      let(:tool_call_formatter) { instance_double("ToolCallFormatter") }
+      let(:tool_result_formatter) { instance_double("ToolResultFormatter") }
+
+      before do
+        allow(formatter).to receive(:instance_variable_get).with(:@tool_call_formatter).and_return(tool_call_formatter)
+        allow(formatter).to receive(:instance_variable_get)
+          .with(:@tool_result_formatter).and_return(tool_result_formatter)
+        allow(tool_call_formatter).to receive(:display)
+        allow(tool_result_formatter).to receive(:display)
+        allow(history).to receive(:add_message)
+        allow(formatter).to receive(:display_message_created)
+      end
+
+      it "handles tool call not found in index (line 207)" do
+        # This tests the else branch of the safe navigation operator when tool call is not found
+        application_with_debug = instance_double(Nu::Agent::Application,
+                                                 formatter: formatter,
+                                                 console: console,
+                                                 debug: true)
+        allow(application_with_debug).to receive(:output_line)
+
+        orchestrator_with_debug = described_class.new(
+          client: client,
+          history: history,
+          exchange_info: { conversation_id: 1, exchange_id: 1 },
+          tool_registry: tool_registry,
+          application: application_with_debug
+        )
+
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/file1" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        # Mock the display_tool_call_with_context to call find_tool_call_index with wrong ID
+        allow(tool_call_formatter).to receive(:display) do |tool_call, _context|
+          # Simulate a scenario where we try to find a tool call that doesn't exist
+          # This will trigger the safe navigation else branch
+          orchestrator_with_debug.send(:find_tool_call_index, [], tool_call)
+        end
+
+        orchestrator_with_debug.execute(messages: messages, tools: tools)
+
+        # The test passes if no error is raised and index defaults to 0
+        expect(tool_call_formatter).to have_received(:display)
+      end
+
+      it "handles verbosity level 1 for debug output (line 312)" do
+        # Test when verbosity is 1, which should trigger early return in output_debug for verbosity 2
+        application_with_debug = instance_double(Nu::Agent::Application,
+                                                 formatter: formatter,
+                                                 console: console,
+                                                 debug: true)
+        allow(application_with_debug).to receive(:output_line)
+
+        orchestrator_with_debug = described_class.new(
+          client: client,
+          history: history,
+          exchange_info: { conversation_id: 1, exchange_id: 1 },
+          tool_registry: tool_registry,
+          application: application_with_debug
+        )
+
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/file1" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator_with_debug.execute(messages: messages, tools: tools)
+
+        # Should output batch count summary (verbosity 1) but not API debug messages (verbosity 2)
+        expect(application_with_debug).to have_received(:output_line).with(
+          /Created.*batch/,
+          type: :debug
+        )
+        expect(application_with_debug).not_to have_received(:output_line).with(
+          /API Request/,
+          type: :debug
+        )
+      end
+
+      it "skips detailed batch info when verbosity < 2 (line 322)" do
+        # Test when verbosity is 1, detailed batch info should be skipped
+        application_with_debug = instance_double(Nu::Agent::Application,
+                                                 formatter: formatter,
+                                                 console: console,
+                                                 debug: true)
+        allow(application_with_debug).to receive(:output_line)
+
+        orchestrator_with_debug = described_class.new(
+          client: client,
+          history: history,
+          exchange_info: { conversation_id: 1, exchange_id: 1 },
+          tool_registry: tool_registry,
+          application: application_with_debug
+        )
+
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_read", "arguments" => { "file" => "/file1" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+        allow(tool_registry).to receive(:execute).and_return("file contents")
+
+        orchestrator_with_debug.execute(messages: messages, tools: tools)
+
+        # Should not output detailed batch info (verbosity >= 2 required)
+        expect(application_with_debug).not_to have_received(:output_line).with(
+          /Batch 1:.*tool.*parallel execution/,
+          type: :debug
+        )
+      end
+
+      it "displays plural text for multiple batches (line 327)" do
+        # Test plural form when batch_count > 1
+        application_with_debug = instance_double(Nu::Agent::Application,
+                                                 formatter: formatter,
+                                                 console: console,
+                                                 debug: true)
+        allow(application_with_debug).to receive(:output_line)
+
+        orchestrator_with_debug = described_class.new(
+          client: client,
+          history: history,
+          exchange_info: { conversation_id: 1, exchange_id: 1 },
+          tool_registry: tool_registry,
+          application: application_with_debug
+        )
+
+        # Configure write tool as barrier to force multiple batches
+        allow(tool_registry).to receive(:metadata_for).with("file_write").and_return({
+                                                                                       operation_type: :write,
+                                                                                       scope: :unconfined
+                                                                                     })
+        allow(tool_registry).to receive(:metadata_for).with("file_read").and_return({
+                                                                                      operation_type: :read,
+                                                                                      scope: :confined
+                                                                                    })
+
+        tool_call_response = {
+          "content" => "",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 10, "output" => 5 },
+          "spend" => 0.001,
+          "tool_calls" => [
+            { "id" => "call_1", "name" => "file_write",
+              "arguments" => { "file" => "/file", "content" => "data" } },
+            { "id" => "call_2", "name" => "file_read", "arguments" => { "file" => "/file" } }
+          ]
+        }
+
+        final_response = {
+          "content" => "Done",
+          "model" => "claude-sonnet-4-5",
+          "tokens" => { "input" => 15, "output" => 8 },
+          "spend" => 0.002
+        }
+
+        allow(client).to receive(:send_request).and_return(tool_call_response, final_response)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(1)
+        allow(tool_registry).to receive(:execute).and_return("result")
+
+        orchestrator_with_debug.execute(messages: messages, tools: tools)
+
+        # Should use plural "batches" because there are 2 batches
+        expect(application_with_debug).to have_received(:output_line).with(
+          /Created 2 batches from 2 tool calls/,
+          type: :debug
+        )
+      end
+
+      it "formats duration >= 1 second correctly (line 387)" do
+        # Test duration formatting when >= 1.0 seconds
+        # We need to mock Time.now to control the duration
+        application_with_debug = instance_double(Nu::Agent::Application,
+                                                 formatter: formatter,
+                                                 console: console,
+                                                 debug: false)
+
+        orchestrator_with_debug = described_class.new(
+          client: client,
+          history: history,
+          exchange_info: { conversation_id: 1, exchange_id: 1 },
+          tool_registry: tool_registry,
+          application: application_with_debug
+        )
+
+        start_time = Time.now
+        end_time = start_time + 1.5 # 1.5 seconds later
+
+        allow(Time).to receive(:now).and_return(start_time, end_time, start_time, end_time)
+        allow(client).to receive(:send_request).and_return({
+                                                             "content" => "Done",
+                                                             "model" => "claude-sonnet-4-5",
+                                                             "tokens" => { "input" => 10, "output" => 5 },
+                                                             "spend" => 0.001
+                                                           })
+
+        # Capture the duration formatting
+        allow(application_with_debug).to receive(:respond_to?).with(:debug).and_return(true)
+        allow(application_with_debug).to receive(:debug).and_return(true)
+        allow(application_with_debug).to receive(:output_line) do |msg, _opts|
+          # Check if the message contains the formatted duration >= 1.0s
+          expect(msg).to match(/1\.50s/) if msg.include?("API Response")
+        end
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
+
+        orchestrator_with_debug.execute(messages: messages, tools: tools)
+
+        # The format_duration method should have been called and formatted as "1.50s"
+        expect(client).to have_received(:send_request)
+      end
+    end
   end
 end

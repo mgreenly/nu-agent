@@ -327,6 +327,27 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
                                    ])
         expect(redacted_ranges).to eq("5-6")
       end
+
+      it "returns nil redacted ranges when no messages are redacted" do
+        messages = [
+          { "id" => 7, "redacted" => false, "exchange_id" => 101 },
+          { "id" => 8, "redacted" => false, "exchange_id" => exchange_id }
+        ]
+        allow(history).to receive(:messages).and_return(messages)
+        allow(application).to receive(:redact).and_return(true)
+
+        history_msgs, redacted_ranges = orchestrator.send(
+          :prepare_history_messages,
+          conversation_id,
+          exchange_id,
+          session_start_time
+        )
+
+        expect(history_msgs).to eq([
+                                     { "id" => 7, "redacted" => false, "exchange_id" => 101 }
+                                   ])
+        expect(redacted_ranges).to be_nil
+      end
     end
   end
 
@@ -396,6 +417,54 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
       expect(tools).to eq(formatted_tools)
 
       # Verify display was called with internal format
+      expect(formatter).to have_received(:display_llm_request).with(internal_format)
+    end
+
+    it "uses nil system prompt when application does not respond to active_persona_system_prompt" do
+      application_without_persona = instance_double(Nu::Agent::Application, redact: false)
+      orchestrator_without_persona = described_class.new(
+        history: history,
+        formatter: formatter,
+        application: application_without_persona,
+        user_actor: user_actor,
+        event_bus: event_bus
+      )
+
+      rag_content = {}
+      expect(orchestrator_without_persona).to receive(:build_rag_content).and_return(rag_content)
+
+      builder = instance_double(Nu::Agent::LlmRequestBuilder)
+      expect(Nu::Agent::LlmRequestBuilder).to receive(:new).and_return(builder)
+
+      expect(builder).to receive(:with_system_prompt).with(nil).and_return(builder)
+      expect(builder).to receive(:with_history).with(history_messages).and_return(builder)
+      expect(builder).to receive(:with_rag_content).with(rag_content).and_return(builder)
+      expect(builder).to receive(:with_user_query).with(user_input).and_return(builder)
+      expect(builder).to receive(:with_tools).with(formatted_tools).and_return(builder)
+      expect(builder).to receive(:with_metadata)
+        .with(hash_including(conversation_id: conversation_id))
+        .and_return(builder)
+
+      internal_format = {
+        messages: history_messages + [{ "role" => "user", "content" => user_input }],
+        tools: formatted_tools
+      }
+      expect(builder).to receive(:build).and_return(internal_format)
+
+      request_context = {
+        user_query: user_input,
+        history_messages: history_messages,
+        redacted_ranges: nil
+      }
+
+      orchestrator_without_persona.send(
+        :prepare_llm_request,
+        request_context,
+        tool_registry,
+        conversation_id,
+        client
+      )
+
       expect(formatter).to have_received(:display_llm_request).with(internal_format)
     end
   end
@@ -711,6 +780,40 @@ RSpec.describe Nu::Agent::ChatLoopOrchestrator do
         messages: messages,
         tools: tools,
         system_prompt: "Custom persona prompt"
+      )
+
+      expect(result).to eq(loop_result)
+    end
+
+    it "passes nil system prompt when application does not respond to active_persona_system_prompt" do
+      application_without_persona = instance_double(Nu::Agent::Application, redact: false)
+      orchestrator_without_persona = described_class.new(
+        history: history,
+        formatter: formatter,
+        application: application_without_persona,
+        user_actor: user_actor,
+        event_bus: event_bus
+      )
+
+      allow(Nu::Agent::ToolCallOrchestrator).to receive(:new).and_return(tool_call_orchestrator)
+      allow(tool_call_orchestrator).to receive(:execute).and_return(loop_result)
+
+      result = orchestrator_without_persona.send(
+        :tool_calling_loop,
+        messages: messages,
+        client: client,
+        conversation_id: conversation_id,
+        tools: tools,
+        history: history,
+        exchange_id: exchange_id,
+        tool_registry: tool_registry,
+        application: application_without_persona
+      )
+
+      expect(tool_call_orchestrator).to have_received(:execute).with(
+        messages: messages,
+        tools: tools,
+        system_prompt: nil
       )
 
       expect(result).to eq(loop_result)
