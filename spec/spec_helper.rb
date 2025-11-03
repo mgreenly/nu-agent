@@ -18,7 +18,7 @@ SimpleCov.start do
   # Only enforce minimum coverage when COVERAGE_ENFORCE is set
   if ENV["COVERAGE_ENFORCE"] == "true"
     # Goal: gradually increase to 100%
-    minimum_coverage line: 99.77, branch: 99.22
+    minimum_coverage line: 99.96, branch: 99.27
   end
 end
 
