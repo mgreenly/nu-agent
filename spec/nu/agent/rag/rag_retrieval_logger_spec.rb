@@ -82,6 +82,18 @@ RSpec.describe Nu::Agent::RAG::RAGRetrievalLogger do
       result = connection.query("SELECT cache_hit FROM rag_retrieval_logs WHERE query_hash = 'abc123'")
       expect(result.to_a.first[0]).to be true
     end
+
+    it "raises ArgumentError when retrieval_duration_ms is missing" do
+      data_without_duration = {
+        query_hash: "test123",
+        conversation_candidates: 5,
+        exchange_candidates: 10
+      }
+
+      expect { logger.log_retrieval(data_without_duration) }.to raise_error(
+        ArgumentError, "retrieval_duration_ms is required"
+      )
+    end
   end
 
   describe "#generate_query_hash" do
