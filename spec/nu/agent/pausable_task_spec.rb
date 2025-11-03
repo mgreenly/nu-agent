@@ -32,6 +32,36 @@ module Nu
           raise StandardError, "Test error"
         end
       end
+
+      # Task that blocks until released, giving precise control over when do_work completes
+      class BlockingTask < PausableTask
+        attr_reader :work_count
+
+        def initialize(status_info:, shutdown_flag:)
+          super
+          @work_count = 0
+          @work_mutex = Mutex.new
+          @release_cv = ConditionVariable.new
+          @released = false
+        end
+
+        def release_work
+          @work_mutex.synchronize do
+            @released = true
+            @release_cv.broadcast
+          end
+        end
+
+        protected
+
+        def do_work
+          @work_mutex.synchronize do
+            @work_count += 1
+            # Block here until released
+            @release_cv.wait(@work_mutex) unless @released
+          end
+        end
+      end
     end
   end
 end
@@ -224,6 +254,38 @@ RSpec.describe Nu::Agent::PausableTask do
       thread.join(2) # Give more time for shutdown while paused
 
       expect(thread.alive?).to be false
+    end
+
+    it "checks shutdown immediately after check_pause returns" do
+      # This test specifically targets the shutdown check at line 108
+      # which occurs right after check_pause() at line 107 returns.
+      task = Nu::Agent::PausableTaskSpec::TestTask.new(
+        status_info: { status: status_hash, mutex: status_mutex },
+        shutdown_flag: shutdown_flag
+      )
+
+      # Pause IMMEDIATELY after starting, before worker reaches line 107
+      task.pause
+      thread = task.start_worker
+
+      # Give the worker time to reach check_pause at line 107 and enter the while loop
+      # Since @paused is true, it will wait there
+      sleep 0.5
+
+      # Request shutdown while waiting in check_pause at line 107
+      # The while loop condition (@paused && !shutdown_requested?) will become false
+      # because !shutdown_requested? becomes false, so the loop exits
+      # Then line 108 checks shutdown and should break
+      shutdown_flag[:value] = true
+
+      # Wait for thread to exit - should be quick since check_pause will exit
+      # within 0.1 seconds (its wait timeout) and then line 108 breaks
+      expect(thread.join(1)).to eq(thread)
+      expect(thread.alive?).to be false
+
+      status_mutex.synchronize do
+        expect(status_hash["running"]).to be false
+      end
     end
   end
 
