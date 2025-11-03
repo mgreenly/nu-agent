@@ -3,12 +3,11 @@
 This document lists files that do not have 100% branch coverage.
 
 **Total files in this plan:** 10
-**Completed:** 9
-**Remaining:** 4
+**Completed:** 10
+**Remaining:** 3
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/commands/model_command.rb | 92.31% | 12 | 13 | 1 |
 | lib/nu/agent/pausable_task.rb | 93.33% | 14 | 15 | 1 |
 | lib/nu/agent/clients/anthropic.rb | 96.67% | 29 | 30 | 1 |
 | lib/nu/agent/clients/openai.rb | 97.22% | 35 | 36 | 1 |
@@ -26,3 +25,4 @@ This document lists files that do not have 100% branch coverage.
 | lib/nu/agent/dependency_analyzer.rb | ✅ 100% branch coverage achieved |
 | lib/nu/agent/spinner.rb | ✅ 100% branch coverage achieved |
 | lib/nu/agent/formatters/tool_result_formatter.rb | ✅ 100% branch coverage achieved |
+| lib/nu/agent/commands/model_command.rb | ✅ 100% branch coverage achieved |

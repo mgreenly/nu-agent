@@ -96,6 +96,20 @@ RSpec.describe Nu::Agent::Commands::ModelCommand do
         end
       end
 
+      context "when there are active threads that complete quickly" do
+        let(:quick_thread) { Thread.new {} } # Thread completes immediately
+
+        before do
+          allow(application).to receive(:active_threads).and_return([quick_thread])
+        end
+
+        it "does not show waiting message when threads complete within timeout" do
+          expect(application).not_to receive(:output_line).with("Waiting for current operation to complete...",
+                                                                type: :command)
+          command.execute("/model orchestrator gpt-5")
+        end
+      end
+
       context "when ClientFactory raises an error" do
         before do
           error = Nu::Agent::Error.new("Model not found")
