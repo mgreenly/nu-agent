@@ -7,7 +7,7 @@ This document lists files that do not have 100% branch coverage.
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
 | ~~lib/nu/agent/tools_display_formatter.rb~~ | ~~75.00%~~ → **100%** ✓ | ~~3~~ → 4 | 4 | ~~1~~ → 0 |
-| lib/nu/agent/rag/rag_retriever.rb | 80.00% | 16 | 20 | 4 |
+| ~~lib/nu/agent/rag/rag_retriever.rb~~ | ~~80.00%~~ → **100%** ✓ | ~~16~~ → 20 | 20 | ~~4~~ → 0 |
 | lib/nu/agent/formatters/llm_request_formatter.rb | 82.14% | 23 | 28 | 5 |
 | lib/nu/agent/llm_request_builder.rb | 83.33% | 20 | 24 | 4 |
 | lib/nu/agent/session_info.rb | 85.71% | 12 | 14 | 2 |

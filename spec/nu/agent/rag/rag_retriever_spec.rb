@@ -329,6 +329,62 @@ RSpec.describe Nu::Agent::RAG::RAGRetriever do
         expect(retrieval_logger).not_to have_received(:generate_query_hash)
         expect(retrieval_logger).not_to have_received(:log_retrieval)
       end
+
+      it "handles nil scores when conversations and exchanges are empty" do
+        retriever_with_logger = described_class.new(
+          embedding_store: embedding_store,
+          embedding_client: embedding_client,
+          config_store: config_store,
+          retrieval_logger: retrieval_logger
+        )
+
+        # Mock empty results
+        allow(embedding_store).to receive_messages(search_conversations: [], search_exchanges: [])
+
+        retriever_with_logger.retrieve(query: query)
+
+        # Should log with nil scores when arrays are empty
+        expect(retrieval_logger).to have_received(:log_retrieval).with(
+          hash_including(
+            top_conversation_score: nil,
+            top_exchange_score: nil
+          )
+        )
+      end
+    end
+
+    context "with cache enabled but no logger" do
+      let(:cache) { Nu::Agent::RAG::RAGCache.new(max_size: 10, ttl_seconds: 300) }
+      let(:retriever_with_cache_no_logger) do
+        described_class.new(
+          embedding_store: embedding_store,
+          embedding_client: embedding_client,
+          config_store: config_store,
+          retrieval_logger: nil,
+          cache: cache
+        )
+      end
+
+      it "handles cache hit without logger" do
+        # First call - populates cache
+        retriever_with_cache_no_logger.retrieve(query: query, current_conversation_id: 1)
+
+        # Second call - cache hit without logger
+        context = retriever_with_cache_no_logger.retrieve(query: query, current_conversation_id: 1)
+
+        expect(context.conversations).to eq(conversation_results)
+        expect(context.exchanges).to eq(exchange_results)
+        # Should use cache and not fail
+        expect(embedding_store).to have_received(:search_conversations).once
+      end
+
+      it "handles cache miss without logger" do
+        # Call with cache miss - should not fail without logger
+        context = retriever_with_cache_no_logger.retrieve(query: query, current_conversation_id: 1)
+
+        expect(context.conversations).to eq(conversation_results)
+        expect(context.exchanges).to eq(exchange_results)
+      end
     end
   end
 end
