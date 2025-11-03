@@ -112,6 +112,23 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
         expect(console).to have_received(:puts).with("\e[90m    line2\e[0m")
         expect(console).to have_received(:puts).with("\e[90m    line3\e[0m")
       end
+
+      it "skips empty lines in multiline values" do
+        multiline_tool_call = {
+          "name" => "file_write",
+          "arguments" => {
+            "content" => "line1\n\nline3\n"
+          }
+        }
+
+        formatter.display(multiline_tool_call)
+
+        expect(console).to have_received(:puts).with("\e[90m  content:\e[0m")
+        expect(console).to have_received(:puts).with("\e[90m    line1\e[0m")
+        expect(console).to have_received(:puts).with("\e[90m    line3\e[0m")
+        # Empty line should not be printed
+        expect(console).to have_received(:puts).exactly(5).times
+      end
     end
 
     context "when debug is false" do
@@ -153,6 +170,24 @@ RSpec.describe Nu::Agent::Formatters::ToolCallFormatter do
         formatter.display(tool_call)
 
         expect(console).to have_received(:puts).with("\e[90m[Tool Call Request] get_weather\e[0m")
+      end
+    end
+
+    context "with nil arguments" do
+      let(:tool_call) { { "name" => "get_weather", "arguments" => nil } }
+
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("tools_verbosity", default: 0).and_return(2)
+      end
+
+      it "displays tool name without arguments" do
+        formatter.display(tool_call)
+
+        expect(console).to have_received(:puts).with("")
+        expect(console).to have_received(:puts).with("\e[90m[Tool Call Request] get_weather\e[0m")
+        # Should not try to display nil arguments
+        expect(console).not_to have_received(:puts).with(a_string_matching(/:/))
       end
     end
 
