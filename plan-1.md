@@ -2,11 +2,10 @@
 
 This document lists files that do not have 100% branch coverage.
 
-**Total files in this plan:** 11
+**Total files in this plan:** 10
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/message_repository.rb | 76.92% | 20 | 26 | 6 |
 | lib/nu/agent/workers/exchange_summarizer.rb | 80.00% | 24 | 30 | 6 |
 | lib/nu/agent/application.rb | 82.61% | 38 | 46 | 8 |
 | lib/nu/agent/chat_loop_orchestrator.rb | 85.00% | 17 | 20 | 3 |
@@ -17,3 +16,9 @@ This document lists files that do not have 100% branch coverage.
 | lib/nu/agent/commands/workers/embeddings_command.rb | 92.86% | 26 | 28 | 2 |
 | lib/nu/agent/formatter.rb | 93.62% | 88 | 94 | 6 |
 | lib/nu/agent/commands/persona_command.rb | 97.06% | 33 | 34 | 1 |
+
+## Completed Files
+
+| File | Original Coverage | Final Coverage | Branches Added |
+|------|------------------|----------------|----------------|
+| lib/nu/agent/message_repository.rb | 76.92% (20/26) | 100% (26/26) | 6 |

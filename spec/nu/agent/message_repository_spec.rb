@@ -148,6 +148,60 @@ RSpec.describe Nu::Agent::MessageRepository do
       expect(msgs.length).to eq(1)
       expect(msgs[0]["content"]).to eq("Fourth")
     end
+
+    it "parses JSON fields when retrieving messages with tool_calls" do
+      tool_calls = [{ "name" => "test_tool", "args" => { "key" => "value" } }]
+
+      message_repo.add_message(
+        conversation_id: conversation_id,
+        actor: "assistant",
+        role: "assistant",
+        content: "Test",
+        tool_calls: tool_calls
+      )
+
+      msgs = message_repo.messages(conversation_id: conversation_id, include_in_context_only: false)
+      msg_with_tool_calls = msgs.find { |m| m["content"] == "Test" }
+
+      expect(msg_with_tool_calls).not_to be_nil
+      expect(msg_with_tool_calls["tool_calls"]).to eq(tool_calls)
+    end
+
+    it "parses JSON fields when retrieving messages with tool_result" do
+      tool_result = { "status" => "success", "data" => "result data" }
+
+      message_repo.add_message(
+        conversation_id: conversation_id,
+        actor: "tool",
+        role: "tool",
+        content: "Result",
+        tool_result: tool_result
+      )
+
+      msgs = message_repo.messages(conversation_id: conversation_id, include_in_context_only: false)
+      msg_with_result = msgs.find { |m| m["content"] == "Result" }
+
+      expect(msg_with_result).not_to be_nil
+      expect(msg_with_result["tool_result"]).to eq(tool_result)
+    end
+
+    it "parses JSON fields when retrieving messages with error" do
+      error = { "type" => "rate_limit", "message" => "Too many requests" }
+
+      message_repo.add_message(
+        conversation_id: conversation_id,
+        actor: "assistant",
+        role: "assistant",
+        content: "Error occurred",
+        error: error
+      )
+
+      msgs = message_repo.messages(conversation_id: conversation_id, include_in_context_only: false)
+      msg_with_error = msgs.find { |m| m["content"] == "Error occurred" }
+
+      expect(msg_with_error).not_to be_nil
+      expect(msg_with_error["error"]).to eq(error)
+    end
   end
 
   describe "#messages_since" do
@@ -264,6 +318,66 @@ RSpec.describe Nu::Agent::MessageRepository do
       msg = message_repo.get_message_by_id(99_999, conversation_id: conversation_id)
 
       expect(msg).to be_nil
+    end
+
+    it "parses JSON fields when retrieving a message with tool_calls" do
+      tool_calls = [{ "name" => "test_tool", "args" => { "key" => "value" } }]
+
+      message_repo.add_message(
+        conversation_id: conversation_id,
+        actor: "assistant",
+        role: "assistant",
+        content: "Test",
+        tool_calls: tool_calls
+      )
+
+      result = connection.query("SELECT id FROM messages WHERE conversation_id = #{conversation_id}")
+      message_id = result.to_a.first[0]
+
+      msg = message_repo.get_message_by_id(message_id, conversation_id: conversation_id)
+
+      expect(msg).not_to be_nil
+      expect(msg["tool_calls"]).to eq(tool_calls)
+    end
+
+    it "parses JSON fields when retrieving a message with tool_result" do
+      tool_result = { "status" => "success", "data" => "result data" }
+
+      message_repo.add_message(
+        conversation_id: conversation_id,
+        actor: "tool",
+        role: "tool",
+        content: "Result",
+        tool_result: tool_result
+      )
+
+      result = connection.query("SELECT id FROM messages WHERE conversation_id = #{conversation_id}")
+      message_id = result.to_a.first[0]
+
+      msg = message_repo.get_message_by_id(message_id, conversation_id: conversation_id)
+
+      expect(msg).not_to be_nil
+      expect(msg["tool_result"]).to eq(tool_result)
+    end
+
+    it "parses JSON fields when retrieving a message with error" do
+      error = { "type" => "rate_limit", "message" => "Too many requests" }
+
+      message_repo.add_message(
+        conversation_id: conversation_id,
+        actor: "assistant",
+        role: "assistant",
+        content: "Error occurred",
+        error: error
+      )
+
+      result = connection.query("SELECT id FROM messages WHERE conversation_id = #{conversation_id}")
+      message_id = result.to_a.first[0]
+
+      msg = message_repo.get_message_by_id(message_id, conversation_id: conversation_id)
+
+      expect(msg).not_to be_nil
+      expect(msg["error"]).to eq(error)
     end
   end
 
