@@ -26,7 +26,8 @@ namespace :coverage do
   desc "Run tests with coverage enforcement (fails if coverage drops below baseline)"
   task :enforce do
     ENV["COVERAGE_ENFORCE"] = "true"
-    Rake::Task["spec"].invoke
+    # Use script to create a pseudo-TTY for terminal-dependent code
+    sh "script -e -c 'bundle exec rspec' /dev/null"
   end
 end
 

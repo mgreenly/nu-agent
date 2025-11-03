@@ -39,6 +39,7 @@
 - Concise but meaningful variable names
 
 ## Git Operations
+- **NEVER push unless asked to***
 - **NEVER use `git stash`**: Changes must be committed to branches, not stashed
 - **During rebasing**: Tests must pass but coverage and lint requirements can be temporarily ignored
 - **After rebasing**: Coverage and lint must be brought into full compliance before considering work complete
