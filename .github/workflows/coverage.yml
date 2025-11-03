@@ -39,15 +39,11 @@ jobs:
           echo "test-gemini-key" > $HOME/.secrets/GEMINI_API_KEY
           echo "test-xai-key" > $HOME/.secrets/XAI_API_KEY
 
-      - name: Run tests with coverage reporting
+      - name: Run tests with coverage enforcement
         env:
           TEST_DB_PATH: ${{ github.workspace }}/db/test.db  # Use file-based database for consistency
           CORES: 1  # Run tests sequentially, not in parallel
-        # Note: We use 'coverage' instead of 'coverage:enforce' because CI environments
-        # lack TTY support, which causes ~9 lines and ~7 branches of TTY-dependent code
-        # to not be covered. Coverage enforcement should be done in local development
-        # where full TTY support is available (99.96% line, 99.27% branch).
-        run: bundle exec rake coverage
+        run: bundle exec rake coverage:enforce
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
