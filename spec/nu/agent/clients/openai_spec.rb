@@ -358,6 +358,25 @@ RSpec.describe Nu::Agent::Clients::OpenAI do
       expect(response["error"]["headers"]).to eq({ "content-type" => "application/json" })
       expect(response["error"]["body"]).to include("Invalid API key")
     end
+
+    it "extracts error body using bracket accessor when dig fails" do
+      # Create a response-like object that doesn't support dig but supports []
+      error_response = { status: 500, body: "Server error" }
+      error_response_without_dig = error_response.dup
+      # Remove dig method to force fallback to []
+      def error_response_without_dig.dig(_key)
+        nil
+      end
+
+      error = Faraday::ServerError.new("Server Error")
+      allow(error).to receive_messages(response: error_response_without_dig, response_body: nil)
+      allow(mock_openai_client).to receive(:chat).and_raise(error)
+
+      response = client.send_message(messages: [])
+
+      expect(response["error"]["body"]).to eq("Server error")
+      expect(response["error"]["status"]).to eq("unknown") # status dig also fails
+    end
   end
 
   describe "#generate_embedding" do
