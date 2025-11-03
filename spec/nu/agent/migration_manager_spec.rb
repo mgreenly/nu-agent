@@ -122,6 +122,16 @@ RSpec.describe Nu::Agent::MigrationManager do
       migrations = migration_manager.pending_migrations
       expect(migrations.map { |m| m[:version] }).to eq([1, 2, 3])
     end
+
+    it "skips files that don't match the migration naming pattern" do
+      File.write(File.join(migrations_dir, "001_add_user_table.rb"), "# migration")
+      File.write(File.join(migrations_dir, "invalid_migration.rb"), "# migration")
+      File.write(File.join(migrations_dir, "README.md"), "# docs")
+
+      migrations = migration_manager.pending_migrations
+      expect(migrations.map { |m| m[:version] }).to eq([1])
+      expect(migrations.map { |m| m[:name] }).to eq(%w[add_user_table])
+    end
   end
 
   describe "#run_migration" do
@@ -155,6 +165,48 @@ RSpec.describe Nu::Agent::MigrationManager do
       }
 
       expect { migration_manager.run_migration(migration) }.to raise_error(StandardError)
+      expect(migration_manager.current_version).to eq(0)
+    end
+
+    it "runs migration without silencing output in verbose mode" do
+      migration_manager.ensure_schema_version_table
+
+      # Enable verbose mode
+      original_verbose = ENV.fetch("VERBOSE", nil)
+      ENV["VERBOSE"] = "true"
+
+      migration = {
+        version: 1,
+        name: "add_verbose_table",
+        up: lambda { |conn|
+          conn.query("CREATE TABLE verbose_test (id INTEGER, name TEXT)")
+        }
+      }
+
+      migration_manager.run_migration(migration)
+
+      tables = connection.query("SHOW TABLES").map { |row| row[0] }
+      expect(tables).to include("verbose_test")
+      expect(migration_manager.current_version).to eq(1)
+    ensure
+      ENV["VERBOSE"] = original_verbose
+    end
+  end
+
+  describe "#run_pending_migrations" do
+    before do
+      FileUtils.mkdir_p(migrations_dir)
+    end
+
+    after do
+      FileUtils.rm_rf(migrations_dir)
+    end
+
+    it "does nothing when there are no pending migrations" do
+      migration_manager.ensure_schema_version_table
+
+      # No migration files created
+      expect { migration_manager.run_pending_migrations }.not_to raise_error
       expect(migration_manager.current_version).to eq(0)
     end
   end
