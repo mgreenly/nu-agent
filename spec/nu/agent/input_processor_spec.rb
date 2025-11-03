@@ -145,6 +145,21 @@ RSpec.describe Nu::Agent::InputProcessor do
           # Incremented once at start, decremented once in Interrupt handler
           expect(history).to have_received(:decrement_workers).at_least(:once)
         end
+
+        context "when thread is not alive" do
+          before do
+            allow(thread).to receive(:alive?).and_return(false)
+          end
+
+          it "does not kill the thread" do
+            active_threads << thread
+
+            processor.process(input)
+
+            expect(thread).not_to have_received(:kill)
+            expect(active_threads).to be_empty
+          end
+        end
       end
     end
   end

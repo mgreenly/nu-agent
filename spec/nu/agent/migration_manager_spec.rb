@@ -84,6 +84,11 @@ RSpec.describe Nu::Agent::MigrationManager do
       FileUtils.rm_rf(migrations_dir)
     end
 
+    it "returns empty array when migrations directory does not exist" do
+      FileUtils.rm_rf(migrations_dir)
+      expect(migration_manager.pending_migrations).to eq([])
+    end
+
     it "returns empty array when no migration files exist" do
       expect(migration_manager.pending_migrations).to eq([])
     end
