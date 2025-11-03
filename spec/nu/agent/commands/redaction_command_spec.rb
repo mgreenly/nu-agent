@@ -27,6 +27,14 @@ RSpec.describe Nu::Agent::Commands::RedactionCommand do
         command.execute("/redaction")
       end
 
+      it "displays usage message with redaction enabled" do
+        allow(application).to receive(:redact).and_return(true)
+        expect(console).to receive(:puts).with("")
+        expect(application).to receive(:output_line).with("Usage: /redaction <on|off>", type: :command)
+        expect(application).to receive(:output_line).with("Current: redaction=on", type: :command)
+        command.execute("/redaction")
+      end
+
       it "returns :continue" do
         allow(application).to receive(:redact).and_return(false)
         expect(command.execute("/redaction")).to eq(:continue)
