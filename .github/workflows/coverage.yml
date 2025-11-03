@@ -43,7 +43,7 @@ jobs:
         env:
           TEST_DB_PATH: ${{ github.workspace }}/db/test.db  # Use file-based database for consistency
           CORES: 1  # Run tests sequentially, not in parallel
-        run: bundle exec rake coverage:enforce
+        run: script -e -c "bundle exec rake coverage:enforce" /dev/null
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

@@ -20,7 +20,7 @@ module Nu
         @application = application
 
         # Save original terminal state
-        @original_stty = `stty -g`.chomp
+        @original_stty = fetch_terminal_state
 
         # Set up raw mode
         setup_terminal
@@ -405,16 +405,28 @@ module Nu
         nil
       end
 
+      def fetch_terminal_state
+        # Get current terminal state for later restoration
+        # This is extracted into a method to make it mockable in tests
+        `stty -g`.chomp
+      end
+
       def setup_terminal
         # Enter raw mode (no echo, no line buffering)
         @stdin.raw!
+      end
+
+      def apply_terminal_state(state)
+        # Restore terminal state
+        # This is extracted into a method to make it mockable in tests
+        system("stty #{state}")
       end
 
       def restore_terminal
         return unless @original_stty
 
         # Restore original state
-        system("stty #{@original_stty}")
+        apply_terminal_state(@original_stty)
 
         # Show cursor
         @stdout.write("\e[?25h")

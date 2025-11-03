@@ -35,9 +35,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
   # Global mocking for TTY-dependent system calls to ensure consistent coverage in CI
   before do
-    # Mock stty command globally - this ensures coverage in non-TTY environments like CI
-    allow_any_instance_of(described_class).to receive(:`).and_call_original
-    allow_any_instance_of(described_class).to receive(:`).with("stty -g").and_return("test_stty_state\n")
+    # Mock fetch_terminal_state method to avoid stty errors in non-TTY environments
+    allow_any_instance_of(described_class).to receive(:fetch_terminal_state).and_return("test_stty_state")
 
     # Mock stdin.raw! globally to avoid terminal errors in non-TTY environments
     allow($stdin).to receive(:raw!)
@@ -1194,7 +1193,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       mock_console = instance_double(IO, "console")
 
       # Override the global mock to provide specific values for this test
-      allow_any_instance_of(described_class).to receive(:`).with("stty -g").and_return("saved_state\n")
+      allow_any_instance_of(described_class).to receive(:fetch_terminal_state).and_return("saved_state")
 
       # Mock IO.console for terminal width detection
       allow(IO).to receive(:console).and_return(mock_console)
@@ -1224,8 +1223,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
   describe "#close" do
     it "restores terminal when original_stty is set" do
       console.instance_variable_set(:@original_stty, "saved_state")
-      # Suppress system call output
-      allow_any_instance_of(Object).to receive(:system).with("stty saved_state").and_return(true)
+      # Mock the wrapped system call method
+      allow_any_instance_of(described_class).to receive(:apply_terminal_state).with("saved_state")
       expect(stdout).to receive(:write).with("\e[?25h").once
       expect(stdout).to receive(:flush).once
 
@@ -1234,7 +1233,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
 
     it "can be called multiple times safely (idempotent)" do
       console.instance_variable_set(:@original_stty, "saved_state")
-      allow_any_instance_of(Object).to receive(:system).with("stty saved_state").and_return(true)
+      allow_any_instance_of(described_class).to receive(:apply_terminal_state).with("saved_state")
       allow(stdout).to receive(:write).with("\e[?25h").twice
       allow(stdout).to receive(:flush).twice
 
