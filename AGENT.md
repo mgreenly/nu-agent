@@ -5,7 +5,7 @@
 - Include NO attribution lines in the commit messages.
 - Always assume the database is $PWD/db/memory.db
 
-## Plan Creation
+## When Creating Plans
 - Create `docs/dev/plan-<NAME>.md` before starting implementation
 - Structure plans with clear phases and numbered tasks
 - Each task should be atomic and testable
@@ -13,7 +13,7 @@
 - All plan files must include a final step for manual human validation
 - Focus on correctness and design of requested features. Do not add speculative or invented features.
 
-## Plan Execution
+## When Executing Plans
 - Follow the plan document strictly, task by task
 - Use TDD red/green cycles for all changes
 - The TDD cycle is not complete until `rake test`, `rake lint`, and `rake coverage` pass.
