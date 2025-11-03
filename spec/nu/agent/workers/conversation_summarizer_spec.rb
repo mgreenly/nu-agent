@@ -293,4 +293,161 @@ RSpec.describe Nu::Agent::Workers::ConversationSummarizer do
         .with(/\[ConversationSummarizer\].*Failed to record failure/, type: :debug)
     end
   end
+
+  describe "branch coverage for shutdown scenarios" do
+    it "handles shutdown between conversations" do
+      conv1 = { "id" => 2 }
+      conv2 = { "id" => 3 }
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv1, conv2])
+
+      # Setup messages and responses for both conversations
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+      allow(history).to receive(:messages).with(conversation_id: 3, include_in_context_only: false).and_return(messages)
+      allow(summarizer).to receive_messages(model: "claude-sonnet-4-5", send_message: {
+                                              "content" => "Summary",
+                                              "spend" => 0.001
+                                            })
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_conversation_summary)
+
+      # Simulate shutdown between conversations
+      # Track which conversation we're on based on status updates
+      shutdown = false
+      allow(application).to receive(:instance_variable_get).with(:@shutdown) { shutdown }
+
+      # Trigger shutdown after first conversation completes by monitoring status
+      original_synchronize = status_mutex.method(:synchronize)
+      allow(status_mutex).to receive(:synchronize) do |&block|
+        original_synchronize.call do
+          result = block.call
+          # Trigger shutdown once first conversation is marked complete
+          shutdown = true if summarizer_status["completed"] == 1
+          result
+        end
+      end
+
+      summarizer_worker.summarize_conversations
+
+      # Only first conversation should be processed
+      expect(summarizer_status["completed"]).to eq(1)
+      expect(summarizer_status["running"]).to be false
+    end
+
+    it "handles shutdown after building prompt but before LLM call" do
+      conv = { "id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+
+      # Simulate shutdown right after building prompt (checked at line 94)
+      call_count = 0
+      allow(application).to receive(:instance_variable_get).with(:@shutdown) do
+        call_count += 1
+        call_count > 1 # False initially, true after prompt is built
+      end
+
+      summarizer_worker.summarize_conversations
+
+      # No conversation should be completed
+      expect(summarizer_status["completed"]).to eq(0)
+      expect(summarizer_status["failed"]).to eq(0)
+    end
+
+    it "completes LLM call normally with polling loop" do
+      conv = { "id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+
+      # Simulate a slow LLM call that completes normally (no shutdown)
+      allow(summarizer).to receive(:send_message) do
+        sleep(0.25) # Ensure loop iterates multiple times
+        { "content" => "Summary", "spend" => 0.001 }
+      end
+      allow(summarizer).to receive(:model).and_return("claude-sonnet-4-5")
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_conversation_summary)
+
+      # Never trigger shutdown
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(false)
+
+      summarizer_worker.summarize_conversations
+
+      # Conversation should complete successfully
+      expect(summarizer_status["completed"]).to eq(1)
+      expect(summarizer_status["failed"]).to eq(0)
+    end
+  end
+
+  describe "branch coverage for message types" do
+    it "handles tool role messages by converting to assistant" do
+      conv = { "id" => 2 }
+      messages = [
+        { "role" => "user", "content" => "Run a tool", "redacted" => false },
+        { "role" => "tool", "content" => "Tool result", "redacted" => false },
+        { "role" => "assistant", "content" => "Done", "redacted" => false }
+      ]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+      allow(summarizer).to receive(:model).and_return("claude-sonnet-4-5")
+
+      # Capture the prompt to verify tool role conversion
+      captured_prompt = nil
+      allow(summarizer).to receive(:send_message) do |args|
+        captured_prompt = args[:messages].first["content"]
+        { "content" => "Summary", "spend" => 0.001 }
+      end
+
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_conversation_summary)
+
+      summarizer_worker.summarize_conversations
+
+      # Verify tool role was converted to assistant in prompt
+      expect(captured_prompt).to include("user: Run a tool")
+      expect(captured_prompt).to include("assistant: Tool result")
+      expect(captured_prompt).to include("assistant: Done")
+      expect(captured_prompt).not_to include("tool:")
+    end
+  end
+
+  describe "branch coverage for redaction" do
+    it "applies redaction filter when provided" do
+      redaction_filter = instance_double(Nu::Agent::RedactionFilter)
+      summarizer_with_redaction = described_class.new(
+        history: history,
+        summarizer: summarizer,
+        application: application,
+        status_info: { status: summarizer_status, mutex: status_mutex },
+        current_conversation_id: 1,
+        config_store: config_store,
+        redaction_filter: redaction_filter
+      )
+
+      conv = { "id" => 2 }
+      messages = [{ "role" => "user", "content" => "Hello", "redacted" => false }]
+      allow(history).to receive(:get_unsummarized_conversations).with(exclude_id: 1).and_return([conv])
+      allow(history).to receive(:messages).with(conversation_id: 2, include_in_context_only: false).and_return(messages)
+      allow(summarizer).to receive_messages(model: "claude-sonnet-4-5", send_message: {
+                                              "content" => "User said hello with API key abc123",
+                                              "spend" => 0.001
+                                            })
+      allow(redaction_filter).to receive(:redact).with("User said hello with API key abc123")
+                                                 .and_return("User said hello with API key [REDACTED]")
+      allow(application).to receive(:send).with(:enter_critical_section)
+      allow(application).to receive(:send).with(:exit_critical_section)
+      allow(history).to receive(:update_conversation_summary)
+
+      summarizer_with_redaction.send(:summarize_conversations)
+
+      # Verify redaction was applied
+      expect(redaction_filter).to have_received(:redact)
+      expect(history).to have_received(:update_conversation_summary)
+        .with(hash_including(summary: "User said hello with API key [REDACTED]"))
+    end
+  end
 end
