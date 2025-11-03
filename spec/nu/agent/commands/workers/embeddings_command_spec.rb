@@ -139,6 +139,50 @@ RSpec.describe Nu::Agent::Commands::Workers::EmbeddingsCommand do
       it "returns :continue" do
         expect(command.execute_subcommand("status", [])).to eq(:continue)
       end
+
+      context "when worker is disabled" do
+        it "displays enabled as no" do
+          allow(worker_manager).to receive(:worker_status).with("embeddings").and_return(status)
+          allow(worker_manager).to receive(:worker_enabled?).with("embeddings").and_return(false)
+          allow(history).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(0)
+          allow(history).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+          allow(history).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(100)
+          expect(console).to receive(:puts).with("")
+          expect(application).to receive(:output_lines) do |*lines, type:|
+            expect(type).to eq(:command)
+            status_text = lines.join("\n")
+            expect(status_text).to include("Enabled: no")
+          end
+          command.execute_subcommand("status", [])
+        end
+      end
+
+      context "when worker is idle" do
+        let(:idle_status) do
+          {
+            "running" => false,
+            "total" => 50,
+            "completed" => 48,
+            "failed" => 2,
+            "spend" => 0.10
+          }
+        end
+
+        it "displays state as idle" do
+          allow(worker_manager).to receive(:worker_status).with("embeddings").and_return(idle_status)
+          allow(worker_manager).to receive(:worker_enabled?).with("embeddings").and_return(true)
+          allow(history).to receive(:get_int).with("embeddings_verbosity", default: 0).and_return(0)
+          allow(history).to receive(:get_int).with("embedding_batch_size", default: 10).and_return(10)
+          allow(history).to receive(:get_int).with("embedding_rate_limit_ms", default: 100).and_return(100)
+          expect(console).to receive(:puts).with("")
+          expect(application).to receive(:output_lines) do |*lines, type:|
+            expect(type).to eq(:command)
+            status_text = lines.join("\n")
+            expect(status_text).to include("State: idle")
+          end
+          command.execute_subcommand("status", [])
+        end
+      end
     end
 
     context "with 'model' subcommand" do
