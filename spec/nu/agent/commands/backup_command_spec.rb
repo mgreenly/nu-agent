@@ -286,6 +286,22 @@ RSpec.describe Nu::Agent::Commands::BackupCommand do
 
         command.execute("/backup #{custom_path}")
       end
+
+      it "continues when disk space cannot be determined" do
+        custom_path = "/tmp/backup.db"
+
+        allow(File).to receive(:readable?).with(source_db_path).and_return(true)
+        allow(File).to receive(:writable?).and_return(true)
+        allow(command).to receive(:`).and_raise(StandardError, "df command failed")
+        allow(FileUtils).to receive(:cp)
+        allow(File).to receive(:exist?).with(custom_path).and_return(true)
+        allow(File).to receive(:size).with(custom_path).and_return(1024)
+
+        # Should not abort when disk space check fails
+        expect(worker_manager).to receive(:pause_all)
+
+        command.execute("/backup #{custom_path}")
+      end
     end
 
     context "output messages" do
