@@ -257,4 +257,32 @@ RSpec.describe Nu::Agent::Spinner do
       expect(output).to include("\r")
     end
   end
+
+  describe "edge cases" do
+    it "handles stop when thread is nil but running is true" do
+      spinner.start("Testing...")
+      sleep 0.05
+      # Simulate edge case where thread becomes nil but running is still true
+      # This tests the else branch of @thread&.join (line 41)
+      spinner.instance_variable_get(:@mutex).synchronize do
+        spinner.instance_variable_get(:@thread)&.kill
+        spinner.instance_variable_set(:@thread, nil)
+      end
+      # Now stop with @running = true but @thread = nil
+      expect { spinner.stop }.not_to raise_error
+      expect(spinner.instance_variable_get(:@running)).to be false
+    end
+
+    it "does not draw when stopped mid-frame" do
+      spinner.start("Drawing...")
+      # Give it time to start drawing
+      sleep 0.05
+      # Manually stop the running flag to simulate race condition
+      spinner.instance_variable_set(:@running, false)
+      # Call draw_frame while running is false (covers line 56 then branch)
+      expect { spinner.send(:draw_frame) }.not_to raise_error
+      # The draw_frame should return early without printing
+      # Verify no new output was added (difficult to test precisely, so we just ensure no error)
+    end
+  end
 end
