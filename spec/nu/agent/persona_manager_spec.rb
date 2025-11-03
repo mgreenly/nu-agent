@@ -288,6 +288,22 @@ RSpec.describe Nu::Agent::PersonaManager do
         expect(persona["name"]).to eq("default")
       end
     end
+
+    context "when active persona ID exists but persona is deleted" do
+      it "returns the default persona" do
+        result = double("result")
+        now = Time.now
+        active_config = ["999"]
+        default_persona_data = [1, "default", "Default prompt", true, now, now]
+
+        allow(connection).to receive(:query).and_return(result)
+        allow(result).to receive(:to_a).and_return([active_config], [], [default_persona_data])
+
+        persona = manager.get_active
+
+        expect(persona["name"]).to eq("default")
+      end
+    end
   end
 
   describe "#set_active" do
@@ -364,6 +380,13 @@ RSpec.describe Nu::Agent::PersonaManager do
       expect do
         manager.send(:validate_name, "")
       end.to raise_error(Nu::Agent::Error, /Invalid persona name/)
+    end
+  end
+
+  describe "#row_to_persona" do
+    it "returns nil when row is nil" do
+      result = manager.send(:row_to_persona, nil)
+      expect(result).to be_nil
     end
   end
 end

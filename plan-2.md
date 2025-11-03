@@ -2,12 +2,10 @@
 
 This document lists files that do not have 100% branch coverage.
 
-**Total files in this plan:** 3
+**Total files in this plan:** 1
 
 | File | Coverage | Covered | Total | Uncovered |
 |------|----------|---------|-------|----------|
-| lib/nu/agent/persona_manager.rb | 92.86% | 26 | 28 | 2 |
-| lib/nu/agent/clients/google.rb | 93.94% | 31 | 33 | 2 |
 | lib/nu/agent/parallel_executor.rb | 97.06% | 33 | 34 | 1 |
 
 ## Completed Files
@@ -24,3 +22,5 @@ This document lists files that do not have 100% branch coverage.
 | lib/nu/agent/commands/summarizer_command.rb | 100% | 2025-11-02 | Added test for usage message when summarizer is enabled (line 26) |
 | lib/nu/agent/formatters/tool_call_formatter.rb | 100% | 2025-11-02 | Added tests for nil arguments (line 53) and empty lines in multiline values (line 90) |
 | lib/nu/agent/tools/dir_list.rb | 100% | 2025-11-02 | Added tests for path traversal check (line 174), missing file during mtime sort (line 228), and missing file during size sort (line 239) |
+| lib/nu/agent/persona_manager.rb | 100% | 2025-11-02 | Added test for orphaned active persona (line 116) and nil row handling (line 137) |
+| lib/nu/agent/clients/google.rb | 100% | 2025-11-02 | Added tests for calculate_cost with nil tokens (line 112) and error response body extraction via [] accessor (line 166) |

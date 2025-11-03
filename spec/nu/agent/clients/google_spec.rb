@@ -290,6 +290,21 @@ RSpec.describe Nu::Agent::Clients::Google do
       expect(response["error"]["status"]).to eq(401)
       expect(response["error"]["body"]).to include("Invalid API key")
     end
+
+    it "extracts body using [] accessor when available" do
+      error_response = double("response")
+      allow(error_response).to receive(:dig).with(:status).and_return(400)
+      allow(error_response).to receive(:dig).with(:headers).and_return({})
+      allow(error_response).to receive(:dig).with(:body).and_return(nil)
+      allow(error_response).to receive(:[]).with(:body).and_return("Error body via accessor")
+
+      error = Faraday::BadRequestError.new("Bad Request")
+      allow(error).to receive_messages(response: error_response, response_body: nil)
+
+      allow(mock_gemini_client).to receive(:generate_content).and_raise(error)
+      response = client.send_message(messages: [])
+      expect(response["error"]["body"]).to eq("Error body via accessor")
+    end
   end
 
   describe "#max_context" do
@@ -320,6 +335,23 @@ RSpec.describe Nu::Agent::Clients::Google do
       allow(File).to receive(:exist?).and_return(true)
       allow(File).to receive(:read).and_raise(StandardError.new("Permission denied"))
       expect { described_class.new }.to raise_error(Nu::Agent::Error, /Error loading API key: Permission denied/)
+    end
+  end
+
+  describe "#calculate_cost" do
+    it "returns cost based on token counts" do
+      cost = client.calculate_cost(input_tokens: 1_000_000, output_tokens: 500_000)
+      expect(cost).to be > 0
+    end
+
+    it "returns 0.0 when input_tokens is nil" do
+      cost = client.calculate_cost(input_tokens: nil, output_tokens: 100)
+      expect(cost).to eq(0.0)
+    end
+
+    it "returns 0.0 when output_tokens is nil" do
+      cost = client.calculate_cost(input_tokens: 100, output_tokens: nil)
+      expect(cost).to eq(0.0)
     end
   end
 
