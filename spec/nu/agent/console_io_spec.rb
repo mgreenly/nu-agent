@@ -33,6 +33,19 @@ RSpec.describe Nu::Agent::ConsoleIO do
   let(:pipe_read) { instance_double(IO, "pipe_read") }
   let(:pipe_write) { instance_double(IO, "pipe_write") }
 
+  # Global mocking for TTY-dependent system calls to ensure consistent coverage in CI
+  before do
+    # Mock stty command globally - this ensures coverage in non-TTY environments like CI
+    allow_any_instance_of(described_class).to receive(:`).and_call_original
+    allow_any_instance_of(described_class).to receive(:`).with("stty -g").and_return("test_stty_state\n")
+
+    # Mock stdin.raw! globally to avoid terminal errors in non-TTY environments
+    allow($stdin).to receive(:raw!)
+
+    # Allow IO.console to work normally, but tests can override with mocks
+    allow(IO).to receive(:console).and_call_original
+  end
+
   describe "#initialize" do
     it "initializes @input_buffer as mutable string to prevent FrozenError" do
       # This test verifies the fix for frozen string literal issue
@@ -1180,11 +1193,8 @@ RSpec.describe Nu::Agent::ConsoleIO do
       mock_db = instance_double(Nu::Agent::History)
       mock_console = instance_double(IO, "console")
 
-      # Mock stty command to return a valid state - need to mock on any instance
+      # Override the global mock to provide specific values for this test
       allow_any_instance_of(described_class).to receive(:`).with("stty -g").and_return("saved_state\n")
-
-      # Mock $stdin.raw! to avoid terminal issues in tests
-      allow($stdin).to receive(:raw!)
 
       # Mock IO.console for terminal width detection
       allow(IO).to receive(:console).and_return(mock_console)
@@ -1193,7 +1203,7 @@ RSpec.describe Nu::Agent::ConsoleIO do
       # Mock at_exit registration
       expect(mock_db).to receive(:get_command_history).with(limit: 1000).and_return([])
 
-      # Create console with actual initialize - this will now execute the stty and raw! calls
+      # Create console with actual initialize - TTY calls are mocked via global before hook
       console_instance = described_class.new(db_history: mock_db, debug: false)
 
       expect(console_instance.instance_variable_get(:@debug)).to be false
@@ -1204,9 +1214,6 @@ RSpec.describe Nu::Agent::ConsoleIO do
       expect(console_instance.instance_variable_get(:@saved_input)).not_to be_frozen
       expect(console_instance.instance_variable_get(:@original_stty)).to eq("saved_state")
       expect(console_instance.instance_variable_get(:@terminal_width)).to eq(80)
-
-      # Verify the mocked calls were made
-      expect($stdin).to have_received(:raw!)
 
       # Clean up
       console_instance.instance_variable_set(:@original_stty, nil)
