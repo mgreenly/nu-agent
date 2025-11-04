@@ -499,6 +499,49 @@ RSpec.describe Nu::Agent::Formatters::LlmRequestFormatter do
         )
       end
     end
+
+    context "when messages array is nil" do
+      let(:internal_request_nil_messages) do
+        {
+          system_prompt: "You are a helpful assistant.",
+          messages: nil,
+          tools: [],
+          metadata: {}
+        }
+      end
+
+      before do
+        allow(console).to receive(:puts)
+        allow(history).to receive(:get_int).with("llm_verbosity", default: 0).and_return(1)
+      end
+
+      it "handles nil messages array gracefully" do
+        formatter.display_yaml(internal_request_nil_messages)
+
+        # Should not crash and should not include final_message key
+        expect(console).to have_received(:puts).with("").ordered
+        expect(console).to have_received(:puts).with("\e[90m--- LLM Request ---\e[0m").ordered
+        # Should NOT see final_message in output
+        expect(console).not_to have_received(:puts).with(
+          a_string_matching(/final_message:/)
+        )
+      end
+    end
+
+    context "when application is nil" do
+      let(:formatter_no_app) { described_class.new(console: console, application: nil) }
+
+      before do
+        allow(console).to receive(:puts)
+      end
+
+      it "does not display anything when application is nil" do
+        formatter_no_app.display_yaml(internal_request)
+
+        # Should not display anything because application is nil
+        expect(console).not_to have_received(:puts)
+      end
+    end
   end
 
   # Old tests will be removed in Task 3.5

@@ -18,7 +18,7 @@ data["coverage"].each do |filepath, coverage_data|
 
   # Calculate line coverage
   lines = coverage_data["lines"]
-  covered_lines = lines.count { |l| l.nil? || l > 0 }
+  covered_lines = lines.count { |l| l.nil? || (l.is_a?(Integer) && l > 0) }
   line_percent = lines.size > 0 ? (covered_lines.to_f / lines.size * 100) : 100.0
 
   # Calculate branch coverage
@@ -26,7 +26,7 @@ data["coverage"].each do |filepath, coverage_data|
   branch_percent = 100.0
   if branches && !branches.empty?
     branch_count = branches.size
-    covered_branch_count = branches.count { |b| b["coverage"] && b["coverage"] > 0 }
+    covered_branch_count = branches.count { |b| b.is_a?(Hash) && b["coverage"] && b["coverage"] > 0 }
     branch_percent = branch_count > 0 ? (covered_branch_count.to_f / branch_count * 100) : 100.0
     total_branches += branch_count
     total_branches_covered += covered_branch_count
