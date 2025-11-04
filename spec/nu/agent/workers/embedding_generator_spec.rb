@@ -750,4 +750,32 @@ RSpec.describe Nu::Agent::Workers::EmbeddingGenerator do
       expect(result).to eq(["exchanges: 3, 4"])
     end
   end
+
+  describe "store_embedding with unknown type" do
+    it "does nothing when item type is neither conversation nor exchange" do
+      item = { type: "unknown", id: 999, content: "Test" }
+      embedding = Array.new(1536, 0.1)
+
+      allow(history).to receive(:upsert_conversation_embedding)
+      allow(history).to receive(:upsert_exchange_embedding)
+
+      pipeline.send(:store_embedding, item, embedding)
+
+      expect(history).not_to have_received(:upsert_conversation_embedding)
+      expect(history).not_to have_received(:upsert_exchange_embedding)
+    end
+  end
+
+  describe "sleep_with_backoff with shutdown" do
+    it "does not sleep when shutdown is requested" do
+      allow(application).to receive(:instance_variable_get).with(:@shutdown).and_return(true)
+
+      start_time = Time.now
+      pipeline.send(:sleep_with_backoff, 1)
+      elapsed = Time.now - start_time
+
+      # Should not sleep at all (elapsed should be negligible)
+      expect(elapsed).to be < 0.1
+    end
+  end
 end
